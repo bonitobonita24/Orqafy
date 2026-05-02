@@ -17,6 +17,9 @@ build/
 # Credentials master list — GITIGNORED FROM STEP 8. NO EXCEPTIONS.
 CREDENTIALS.md
 
+# Test coverage
+coverage/
+
 # ─── AI Artifacts: Machine-Local Only (never commit) ───
 .specstory/
 project.memory.md
@@ -52,3 +55,9 @@ openclaw-handoff.md
 # Editor + OS
 .DS_Store
 *.log
+*.swp
+*.swo
+*~
+.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/mcp.json

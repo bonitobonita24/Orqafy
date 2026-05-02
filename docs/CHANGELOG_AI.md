@@ -123,3 +123,13 @@
     458876b, 750ac55, e70a859, 2fed2ab, b2b2245, fa211c1, 0287440 — initial repo setup,
     README iterations, master prompt placement, .gitignore baseline, VS Code task config.
     The 2026-05-01 Bootstrap CHANGELOG entry is the authoritative record for this period.
+
+## 2026-05-03 — Phase 4 Part 1 — Root Config Files
+- Agent:               CLAUDE_CODE
+- Why:                 Phase 4 Part 1 scaffold — root monorepo configuration files generated on scaffold/part-1 branch, validated, squash-merged to main.
+- Files added:         pnpm-workspace.yaml, turbo.json, tsconfig.base.json, .editorconfig, .prettierrc, .eslintrc.js
+- Files modified:      package.json (added turbo scripts + devDependencies), .gitignore (final version with coverage/ and editor rules), pnpm-lock.yaml (generated)
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  none
+- Errors resolved:     none
