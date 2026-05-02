@@ -23,10 +23,13 @@ operations and financial traceability without the complexity.
 1. Tenant signs up: Visitor fills signup form → system generates slug (validated: lowercase
    alphanumeric+hyphens 3–30 chars, globally unique, NOT in reserved list: demo,
    powerbyte-admin, admin, api, static, assets) → background job provisions isolated
-   PostgreSQL schema → tenant_super_admin created → welcome email sent via platform SMTP → tenant
-   lands on ERP dashboard. Error: provisioning fails → retry 3x exponential; platform_owner
-   notified; tenant sees "setup in progress." Error: slug taken or reserved → user prompted
-   to choose a different name.
+   PostgreSQL schema → tenant assigned to Starter plan with 7-day free trial (trialEndsAt
+   = now + 7 days, status = trial) → tenant_super_admin created → welcome email sent via
+   platform SMTP with trial info → tenant lands on ERP dashboard with trial banner showing
+   days remaining. Trial expires: auto-downgraded to Free plan (data preserved, uploads/
+   scanning/projects restricted). Error: provisioning fails → retry 3x exponential;
+   platform_owner notified; tenant sees "setup in progress." Error: slug taken or reserved
+   → user prompted to choose a different name.
 
 2. Sales staff creates invoice and receives partial payment: Staff creates Proposal →
    optionally creates Quotation(s) under Proposal with line items and pricing → customer
@@ -145,10 +148,15 @@ operations and financial traceability without the complexity.
 - Hero section: tagline, primary CTA ("Start Free Trial"), secondary CTA ("Try Demo")
 - Features overview: module highlights with icons (Sales, Purchasing, Inventory, Projects,
   HR & Payroll, POS, Accounting, Support) — concise descriptions, not full feature lists
-- Pricing section: live data from Plan entity (Starter/Growth/Pro/Enterprise) via public
-  tRPC endpoint (plan.listActive — no auth required, cached 5 minutes); displays
+- Pricing section: live data from Plan entity (Free/Starter/Growth/Pro/Enterprise) via
+  public tRPC endpoint (plan.listActive — no auth required, cached 5 minutes); displays
   monthlyPrice, annualPrice, features[], maxUsers, maxStorageGB per plan; annual/monthly
-  toggle; "Start Free Trial" CTA per plan → /register with planId pre-selected
+  toggle; Free plan shown with "Get Started" CTA (no payment, immediate access with
+  restrictions listed); paid plans show "Start 7-Day Free Trial" CTA → /register with
+  planId pre-selected (trial always on Starter regardless of plan selected — upgrade to
+  chosen plan after trial or at any time); annual savings callout: "Save 2 months" badge
+  on annual toggle; pricing page shows comparison table of what Free plan cannot do
+  (no uploads, no scanning, no Projects) vs paid plans (all features)
 - Testimonials section: placeholder cards (populated manually by platform_owner via CMS-like
   seed data or future admin UI — out of scope for v1, use hardcoded seed testimonials)
 - Footer: company info, legal links (Terms, Privacy Policy — static pages), contact email,
@@ -453,7 +461,9 @@ operations and financial traceability without the complexity.
   - Status reports: optional TaskStatusReport on task completion; text content + optional
     attachment URLs; useful for documenting work done, issues encountered, or handoff notes
 - Task Dashboard: default home page for all tenant users; Kanban + Calendar toggle
-- ToDos: personal task list per user
+- ToDos: personal task list per user; supports description (text), priority (low|medium|
+  high), file attachments (images and documents via ToDoAttachment — max 10MB per file;
+  Free plan: attachments blocked, upload button hidden + API returns 403)
 
 ### DTR / Attendance
 - AttendanceRecord: GPS clock-in/out (office or project site), pending→approved workflow
@@ -694,7 +704,9 @@ operations and financial traceability without the complexity.
   history then appears in portal under Online Orders with type = "in_store"
 
 ### Platform Admin (Powerbyte Internal)
-- Tenant management: create, suspend, reactivate, delete, change plan
+- Tenant management: create, suspend, reactivate, delete, change plan, reset trial
+  (resets trialEndsAt to now + 7 days, status back to trial), override plan (set any
+  tenant to any plan for free — isOverridden flag, no billing generated)
 - Plan management: Starter/Growth/Pro/Enterprise with pricing and feature flags
 - TenantSubscription billing: auto-generates TenantInvoice before period end
 - TenantPayment manual recording; 7-day grace period before suspension
@@ -736,16 +748,53 @@ Tenant: id, tenantName (slug: lowercase alphanumeric+hyphens 3–30 chars, globa
   companyName, ownerEmail, ownerName, planId, status (trial|active|suspended|cancelled|demo),
   isDemoTenant (boolean, default false — true only for the single demo tenant; enforced
   unique constraint: at most one tenant with isDemoTenant = true),
-  trialEndsAt, schemaName (t_<slug_underscored>), createdAt
+  trialEndsAt (nullable — set to signup date + 7 days on new tenant creation),
+  trialResetCount (integer, default 0 — incremented each time platform_owner resets trial),
+  trialResetBy (nullable — userId of platform_owner who last reset the trial),
+  trialResetAt (nullable — timestamp of last trial reset),
+  schemaName (t_<slug_underscored>), createdAt
   [global public schema — platform level only]
   NOTE: demo tenant has slug = "demo", schemaName = "t_demo", status = "demo";
-  it is pre-provisioned by the seed script and never created via /register
+  it is pre-provisioned by the seed script and never created via /register.
+  Trial flow: new signup → status = trial, planId = Starter, trialEndsAt = now + 7 days;
+  during trial: full Starter plan access (5 users, 5 GB, all features); 2 days before
+  trial ends: email reminder; trial expires: auto-downgraded to Free plan (status =
+  active, planId = Free), data preserved but uploads/scanning/projects restricted;
+  platform_owner can reset trial period at any time → trialEndsAt = now + 7 days,
+  status back to trial, trialResetCount incremented; tenant can subscribe to any paid
+  plan at any time during or after trial
 
-Plan: id, name (Starter|Growth|Pro|Enterprise), monthlyPrice, annualPrice, features[],
-  maxUsers, maxStorageGB, isActive, createdAt [global schema]
+Plan: id, name (Free|Starter|Growth|Pro|Enterprise), monthlyPrice, annualPrice,
+  features[], maxUsers, maxStorageGB, isActive, sortOrder (integer — display order on
+  pricing page), createdAt [global schema]
+  NOTE: 5 plans total. Annual pricing = monthly × 10 (2-month discount equivalent —
+  pay for 10 months, get 12). Platform_owner can adjust any plan's pricing from admin
+  settings at any time. Plan pricing displayed on public landing page via cached
+  plan.listActive endpoint.
+  Free plan restrictions (enforced server-side, not just UI):
+  - maxUsers: 3, maxStorageGB: 0 (no file uploads anywhere in the app)
+  - No file upload endpoints — all upload API routes return 403 with message
+    "Upgrade to a paid plan to upload files"
+  - No camera/barcode/QR scanning features — disabled in mobile app and web
+    (camera endpoints blocked, html5-qrcode and expo-camera scanner disabled)
+  - No Projects module — /<slug>/erp/projects/* routes return 403 with redirect
+    to upgrade page; only ToDo module available for task management
+  - All other modules fully functional (CRM, Invoices, Purchasing manual entry,
+    Inventory manual entry, POS, HR, Banking, Accounting, Support, E-Commerce,
+    Job Orders)
+  Paid plans (Starter/Growth/Pro/Enterprise): all features unlocked, no restrictions
 
 TenantSubscription: id, tenantId, planId, billingCycle (monthly|annual),
-  currentPeriodStart, currentPeriodEnd, status (active|past_due|cancelled) [global schema]
+  currentPeriodStart, currentPeriodEnd, status (active|past_due|cancelled|trial|free),
+  isOverridden (boolean, default false — when true, billing is skipped; plan stays as
+  set by platform_owner regardless of payment status),
+  overriddenBy (nullable — userId of platform_owner who set the override),
+  overrideReason (nullable — e.g. "Partner discount", "Beta tester", "Friend"),
+  createdAt [global schema]
+  NOTE: trial status = 7-day free trial on Starter plan; free status = permanent Free
+  plan after trial expires (or chosen explicitly); overridden subscriptions show a badge
+  in platform admin panel but function identically to paying tenants; platform_owner can
+  override any tenant to any plan for free at any time
 
 TenantInvoice: id, tenantId, subscriptionId, amount, status (draft|sent|paid|past_due|
   cancelled), dueDate, paidAt, generatedAt [global schema]
@@ -1157,7 +1206,15 @@ TaskStatusReport: id, taskId, userId, content (text — what was done, issues, h
   knowledge transfer; one report per completion event (if task is reopened and re-completed,
   a new report is created)
 
-ToDo: id, userId, title, isCompleted, dueDate, createdAt
+ToDo: id, userId, title, description (nullable — text notes), priority (low|medium|high,
+  default low), isCompleted, dueDate (nullable), createdAt
+
+ToDoAttachment: id, todoId, fileUrl (R2/MinIO path), fileName, fileSize (bytes),
+  mimeType (image/jpeg|image/png|image/webp|application/pdf), uploadedBy (userId),
+  uploadedAt
+  NOTE: max 10MB per file; multiple attachments per ToDo allowed; Free plan: all
+  ToDoAttachment upload endpoints return 403 — same restriction as all other upload
+  features across the app; paid plans: full upload access
 
 AttendanceRecord: id, userId, date, clockInTime, clockInLat, clockInLng,
   clockInLocation (office|project_site), clockOutTime, clockOutLat, clockOutLng,
@@ -1318,9 +1375,17 @@ JournalEntry: id, referenceType, referenceId, date, lines[], description, create
 
 JournalLine: id, journalEntryId, accountId, debit, credit
 
-TaxRate: id, name, percentage, isDefault
+TaxRate: id, name (string — e.g. "VAT", "Withholding Tax", "Service Tax"), percentage
+  (decimal), isDefault (boolean), isActive (boolean), createdAt
+  NOTE: generalized tax system — not locked to Philippine BIR rates; admin per tenant can
+  create, modify, and set default tax rates; default seed: VAT 12% (Philippine standard);
+  additional rates configurable for other jurisdictions or special tax types
 
-FiscalYear: id, name, startDate, endDate, isClosed
+FiscalYear: id, name (string — e.g. "FY 2026"), startDate, endDate, isClosed (boolean),
+  createdAt
+  NOTE: configurable per tenant; default: calendar year Jan 1 – Dec 31; admin can set
+  custom fiscal year periods (e.g. Apr 1 – Mar 31 for government clients); isClosed
+  prevents new journal entries from being posted to a closed fiscal year
 
 Ticket: id, customerId, projectId, subject, description,
   priority (low|medium|high|critical), status (open|in_progress|resolved|closed),
@@ -1408,11 +1473,18 @@ Nodemailer: SMTP email transport for all transactional emails — OSS (MIT licen
 Expo Push Notifications (FCM + APNs): mobile push for task assignments, approvals,
   DTR events, payroll, credit alerts, inventory disbursement approvals/rejections — no OSS
   equivalent for cross-platform push
-Xendit: online payment gateway for e-commerce checkout and customer portal invoice
-  payments — supports GCash, Maya, credit/debit cards, bank transfers, over-the-counter
-  (7-Eleven, Cebuana); Xendit webhook for payment confirmation → order status update →
-  FundTransaction creation; per-tenant Xendit API keys stored encrypted (similar to
-  TenantSmtpConfig); PHP currency (₱); Xendit docs: https://docs.xendit.co — Paid
+Xendit: online payment gateway — two scopes:
+  (1) Platform-level: Powerbyte's own Xendit account (API keys in CREDENTIALS.md / .env)
+      used for collecting tenant subscription payments (TenantInvoice); this is the only
+      Xendit account required at launch
+  (2) Tenant-level (v2 / future): per-tenant Xendit API keys stored encrypted (similar to
+      TenantSmtpConfig via TenantXenditConfig entity); enables each tenant's own e-commerce
+      checkout and customer portal invoice payments; not required for v1 launch
+  Supports: GCash, Maya, credit/debit cards, bank transfers, over-the-counter (7-Eleven,
+  Cebuana); Xendit webhook for payment confirmation → order status update →
+  FundTransaction creation; refund support: full and partial refunds via Xendit API;
+  currency: PHP (₱) default but system accepts any currency (configurable per tenant);
+  Xendit docs: https://docs.xendit.co — Paid
 Cloudflare R2: production file storage (S3-compatible, zero egress fees) — Paid
   OSS alternative: self-hosted MinIO on prod VPS
 Upstash: managed Valkey (Redis-compatible) for queue broker in production — Paid
@@ -1436,7 +1508,7 @@ Shopee Open Platform API (optional — v2 or when developer account approved): p
 Environments: dev / staging / prod
 Hosting:      VPS or Railway/Render (Docker Compose mono-server; K8s placeholder only)
 Dev mode:     MODE A — WSL2 native (only supported mode — pre-locked)
-Docker Hub:   disabled (can enable later — configure hub_repo in Infrastructure Notes)
+Docker Hub:   enabled — hub_repo: bonitobonita24/orqafy
 
 ## Mobile Needs
 
@@ -1474,7 +1546,10 @@ Native features: GPS (DTR clock-in/out, works offline), Camera (expense receipt 
 Deep linking:   yes — push notification tap opens relevant screen directly:
   task notification → task detail, attendance → attendance record,
   expense → expense record, payroll → payslips, credit alert → customer credit tab,
-  disbursement notification → disbursement detail
+  disbursement notification → disbursement detail,
+  ecommerce order notification → portal order detail,
+  job order notification → portal repair detail (customer) or job order detail (staff),
+  fund request notification → fund request detail
 Local DB:       WatermelonDB (offline storage and sync queue)
 
 **Per-page mobile strategy (V31 — auto-classified, reviewed by user):**
@@ -1617,7 +1692,7 @@ Visual Design:  See docs/DESIGN.md (VoltAgent aesthetic — dark carbon canvas +
                 history (superseded: Linear + sunset orange `#F26419`).
 
 ## Tenancy Model
-multi — subdirectory routing (erp.powerbyte.app/<tenant_slug>/erp)
+multi — subdirectory routing (orqafy.powerbyte.app/<tenant_slug>/erp)
 NOT subdomain-based — no wildcard DNS required; no per-tenant SSL provisioning needed
 
 Shared global data: yes — Tenant, Plan, TenantSubscription, TenantInvoice, TenantPayment,
@@ -1710,8 +1785,8 @@ Roles: tenant-scoped — user records and roles live inside each tenant's own sc
 /<slug>/portal/profile                      Profile + notification preferences
 /api/trpc/*                                 tRPC API handler (web + mobile)
 
-Stage: https://staging.erp.powerbyte.app/<slug>/...
-Prod:  https://erp.powerbyte.app/<slug>/...
+Stage: https://orqafy-staging.powerbyte.app/<slug>/...
+Prod:  https://orqafy.powerbyte.app/<slug>/...
 
 ## Access Control
 Public routes:    /, /pricing, /login, /register, /demo, /invoice/<publicToken>,
@@ -1770,14 +1845,17 @@ GDPR/compliance:  customer data exportable and deletable per tenant request;
 ## Security Requirements
 Rate limiting:    public: 10/min per IP (auth/signup); api: 120/min per tenant
                   (tenantSlug+userId); upload: 20/min per user; mobile sync: 60/min per user
-CORS origins:     dev: localhost:[Phase 3 port]; staging: https://staging.erp.powerbyte.app;
-                  prod: https://erp.powerbyte.app
+CORS origins:     dev: localhost:[Phase 3 port]; staging: https://orqafy-staging.powerbyte.app;
+                  prod: https://orqafy.powerbyte.app
 Security layers:  L3 RBAC + L5 AuditLog + L6 Prisma guardrails always active
                   L1 tenant context (search_path per request) + L2 schema-boundary isolation
                   + L4 PgBouncer pool limits — all active (schema isolation replaces RLS)
                   NOTE: L2 uses separate-schema isolation NOT PostgreSQL RLS — schema IS
                   the boundary; no tenantId column on any ERP entity
-Additional:       CSRF SameSite=Strict (web) — tRPC + SameSite inherently resistant (V28);
+Additional:       CSRF SameSite=Lax (web) — tRPC + SameSite=Lax inherently CSRF-resistant
+                  (Lax preferred over Strict to avoid breaking email link navigation,
+                  e.g. customer clicking invoice link from email would force re-login
+                  with Strict; Lax allows GET navigation while blocking cross-origin POST);
                   JWT Authorization header (mobile);
                   all PII + financial data encrypted at rest; bcrypt password hashing;
                   suspended tenant: all web sessions and mobile JWTs invalidated immediately;
@@ -1795,20 +1873,22 @@ Additional:       CSRF SameSite=Strict (web) — tRPC + SameSite inherently resi
                   Public invoice route (/invoice/<publicToken>): rate-limited separately
                   (30/min per IP); no auth required but read-only; signature submission
                   rate-limited (5/min per IP per token);
-                  Demo tenant: /demo auto-login rate-limited (30/min per IP); all mutation
-                  endpoints check isDemoTenant flag on Tenant — blocked mutations: user
-                  password change, user create/delete, tenant settings update, data export,
-                  plan/billing modification; demo JWT has isDemoTenant: true claim for
-                  fast middleware checks; demo role-switch endpoint rate-limited (60/min
-                  per IP)
+                  Demo tenant: /demo auto-login rate-limited (30/min per IP); ALL write
+                  mutations blocked on demo tenant except role-switching — this includes
+                  but is not limited to: user password change, user create/delete, tenant
+                  settings update, data export, plan/billing modification, customer
+                  create/edit, invoice create, PO create, product edit, expense create,
+                  fund transfer, etc.; demo JWT has isDemoTenant: true claim for
+                  fast middleware checks (single check blocks all mutations);
+                  demo role-switch endpoint rate-limited (60/min per IP)
 
 ## Environments Needed
 dev / stage / prod
 
 ## Domain / Base URL Expectations
 Dev:   http://localhost:[port assigned by Phase 3 — do not specify a number here]
-Stage: https://staging.erp.powerbyte.app
-Prod:  https://erp.powerbyte.app
+Stage: https://orqafy-staging.powerbyte.app
+Prod:  https://orqafy.powerbyte.app
 
 ## Reporting & Dashboards
 
@@ -1886,7 +1966,7 @@ Docker Compose services (dev + stage): postgres + pgbouncer, valkey, minio,
   mailhog (dev only), web (Next.js — port assigned by Phase 3),
   worker (BullMQ single shared worker — tenantSlug in every job payload;
   Prisma switches schema per job execution)
-Docker Hub publishing: disabled (enable later — set hub_repo: powerbyteit/orqafy)
+Docker Hub publishing: enabled — hub_repo: bonitobonita24/orqafy
 pgAdmin: included on all environments — credentials auto-generated by Phase 3
 CREDENTIALS.md: generated by Phase 3 — master credentials list for all envs, gitignored;
   first admin account: username webmaster; all AI-generated passwords 22-char minimum
@@ -1954,7 +2034,13 @@ Paths: <tenant_slug>/receipts/<type>/<id>/<filename>;
   <tenant_slug>/tickets/<id>/<filename>;
   <tenant_slug>/projects/<project_id>/notes/<note_id>/<filename>;
   <tenant_slug>/projects/<project_id>/tasks/<task_id>/<filename>;
-  <tenant_slug>/invoices/<id>/signature.png
+  <tenant_slug>/invoices/<id>/signature.png;
+  <tenant_slug>/job-orders/<id>/device-photos/<filename>;
+  <tenant_slug>/job-orders/<id>/intake-signature.png;
+  <tenant_slug>/job-orders/<id>/pickup-signature.png;
+  <tenant_slug>/ecommerce/products/<id>/<filename>;
+  <tenant_slug>/transactions/<id>/<filename>;
+  <tenant_slug>/customers/<id>/documents/<filename>
 Mobile: expense photos via pre-signed R2 URL; offline → stored in WatermelonDB,
   uploaded on reconnect
 
@@ -1965,7 +2051,11 @@ Realtime events (SSE on web; React Query polling on mobile):
   Low-stock alerts, Cost change alerts, Custodian account balances, Tenant suspension notices,
   Inventory disbursement status (pending/approved/rejected/fulfilled),
   Project Notes updates (new/edited notes within a project),
-  Serial number status changes
+  Serial number status changes,
+  E-commerce order status changes (pending→paid→processing→shipped→delivered),
+  Job order status changes (received→diagnosis→repair→ready_for_pickup→released),
+  Fund request status (pending/approved/denied),
+  Credit card transaction updates (new charge, bankFee added, isPaid changed)
 
 ## Tech Stack Preferences
 Frontend framework:        Next.js (single unified app — all routes in one app;
@@ -2062,7 +2152,7 @@ Theming approach:   shadcn/ui CSS variables (--primary, --secondary, etc.) — c
   no Yjs/CRDT sync (deferred to v2 if needed)
 - No custom tenant-defined roles: single enum, seeded reference table; tenants cannot create
   custom roles in v1
-- No subdomain-based tenancy: subdirectory routing only (erp.powerbyte.app/<slug>/erp);
+- No subdomain-based tenancy: subdirectory routing only (orqafy.powerbyte.app/<slug>/erp);
   no wildcard DNS or per-tenant SSL
 - No HIPAA or PCI-DSS compliance: no health data stored; no credit card numbers stored
   (fund source references only); compliance certifications deferred
