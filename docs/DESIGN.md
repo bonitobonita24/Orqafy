@@ -71,7 +71,7 @@ Typography leans on the system font stack for headings — achieving maximum ren
 - **1px dashed `rgba(79,93,117,0.4)`**: Workflow diagrams, decorative containers — blueprint aesthetic
 
 ### Gradient / Glow System
-- **Green Signal Glow**: `drop-shadow(0 0 2px #00d992)` animating to `drop-shadow(0 0 8px #00d992)` — pulsing "electric charge" effect on the Powerbyte bolt logo, active disbursement pipeline step, primary CTA hover states. Animated via `@keyframes signal-glow` with 2.5s ease-in-out infinite.
+- **Green Signal Glow**: `drop-shadow(0 0 2px #00d992)` animating to `drop-shadow(0 0 8px #00d992)` — pulsing "electric charge" effect on the Orqafy "O" logo mark, active disbursement pipeline step, primary CTA hover states. Animated via `@keyframes signal-glow` with 2.5s ease-in-out infinite.
 - **Warm Ambient Haze**: `rgba(92,88,85,0.2) 0px 0px 15px` — diffused warm-toned shadow for elevated cards.
 - **Deep Dramatic Elevation**: `rgba(0,0,0,0.7) 0px 20px 60px` + `rgba(148,163,184,0.1) 0px 0px 0px 1px inset` — heavy downward shadow for modals/dialogs.
 
@@ -144,18 +144,22 @@ Implementation: Apply `.font-heading` class to h1/h2/h3 elements that should ren
 
 ---
 
-## Powerbyte Implementation Notes
+## Orqafy Implementation Notes
 
 **CTA Pattern (overrides filled-button pattern):**
 All primary CTAs follow VoltAgent's "Primary Green CTA" convention — Carbon Surface background (`#101010`) + VoltAgent Mint text (`#2fd6a1`) + Signal Green border (`#00d992`) + green glow on hover. NEVER use Signal Green as a filled button background EXCEPT for small tags/ribbons (e.g. "MOST POPULAR" pricing plan ribbon, which uses Abyss Black text on Signal Green for maximum contrast).
 
 **Signal Glow Application (targeted, not decorative):**
 The `.signal-glow` animation (pulsing drop-shadow, 2px → 8px, 2.5s infinite) is applied to:
-- Header logo ("PB" mark) — identity reinforcement
+- Header logo ("O" mark — Orqafy brand) — identity reinforcement
 - Login screen logo — high-visibility on the most-loaded page
 - Active disbursement pipeline step — the "current action" indicator
 
 NOT applied to: every active nav link, every success pill, or CTA buttons (hover-only glow). The animation earns its placement.
+
+NOTE: The app logo is the Orqafy "O" mark (Signal Green rounded square with white/dark "O").
+"Powered by Powerbyte I.T. Solutions" appears as text in the footer — NOT as a logo mark.
+The Powerbyte parent brand is text-only in the product UI.
 
 **Success vs Brand Pill Disambiguation:**
 - `pill-success` uses Tailwind Emerald `#10b981` (completion state)
