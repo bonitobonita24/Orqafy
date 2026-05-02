@@ -52,6 +52,18 @@
       "category": "Development & DevOps",
       "tier": "T3",
       "reason": "8-Part Phase 4 scaffold, multi-step Feature Updates, governance coordination"
+    },
+    {
+      "name": "ui-ux-pro-max",
+      "category": "Design & UI (plugin)",
+      "tier": "T1",
+      "reason": "Phase 2.6 design system generation, MASTER.md, 161 industry rules, shadcn/ui theming"
+    },
+    {
+      "name": "design-system",
+      "category": "Design & UI (plugin)",
+      "tier": "T1",
+      "reason": "REMOVED — redundant with shadcn/ui CSS variable system + ui-ux-pro-max covers design decisions"
     }
   ],
   "excludedGlobals": [
