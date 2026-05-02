@@ -1,0 +1,109 @@
+{
+  "scannedAt": "2026-05-02",
+  "techStack": [
+    "TypeScript",
+    "Next.js (App Router)",
+    "React",
+    "Prisma ORM",
+    "tRPC",
+    "Auth.js v5",
+    "PostgreSQL",
+    "PgBouncer",
+    "Valkey (Redis-compatible)",
+    "BullMQ",
+    "MinIO (S3-compatible)",
+    "shadcn/ui",
+    "Tailwind CSS",
+    "Expo (mobile)",
+    "WatermelonDB",
+    "Docker Compose",
+    "Traefik",
+    "pnpm monorepo",
+    "Turborepo"
+  ],
+  "projectType": "full-stack",
+  "installedSkills": [
+    {
+      "name": "vercel-agent-skills",
+      "category": "Development & DevOps",
+      "tier": "T1",
+      "reason": "Next.js App Router, React, TypeScript — core web framework"
+    },
+    {
+      "name": "postgres",
+      "category": "Data & Analytics",
+      "tier": "T1",
+      "reason": "PostgreSQL declared in tech stack, Prisma ORM, PgBouncer"
+    },
+    {
+      "name": "test-driven-development",
+      "category": "Development & DevOps",
+      "tier": "T2",
+      "reason": "Rule 25 TDD enforcement (RED-GREEN-refactor), Phase 5 validation"
+    },
+    {
+      "name": "systematic-debugging",
+      "category": "Development & DevOps",
+      "tier": "T2",
+      "reason": "Phase 6.5 error triage, TYPE 1-4 recovery procedures"
+    },
+    {
+      "name": "planning-with-files",
+      "category": "Development & DevOps",
+      "tier": "T3",
+      "reason": "8-Part Phase 4 scaffold, multi-step Feature Updates, governance coordination"
+    }
+  ],
+  "excludedGlobals": [
+    {
+      "name": "article-extractor",
+      "reason": "No content extraction/scraping in Orqafy ERP"
+    },
+    {
+      "name": "content-research-writer",
+      "reason": "No marketing content generation needed"
+    },
+    {
+      "name": "csv-data-summarizer-claude-skill",
+      "reason": "No CSV analysis workflow — data lives in PostgreSQL"
+    },
+    {
+      "name": "imagen",
+      "reason": "No AI image generation in ERP context"
+    },
+    {
+      "name": "image-enhancer",
+      "reason": "No image processing features declared in PRODUCT.md"
+    },
+    {
+      "name": "youtube-transcript",
+      "reason": "No video/transcript features in scope"
+    },
+    {
+      "name": "google-workspace-skills",
+      "reason": "No Google Workspace integration declared"
+    },
+    {
+      "name": "accesslint-contrast-checker",
+      "reason": "Covered by design-auditor + WCAG rules in security.md"
+    }
+  ],
+  "recommendedPlugins": [],
+  "skippedOptional": [
+    {
+      "name": "api-design-patterns",
+      "category": "Web Development",
+      "reason": "MEDIUM confidence — not found in skills library"
+    },
+    {
+      "name": "monorepo-management",
+      "category": "Development",
+      "reason": "MEDIUM confidence — not found in skills library"
+    },
+    {
+      "name": "docker-compose-orchestration",
+      "category": "Infrastructure",
+      "reason": "MEDIUM confidence — not found in skills library"
+    }
+  ]
+}
