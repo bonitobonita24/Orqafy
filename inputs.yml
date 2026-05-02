@@ -1,0 +1,538 @@
+version: 3
+generated_by: phase-3
+generated_at: "2026-05-02"
+agent: CLAUDE_CODE
+
+app:
+  name: Orqafy
+  slug: orqafy
+  tagline: "Move as one."
+  industry: "ERP / SaaS / IT Services"
+  parent_brand: "Powerbyte I.T. Solutions"
+
+apps:
+  - name: web
+    framework: next
+    type: web
+    port_offset: 10
+  - name: worker
+    framework: node
+    type: worker
+    port_offset: 11
+  - name: mobile
+    framework: expo
+    type: mobile
+    distribution: enterprise
+
+packages:
+  - shared
+  - api-client
+  - db
+  - ui
+  - jobs
+  - storage
+
+tech_stack:
+  frontend: next
+  api_style: trpc
+  orm: prisma
+  auth_provider: authjs
+  auth_strategy: authjs
+  database: postgres
+  cache: valkey
+  queue: bullmq
+  storage_dev: minio
+  storage_prod: cloudflare-r2
+  email_dev: mailhog
+  email_prod: nodemailer
+  ui_library: shadcn
+  charts: shadcn-recharts
+  data_tables: shadcn-tanstack
+  maps_web: leaflet
+  maps_mobile: react-native-maps
+  rich_text: blocknote
+  icons: lucide-react
+  mobile_framework: expo
+  mobile_ui: react-native-reusables
+  mobile_local_db: watermelondb
+  mobile_push: expo-push
+  bot_protection: turnstile
+  payment_gateway: xendit
+  pdf: react-pdf
+  exports: ["csv", "xlsx", "pdf"]
+  realtime_web: sse
+  realtime_mobile: trpc-react-query-polling
+  reverse_proxy_prod: traefik
+  signature_web: react-signature-canvas
+  signature_mobile: react-native-signature-canvas
+  scanning_mobile: expo-camera
+  scanning_web: html5-qrcode
+
+tenancy:
+  mode: multi
+  routing: subdirectory
+  schema_isolation: per-tenant
+  schema_naming: "t_<slug_underscored>"
+  reserved_slugs: ["demo", "powerbyte-admin", "admin", "api", "static", "assets"]
+  slug_pattern: "^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$"
+  shared_global_data: true
+  rls: false  # schema isolation replaces RLS — schema IS the boundary
+  notes: |
+    Separate PostgreSQL schema per tenant for ALL ERP data — locked.
+    Justified by payroll, banking, GPS sensitivity. No tenantId column on
+    ERP entities — schema_search_path is the boundary.
+
+security:
+  layers:
+    L1_app_scoping: true       # via search_path per request
+    L2_db_isolation: true       # schema-per-tenant (replaces RLS)
+    L3_rbac: true               # always active
+    L4_pool_limits: true        # PgBouncer
+    L5_audit_log: true          # AuditLog per tenant + TenantAuditLog (global)
+    L6_query_guardrails: true   # Prisma extension
+  rate_limiting:
+    public: { window_seconds: 60, max_requests: 10 }
+    auth: { window_seconds: 60, max_requests: 10 }
+    api: { window_seconds: 60, max_requests: 120 }
+    upload: { window_seconds: 60, max_requests: 20 }
+    mobile_sync: { window_seconds: 60, max_requests: 60 }
+    public_invoice: { window_seconds: 60, max_requests: 30 }
+    invoice_signature: { window_seconds: 60, max_requests: 5 }
+    demo_login: { window_seconds: 60, max_requests: 30 }
+    demo_role_switch: { window_seconds: 60, max_requests: 60 }
+  csrf: same-site-lax
+  encryption_at_rest: true
+  password_hashing: bcrypt
+  session_invalidation_on_role_change: true
+  ssrf_prevention: true
+  http_security_headers: true
+  dompurify_sanitizer: true
+  pnpm_audit_level: high
+
+bot_protection:
+  enabled: true
+  provider: turnstile
+  mode: managed
+  protected_pages:
+    - /login
+    - /register
+    - /forgot-password
+    - /demo
+    - /invoice/*/sign
+  widget_count: 1
+  prod_hostnames: 1  # only orqafy.powerbyte.app
+  dev_uses_test_keys: true
+  staging_uses_test_keys: true
+
+payment:
+  gateway: xendit
+  scopes:
+    platform:
+      enabled: true        # Powerbyte's own Xendit account for tenant subscription billing
+      keys_in_env: true    # XENDIT_SECRET_KEY etc. in platform .env
+    tenant:
+      enabled: true        # per-tenant Xendit for e-commerce + portal invoice payments
+      v1_required: false   # deferred to v2 — TenantXenditConfig entity scaffolded
+      keys_encrypted_at_rest: true
+  methods: ["card", "gcash", "maya", "bank_transfer", "otc_711_cebuana"]
+  recurring_subscriptions: true
+  refunds: ["full", "partial"]
+  currency_default: PHP
+  currency_per_tenant_configurable: true
+  webhook_endpoint: /api/webhooks/xendit
+  webhook_verify: x-callback-token
+
+tax:
+  configurable_per_tenant: true
+  fiscal_year_configurable: true
+  default_currency: PHP
+  default_vat_rate: 12
+
+deploy:
+  k8s:
+    enabled: false
+  compose:
+    enabled: true
+    monorepo_layout: deploy/compose/{env}/
+    environments: ["dev", "stage", "prod"]
+    mono_server: true
+  domains:
+    prod: orqafy.powerbyte.app
+    staging: orqafy-staging.powerbyte.app
+  manager:
+    type: komodo
+    staging_auto_update: true
+    prod_auto_update: false
+  reverse_proxy:
+    type: traefik
+    network: proxy
+    cert_resolver: letsEncrypt
+
+docker:
+  publish: true
+  registry: docker.io
+  hub_repo: bonitobonita24/orqafy
+  image_name: orqafy
+  platforms:
+    - linux/amd64
+    - linux/arm64
+  build_on_push_to: main
+  dev_build: true
+  tags_pushed_by_ci:
+    - latest
+    - staging-latest
+    - "sha-<short>"
+
+context7:
+  enabled: true
+  priority_libraries:
+    - next.js
+    - prisma
+    - next-auth
+    - trpc
+    - shadcn-ui
+    - bullmq
+    - expo
+    - watermelondb
+    - valkey
+
+accessibility:
+  level: wcag_aa
+  enforce_in_phase_2_6: true
+  enforce_pre_delivery_checklist: true
+
+design:
+  identity_section: K
+  brand_feel: "professional / enterprise-grade"
+  industry_category: "SaaS / Business ERP"
+  dark_mode: optional-toggle
+  authoritative_visual_reference: docs/DESIGN.md
+  master_file: design-system/MASTER.md
+  aesthetic: voltagent
+  color_palette:
+    background: "#050507"
+    surface: "#101010"
+    border: "#3d3a39"
+    primary: "#00d992"
+    primary_text: "#2fd6a1"
+    body_text: "#f2f2f2"
+    secondary_text: "#b8b3b0"
+    tertiary_text: "#8b949e"
+  typography:
+    heading: system-ui
+    body: Inter
+    mono: SFMono-Regular
+  notes: |
+    DESIGN.md is authoritative. design-system/MASTER.md supplemental
+    (component patterns, Vercel guidelines, WCAG AA enforcement,
+    density/layout rules). Phase 4 reads both.
+
+mobile:
+  enabled: true
+  framework: expo
+  workflow: managed
+  distribution: enterprise   # APK/IPA via MDM, NOT App Store/Play Store
+  offline_first: true
+  offline_features:
+    - dtr_clock_in_out
+    - task_view_status_update
+    - payslip_view
+    - leave_balance_view
+    - expense_submission
+  push_notifications:
+    enabled: true
+    provider: expo-push
+    transport: ["fcm", "apns"]
+  native_features:
+    gps: true
+    camera: true
+    barcode_scanner: true
+    biometrics: true
+  deep_linking: true
+  local_db: watermelondb
+  api_auth: jwt-header
+  jwt_persistence: persistent
+
+storage:
+  enabled: true
+  provider_dev: minio
+  provider_prod: cloudflare-r2
+  s3_compatible: true
+  buckets:
+    dev: orqafy-dev
+    staging: orqafy-staging
+    prod: orqafy-prod
+  max_file_size_mb_default: 10
+  max_file_size_mb_project_notes: 50
+  max_file_size_mb_signature: 1
+  allowed_mime_types_default:
+    - image/jpeg
+    - image/png
+    - image/webp
+    - application/pdf
+  allowed_mime_types_project_notes:
+    - image/jpeg
+    - image/png
+    - image/webp
+    - application/pdf
+    - text/plain
+    - text/csv
+    - text/markdown
+  blocked_mime_types:
+    - image/svg+xml   # XSS vector
+    - text/html       # XSS vector
+  path_pattern: "<tenant_slug>/<entity_type>/<id>/<filename>"
+
+jobs:
+  enabled: true
+  provider: bullmq
+  broker: valkey
+  worker_placement: apps/worker
+  definitions_package: packages/jobs
+  retry_default:
+    attempts: 3
+    backoff: exponential
+    delay_ms: 5000
+  dlq_required: true
+  queues:
+    - tenant-provisioning
+    - tenant-billing
+    - invoice-processing
+    - subscription-billing
+    - inventory-alerts
+    - goods-receipt
+    - payment-processing
+    - credit-processing
+    - expense-processing
+    - cash-advance
+    - credit-card-payment
+    - payroll-processing
+    - shipping-cost-recalc
+    - mobile-sync
+    - pdf-generation
+    - report-export
+    - notifications
+    - payroll-reminder
+    - inventory-disbursement
+    - demo-reset
+    - ecommerce-order-processing
+    - xendit-webhook-processing
+    - job-order-notifications
+  cron:
+    demo-reset: "0 */6 * * *"   # every 6 hours
+
+ports:
+  dev:
+    base: 42941
+    db: 42941
+    pgbouncer: 42942
+    redis: 42943
+    minio: 42944
+    minio_console: 42945
+    mailhog: 42946
+    mailhog_ui: 42947
+    pgadmin: 42948
+    app: 42951
+    worker: 42952
+    studio: 42961
+  staging:
+    db: 5433
+    pgbouncer: 6433
+    redis: 6380
+    minio: 9010
+    minio_console: 9011
+    pgadmin: 5051
+    # app: no host port — Traefik routes via proxy network
+  prod:
+    db: 5432
+    pgbouncer: 6432
+    redis: 6379
+    minio: 9000
+    minio_console: 9001
+    pgadmin: 5050
+    # app: no host port — Traefik routes via proxy network
+
+git:
+  default_branch: main
+  branch_pattern: "feat/{slug}"
+  scaffold_pattern: "scaffold/part-{N}"
+  fix_pattern: "fix/{slug}"
+  commit_style: conventional
+  squash_merge: true
+  use_worktrees: true
+
+models:
+  planning: claude-code
+  execution: claude-sonnet-4-6
+  governance: gemini-2.5-flash-lite
+
+vibe_test:
+  enabled: true
+  ran_at_phase_2_7: true
+  result: pass
+  gaps_found: 0
+
+dev_environment:
+  mode: A
+  description: WSL2 native — no devcontainer (locked at Bootstrap Step 9)
+  required_tools:
+    - node@22
+    - pnpm
+    - docker-desktop-via-wsl2
+
+non_functional:
+  performance_p95_ms: 200
+  concurrent_users_per_tenant: 100
+  uptime_prod: 0.995
+  uptime_staging: best-effort
+  data_retention:
+    financial_years: 7
+    dtr_years: 5
+    tickets_years: 3
+    project_notes: project-lifetime
+  compliance:
+    gdpr_aware: true
+    hipaa: false
+    pci_dss: false
+  realtime_web: sse
+  realtime_mobile: react-query-polling
+
+entities:
+  count_estimate: 90
+  global_schema:
+    - Tenant
+    - Plan
+    - TenantSubscription
+    - TenantInvoice
+    - TenantPayment
+    - TenantSmtpConfig
+    - TenantXenditConfig
+    - TenantAuditLog
+  tenant_schema_groups:
+    auth_users: ["User", "Role", "Department", "AuditLog"]
+    customers: ["Customer", "CustomerContact", "CustomerCreditAccount", "CustomerCreditTransaction"]
+    sales_documents:
+      - Proposal
+      - ProposalAttachment
+      - ProposalLink
+      - ProposalRevision
+      - Quotation
+      - QuotationSection
+      - QuotationMarkupColumn
+      - QuotationLineItem
+      - QuotationRevision
+    invoicing: ["Invoice", "Payment", "Subscription"]
+    purchasing: ["Vendor", "PurchaseOrder", "POLineItem", "POAllocation", "ShippingCost", "GoodsReceipt"]
+    inventory:
+      - Product
+      - ProductSerialNumber
+      - ProductPurchaseHistory
+      - Category
+      - Warehouse
+      - WarehouseStock
+      - StockMovement
+      - InventoryDisbursement
+    projects:
+      - Project
+      - Milestone
+      - Task
+      - TaskAssignment
+      - TaskAttachment
+      - TaskStatusReport
+      - TimeLog
+      - ProjectExpense
+      - ProjectNote
+    hr:
+      - Employee
+      - AttendanceRecord
+      - LeaveRequest
+      - CashAdvance
+      - CashAdvanceRecovery
+      - Payroll
+      - Payslip
+    banking:
+      - FundSource
+      - FundTransaction
+      - FundTransfer
+      - FundRequest
+      - FundTransactionAttachment
+      - CreditCardTransaction
+      - CreditCardPayment
+      - LoanAccount
+    accounting: ["ChartOfAccounts", "JournalEntry", "TaxRate", "FiscalYear", "ExpenseCategory", "Expense"]
+    pos: ["POSSession", "POSSale"]
+    support: ["SupportTicket", "TicketComment", "TicketAttachment"]
+    ecommerce: ["EcommerceOrder", "EcommerceOrderItem", "Cart"]
+    job_orders: ["JobOrder", "JobOrderPart"]
+
+modules:
+  - public-landing
+  - demo-system
+  - crm-sales
+  - purchasing
+  - inventory
+  - projects
+  - tasks
+  - dtr-attendance
+  - banking-finance
+  - hr-payroll
+  - pos
+  - accounting
+  - support-tickets
+  - ecommerce
+  - repairs-job-orders
+  - customer-portal
+  - platform-admin
+
+roles:
+  - platform_owner
+  - tenant_super_admin
+  - admin
+  - accountant
+  - hr_manager
+  - project_manager
+  - sales_staff
+  - purchasing_staff
+  - inventory_staff
+  - staff
+  - cashier
+  - support_agent
+  - customer
+
+mobile_role_access:
+  - staff
+  - project_manager
+  - hr_manager
+  - admin
+  - tenant_super_admin
+
+infra_services:
+  postgres: { dev: true, staging: true, prod: true }
+  pgbouncer: { dev: true, staging: true, prod: true }
+  valkey: { dev: true, staging: true, prod: true }
+  minio: { dev: true, staging: true, prod: true }
+  mailhog: { dev: true, staging: false, prod: false }
+  pgadmin: { dev: true, staging: true, prod: true }
+  traefik: { dev: false, staging: true, prod: true }
+
+integrations:
+  email: nodemailer-smtp
+  email_per_tenant_smtp: true
+  push: expo-push
+  payment: xendit
+  storage_dev: minio
+  storage_prod: cloudflare-r2
+  cache: upstash-or-self-hosted-valkey
+  maps: leaflet-osm
+  pdf: react-pdf
+  xlsx: sheetjs
+  rich_text: blocknote
+  bot_protection: cloudflare-turnstile
+  shopee_api: optional-v2
+
+reporting:
+  platform_dashboard: true
+  tenant_dashboard: true
+  project_dashboard: true
+  module_reports: true
+  export_formats: ["csv", "pdf", "xlsx"]

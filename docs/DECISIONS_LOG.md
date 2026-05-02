@@ -283,3 +283,77 @@ additions in a single planning session:
 baseline for Phase 3 implementation.
 
 **Result:** PRODUCT.md: 2,062 lines, ~90 entities, 97 pages, 13 roles, 23 BullMQ queues.
+
+---
+
+## Decision — 2026-05-02 — Phase 2 locked decisions (Discovery Interview output)
+
+**Decision:** Lock the 7 decisions made during Phase 2 Discovery Interview.
+
+1. **Domains** — prod = `orqafy.powerbyte.app`, staging = `orqafy-staging.powerbyte.app`.
+   Subdirectory tenancy routing (no wildcard DNS, no per-tenant SSL).
+
+2. **Xendit dual-level architecture** — Platform-level Xendit account (Powerbyte's own,
+   keys in platform `.env`) for tenant subscription billing — required at v1 launch.
+   Tenant-level per-tenant Xendit (`TenantXenditConfig` entity, encrypted keys at rest)
+   for e-commerce checkout + portal invoice payments — scaffolded at v1, activated at v2.
+
+3. **Tax + fiscal year configurable per tenant** — multi-tenant SaaS targeting SEA
+   markets requires per-tenant VAT rates + fiscal year start. Default: PHP, 12% VAT,
+   January fiscal year.
+
+4. **CSRF approach: SameSite=Lax** (not Strict). Rationale: Strict breaks customer
+   email-link navigation (clicking invoice link forces re-login). Lax allows GET
+   navigation while blocking cross-origin POST — sufficient given tRPC mutations are
+   POST with JSON Content-Type.
+
+5. **Demo tenant — ALL mutations blocked except role-switch.** `isDemoTenant: true`
+   JWT claim enables single middleware check that blocks every write mutation in the
+   demo tenant. Demonstrates flows visually but cannot persist any modification.
+   Demo resets every 6 hours via cron job.
+
+6. **Docker Hub publishing — enabled.** `docker.publish: true`,
+   `hub_repo: bonitobonita24/orqafy`, `image_name: orqafy`. Image pushed by GitHub
+   Actions on every merge to main with tags `:latest`, `:staging-latest`, `:sha-<short>`.
+   Komodo staging auto-detects `:staging-latest` (auto_update). Production manual deploy
+   via Komodo UI.
+
+7. **TenantXenditConfig entity added** — supports decision #2 (per-tenant Xendit keys).
+
+**Reversible:** Decisions 1, 3, 5, 6 are reversible cheaply. Decisions 2, 4, 7 are
+locked (cross-cutting impact on auth/payment/schema).
+
+**Files affected:** `PRODUCT.md` (12 edits), `inputs.yml`, `.env.{dev,staging,prod}`.
+
+---
+
+## Decision — 2026-05-03 — Phase 3 spec file generation (ports + governance)
+
+**Decision:** Lock Phase 3 outputs.
+
+**Port strategy (Rule 22):**
+- Dev port base: **42941** (random, generated once via `shuf -i 40000-49999`).
+- All dev ports derive from base + offset:
+  - 42941 PostgreSQL · 42942 PgBouncer · 42943 Valkey · 42944 MinIO API
+  - 42945 MinIO Console · 42946 MailHog SMTP · 42947 MailHog UI · 42948 pgAdmin
+  - 42951 App (Next.js) · 42952 Worker · 42961 Prisma Studio
+- Staging ports: 5433 / 6433 / 6380 / 9010 / 5051 (offset from prod)
+- Prod ports: 5432 / 6432 / 6379 / 9000 / 5050 (standard)
+- Staging + prod app services: **no host port** — Traefik routes via internal Docker
+  network (V27 reverse proxy decision).
+
+**Containers + volumes:** named per-environment via `COMPOSE_PROJECT_NAME` to guarantee
+isolation when staging + prod run on the same Komodo server.
+
+**Generated files:**
+- `inputs.yml` (v3) — full app spec
+- `inputs.schema.json` — strict validation
+- `.env.dev`, `.env.staging`, `.env.prod`, `.env.example`
+- `scripts/sync-credentials-to-env.sh` — propagates CREDENTIALS.md → env files
+- `design-system/MASTER.md` (Phase 2.6 output, harmonised with `docs/DESIGN.md`)
+- `.socraticodecontextartifacts.json` — SocratiCode context artifacts
+
+**Spec stress-test (Phase 2.7) result:** PASS, 0 gaps found.
+
+**Reversible:** Port base regeneration is cheap (edit `inputs.yml` + `.env.dev` +
+restart compose). Schema strictness can be tightened/relaxed via Feature Update.
