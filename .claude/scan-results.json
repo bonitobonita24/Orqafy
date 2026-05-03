@@ -1,121 +1,142 @@
 {
-  "scannedAt": "2026-05-02",
+  "scannedAt": "2026-05-03",
+  "previousScan": "2026-05-02",
   "techStack": [
-    "TypeScript",
+    "TypeScript (strict)",
     "Next.js (App Router)",
     "React",
-    "Prisma ORM",
     "tRPC",
+    "Prisma ORM",
     "Auth.js v5",
-    "PostgreSQL",
+    "PostgreSQL (schema-per-tenant)",
     "PgBouncer",
     "Valkey (Redis-compatible)",
     "BullMQ",
-    "MinIO (S3-compatible)",
-    "shadcn/ui",
-    "Tailwind CSS",
-    "Expo (mobile)",
+    "MinIO (dev) / Cloudflare R2 (prod)",
+    "shadcn/ui + Tailwind CSS",
+    "Recharts (via shadcn)",
+    "TanStack Table (via shadcn)",
+    "Leaflet + OpenStreetMap",
+    "lucide-react",
+    "Expo (managed)",
     "WatermelonDB",
+    "Expo Push (FCM/APNs)",
+    "Xendit (payments)",
+    "Cloudflare Turnstile (bot protection)",
     "Docker Compose",
-    "Traefik",
-    "pnpm monorepo",
-    "Turborepo"
+    "Komodo (deployment manager)",
+    "Traefik (reverse proxy)",
+    "Docker Hub (image registry)",
+    "pnpm monorepo + Turborepo"
   ],
-  "projectType": "full-stack",
+  "projectType": "full-stack monorepo (web + mobile + worker, multi-tenant SaaS)",
+  "phaseAtScan": "Phase 4 Part 2 — packages/shared + api-client (branch: scaffold/part-2)",
   "installedSkills": [
     {
-      "name": "vercel-agent-skills",
-      "category": "Development & DevOps",
+      "name": "ui-ux-pro-max",
+      "category": "Design & UI",
       "tier": "T1",
-      "reason": "Next.js App Router, React, TypeScript — core web framework"
+      "reason": "Phase 2.6 design system generator. inputs.yml design.master_file: design-system/MASTER.md. 161 industry rules, shadcn/ui theming, WCAG AA enforcement."
+    },
+    {
+      "name": "awesome-design-md",
+      "category": "Design & UI",
+      "tier": "T1",
+      "addedAt": "2026-05-03",
+      "reason": "inputs.yml design.aesthetic: voltagent + design.authoritative_visual_reference: docs/DESIGN.md. Skill provides 31 DESIGN.md aesthetic references for shadcn-compatible visual direction (Scenario 33)."
     },
     {
       "name": "postgres",
       "category": "Data & Analytics",
       "tier": "T1",
-      "reason": "PostgreSQL declared in tech stack, Prisma ORM, PgBouncer"
+      "reason": "PostgreSQL with schema-per-tenant isolation, Prisma ORM, PgBouncer pooler. Safe read-only query MCP for tenant-aware data exploration."
     },
     {
       "name": "test-driven-development",
       "category": "Development & DevOps",
-      "tier": "T2",
-      "reason": "Rule 25 TDD enforcement (RED-GREEN-refactor), Phase 5 validation"
+      "tier": "T1",
+      "reason": "Rule 25 mandates RED-GREEN-refactor on every Feature Update. Phase 5 validation gate enforces pnpm test pass before Phase 6."
     },
     {
       "name": "systematic-debugging",
       "category": "Development & DevOps",
       "tier": "T2",
-      "reason": "Phase 6.5 error triage, TYPE 1-4 recovery procedures"
+      "reason": "Phase 6.5 error triage with 16+ named categories. TYPE 1-4 recovery procedures (Rule 21 H3 partial phase recovery)."
+    },
+    {
+      "name": "using-git-worktrees",
+      "category": "Development & DevOps",
+      "tier": "T1",
+      "addedAt": "2026-05-03",
+      "reason": "inputs.yml git.use_worktrees: true. Phase 4 Parts run in isolated worktrees per Rule 24 fresh-context discipline. Was declared but skill not installed previously."
     },
     {
       "name": "planning-with-files",
       "category": "Development & DevOps",
-      "tier": "T3",
-      "reason": "8-Part Phase 4 scaffold, multi-step Feature Updates, governance coordination"
+      "tier": "T2",
+      "reason": "8-Part Phase 4 scaffold + multi-step Feature Updates + governance coordination. Manus-style task_plan.md/findings.md/progress.md aligns with .cline/STATE.md + .cline/handoffs/."
     },
     {
-      "name": "ui-ux-pro-max",
-      "category": "Design & UI (plugin)",
-      "tier": "T1",
-      "reason": "Phase 2.6 design system generation, MASTER.md, 161 industry rules, shadcn/ui theming"
+      "name": "mcp-builder",
+      "category": "Development & DevOps",
+      "tier": "T2",
+      "addedAt": "2026-05-03",
+      "reason": "4 MCP servers wired in .vscode/mcp.json (socraticode, context7, shadcn) + code-review-graph plugin. Reference for any future custom tenant-aware MCP development."
+    },
+    {
+      "name": "claude-api",
+      "category": "Development & DevOps",
+      "tier": "T4",
+      "addedAt": "2026-05-03",
+      "reason": "MEDIUM confidence — hedge for future Claude API features in tenant apps (demo-system, AI assistants per tenant). Remove if Claude API features remain out of scope through Phase 8."
+    }
+  ],
+  "removedSkills": [
+    {
+      "name": "vercel-agent-skills",
+      "removedAt": "2026-05-03",
+      "reason": "Deployment mismatch. inputs.yml deploy.manager.type: komodo, deploy.reverse_proxy.type: traefik, docker.publish: true to Docker Hub. Not a Vercel deployment. Vercel-specific patterns (Edge, Fluid Compute, AI Gateway, Routing Middleware) do not apply. Live Next.js docs covered by Context7 MCP (already in .vscode/mcp.json)."
     },
     {
       "name": "design-system",
-      "category": "Design & UI (plugin)",
-      "tier": "T1",
-      "reason": "REMOVED — redundant with shadcn/ui CSS variable system + ui-ux-pro-max covers design decisions"
+      "removedAt": "2026-05-02",
+      "reason": "Redundant with shadcn/ui CSS variable system + ui-ux-pro-max."
     }
   ],
   "excludedGlobals": [
+    { "name": "article-extractor", "reason": "No content extraction/scraping in Orqafy ERP scope" },
+    { "name": "content-research-writer", "reason": "No marketing content generation needed" },
+    { "name": "csv-data-summarizer-claude-skill", "reason": "Data lives in Postgres — postgres skill is the right fit" },
+    { "name": "imagen", "reason": "No AI image generation in ERP context" },
+    { "name": "image-enhancer", "reason": "No image processing features declared in PRODUCT.md" },
+    { "name": "youtube-transcript", "reason": "No video/transcript features in scope" },
+    { "name": "google-workspace-skills", "reason": "No Google Workspace integration declared" },
+    { "name": "accesslint-contrast-checker", "reason": "Single-axis (contrast only) — superseded by full a11y-skill axe-core audit (manual install needed)" },
+    { "name": "automate", "reason": "n8n automation not in stack — BullMQ jobs are the queue layer" },
+    { "name": "deep-research", "reason": "No autonomous research workflow in scope" }
+  ],
+  "keepActiveFromGlobal": [
+    { "name": "debug-skill", "reason": "Runtime debugging for Phase 6.5 triage — complements systematic-debugging" },
+    { "name": "design-auditor", "reason": "Visual scoring (paired with future a11y-skill — different axes, no overlap)" },
+    { "name": "git-pushing", "reason": "Squash-merge workflow on every Part + Feature Update (Rule 23)" },
+    { "name": "owasp-security", "reason": "pnpm audit runs in Phase 5 + CI; OWASP review for security-sensitive Parts" },
+    { "name": "playwright-skill", "reason": "Visual QA (Rule 16) after Phase 6 + major Phase 7 updates" },
+    { "name": "review-implementing", "reason": "Two-stage review (Rule 25) maps directly to this skill" },
+    { "name": "test-fixing", "reason": "Phase 5 validation gate (pnpm test must pass before Phase 6)" }
+  ],
+  "manualInstallNeeded": [
     {
-      "name": "article-extractor",
-      "reason": "No content extraction/scraping in Orqafy ERP"
-    },
-    {
-      "name": "content-research-writer",
-      "reason": "No marketing content generation needed"
-    },
-    {
-      "name": "csv-data-summarizer-claude-skill",
-      "reason": "No CSV analysis workflow — data lives in PostgreSQL"
-    },
-    {
-      "name": "imagen",
-      "reason": "No AI image generation in ERP context"
-    },
-    {
-      "name": "image-enhancer",
-      "reason": "No image processing features declared in PRODUCT.md"
-    },
-    {
-      "name": "youtube-transcript",
-      "reason": "No video/transcript features in scope"
-    },
-    {
-      "name": "google-workspace-skills",
-      "reason": "No Google Workspace integration declared"
-    },
-    {
-      "name": "accesslint-contrast-checker",
-      "reason": "Covered by design-auditor + WCAG rules in security.md"
+      "name": "a11y-skill",
+      "tier": "T1",
+      "reason": "WCAG 2.1 AA enforcement is mandatory (inputs.yml accessibility.level: wcag_aa, enforce_pre_delivery_checklist: true). Skill listed in SKILLS-INDEX.md but folder not present in local library. Install via: npx skills add airowe/claude-a11y-skill (per CLAUDE.md Bootstrap Step 8 guidance)."
     }
   ],
   "recommendedPlugins": [],
   "skippedOptional": [
     {
-      "name": "api-design-patterns",
-      "category": "Web Development",
-      "reason": "MEDIUM confidence — not found in skills library"
-    },
-    {
-      "name": "monorepo-management",
-      "category": "Development",
-      "reason": "MEDIUM confidence — not found in skills library"
-    },
-    {
-      "name": "docker-compose-orchestration",
-      "category": "Infrastructure",
-      "reason": "MEDIUM confidence — not found in skills library"
+      "name": "webapp-testing",
+      "category": "Security & Testing",
+      "reason": "Overlaps with playwright-skill (already global). Skipped to avoid duplication."
     }
   ]
 }

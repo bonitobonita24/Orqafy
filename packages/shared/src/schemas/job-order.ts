@@ -1,0 +1,40 @@
+import { z } from "zod";
+
+export const jobOrderStatusSchema = z.enum([
+  "pending",
+  "assigned",
+  "in_progress",
+  "on_hold",
+  "completed",
+  "verified",
+  "invoiced",
+  "cancelled",
+  "warranty_claim",
+  "returned",
+]);
+
+export const jobOrderSchema = z.object({
+  id: z.string(),
+  customerId: z.string(),
+  projectId: z.string().nullable(),
+  assignedToId: z.string().nullable(),
+  title: z.string(),
+  description: z.string().nullable(),
+  status: jobOrderStatusSchema,
+  priority: z.string(),
+  scheduledDate: z.coerce.date().nullable(),
+  completedDate: z.coerce.date().nullable(),
+  partsUsed: z.array(z.record(z.string(), z.unknown())),
+  laborHours: z.number().nullable(),
+  laborCost: z.number().nullable(),
+  totalCost: z.number().nullable(),
+  intakeSignatureUrl: z.string().nullable(),
+  intakeSignedAt: z.coerce.date().nullable(),
+  releaseSignatureUrl: z.string().nullable(),
+  releaseSignedAt: z.coerce.date().nullable(),
+  invoiceId: z.string().nullable(),
+  notes: z.string().nullable(),
+  createdById: z.string(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+});

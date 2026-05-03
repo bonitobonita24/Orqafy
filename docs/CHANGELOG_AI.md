@@ -133,3 +133,36 @@
 - Schema/migrations:   none
 - Errors encountered:  none
 - Errors resolved:     none
+
+## 2026-05-03 — Skills Reorg (/scan-project second run) — TOOLING ONLY (no source change)
+- Agent:               CLAUDE_CODE
+- Why:                 Second /scan-project after the 2026-05-02 baseline. Aligned project skill set with locked deployment posture (Komodo + Traefik + Docker Hub — NOT Vercel) and filled declared-but-missing skill (using-git-worktrees was declared in inputs.yml git.use_worktrees: true but never installed). Surfaced a11y-skill manual-install gap blocking future WCAG AA pre-delivery checklists.
+- Files added:         .claude/skills/using-git-worktrees/ (declared in inputs.yml — was missing),
+                       .claude/skills/awesome-design-md/ (voltagent aesthetic + docs/DESIGN.md authoritative reference per Scenario 33),
+                       .claude/skills/mcp-builder/ (4 MCP servers wired — reference for any custom MCP work),
+                       .claude/skills/claude-api/ (MEDIUM-confidence hedge for future tenant-side Claude API features),
+                       .cline/handoffs/2026-05-03-pause-skills-reorg.md (handoff with two-thread resume instructions)
+- Files modified:      .claude/scan-results.json (rewritten — 9 active skills + manualInstallNeeded list + accurate removal/exclusion audit trail),
+                       .cline/STATE.md (corrected stale state — was "Part 1 complete / branch=main", actual is "Part 2 PARTIAL on scaffold/part-2"; logged skills swap),
+                       docs/IMPLEMENTATION_MAP.md (Skills section refreshed; Part 2 Partial status reflected)
+- Files deleted:       .claude/skills/vercel-agent-skills/ (deployment mismatch — Komodo + Traefik + Docker Hub stack does not benefit from Vercel-coupled patterns. Live Next.js docs already covered by Context7 MCP in .vscode/mcp.json. Decision rationale: skill targeted Vercel-specific products like Edge/Fluid Compute/AI Gateway/Routing Middleware that this project explicitly does not use.)
+- Schema/migrations:   none
+- Errors encountered:  a11y-skill listed in ~/.claude/skills-library/SKILLS-INDEX.md but folder absent from local library. Cannot copy; manual install required per CLAUDE.md Bootstrap Step 8.
+- Errors resolved:     none (manual install deferred to human — not a code error)
+- Branch state:        scaffold/part-2 (this session did not switch branches; changes are uncommitted on the Part 2 branch — see handoff for two-thread split-or-merge guidance).
+- NOT TOUCHED:         packages/ (Part 2 in-progress scaffold from a prior session — 17 types + 6 schemas in packages/shared/, packages/api-client folder exists but is empty). This entry covers only the skills reorg.
+- Pause reason:        User requested pause + handoff. Per V31 governance: STATE.md/CHANGELOG/IMPLEMENTATION_MAP/handoff written; no squash-merge, no branch deletion.
+
+## 2026-05-03 — Phase 4 Part 2 — packages/shared + packages/api-client
+- Agent:               CLAUDE_CODE
+- Why:                 Phase 4 Part 2 scaffold — shared TypeScript types + Zod schemas + typed API client. Resumed PARTIAL state from prior session (17 types + 6 schemas committed on `scaffold/part-2`); wrote 10 missing schemas, created `packages/shared/src/schemas/index.ts`, scaffolded `packages/api-client` from scratch, validated, ready for squash-merge per Rule 23.
+- Files added:         packages/shared/src/schemas/purchasing.ts, inventory.ts, project.ts, hr.ts, banking.ts, accounting.ts, pos.ts, support.ts, ecommerce.ts, job-order.ts, index.ts (11 files),
+                       packages/api-client/package.json, tsconfig.json, src/client.ts, src/errors.ts, src/index.ts (5 files)
+- Files modified:      docs/IMPLEMENTATION_MAP.md (Phase 4 row → "Parts 1–2 complete"; Packages rows for shared + api-client → ✅ Complete; new Phase 4 Part 2 section; Next Action rewritten to point to Part 3)
+- Files deleted:       none
+- Schema/migrations:   none (Part 3 territory)
+- Errors encountered:  (1) api-client typecheck failed — TS2304 Cannot find name 'fetch' / 'AbortSignal' / 'URL' / 'Response' / 'RequestInit'. Root cause: tsconfig.base.json `lib: ["ES2022"]` excludes DOM types, and api-client uses fetch/URL/AbortSignal at the client surface. (2) api-client lint failed — `@typescript-eslint/strict-boolean-expressions` on `if (token)` where token is `string | null`.
+- Errors resolved:     (1) Added `"lib": ["ES2022", "DOM"]` override to packages/api-client/tsconfig.json. DOM types provide fetch/URL/Response/AbortSignal that match Node 22's web-compatible globals — package is isomorphic (web + Node + mobile via fetch). (2) Replaced `if (token)` with explicit `if (token !== null && token !== undefined && token.length > 0)` to satisfy strict-boolean-expressions. Both pass after the fix.
+- Validation:          pnpm install (clean), pnpm --filter @orqafy/shared typecheck (0 errors), pnpm --filter @orqafy/api-client typecheck (0 errors), pnpm --filter @orqafy/shared lint (0 errors), pnpm --filter @orqafy/api-client lint (0 errors).
+- Branch:              scaffold/part-2 → squash-merged to main this commit, branch deleted per Rule 23.
+- Architectural notes: (a) api-client is a typed fetch wrapper, not a tRPC client — Phase 4 Part 5 will add tRPC routers and at that point this package can either grow a tRPC proxy or coexist for non-tRPC integrations (mobile, third-party callbacks). (b) Mobile apps consume @orqafy/api-client per Rule 13 (mobile never imports packages/db). (c) Auth token resolver is intentionally optional and pluggable so the same client works for unauthenticated public endpoints, NextAuth session-derived tokens (web), and SecureStore-backed mobile tokens.
