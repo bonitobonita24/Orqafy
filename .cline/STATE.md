@@ -48,7 +48,7 @@ SPEC_STRESS_TEST: PASS (0 gaps) — Phase 2.7 ran 2026-05-03
 PHASE_4_PARTS:
   part-1: ✅ merged (834c30b — root config files)
   part-2: ✅ merged (2e8fce1 — packages/shared + packages/api-client)
-  part-3: ✅ merged (packages/db — Prisma schema + seed + helpers)
+  part-3: ✅ merged (a494bd1 — packages/db — Prisma schema + seed + helpers)
   part-4: ⬜ open phase4-part4.md in NEW session — packages/ui + packages/jobs + packages/storage
   part-5: ⬜ apps/web (Next.js)
   part-6: ⬜ apps/mobile (Expo)
