@@ -105,3 +105,31 @@
   became GA. On Prisma 6.x (our locked version), previewFeatures = ["multiSchema"]
   is mandatory. Do NOT remove it until upgrading to Prisma 7.x.
 # ---
+
+## 2026-05-03 — 🟡 pnpm install --frozen-lockfile fails when adding new packages
+- Type:      🟡 fix
+- Phase:     Phase 4 Part 4
+- Files:     pnpm-lock.yaml, packages/jobs/package.json
+- Concepts:  pnpm, lockfile, frozen-lockfile, ci, new dependencies
+- Narrative: After writing `packages/jobs/package.json` with new BullMQ dependencies
+  and running `pnpm install --frozen-lockfile`, the command failed because the new
+  packages had no lockfile entry. The frozen flag prevents lockfile mutation, so it
+  cannot resolve new deps. Fix: run `pnpm install` (without `--frozen-lockfile`) once
+  to update `pnpm-lock.yaml`, then subsequent runs can use `--frozen-lockfile`.
+  Rule: `--frozen-lockfile` is for CI only (verifying existing deps haven't drifted).
+  Any time a NEW package is added to any `package.json` during Phase 4 Parts, a plain
+  `pnpm install` is required first to update the lockfile before CI-style frozen runs.
+# ---
+
+## 2026-05-03 — 🟡 git branch -d refuses after squash-merge; use -D
+- Type:      🟡 fix
+- Phase:     Phase 4 Part 4
+- Files:     (git branch management)
+- Concepts:  git, squash-merge, branch delete, ancestry
+- Narrative: After squash-merging `scaffold/part-4` to main, `git branch -d scaffold/part-4`
+  refused with "not fully merged". Squash-merge creates a single new commit on main
+  rather than a merge commit — git's ancestry check sees the branch tip as unmerged
+  because there is no merge commit in main's history linking back to it. Fix: always
+  use `git branch -D` (force delete) after squash-merging. This is expected per Rule 23
+  squash-merge strategy — not a mistake. Apply consistently to all future Part branches.
+# ---

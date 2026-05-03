@@ -413,3 +413,23 @@ useful for both directions.
 - Three error class hierarchy (above)
 
 **Open elements:** tRPC vs continued fetch — revisit at Phase 4 Part 5.
+
+---
+
+## packages/storage — Cross-Tenant Access Returns Null (Not 403)
+**Decision:** `createPresignedDownloadUrl`, `deleteObject`, and `getObjectMetadata` return `null`/`false` when a storage key does not belong to the requesting tenant — they do NOT throw 403.
+**Rationale:** Returning 403 (Forbidden) confirms the object exists, enabling enumeration attacks where an attacker discovers valid storage paths by observing different responses for existing vs non-existing keys. Returning `null` treats out-of-tenant access identically to "not found". Per security.md FILE UPLOAD SAFETY rule 8: "return 404 (not 403 — do not confirm the file exists)."
+**Locked:** Yes — do not change to throw/403 pattern without security review.
+**Phase:** Phase 4 Part 4
+
+## packages/storage — ContentDisposition:attachment on All PutObject Commands
+**Decision:** Every `PutObject` command in `packages/storage/src/operations.ts` includes `ContentDisposition: "attachment"` regardless of file type.
+**Rationale:** Defence-in-depth against XSS. If a future bug bypasses MIME validation and an executable content type is stored, `ContentDisposition: "attachment"` forces the browser to download the file rather than render it inline. Stored XSS via uploaded files is mitigated at the storage layer, not solely at the MIME-check layer.
+**Locked:** Yes — do not remove ContentDisposition header from PutObject calls.
+**Phase:** Phase 4 Part 4
+
+## packages/jobs — removeOnFail:false in DEFAULT_JOB_OPTIONS
+**Decision:** `DEFAULT_JOB_OPTIONS` in `packages/jobs/src/config.ts` sets `removeOnFail: false`. Failed BullMQ jobs are retained in the dead-letter queue for inspection, not automatically discarded.
+**Rationale:** DLQ safety — no data is silently lost on job failure. Failed jobs accumulate in Redis/Valkey but can be inspected, retried, or manually cleared. The trade-off is storage growth for high-volume persistent failures. Acceptable for Orqafy's job types (all business-domain: invoicing, payroll, inventory, etc.) where silent loss is worse than storage cost.
+**Locked:** Yes — do not change to removeOnFail:true globally. Per-queue override is acceptable if a queue is explicitly designed for fire-and-forget workloads (log to DECISIONS_LOG.md).
+**Phase:** Phase 4 Part 4

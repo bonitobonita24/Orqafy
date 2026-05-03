@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-03 by CLAUDE_CODE (Phase 4 Part 2 complete — packages/shared + packages/api-client)
+# Last updated: 2026-05-03 by CLAUDE_CODE (Phase 4 Part 4 complete — packages/ui + packages/jobs + packages/storage)
 # ---
 
 ## Phase Status
@@ -14,7 +14,7 @@
 | Phase 2.6 — Design System | ✅ Complete | UI UX Pro Max v2.0.1 generated MASTER.md. Harmonised with docs/DESIGN.md (VoltAgent). Vercel guidelines + WCAG AA enforcement appended. |
 | Phase 2.7 — Spec Stress-Test | ✅ Complete | PASS — 0 gaps found across completeness/consistency/ambiguity/security checks. |
 | Phase 3 — Generate Spec Files | ✅ Complete | inputs.yml v3 + schema + 4 env files + sync script. Port base 42941. |
-| Phase 4 — Full Scaffold | ⏳ In Progress (Parts 1–2 complete) | Part 1 ✅ merged (`834c30b`). Part 2 ✅ complete on `scaffold/part-2` — 17 types + 16 schemas + api-client (typed fetch wrapper with Zod parsing). Parts 3–8 ⬜. Next: open `phase4-part3.md` in a NEW session (packages/db). |
+| Phase 4 — Full Scaffold | ⏳ In Progress (Parts 1–4 complete) | Part 1 ✅ merged (`834c30b`). Part 2 ✅ merged (`2e8fce1`). Part 3 ✅ merged (`a494bd1`). Part 4 ✅ merged (`3c6aedc`). Parts 5–8 ⬜. Next: open `phase4-part5.md` in a NEW session (apps/web Next.js). |
 | Phase 5 — Validation | ⬜ Pending | Human trigger. Pre-flight will check CREDENTIALS.md ⏳ status. |
 | Phase 6 — Docker + Visual QA | ⬜ Pending | Human trigger. |
 | Phase 7 — Feature Updates | ⬜ Pending | The daily loop. |
@@ -59,10 +59,10 @@
 |---------|--------|-------------|
 | packages/shared | ✅ Complete | 17 type files + 16 Zod schemas covering all 16 domains (auth, customer, sales, invoicing, purchasing, inventory, project, hr, banking, accounting, pos, support, ecommerce, job-order, common, global). Both `src/types/index.ts` and `src/schemas/index.ts` re-export everything. `pnpm typecheck` + `pnpm lint` clean. |
 | packages/api-client | ✅ Complete | Typed fetch wrapper (`ApiClient` class) with Zod response parsing, optional auth-token resolver, and three error classes (`ApiError`, `NetworkError`, `ResponseValidationError`). Depends on `@orqafy/shared` via `workspace:*`. tsconfig adds `lib: ["ES2022", "DOM"]` for fetch/URL/Response/AbortSignal. `pnpm typecheck` + `pnpm lint` clean. |
-| packages/db | ⬜ | Prisma schema + migrations — Phase 4 Part 3 |
-| packages/ui | ⬜ | shadcn/ui components — Phase 4 Part 4 |
-| packages/jobs | ⬜ | BullMQ job queues (23 queues) — Phase 4 Part 4 |
-| packages/storage | ⬜ | MinIO/R2 file storage — Phase 4 Part 4 |
+| packages/db | ✅ Complete | Prisma 6.19.3 schema — 16 domain schemas (multi-schema tenant isolation), 45 models, AuditLog, tenant-guard extension (L6), RLS helpers (L2), seed script with webmaster account. Merged `a494bd1`. |
+| packages/ui | ✅ Complete | shadcn/ui base — VoltAgent dark CSS tokens, Tailwind config, `cn()` helper, WCAG-AA focus rings. Merged `3c6aedc`. |
+| packages/jobs | ✅ Complete | 23 typed BullMQ queue/worker factories (all Orqafy domains), `BaseJobData` with `tenantId`, exponential backoff, DLQ-safe `removeOnFail: false`. Merged `3c6aedc`. |
+| packages/storage | ✅ Complete | S3-compatible wrapper (MinIO dev / Cloudflare R2 prod), tenant-scoped paths, MIME allowlist/blocklist (SVG + HTML blocked), presigned upload/download URLs, upload/delete with tenant ownership checks. Merged `3c6aedc`. |
 
 ## Apps
 
@@ -93,12 +93,12 @@
 | docs/PRODUCT.md | ✅ | 2,160 lines, all 11 required sections + 11 optional |
 | docs/DESIGN.md | ✅ | VoltAgent aesthetic, authoritative visual reference |
 | docs/README.md | ✅ | HUMAN-owned project README — full feature description aligned with PRODUCT.md (added pre-Bootstrap, refined during Phase 2 commit `2ebf4b7`) |
-| docs/CHANGELOG_AI.md | ✅ | 7 entries (Bootstrap, Bootstrap Gap Fix, Phase 2, Phase 3, Governance Sync, Phase 4 Part 1, Skills Reorg 2026-05-03) |
-| docs/DECISIONS_LOG.md | ✅ | 7 decisions (Linear→Sunset→VoltAgent visual evolution + Orqafy rename + feature expansion + Phase 2 + Phase 3) |
+| docs/CHANGELOG_AI.md | ✅ | 9 entries (Bootstrap, Bootstrap Gap Fix, Phase 2, Phase 3, Governance Sync, Phase 4 Part 1, Skills Reorg, Phase 4 Parts 2+3, Phase 4 Part 4) |
+| docs/DECISIONS_LOG.md | ✅ | 7+ decisions (Visual evolution + Orqafy rename + Phase 2 + Phase 3 + storage security decisions from Part 4) |
 | docs/IMPLEMENTATION_MAP.md | ✅ | This file |
 | docs/PHASE3_BRIEFING.md | ❌ Removed | Deleted in `3e7bc82` — superseded by framework-native `.claude/rules/phases.md` |
 | project.memory.md | ✅ | Updated with skill installations (gitignored) |
-| .cline/STATE.md | ✅ | PHASE = "Phase 4 Part 2 PARTIAL — PAUSED" (corrected 2026-05-03 from stale "Part 1 complete / branch=main" — actual branch is scaffold/part-2 with packages/ untracked) |
+| .cline/STATE.md | ✅ | PHASE = "Phase 4 Part 4 complete — PAUSED" |
 | .cline/memory/lessons.md | ✅ | 1 🔴 gotcha pre-seeded (WSL2 + Docker) |
 | .cline/memory/agent-log.md | ✅ | All Bootstrap + Phase 2 + Phase 3 + Governance Sync entries |
 | CREDENTIALS.md | ✅ | Gitignored. AI-generated values active; ⏳ for human-fill (GitHub, Docker Hub, Turnstile prod, third-party). |
@@ -162,11 +162,13 @@
 
 ## Next Action
 
-1. **Open `.cline/tasks/phase4-part3.md` in a NEW Claude Code session** per Rule 24 fresh-context
-   discipline. Part 3 generates `packages/db` — Prisma schema with all entities from PRODUCT.md
-   (multi-schema tenant isolation), migrations (up + down), seed script with the webmaster
-   admin account, AuditLog model, and tenant-guard Prisma extension (L6 always-on per Rule 7).
+1. **Install a11y-skill** before starting Part 5 (Part 5 generates UI surfaces):
+   ```
+   npx skills add airowe/claude-a11y-skill
+   ```
+   Required by `inputs.yml accessibility.level: wcag_aa` + `enforce_pre_delivery_checklist: true`.
 
-2. **Before Phase 7 (or earlier if Phase 4 Part 5 UI work starts):** Manually install
-   `a11y-skill` via `npx skills add airowe/claude-a11y-skill` to satisfy the
-   `inputs.yml accessibility.level: wcag_aa` + `enforce_pre_delivery_checklist: true` requirement.
+2. **Open `.cline/tasks/phase4-part5.md` in a NEW Claude Code session** per Rule 24 fresh-context
+   discipline. Part 5 scaffolds `apps/web` — Next.js App Router, shadcn/ui init, tRPC v11,
+   Auth.js v5, security headers, rate limiter, DOMPurify sanitize helper, Turnstile wiring,
+   all 97 page routes, RBAC middleware, multi-tenant middleware, Dockerfile.
