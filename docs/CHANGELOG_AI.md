@@ -166,3 +166,18 @@
 - Validation:          pnpm install (clean), pnpm --filter @orqafy/shared typecheck (0 errors), pnpm --filter @orqafy/api-client typecheck (0 errors), pnpm --filter @orqafy/shared lint (0 errors), pnpm --filter @orqafy/api-client lint (0 errors).
 - Branch:              scaffold/part-2 → squash-merged to main this commit, branch deleted per Rule 23.
 - Architectural notes: (a) api-client is a typed fetch wrapper, not a tRPC client — Phase 4 Part 5 will add tRPC routers and at that point this package can either grow a tRPC proxy or coexist for non-tRPC integrations (mobile, third-party callbacks). (b) Mobile apps consume @orqafy/api-client per Rule 13 (mobile never imports packages/db). (c) Auth token resolver is intentionally optional and pluggable so the same client works for unauthenticated public endpoints, NextAuth session-derived tokens (web), and SecureStore-backed mobile tokens.
+
+## 2026-05-03 — Phase 4 Part 2 PAUSE — Governance Sweep
+- Agent:               CLAUDE_CODE
+- Why:                 Clean pause after Phase 4 Part 2 squash-merged. No in-flight work, tree clean on main. Governance sweep to capture session state for the next operator.
+- Files added:         .cline/handoffs/2026-05-03-pause-after-part2.md
+- Files modified:      .cline/STATE.md (PHASE → "Phase 4 Part 2 complete — PAUSED"; LAST_DONE expanded with commit hash + handoff filename),
+                       docs/DECISIONS_LOG.md (new entry: api-client architecture — typed fetch wrapper, deferred tRPC integration to Part 5),
+                       .cline/memory/lessons.md (2 new 🟡 fix entries: DOM lib for fetch types in tsconfig override; strict-boolean-expressions explicit nullable handling)
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  none (this is a pause, not an implementation step)
+- Errors resolved:     none new — the 2 fixes from earlier this session are now lessons.md entries with patterns for future Parts
+- Branch:              main (clean tree, no uncommitted work after this entry, no branch created/deleted)
+- Pause reason:        User requested pause + handoff. Per V31 governance: STATE.md/CHANGELOG_AI/DECISIONS_LOG/lessons.md/handoff written; no squash-merge (already done for Part 2 in commit 2e8fce1), no branch deletion (scaffold/part-2 was already deleted as part of the Part 2 squash-merge per Rule 23).
+- Resume instructions: Open .cline/tasks/phase4-part3.md in a NEW Claude Code session per Rule 24 fresh-context discipline.

@@ -43,3 +43,41 @@
   the Phase 4 spec uses .eslintrc.js format and @typescript-eslint recommended configs work
   correctly with it. Migration to flat config is a future chore — not blocking.
 # ---
+
+## 2026-05-03 — 🟡 api-client typecheck failed — DOM lib missing for fetch types
+- Type:      🟡 fix
+- Phase:     Phase 4 Part 2
+- Files:     packages/api-client/tsconfig.json
+- Concepts:  typescript, lib, dom, fetch, url, response, abortsignal, isomorphic
+- Narrative: Building a typed fetch wrapper in a workspace package that extends
+  the root tsconfig.base.json fails with TS2304 ("Cannot find name 'fetch' /
+  'AbortSignal' / 'URL' / 'Response' / 'RequestInit'") because the base config
+  sets `lib: ["ES2022"]` and intentionally excludes DOM types — apps that don't
+  touch the browser shouldn't pull DOM into their type universe.
+  Fix: in the package's own tsconfig.json, override with `lib: ["ES2022", "DOM"]`.
+  This is a types-only change — Node 22 already exposes these as web-compatible
+  globals at runtime, so no shim is needed. Safe for any package that legitimately
+  uses fetch/URL at the module surface (api-client, eventual workers, etc.).
+  Pattern for future Parts: any package whose source code uses `fetch`, `URL`,
+  `Response`, `Request`, `Headers`, `FormData`, `Blob`, `AbortSignal`, or
+  `WebSocket` needs the DOM lib override. Pure TypeScript types + Zod schemas
+  (like @orqafy/shared) do NOT need it.
+# ---
+
+## 2026-05-03 — 🟡 strict-boolean-expressions on `if (token)` for `string | null`
+- Type:      🟡 fix
+- Phase:     Phase 4 Part 2
+- Files:     packages/api-client/src/client.ts
+- Concepts:  eslint, typescript-eslint, strict-boolean-expressions, nullable, truthy
+- Narrative: Root .eslintrc.js enables `@typescript-eslint/strict-boolean-expressions`
+  via `recommended-type-checked`. This rule rejects truthy checks on `string | null`
+  values because empty string AND null both coerce to false but mean different
+  things — the rule wants explicit handling.
+  Fix: replace `if (token)` with `if (token !== null && token !== undefined && token.length > 0)`.
+  Verbose but unambiguous. Alternative would be `if (token != null && token !== "")`
+  using loose equality, but the explicit form is what the rule expects and matches
+  the code style of the rest of the codebase (no `==` used anywhere).
+  Pattern for future Parts: any nullable string check inside business logic needs
+  this expansion. Boolean checks on `boolean | null` and `number | null` have
+  similar rules — explicit comparison required, no truthy shortcut.
+# ---

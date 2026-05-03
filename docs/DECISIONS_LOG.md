@@ -357,3 +357,59 @@ isolation when staging + prod run on the same Komodo server.
 
 **Reversible:** Port base regeneration is cheap (edit `inputs.yml` + `.env.dev` +
 restart compose). Schema strictness can be tightened/relaxed via Feature Update.
+
+---
+
+## Decision — 2026-05-03 — Phase 4 Part 2 — api-client architecture: typed fetch wrapper, deferred tRPC integration to Part 5
+
+**Decision:** `packages/api-client` is implemented as a typed fetch wrapper
+(`ApiClient` class with Zod response parsing), NOT as a tRPC client. tRPC
+integration is deferred to Phase 4 Part 5 when the server-side tRPC routers
+are scaffolded.
+
+**Rationale:**
+- The tRPC server doesn't exist yet — Part 5 territory. Building a tRPC client
+  before the server has a defined shape would be premature coupling.
+- A typed fetch wrapper is isomorphic — works identically in web (Next.js client +
+  server), Node (server-side scripts, workers), and mobile (Expo). The same
+  package serves all three apps per Rule 13 (mobile never imports `packages/db`,
+  must use api-client).
+- Zod response parsing reuses the schemas already defined in `packages/shared`
+  — no schema duplication. Frontends and mobile clients get runtime validation
+  for free.
+- Optional async `getAuthToken` resolver is pluggable, so the same client serves:
+  unauthenticated public endpoints, NextAuth-derived web sessions, and
+  SecureStore-backed mobile tokens — without the package needing to know about
+  any specific auth mechanism.
+- When Part 5 lands, this package can either: (a) grow a tRPC proxy alongside
+  the fetch wrapper for non-tRPC integrations (third-party callbacks, mobile
+  endpoints that don't traverse tRPC), or (b) be replaced entirely if we
+  decide to standardise on tRPC for everything. The fetch wrapper is small
+  enough to delete cheaply if (b) wins.
+
+**Infrastructure detail:** `packages/api-client/tsconfig.json` overrides the
+base `lib: ["ES2022"]` with `lib: ["ES2022", "DOM"]` to provide types for
+`fetch`, `URL`, `Response`, `RequestInit`, `AbortSignal`. These globals are
+available in Node 22 (web-compatible globals) and in browsers — adding the
+DOM lib is purely a TypeScript-types decision, not a runtime requirement.
+
+**Three error classes** (`ApiError`, `NetworkError`, `ResponseValidationError`)
+distinguish HTTP error responses (with status + code from server payload),
+transport-layer failures (DNS, network, TLS), and schema validation failures
+(server returned a 200 but the body didn't match the expected Zod schema).
+Each can be caught separately by callers — Part 5 will define standard handling
+patterns at the tRPC layer + Next.js error boundaries.
+
+**Reversible:** Yes — package is small (~150 lines). Replacing it with a tRPC
+client during Part 5 (or later) is a Feature Update, not an architectural
+overhaul. The Zod schemas remain in `packages/shared` regardless and stay
+useful for both directions.
+
+**Locked elements:**
+- Package name: `@orqafy/api-client`
+- Workspace dep on `@orqafy/shared` via `workspace:*` (Rule 13 — apps must
+  consume types via this layer, never import shared directly across app
+  boundaries)
+- Three error class hierarchy (above)
+
+**Open elements:** tRPC vs continued fetch — revisit at Phase 4 Part 5.
