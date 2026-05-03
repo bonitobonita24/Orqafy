@@ -23,7 +23,7 @@ export function buildStoragePath(params: StoragePathParams): string {
 /** Extract tenant slug from a storage key (first path segment). */
 export function extractTenantSlug(storageKey: string): string {
   const segment = storageKey.split("/")[0];
-  if (!segment) throw new Error(`Invalid storage key: "${storageKey}"`);
+  if (segment === undefined || segment === "") throw new Error(`Invalid storage key: "${storageKey}"`);
   return segment;
 }
 

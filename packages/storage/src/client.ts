@@ -28,9 +28,9 @@ export function storageConfigFromEnv(): StorageClientConfig {
   const accessKeyId = process.env["STORAGE_ACCESS_KEY"];
   const secretAccessKey = process.env["STORAGE_SECRET_KEY"];
 
-  if (!endpoint) throw new Error("STORAGE_ENDPOINT is not set");
-  if (!accessKeyId) throw new Error("STORAGE_ACCESS_KEY is not set");
-  if (!secretAccessKey) throw new Error("STORAGE_SECRET_KEY is not set");
+  if (endpoint === undefined || endpoint === "") throw new Error("STORAGE_ENDPOINT is not set");
+  if (accessKeyId === undefined || accessKeyId === "") throw new Error("STORAGE_ACCESS_KEY is not set");
+  if (secretAccessKey === undefined || secretAccessKey === "") throw new Error("STORAGE_SECRET_KEY is not set");
 
   return { endpoint, region, accessKeyId, secretAccessKey, forcePathStyle: true };
 }

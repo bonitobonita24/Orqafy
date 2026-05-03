@@ -1,0 +1,157 @@
+import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { prisma as db } from "@orqafy/db";
+
+const employeeInput = z.object({
+  userId: z.string().cuid(),
+  departmentId: z.string().cuid().optional(),
+  position: z.string().max(200).optional(),
+  employmentType: z.enum(["full_time", "part_time", "contract", "probationary"]).default("full_time"),
+  dateHired: z.date(),
+  baseSalary: z.number().positive().optional(),
+  dailyRate: z.number().positive().optional(),
+  hourlyRate: z.number().positive().optional(),
+  sssNumber: z.string().max(50).optional(),
+  philhealthNumber: z.string().max(50).optional(),
+  pagibigNumber: z.string().max(50).optional(),
+  tinNumber: z.string().max(50).optional(),
+  bankName: z.string().max(100).optional(),
+  bankAccountNumber: z.string().max(50).optional(),
+  emergencyContactName: z.string().max(200).optional(),
+  emergencyContactPhone: z.string().max(30).optional(),
+});
+
+export const employeeRouter = createTRPCRouter({
+  list: protectedProcedure
+    .input(
+      z.object({
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(200).default(50),
+        departmentId: z.string().cuid().optional(),
+        employmentType: z.string().optional(),
+        search: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const searchWhere = input.search !== undefined && input.search !== ""
+        ? {
+            user: {
+              OR: [
+                { firstName: { contains: input.search, mode: "insensitive" as const } },
+                { lastName: { contains: input.search, mode: "insensitive" as const } },
+                { email: { contains: input.search, mode: "insensitive" as const } },
+              ],
+            },
+          }
+        : {};
+      const where = {
+        ...(input.departmentId !== undefined ? { departmentId: input.departmentId } : {}),
+        ...(input.employmentType !== undefined && input.employmentType !== "" ? { employmentType: input.employmentType } : {}),
+        ...searchWhere,
+      };
+      const [items, total] = await Promise.all([
+        db.employee.findMany({
+          where,
+          include: {
+            user: { select: { firstName: true, lastName: true, displayName: true, email: true } },
+            department: { select: { name: true } },
+          },
+          skip: (input.page - 1) * input.limit,
+          take: input.limit,
+          orderBy: { createdAt: "desc" },
+        }),
+        db.employee.count({ where }),
+      ]);
+      return { items, total, page: input.page, limit: input.limit };
+    }),
+
+  byId: protectedProcedure
+    .input(z.object({ id: z.string().cuid() }))
+    .query(async ({ input }) => {
+      const item = await db.employee.findUnique({
+        where: { id: input.id },
+        include: {
+          user: { select: { firstName: true, lastName: true, displayName: true, email: true, isActive: true } },
+          department: true,
+        },
+      });
+      if (!item) throw new TRPCError({ code: "NOT_FOUND" });
+      return item;
+    }),
+
+  create: writeProcedure
+    .input(employeeInput)
+    .mutation(async ({ input }) => {
+      const user = await db.user.findUnique({ where: { id: input.userId } });
+      if (!user) throw new TRPCError({ code: "BAD_REQUEST", message: "User not found." });
+      const employeeNumber = `EMP-${Date.now()}`;
+      return db.employee.create({
+        data: {
+          userId: input.userId,
+          departmentId: input.departmentId ?? null,
+          position: input.position ?? null,
+          employmentType: input.employmentType,
+          dateHired: input.dateHired,
+          baseSalary: input.baseSalary ?? null,
+          dailyRate: input.dailyRate ?? null,
+          hourlyRate: input.hourlyRate ?? null,
+          sssNumber: input.sssNumber ?? null,
+          philhealthNumber: input.philhealthNumber ?? null,
+          pagibigNumber: input.pagibigNumber ?? null,
+          tinNumber: input.tinNumber ?? null,
+          bankName: input.bankName ?? null,
+          bankAccountNumber: input.bankAccountNumber ?? null,
+          emergencyContactName: input.emergencyContactName ?? null,
+          emergencyContactPhone: input.emergencyContactPhone ?? null,
+          employeeNumber,
+        },
+      });
+    }),
+
+  update: writeProcedure
+    .input(employeeInput.partial().extend({ id: z.string().cuid() }))
+    .mutation(async ({ input }) => {
+      const { id, userId: _userId, ...rest } = input;
+      const existing = await db.employee.findUnique({ where: { id } });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      return db.employee.update({
+        where: { id },
+        data: {
+          ...(rest.departmentId !== undefined ? { departmentId: rest.departmentId ?? null } : {}),
+          ...(rest.position !== undefined ? { position: rest.position ?? null } : {}),
+          ...(rest.employmentType !== undefined ? { employmentType: rest.employmentType } : {}),
+          ...(rest.dateHired !== undefined ? { dateHired: rest.dateHired } : {}),
+          ...(rest.baseSalary !== undefined ? { baseSalary: rest.baseSalary ?? null } : {}),
+          ...(rest.dailyRate !== undefined ? { dailyRate: rest.dailyRate ?? null } : {}),
+          ...(rest.hourlyRate !== undefined ? { hourlyRate: rest.hourlyRate ?? null } : {}),
+          ...(rest.sssNumber !== undefined ? { sssNumber: rest.sssNumber ?? null } : {}),
+          ...(rest.philhealthNumber !== undefined ? { philhealthNumber: rest.philhealthNumber ?? null } : {}),
+          ...(rest.pagibigNumber !== undefined ? { pagibigNumber: rest.pagibigNumber ?? null } : {}),
+          ...(rest.tinNumber !== undefined ? { tinNumber: rest.tinNumber ?? null } : {}),
+          ...(rest.bankName !== undefined ? { bankName: rest.bankName ?? null } : {}),
+          ...(rest.bankAccountNumber !== undefined ? { bankAccountNumber: rest.bankAccountNumber ?? null } : {}),
+          ...(rest.emergencyContactName !== undefined ? { emergencyContactName: rest.emergencyContactName ?? null } : {}),
+          ...(rest.emergencyContactPhone !== undefined ? { emergencyContactPhone: rest.emergencyContactPhone ?? null } : {}),
+        },
+      });
+    }),
+
+  terminate: writeProcedure
+    .input(z.object({ id: z.string().cuid(), dateTerminated: z.date() }))
+    .mutation(async ({ input }) => {
+      const existing = await db.employee.findUnique({ where: { id: input.id } });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      return db.employee.update({
+        where: { id: input.id },
+        data: { dateTerminated: input.dateTerminated },
+      });
+    }),
+
+  departments: protectedProcedure.query(async () => {
+    return db.department.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+    });
+  }),
+});

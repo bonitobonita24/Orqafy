@@ -16,7 +16,7 @@ import { buildStoragePath, isKeyOwnedByTenant, type StoragePathParams } from "./
 
 export interface UploadParams extends StoragePathParams {
   bucket: string;
-  body: Buffer | Uint8Array | ReadableStream;
+  body: Buffer | Uint8Array | ReadableStream<Uint8Array>;
   mimeType: string;
   context?: UploadContext;
   /** Override default size limit for this context. */
@@ -182,13 +182,13 @@ export async function getObjectMetadata(
   }
 }
 
-async function streamToBuffer(stream: ReadableStream): Promise<Buffer> {
+async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffer> {
   const chunks: Uint8Array[] = [];
   const reader = stream.getReader();
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
-    if (value) chunks.push(value);
+    if (value !== undefined) chunks.push(value);
   }
   return Buffer.concat(chunks);
 }
