@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   ORQAFY DESIGN TOKENS — shadcn/ui CSS variable system
+   Primary palette: VoltAgent (dark, enterprise SaaS)
+   Light mode: accessible inversion of the brand palette
+   ============================================================ */
+
+@layer base {
+  :root {
+    /* Light mode defaults */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 4%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 4%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 4%;
+
+    /* Brand green: #00d992 → hsl(160 100% 43%) */
+    --primary: 160 100% 43%;
+    --primary-foreground: 240 17% 2%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Accent is a light tint of primary */
+    --accent: 160 60% 94%;
+    --accent-foreground: 160 100% 25%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 160 100% 43%;
+
+    /* Custom brand tokens */
+    --brand-muted: 161 67% 51%;   /* #2fd6a1 — lighter primary */
+    --surface: 210 40% 96%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* ── VoltAgent dark palette ──────────────────────────
+       background:       #050507  → hsl(240 17%  2%)
+       surface / card:   #101010  → hsl(  0  0%  6%)
+       border:           #3d3a39  → hsl( 15  3% 23%)
+       primary:          #00d992  → hsl(160 100% 43%)
+       primary_text:     #2fd6a1  → hsl(161 67% 51%)
+       body_text:        #f2f2f2  → hsl(  0  0% 95%)
+       secondary_text:   #b8b3b0  → hsl( 23  5% 71%)
+       tertiary_text:    #8b949e  → hsl(212  9% 58%)
+    ─────────────────────────────────────────────────── */
+    --background: 240 17% 2%;
+    --foreground: 0 0% 95%;
+
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 160 100% 43%;
+    --primary-foreground: 240 17% 2%;
+
+    --secondary: 0 0% 9%;
+    --secondary-foreground: 0 0% 95%;
+
+    --muted: 0 0% 9%;
+    --muted-foreground: 23 5% 71%;
+
+    --accent: 0 0% 9%;
+    --accent-foreground: 161 67% 51%;
+
+    /* Destructive stays readable on dark surfaces */
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 95%;
+
+    --border: 15 3% 23%;
+    --input: 15 3% 23%;
+    --ring: 160 100% 43%;
+
+    /* Custom brand tokens */
+    --brand-muted: 161 67% 51%;
+    --surface: 0 0% 6%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Focus ring — WCAG AA: always visible, never outline: none without replacement */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Smooth scrolling — respect reduced-motion preference */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  /* Typography scale */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans tracking-tight;
+  }
+}
