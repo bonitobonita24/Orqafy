@@ -181,3 +181,34 @@
 - Branch:              main (clean tree, no uncommitted work after this entry, no branch created/deleted)
 - Pause reason:        User requested pause + handoff. Per V31 governance: STATE.md/CHANGELOG_AI/DECISIONS_LOG/lessons.md/handoff written; no squash-merge (already done for Part 2 in commit 2e8fce1), no branch deletion (scaffold/part-2 was already deleted as part of the Part 2 squash-merge per Rule 23).
 - Resume instructions: Open .cline/tasks/phase4-part3.md in a NEW Claude Code session per Rule 24 fresh-context discipline.
+
+## 2026-05-03 — Phase 4 Part 3 — packages/db (Prisma schema + seed + helpers)
+- Agent:               CLAUDE_CODE
+- Why:                 Part 3 of 8: generate full ORM layer for Orqafy multi-tenant ERP. Schema-per-tenant
+                       isolation where each tenant gets its own PostgreSQL schema (t_<slug>). Global entities
+                       (Tenant, Plan, subscriptions, payments, configs) in public schema; all ERP entities
+                       (~82 models) in per-tenant schemas.
+- Files added:         packages/db/prisma/schema.prisma (~90 entities, multiSchema preview feature),
+                       packages/db/src/index.ts (barrel export),
+                       packages/db/src/client.ts (PrismaClient singleton with tenant-guard L6 extension),
+                       packages/db/src/middleware/tenant-guard.ts (L6 $allOperations Prisma extension),
+                       packages/db/src/helpers/audit.ts (L5 immutable audit log writer),
+                       packages/db/src/helpers/tenant-schema.ts (schema provisioning: create/drop/exists),
+                       packages/db/src/seed/index.ts (13 roles, 5 plans, demo tenant, webmaster account,
+                       departments, expense categories, VAT 12%, warehouse, fiscal year, chart of accounts),
+                       packages/db/package.json (deps: @prisma/client, @paralleldrive/cuid2, bcryptjs),
+                       packages/db/tsconfig.json (extends root tsconfig.base.json)
+- Files modified:      package.json (root — added @prisma/client and @prisma/engines to pnpm.onlyBuiltDependencies),
+                       pnpm-lock.yaml (lockfile updated for new dependencies)
+- Files deleted:       none
+- Schema/migrations:   Prisma schema with multiSchema preview feature. No migration files generated yet
+                       (migrations run at Phase 6 against live DB). Schema uses @@schema("public") for
+                       global entities and @@schema("tenant") for tenant-scoped entities.
+- Errors encountered:  (1) npx prisma resolved to global Prisma 7.8.0 instead of project-local 6.x —
+                       caused "url property no longer supported" error. (2) Attempted removal of
+                       multiSchema preview feature based on Prisma 7.x deprecation warning — caused
+                       92 validation errors because Prisma 6.x still requires the flag.
+- Errors resolved:     (1) Used `pnpm --filter @orqafy/db exec prisma generate` to force project-local
+                       Prisma 6.19.3. (2) Restored previewFeatures = ["multiSchema"] — confirmed required
+                       for Prisma 6.x. Both logged as lessons.md entries.
+- Branch:              scaffold/part-3 → squash-merged to main → branch deleted

@@ -1,0 +1,38 @@
+{
+  "name": "@orqafy/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./middleware/tenant-guard": "./src/middleware/tenant-guard.ts",
+    "./helpers/audit": "./src/helpers/audit.ts",
+    "./helpers/tenant-schema": "./src/helpers/tenant-schema.ts",
+    "./seed": "./src/seed/index.ts"
+  },
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:seed": "tsx src/seed/index.ts",
+    "db:reset": "prisma migrate reset --force",
+    "db:studio": "prisma studio",
+    "lint": "eslint src/ --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"No tests yet\" && exit 0",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@paralleldrive/cuid2": "^2.2.2",
+    "@prisma/client": "^6.6.0",
+    "bcryptjs": "^2.4.3"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^25.6.0",
+    "prisma": "^6.6.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

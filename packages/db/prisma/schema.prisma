@@ -1,0 +1,2085 @@
+// Orqafy — Prisma Schema
+// Schema-per-tenant multi-tenancy: global entities in public schema,
+// tenant entities cloned into per-tenant schemas (t_<slug_underscored>).
+// Runtime isolation via SET search_path per request.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["public"]
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GLOBAL SCHEMA (public) — Platform-level entities
+// These live in the public schema and are shared across all tenants.
+// ═══════════════════════════════════════════════════════════════
+
+model Tenant {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  schemaName      String   @unique @map("schema_name")
+  status          String   @default("active") // active | suspended | provisioning | demo
+  isActive        Boolean  @default(true) @map("is_active")
+  planId          String?  @map("plan_id")
+  plan            Plan?    @relation(fields: [planId], references: [id])
+  maxUsers        Int      @default(5) @map("max_users")
+  domain          String?
+  logoUrl         String?  @map("logo_url")
+  currency        String   @default("PHP")
+  timezone        String   @default("Asia/Manila")
+  locale          String   @default("en-PH")
+  demoResetAt     DateTime? @map("demo_reset_at")
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  subscriptions    TenantSubscription[]
+  invoices         TenantInvoice[]
+  payments         TenantPayment[]
+  auditLogs        TenantAuditLog[]
+  smtpConfig       TenantSmtpConfig?
+  xenditConfig     TenantXenditConfig?
+
+  @@map("tenants")
+  @@schema("public")
+}
+
+model Plan {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  slug            String   @unique
+  description     String?
+  maxUsers        Int      @map("max_users")
+  maxStorageMb    Int      @map("max_storage_mb")
+  priceMonthly    Decimal  @map("price_monthly") @db.Decimal(12, 2)
+  priceYearly     Decimal  @map("price_yearly") @db.Decimal(12, 2)
+  currency        String   @default("PHP")
+  features        Json     @default("{}")
+  isActive        Boolean  @default(true) @map("is_active")
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenants         Tenant[]
+  subscriptions   TenantSubscription[]
+
+  @@map("plans")
+  @@schema("public")
+}
+
+model TenantSubscription {
+  id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  planId          String   @map("plan_id")
+  plan            Plan     @relation(fields: [planId], references: [id])
+  status          String   @default("active") // active | past_due | canceled | trialing
+  billingCycle    String   @default("monthly") @map("billing_cycle") // monthly | yearly
+  currentPeriodStart DateTime @map("current_period_start")
+  currentPeriodEnd   DateTime @map("current_period_end")
+  canceledAt      DateTime? @map("canceled_at")
+  trialEndsAt     DateTime? @map("trial_ends_at")
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@map("tenant_subscriptions")
+  @@schema("public")
+}
+
+model TenantInvoice {
+  id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  invoiceNumber   String   @unique @map("invoice_number")
+  amount          Decimal  @db.Decimal(12, 2)
+  currency        String   @default("PHP")
+  status          String   @default("pending") // pending | paid | overdue | void
+  dueDate         DateTime @map("due_date")
+  paidAt          DateTime? @map("paid_at")
+  lineItems       Json     @default("[]") @map("line_items")
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  payments        TenantPayment[]
+
+  @@index([tenantId])
+  @@map("tenant_invoices")
+  @@schema("public")
+}
+
+model TenantPayment {
+  id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  invoiceId       String?  @map("invoice_id")
+  invoice         TenantInvoice? @relation(fields: [invoiceId], references: [id])
+  amount          Decimal  @db.Decimal(12, 2)
+  currency        String   @default("PHP")
+  method          String   // xendit | manual | bank_transfer
+  status          String   @default("pending") // pending | completed | failed | refunded
+  xenditPaymentId String?  @map("xendit_payment_id")
+  xenditInvoiceId String?  @map("xendit_invoice_id")
+  paidAt          DateTime? @map("paid_at")
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@map("tenant_payments")
+  @@schema("public")
+}
+
+model TenantSmtpConfig {
+  id              String   @id @default(cuid())
+  tenantId        String   @unique @map("tenant_id")
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  host            String
+  port            Int      @default(587)
+  username        String
+  passwordEnc     String   @map("password_enc")
+  fromAddress     String   @map("from_address")
+  fromName        String   @map("from_name")
+  useTls          Boolean  @default(true) @map("use_tls")
+  isVerified      Boolean  @default(false) @map("is_verified")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("tenant_smtp_configs")
+  @@schema("public")
+}
+
+model TenantXenditConfig {
+  id              String   @id @default(cuid())
+  tenantId        String   @unique @map("tenant_id")
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  secretKeyEnc    String   @map("secret_key_enc")
+  publicKey       String   @map("public_key")
+  webhookTokenEnc String   @map("webhook_token_enc")
+  isLive          Boolean  @default(false) @map("is_live")
+  isVerified      Boolean  @default(false) @map("is_verified")
+  enabledMethods  Json     @default("[]") @map("enabled_methods")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("tenant_xendit_configs")
+  @@schema("public")
+}
+
+model TenantAuditLog {
+  id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  userId          String?  @map("user_id")
+  action          String
+  entity          String
+  entityId        String?  @map("entity_id")
+  before          Json?
+  after           Json?
+  ipAddress       String?  @map("ip_address")
+  userAgent       String?  @map("user_agent")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([action])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("tenant_audit_logs")
+  @@schema("public")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TENANT SCHEMA ENTITIES — Auth & Users
+// At runtime these tables exist in each tenant's schema (t_<slug>).
+// Prisma generates the client from public schema; the tenant-guard
+// extension sets search_path before every query.
+// ═══════════════════════════════════════════════════════════════
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  passwordHash    String   @map("password_hash")
+  firstName       String   @map("first_name")
+  lastName        String   @map("last_name")
+  displayName     String?  @map("display_name")
+  avatarUrl       String?  @map("avatar_url")
+  phone           String?
+  roleId          String   @map("role_id")
+  role            Role     @relation(fields: [roleId], references: [id])
+  departmentId    String?  @map("department_id")
+  department      Department? @relation(fields: [departmentId], references: [id])
+  isActive        Boolean  @default(true) @map("is_active")
+  securityVersion Int      @default(1) @map("security_version")
+  lastLoginAt     DateTime? @map("last_login_at")
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  auditLogs         AuditLog[]
+  proposals         Proposal[]         @relation("ProposalCreatedBy")
+  quotations        Quotation[]        @relation("QuotationCreatedBy")
+  invoicesCreated   Invoice[]          @relation("InvoiceCreatedBy")
+  purchaseOrders    PurchaseOrder[]    @relation("POCreatedBy")
+  purchaseOrdersApproved PurchaseOrder[] @relation("POApprovedBy")
+  goodsReceipts     GoodsReceipt[]     @relation("GRReceivedBy")
+  projects          Project[]          @relation("ProjectManager")
+  taskAssignments   TaskAssignment[]
+  timeLogs          TimeLog[]
+  expenses          Expense[]          @relation("ExpenseCreatedBy")
+  expensesApproved  Expense[]          @relation("ExpenseApprovedBy")
+  fundRequests      FundRequest[]      @relation("FundRequestCreatedBy")
+  fundRequestsApproved FundRequest[]   @relation("FundRequestApprovedBy")
+  fundTransactions  FundTransaction[]  @relation("FundTransactionCreatedBy")
+  posSessions       POSSession[]
+  supportTickets    SupportTicket[]    @relation("TicketCreatedBy")
+  ticketComments    TicketComment[]
+  employee          Employee?
+  cashAdvances      CashAdvance[]      @relation("CashAdvanceCreatedBy")
+  cashAdvancesApproved CashAdvance[]   @relation("CashAdvanceApprovedBy")
+  toDos             ToDo[]
+  inventoryDisbursements   InventoryDisbursement[] @relation("DisbursementCreatedBy")
+  inventoryDisbursementsApproved InventoryDisbursement[] @relation("DisbursementApprovedBy")
+  inventoryDisbursementsProcessed InventoryDisbursement[] @relation("DisbursementProcessedBy")
+  jobOrdersCreated  JobOrder[]         @relation("JobOrderCreatedBy")
+  jobOrdersTechnician JobOrder[]       @relation("JobOrderTechnician")
+  taskStatusReports TaskStatusReport[]
+  journalEntries    JournalEntry[]     @relation("JournalCreatedBy")
+  fundTransfers     FundTransfer[]     @relation("FundTransferCreatedBy")
+  stockMovements    StockMovement[]    @relation("StockMovementCreatedBy")
+  projectNotes      ProjectNote[]
+
+  @@map("users")
+  @@schema("public")
+}
+
+model Role {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  slug            String   @unique
+  description     String?
+  permissions     Json     @default("[]")
+  isSystem        Boolean  @default(false) @map("is_system")
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  users           User[]
+
+  @@map("roles")
+  @@schema("public")
+}
+
+model Department {
+  id              String   @id @default(cuid())
+  name            String
+  code            String?  @unique
+  description     String?
+  parentId        String?  @map("parent_id")
+  parent          Department? @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children        Department[] @relation("DepartmentHierarchy")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  users           User[]
+  employees       Employee[]
+
+  @@map("departments")
+  @@schema("public")
+}
+
+model AuditLog {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  user            User     @relation(fields: [userId], references: [id])
+  action          String
+  entity          String
+  entityId        String?  @map("entity_id")
+  before          Json?
+  after           Json?
+  ipAddress       String?  @map("ip_address")
+  userAgent       String?  @map("user_agent")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+  @@schema("public")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TENANT SCHEMA ENTITIES — CRM / Customers
+// ═══════════════════════════════════════════════════════════════
+
+model Customer {
+  id              String   @id @default(cuid())
+  companyName     String?  @map("company_name")
+  firstName       String   @map("first_name")
+  lastName        String   @map("last_name")
+  email           String?
+  phone           String?
+  address         String?
+  city            String?
+  province        String?
+  postalCode      String?  @map("postal_code")
+  country         String   @default("PH")
+  taxId           String?  @map("tax_id")
+  tier            String   @default("regular") // regular | vip | authorized_dealer
+  notes           String?
+  isActive        Boolean  @default(true) @map("is_active")
+  portalEnabled   Boolean  @default(false) @map("portal_enabled")
+  portalEmail     String?  @map("portal_email")
+  portalPasswordHash String? @map("portal_password_hash")
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  contacts        CustomerContact[]
+  creditAccount   CustomerCreditAccount?
+  proposals       Proposal[]
+  quotations      Quotation[]
+  invoices        Invoice[]
+  subscriptions   Subscription[]
+  ecommerceOrders EcommerceOrder[]
+  jobOrders       JobOrder[]
+  documents       CustomerDocument[]
+
+  @@map("customers")
+  @@schema("public")
+}
+
+model CustomerContact {
+  id              String   @id @default(cuid())
+  customerId      String   @map("customer_id")
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  name            String
+  email           String?
+  phone           String?
+  position        String?
+  isPrimary       Boolean  @default(false) @map("is_primary")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([customerId])
+  @@map("customer_contacts")
+  @@schema("public")
+}
+
+model CustomerCreditAccount {
+  id              String   @id @default(cuid())
+  customerId      String   @unique @map("customer_id")
+  customer        Customer @relation(fields: [customerId], references: [id])
+  creditLimit     Decimal  @default(0) @map("credit_limit") @db.Decimal(12, 2)
+  currentBalance  Decimal  @default(0) @map("current_balance") @db.Decimal(12, 2)
+  isActive        Boolean  @default(true) @map("is_active")
+  approvedAt      DateTime? @map("approved_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  transactions    CustomerCreditTransaction[]
+
+  @@map("customer_credit_accounts")
+  @@schema("public")
+}
+
+model CustomerCreditTransaction {
+  id              String   @id @default(cuid())
+  creditAccountId String   @map("credit_account_id")
+  creditAccount   CustomerCreditAccount @relation(fields: [creditAccountId], references: [id])
+  type            String   // charge | payment | adjustment | writeoff
+  amount          Decimal  @db.Decimal(12, 2)
+  runningBalance  Decimal  @map("running_balance") @db.Decimal(12, 2)
+  referenceType   String?  @map("reference_type")
+  referenceId     String?  @map("reference_id")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([creditAccountId])
+  @@map("customer_credit_transactions")
+  @@schema("public")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TENANT SCHEMA ENTITIES — Sales Documents (Proposals, Quotations)
+// ═══════════════════════════════════════════════════════════════
+
+model Proposal {
+  id              String   @id @default(cuid())
+  proposalNumber  String   @unique @map("proposal_number")
+  customerId      String   @map("customer_id")
+  customer        Customer @relation(fields: [customerId], references: [id])
+  createdById     String   @map("created_by_id")
+  createdBy       User     @relation("ProposalCreatedBy", fields: [createdById], references: [id])
+  title           String
+  description     String?
+  status          String   @default("draft") // draft | sent | accepted | rejected | expired
+  validUntil      DateTime? @map("valid_until")
+  totalAmount     Decimal? @map("total_amount") @db.Decimal(12, 2)
+  currency        String   @default("PHP")
+  sentAt          DateTime? @map("sent_at")
+  acceptedAt      DateTime? @map("accepted_at")
+  rejectedAt      DateTime? @map("rejected_at")
+  notes           String?
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  attachments     ProposalAttachment[]
+  links           ProposalLink[]
+  revisions       ProposalRevision[]
+
+  @@map("proposals")
+  @@schema("public")
+}
+
+model ProposalAttachment {
+  id              String   @id @default(cuid())
+  proposalId      String   @map("proposal_id")
+  proposal        Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  fileName        String   @map("file_name")
+  fileUrl         String   @map("file_url")
+  fileSizeBytes   Int      @map("file_size_bytes")
+  mimeType        String   @map("mime_type")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([proposalId])
+  @@map("proposal_attachments")
+  @@schema("public")
+}
+
+model ProposalLink {
+  id              String   @id @default(cuid())
+  proposalId      String   @map("proposal_id")
+  proposal        Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  title           String
+  url             String
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([proposalId])
+  @@map("proposal_links")
+  @@schema("public")
+}
+
+model ProposalRevision {
+  id              String   @id @default(cuid())
+  proposalId      String   @map("proposal_id")
+  proposal        Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  revisionNumber  Int      @map("revision_number")
+  changes         Json
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([proposalId])
+  @@map("proposal_revisions")
+  @@schema("public")
+}
+
+model Quotation {
+  id              String   @id @default(cuid())
+  quotationNumber String   @unique @map("quotation_number")
+  customerId      String   @map("customer_id")
+  customer        Customer @relation(fields: [customerId], references: [id])
+  createdById     String   @map("created_by_id")
+  createdBy       User     @relation("QuotationCreatedBy", fields: [createdById], references: [id])
+  title           String
+  status          String   @default("draft") // draft | sent | accepted | rejected | expired | converted
+  validUntil      DateTime? @map("valid_until")
+  subtotal        Decimal  @default(0) @db.Decimal(12, 2)
+  taxAmount       Decimal  @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  totalAmount     Decimal  @default(0) @map("total_amount") @db.Decimal(12, 2)
+  currency        String   @default("PHP")
+  notes           String?
+  termsAndConditions String? @map("terms_and_conditions")
+  convertedToInvoiceId String? @map("converted_to_invoice_id")
+  sentAt          DateTime? @map("sent_at")
+  acceptedAt      DateTime? @map("accepted_at")
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  sections        QuotationSection[]
+  markupColumns   QuotationMarkupColumn[]
+  revisions       QuotationRevision[]
+
+  @@map("quotations")
+  @@schema("public")
+}
+
+model QuotationSection {
+  id              String   @id @default(cuid())
+  quotationId     String   @map("quotation_id")
+  quotation       Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  lineItems       QuotationLineItem[]
+
+  @@index([quotationId])
+  @@map("quotation_sections")
+  @@schema("public")
+}
+
+model QuotationMarkupColumn {
+  id              String   @id @default(cuid())
+  quotationId     String   @map("quotation_id")
+  quotation       Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  name            String
+  tier            String   // tier1 | tier2 | tier3
+  percentage      Decimal  @db.Decimal(5, 2)
+  useCeiling      Boolean  @default(false) @map("use_ceiling")
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  lineItemMarkups QuotationLineItemMarkup[]
+
+  @@index([quotationId])
+  @@map("quotation_markup_columns")
+  @@schema("public")
+}
+
+model QuotationLineItem {
+  id              String   @id @default(cuid())
+  sectionId       String   @map("section_id")
+  section         QuotationSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  productId       String?  @map("product_id")
+  product         Product? @relation(fields: [productId], references: [id])
+  description     String
+  unit            String   @default("pcs")
+  quantity        Decimal  @db.Decimal(12, 4)
+  baseCost        Decimal  @map("base_cost") @db.Decimal(12, 2)
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  markups         QuotationLineItemMarkup[]
+
+  @@index([sectionId])
+  @@map("quotation_line_items")
+  @@schema("public")
+}
+
+model QuotationLineItemMarkup {
+  id              String   @id @default(cuid())
+  lineItemId      String   @map("line_item_id")
+  lineItem        QuotationLineItem @relation(fields: [lineItemId], references: [id], onDelete: Cascade)
+  markupColumnId  String   @map("markup_column_id")
+  markupColumn    QuotationMarkupColumn @relation(fields: [markupColumnId], references: [id], onDelete: Cascade)
+  markedUpPrice   Decimal  @map("marked_up_price") @db.Decimal(12, 2)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([lineItemId, markupColumnId])
+  @@map("quotation_line_item_markups")
+  @@schema("public")
+}
+
+model QuotationRevision {
+  id              String   @id @default(cuid())
+  quotationId     String   @map("quotation_id")
+  quotation       Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  revisionNumber  Int      @map("revision_number")
+  snapshot        Json
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([quotationId])
+  @@map("quotation_revisions")
+  @@schema("public")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TENANT SCHEMA ENTITIES — Invoicing & Payments
+// ═══════════════════════════════════════════════════════════════
+
+model Invoice {
+  id              String   @id @default(cuid())
+  invoiceNumber   String   @unique @map("invoice_number")
+  customerId      String   @map("customer_id")
+  customer        Customer @relation(fields: [customerId], references: [id])
+  createdById     String   @map("created_by_id")
+  createdBy       User     @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
+  quotationId     String?  @map("quotation_id")
+  projectId       String?  @map("project_id")
+  project         Project? @relation(fields: [projectId], references: [id])
+  status          String   @default("draft") // draft | sent | partially_paid | paid | overdue | void | cancelled
+  subtotal        Decimal  @default(0) @db.Decimal(12, 2)
+  taxAmount       Decimal  @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  totalAmount     Decimal  @default(0) @map("total_amount") @db.Decimal(12, 2)
+  amountPaid      Decimal  @default(0) @map("amount_paid") @db.Decimal(12, 2)
+  balance         Decimal  @default(0) @db.Decimal(12, 2)
+  currency        String   @default("PHP")
+  dueDate         DateTime @map("due_date")
+  issuedAt        DateTime? @map("issued_at")
+  paidAt          DateTime? @map("paid_at")
+  lineItems       Json     @default("[]") @map("line_items")
+  notes           String?
+  termsAndConditions String? @map("terms_and_conditions")
+  publicToken     String?  @unique @map("public_token")
+  signatureUrl    String?  @map("signature_url")
+  signedAt        DateTime? @map("signed_at")
+  signerName      String?  @map("signer_name")
+  signerIp        String?  @map("signer_ip")
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  payments        Payment[]
+
+  @@map("invoices")
+  @@schema("public")
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  invoiceId       String   @map("invoice_id")
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id])
+  amount          Decimal  @db.Decimal(12, 2)
+  currency        String   @default("PHP")
+  method          String   // cash | bank_transfer | gcash | maya | card | xendit | credit
+  status          String   @default("completed") // pending | completed | failed | refunded
+  referenceNumber String?  @map("reference_number")
+  xenditPaymentId String?  @map("xendit_payment_id")
+  notes           String?
+  paidAt          DateTime @default(now()) @map("paid_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([invoiceId])
+  @@map("payments")
+  @@schema("public")
+}
+
+model Subscription {
+  id              String   @id @default(cuid())
+  customerId      String   @map("customer_id")
+  customer        Customer @relation(fields: [customerId], references: [id])
+  name            String
+  description     String?
+  amount          Decimal  @db.Decimal(12, 2)
+  currency        String   @default("PHP")
+  billingCycle    String   @default("monthly") @map("billing_cycle")
+  status          String   @default("active") // active | paused | canceled
+  nextBillingDate DateTime @map("next_billing_date")
+  canceledAt      DateTime? @map("canceled_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([customerId])
+  @@map("subscriptions")
+  @@schema("public")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TENANT SCHEMA ENTITIES — Purchasing
+// ═══════════════════════════════════════════════════════════════
+
+model Vendor {
+  id              String   @id @default(cuid())
+  type            String   @default("direct") // direct | ecommerce
+  companyName     String   @map("company_name")
+  contactName     String?  @map("contact_name")
+  email           String?
+  phone           String?
+  address         String?
+  city            String?
+  province        String?
+  postalCode      String?  @map("postal_code")
+  country         String   @default("PH")
+  taxId           String?  @map("tax_id")
+  platformUrl     String?  @map("platform_url")
+  platformName    String?  @map("platform_name")
+  paymentTerms    String?  @map("payment_terms")
+  notes           String?
+  isActive        Boolean  @default(true) @map("is_active")
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  purchaseOrders  PurchaseOrder[]
+  productPurchaseHistory ProductPurchaseHistory[]
+
+  @@map("vendors")
+  @@schema("public")
+}
+
+model PurchaseOrder {
+  id              String   @id @default(cuid())
+  poNumber        String   @unique @map("po_number")
+  vendorId        String   @map("vendor_id")
+  vendor          Vendor   @relation(fields: [vendorId], references: [id])
+  createdById     String   @map("created_by_id")
+  createdBy       User     @relation("POCreatedBy", fields: [createdById], references: [id])
+  approvedById    String?  @map("approved_by_id")
+  approvedBy      User?    @relation("POApprovedBy", fields: [approvedById], references: [id])
+  status          String   @default("draft") // draft | pending_approval | approved | ordered | partially_received | received | cancelled
+  subtotal        Decimal  @default(0) @db.Decimal(12, 2)
+  taxAmount       Decimal  @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  totalAmount     Decimal  @default(0) @map("total_amount") @db.Decimal(12, 2)
+  currency        String   @default("PHP")
+  expectedDelivery DateTime? @map("expected_delivery")
+  approvedAt      DateTime? @map("approved_at")
+  orderedAt       DateTime? @map("ordered_at")
+  notes           String?
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  items           PurchaseOrderItem[]
+  shippingCosts   ShippingCost[]
+  goodsReceipts   GoodsReceipt[]
+  purchaseInvoices PurchaseInvoice[]
+
+  @@map("purchase_orders")
+  @@schema("public")
+}
+
+model PurchaseOrderItem {
+  id              String   @id @default(cuid())
+  purchaseOrderId String   @map("purchase_order_id")
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId       String?  @map("product_id")
+  product         Product? @relation(fields: [productId], references: [id])
+  description     String
+  unit            String   @default("pcs")
+  quantity        Decimal  @db.Decimal(12, 4)
+  unitPrice       Decimal  @map("unit_price") @db.Decimal(12, 2)
+  totalPrice      Decimal  @map("total_price") @db.Decimal(12, 2)
+  quantityReceived Decimal @default(0) @map("quantity_received") @db.Decimal(12, 4)
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  allocations     PurchaseOrderItemAllocation[]
+  shippingDistributions ShippingCostDistribution[]
+
+  @@index([purchaseOrderId])
+  @@map("purchase_order_items")
+  @@schema("public")
+}
+
+model PurchaseOrderItemAllocation {
+  id              String   @id @default(cuid())
+  itemId          String   @map("item_id")
+  item            PurchaseOrderItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  type            String   // stock | project_expense | company_expense
+  quantity        Decimal  @db.Decimal(12, 4)
+  projectId       String?  @map("project_id")
+  project         Project? @relation(fields: [projectId], references: [id])
+  warehouseId     String?  @map("warehouse_id")
+  warehouse       Warehouse? @relation(fields: [warehouseId], references: [id])
+  processedAt     DateTime? @map("processed_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([itemId])
+  @@map("purchase_order_item_allocations")
+  @@schema("public")
+}
+
+model ShippingCost {
+  id              String   @id @default(cuid())
+  purchaseOrderId String   @map("purchase_order_id")
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  legNumber       Int      @default(1) @map("leg_number")
+  courierName     String   @map("courier_name")
+  trackingNumber  String?  @map("tracking_number")
+  cost            Decimal  @db.Decimal(12, 2)
+  currency        String   @default("PHP")
+  fundSourceId    String?  @map("fund_source_id")
+  fundSource      FundSource? @relation(fields: [fundSourceId], references: [id])
+  distributionMethod String @default("equal_share") @map("distribution_method") // equal_share | proportional_by_cost
+  paidAt          DateTime? @map("paid_at")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  distributions   ShippingCostDistribution[]
+
+  @@index([purchaseOrderId])
+  @@map("shipping_costs")
+  @@schema("public")
+}
+
+model ShippingCostDistribution {
+  id              String   @id @default(cuid())
+  shippingCostId  String   @map("shipping_cost_id")
+  shippingCost    ShippingCost @relation(fields: [shippingCostId], references: [id], onDelete: Cascade)
+  itemId          String   @map("item_id")
+  item            PurchaseOrderItem @relation(fields: [itemId], references: [id])
+  calculatedShare Decimal  @map("calculated_share") @db.Decimal(12, 2)
+  manualOverride  Decimal? @map("manual_override") @db.Decimal(12, 2)
+  finalShare      Decimal  @map("final_share") @db.Decimal(12, 2)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([shippingCostId, itemId])
+  @@map("shipping_cost_distributions")
+  @@schema("public")
+}
+
+model GoodsReceipt {
+  id              String   @id @default(cuid())
+  grNumber        String   @unique @map("gr_number")
+  purchaseOrderId String   @map("purchase_order_id")
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  receivedById    String   @map("received_by_id")
+  receivedBy      User     @relation("GRReceivedBy", fields: [receivedById], references: [id])
+  status          String   @default("pending") // pending | inspecting | accepted | rejected | partial
+  receivedAt      DateTime @default(now()) @map("received_at")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  items           GoodsReceiptItem[]
+
+  @@index([purchaseOrderId])
+  @@map("goods_receipts")
+  @@schema("public")
+}
+
+model GoodsReceiptItem {
+  id              String   @id @default(cuid())
+  goodsReceiptId  String   @map("goods_receipt_id")
+  goodsReceipt    GoodsReceipt @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
+  productId       String?  @map("product_id")
+  product         Product? @relation(fields: [productId], references: [id])
+  description     String
+  quantityExpected Decimal @map("quantity_expected") @db.Decimal(12, 4)
+  quantityReceived Decimal @map("quantity_received") @db.Decimal(12, 4)
+  quantityRejected Decimal @default(0) @map("quantity_rejected") @db.Decimal(12, 4)
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([goodsReceiptId])
+  @@map("goods_receipt_items")
+  @@schema("public")
+}
+
+model PurchaseInvoice {
+  id              String   @id @default(cuid())
+  invoiceNumber   String   @map("invoice_number")
+  purchaseOrderId String   @map("purchase_order_id")
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  vendorInvoiceRef String? @map("vendor_invoice_ref")
+  amount          Decimal  @db.Decimal(12, 2)
+  taxAmount       Decimal  @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  totalAmount     Decimal  @map("total_amount") @db.Decimal(12, 2)
+  currency        String   @default("PHP")
+  status          String   @default("pending") // pending | approved | paid | void
+  dueDate         DateTime? @map("due_date")
+  paidAt          DateTime? @map("paid_at")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([purchaseOrderId])
+  @@map("purchase_invoices")
+  @@schema("public")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TENANT SCHEMA ENTITIES — Inventory
+// ═══════════════════════════════════════════════════════════════
+
+model Product {
+  id              String   @id @default(cuid())
+  sku             String?  @unique
+  barcode         String?  @unique
+  name            String
+  description     String?
+  categoryId      String?  @map("category_id")
+  category        Category? @relation(fields: [categoryId], references: [id])
+  unit            String   @default("pcs")
+  baseCost        Decimal  @default(0) @map("base_cost") @db.Decimal(12, 2)
+  tier1Price      Decimal? @map("tier1_price") @db.Decimal(12, 2)
+  tier1Percentage Decimal? @map("tier1_percentage") @db.Decimal(5, 2)
+  tier1UseCeiling Boolean  @default(false) @map("tier1_use_ceiling")
+  tier2Price      Decimal? @map("tier2_price") @db.Decimal(12, 2)
+  tier2Percentage Decimal? @map("tier2_percentage") @db.Decimal(5, 2)
+  tier2UseCeiling Boolean  @default(false) @map("tier2_use_ceiling")
+  tier3Price      Decimal? @map("tier3_price") @db.Decimal(12, 2)
+  tier3Percentage Decimal? @map("tier3_percentage") @db.Decimal(5, 2)
+  tier3UseCeiling Boolean  @default(false) @map("tier3_use_ceiling")
+  tier3IncludesVat Boolean @default(true) @map("tier3_includes_vat")
+  reorderLevel    Int?     @map("reorder_level")
+  reorderQuantity Int?     @map("reorder_quantity")
+  isActive        Boolean  @default(true) @map("is_active")
+  isSerialTracked Boolean  @default(false) @map("is_serial_tracked")
+  ecommerceVisible Boolean @default(false) @map("ecommerce_visible")
+  ecommerceDescription String? @map("ecommerce_description")
+  ecommerceImageUrls Json?  @map("ecommerce_image_urls")
+  weight          Decimal? @db.Decimal(10, 4)
+  dimensions      Json?
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  serialNumbers    ProductSerialNumber[]
+  purchaseHistory  ProductPurchaseHistory[]
+  warehouseStocks  WarehouseStock[]
+  stockMovements   StockMovement[]
+  quotationLineItems QuotationLineItem[]
+  purchaseOrderItems PurchaseOrderItem[]
+  goodsReceiptItems  GoodsReceiptItem[]
+  posSaleItems      POSSaleItem[]
+  ecommerceOrderItems EcommerceOrderItem[]
+  jobOrderParts     JobOrderPart[]
+  inventoryDisbursementItems InventoryDisbursementItem[]
+
+  @@map("products")
+  @@schema("public")
+}
+
+model ProductSerialNumber {
+  id              String   @id @default(cuid())
+  productId       String   @map("product_id")
+  product         Product  @relation(fields: [productId], references: [id])
+  serialNumber    String   @unique @map("serial_number")
+  status          String   @default("in_stock") // in_stock | sold | disbursed_to_project | transferred | written_off
+  warehouseId     String?  @map("warehouse_id")
+  warehouse       Warehouse? @relation(fields: [warehouseId], references: [id])
+  purchaseOrderItemId String? @map("purchase_order_item_id")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([productId])
+  @@index([status])
+  @@map("product_serial_numbers")
+  @@schema("public")
+}
+
+model Category {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  description     String?
+  parentId        String?  @map("parent_id")
+  parent          Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children        Category[] @relation("CategoryHierarchy")
+  sortOrder       Int      @default(0) @map("sort_order")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  products        Product[]
+
+  @@map("categories")
+  @@schema("public")
+}
+
+model ProductPurchaseHistory {
+  id              String   @id @default(cuid())
+  productId       String   @map("product_id")
+  product         Product  @relation(fields: [productId], references: [id])
+  vendorId        String   @map("vendor_id")
+  vendor          Vendor   @relation(fields: [vendorId], references: [id])
+  unitPrice       Decimal  @map("unit_price") @db.Decimal(12, 2)
+  quantity        Decimal  @db.Decimal(12, 4)
+  currency        String   @default("PHP")
+  purchasedAt     DateTime @map("purchased_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([productId])
+  @@index([vendorId])
+  @@map("product_purchase_history")
+  @@schema("public")
+}
+
+model Warehouse {
+  id              String   @id @default(cuid())
+  name            String
+  code            String   @unique
+  address         String?
+  isDefault       Boolean  @default(false) @map("is_default")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  stocks          WarehouseStock[]
+  serialNumbers   ProductSerialNumber[]
+  stockMovementsFrom StockMovement[] @relation("StockMovementFrom")
+  stockMovementsTo   StockMovement[] @relation("StockMovementTo")
+  allocations     PurchaseOrderItemAllocation[]
+
+  @@map("warehouses")
+  @@schema("public")
+}
+
+model WarehouseStock {
+  id              String   @id @default(cuid())
+  warehouseId     String   @map("warehouse_id")
+  warehouse       Warehouse @relation(fields: [warehouseId], references: [id])
+  productId       String   @map("product_id")
+  product         Product  @relation(fields: [productId], references: [id])
+  quantity        Decimal  @default(0) @db.Decimal(12, 4)
+  reservedQuantity Decimal @default(0) @map("reserved_quantity") @db.Decimal(12, 4)
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([warehouseId, productId])
+  @@map("warehouse_stocks")
+  @@schema("public")
+}
+
+model StockMovement {
+  id              String   @id @default(cuid())
+  productId       String   @map("product_id")
+  product         Product  @relation(fields: [productId], references: [id])
+  type            String   // in | out | adjustment | transfer
+  quantity        Decimal  @db.Decimal(12, 4)
+  fromWarehouseId String?  @map("from_warehouse_id")
+  fromWarehouse   Warehouse? @relation("StockMovementFrom", fields: [fromWarehouseId], references: [id])
+  toWarehouseId   String?  @map("to_warehouse_id")
+  toWarehouse     Warehouse? @relation("StockMovementTo", fields: [toWarehouseId], references: [id])
+  referenceType   String?  @map("reference_type")
+  referenceId     String?  @map("reference_id")
+  serialNumberIds Json?    @map("serial_number_ids")
+  notes           String?
+  createdById     String   @map("created_by_id")
+  createdBy       User     @relation("StockMovementCreatedBy", fields: [createdById], references: [id])
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([productId])
+  @@index([type])
+  @@map("stock_movements")
+  @@schema("public")
+}
+
+model InventoryDisbursement {
+  id              String   @id @default(cuid())
+  disbursementNumber String @unique @map("disbursement_number")
+  projectId       String   @map("project_id")
+  project         Project  @relation(fields: [projectId], references: [id])
+  createdById     String   @map("created_by_id")
+  createdBy       User     @relation("DisbursementCreatedBy", fields: [createdById], references: [id])
+  approvedById    String?  @map("approved_by_id")
+  approvedBy      User?    @relation("DisbursementApprovedBy", fields: [approvedById], references: [id])
+  processedById   String?  @map("processed_by_id")
+  processedBy     User?    @relation("DisbursementProcessedBy", fields: [processedById], references: [id])
+  status          String   @default("pending") // pending | approved | processing | completed | rejected
+  approvedAt      DateTime? @map("approved_at")
+  processedAt     DateTime? @map("processed_at")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  items           InventoryDisbursementItem[]
+
+  @@map("inventory_disbursements")
+  @@schema("public")
+}
+
+model InventoryDisbursementItem {
+  id              String   @id @default(cuid())
+  disbursementId  String   @map("disbursement_id")
+  disbursement    InventoryDisbursement @relation(fields: [disbursementId], references: [id], onDelete: Cascade)
+  productId       String   @map("product_id")
+  product         Product  @relation(fields: [productId], references: [id])
+  quantity        Decimal  @db.Decimal(12, 4)
+  serialNumberIds Json?    @map("serial_number_ids")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([disbursementId])
+  @@map("inventory_disbursement_items")
+  @@schema("public")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TENANT SCHEMA ENTITIES — Projects
+// ═══════════════════════════════════════════════════════════════
+
+model Project {
+  id              String   @id @default(cuid())
+  projectNumber   String   @unique @map("project_number")
+  name            String
+  description     String?
+  customerId      String?  @map("customer_id")
+  managerId       String   @map("manager_id")
+  manager         User     @relation("ProjectManager", fields: [managerId], references: [id])
+  status          String   @default("planning") // planning | active | on_hold | completed | cancelled
+  priority        String   @default("medium") // low | medium | high | critical
+  startDate       DateTime? @map("start_date")
+  targetEndDate   DateTime? @map("target_end_date")
+  actualEndDate   DateTime? @map("actual_end_date")
+  budget          Decimal? @db.Decimal(12, 2)
+  address         String?
+  city            String?
+  province        String?
+  latitude        Decimal? @db.Decimal(10, 7)
+  longitude       Decimal? @db.Decimal(10, 7)
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  milestones      Milestone[]
+  tasks           Task[]
+  timeLogs        TimeLog[]
+  expenses        ProjectExpense[]
+  notes           ProjectNote[]
+  invoices        Invoice[]
+  allocations     PurchaseOrderItemAllocation[]
+  disbursements   InventoryDisbursement[]
+
+  @@map("projects")
+  @@schema("public")
+}
+
+model ProjectExpense {
+  id              String   @id @default(cuid())
+  projectId       String   @map("project_id")
+  project         Project  @relation(fields: [projectId], references: [id])
+  type            String   // direct | inventory_consumed
+  description     String
+  amount          Decimal  @db.Decimal(12, 2)
+  currency        String   @default("PHP")
+  referenceType   String?  @map("reference_type")
+  referenceId     String?  @map("reference_id")
+  date            DateTime @default(now())
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([projectId])
+  @@map("project_expenses")
+  @@schema("public")
+}
+
+model ProjectNote {
+  id              String   @id @default(cuid())
+  projectId       String   @map("project_id")
+  project         Project  @relation(fields: [projectId], references: [id])
+  createdById     String   @map("created_by_id")
+  createdBy       User     @relation(fields: [createdById], references: [id])
+  title           String
+  content         Json
+  isPinned        Boolean  @default(false) @map("is_pinned")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  attachments     ProjectNoteAttachment[]
+
+  @@index([projectId])
+  @@map("project_notes")
+  @@schema("public")
+}
+
+model ProjectNoteAttachment {
+  id              String   @id @default(cuid())
+  noteId          String   @map("note_id")
+  note            ProjectNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  fileName        String   @map("file_name")
+  fileUrl         String   @map("file_url")
+  fileSizeBytes   Int      @map("file_size_bytes")
+  mimeType        String   @map("mime_type")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([noteId])
+  @@map("project_note_attachments")
+  @@schema("public")
+}
+
+model Milestone {
+  id              String   @id @default(cuid())
+  projectId       String   @map("project_id")
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  dueDate         DateTime? @map("due_date")
+  completedAt     DateTime? @map("completed_at")
+  isAutoComplete  Boolean  @default(true) @map("is_auto_complete")
+  progress        Int      @default(0)
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tasks           Task[]
+
+  @@index([projectId])
+  @@map("milestones")
+  @@schema("public")
+}
+
+model TimeLog {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  user            User     @relation(fields: [userId], references: [id])
+  projectId       String   @map("project_id")
+  project         Project  @relation(fields: [projectId], references: [id])
+  taskId          String?  @map("task_id")
+  task            Task?    @relation(fields: [taskId], references: [id])
+  description     String?
+  startTime       DateTime @map("start_time")
+  endTime         DateTime? @map("end_time")
+  durationMinutes Int?     @map("duration_minutes")
+  isBillable      Boolean  @default(true) @map("is_billable")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([projectId])
+  @@map("time_logs")
+  @@schema("public")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TENANT SCHEMA ENTITIES — Tasks & To-Dos
+// ═══════════════════════════════════════════════════════════════
+
+model Task {
+  id              String   @id @default(cuid())
+  projectId       String   @map("project_id")
+  project         Project  @relation(fields: [projectId], references: [id])
+  milestoneId     String?  @map("milestone_id")
+  milestone       Milestone? @relation(fields: [milestoneId], references: [id])
+  parentTaskId    String?  @map("parent_task_id")
+  parentTask      Task?    @relation("TaskSubtasks", fields: [parentTaskId], references: [id])
+  subtasks        Task[]   @relation("TaskSubtasks")
+  title           String
+  description     String?
+  status          String   @default("todo") // todo | in_progress | review | done | blocked
+  priority        String   @default("medium") // low | medium | high | critical
+  dueDate         DateTime? @map("due_date")
+  completedAt     DateTime? @map("completed_at")
+  estimatedHours  Decimal? @map("estimated_hours") @db.Decimal(6, 2)
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  assignments     TaskAssignment[]
+  attachments     TaskAttachment[]
+  statusReports   TaskStatusReport[]
+  timeLogs        TimeLog[]
+
+  @@index([projectId])
+  @@index([milestoneId])
+  @@index([status])
+  @@map("tasks")
+  @@schema("public")
+}
+
+model TaskAssignment {
+  id              String   @id @default(cuid())
+  taskId          String   @map("task_id")
+  task            Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId          String   @map("user_id")
+  user            User     @relation(fields: [userId], references: [id])
+  assignedAt      DateTime @default(now()) @map("assigned_at")
+
+  @@unique([taskId, userId])
+  @@map("task_assignments")
+  @@schema("public")
+}
+
+model TaskAttachment {
+  id              String   @id @default(cuid())
+  taskId          String   @map("task_id")
+  task            Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fileName        String   @map("file_name")
+  fileUrl         String   @map("file_url")
+  fileSizeBytes   Int      @map("file_size_bytes")
+  mimeType        String   @map("mime_type")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([taskId])
+  @@map("task_attachments")
+  @@schema("public")
+}
+
+model TaskStatusReport {
+  id              String   @id @default(cuid())
+  taskId          String   @map("task_id")
+  task            Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId          String   @map("user_id")
+  user            User     @relation(fields: [userId], references: [id])
+  status          String
+  note            String?
+  attachmentUrls  Json?    @map("attachment_urls")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([taskId])
+  @@map("task_status_reports")
+  @@schema("public")
+}
+
+model ToDo {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  user            User     @relation(fields: [userId], references: [id])
+  title           String
+  description     String?
+  isCompleted     Boolean  @default(false) @map("is_completed")
+  dueDate         DateTime? @map("due_date")
+  priority        String   @default("medium")
+  completedAt     DateTime? @map("completed_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  attachments     ToDoAttachment[]
+
+  @@index([userId])
+  @@map("todos")
+  @@schema("public")
+}
+
+model ToDoAttachment {
+  id              String   @id @default(cuid())
+  toDoId          String   @map("todo_id")
+  toDo            ToDo     @relation(fields: [toDoId], references: [id], onDelete: Cascade)
+  fileName        String   @map("file_name")
+  fileUrl         String   @map("file_url")
+  fileSizeBytes   Int      @map("file_size_bytes")
+  mimeType        String   @map("mime_type")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([toDoId])
+  @@map("todo_attachments")
+  @@schema("public")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TENANT SCHEMA ENTITIES — HR & Payroll
+// ═══════════════════════════════════════════════════════════════
+
+model Employee {
+  id              String   @id @default(cuid())
+  userId          String   @unique @map("user_id")
+  user            User     @relation(fields: [userId], references: [id])
+  employeeNumber  String   @unique @map("employee_number")
+  departmentId    String?  @map("department_id")
+  department      Department? @relation(fields: [departmentId], references: [id])
+  position        String?
+  employmentType  String   @default("full_time") @map("employment_type") // full_time | part_time | contract | probationary
+  dateHired       DateTime @map("date_hired")
+  dateTerminated  DateTime? @map("date_terminated")
+  baseSalary      Decimal? @map("base_salary") @db.Decimal(12, 2)
+  dailyRate       Decimal? @map("daily_rate") @db.Decimal(12, 2)
+  hourlyRate      Decimal? @map("hourly_rate") @db.Decimal(12, 2)
+  sssNumber       String?  @map("sss_number")
+  philhealthNumber String? @map("philhealth_number")
+  pagibigNumber   String?  @map("pagibig_number")
+  tinNumber       String?  @map("tin_number")
+  bankName        String?  @map("bank_name")
+  bankAccountNumber String? @map("bank_account_number")
+  emergencyContactName  String? @map("emergency_contact_name")
+  emergencyContactPhone String? @map("emergency_contact_phone")
+  isActive        Boolean  @default(true) @map("is_active")
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  attendanceRecords AttendanceRecord[]
+  leaveRequests     LeaveRequest[]
+  cashAdvances      CashAdvance[]
+  payslips          Payslip[]
+
+  @@map("employees")
+  @@schema("public")
+}
+
+model AttendanceRecord {
+  id              String   @id @default(cuid())
+  employeeId      String   @map("employee_id")
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  date            DateTime @db.Date
+  clockIn         DateTime? @map("clock_in")
+  clockOut        DateTime? @map("clock_out")
+  clockInLat      Decimal? @map("clock_in_lat") @db.Decimal(10, 7)
+  clockInLng      Decimal? @map("clock_in_lng") @db.Decimal(10, 7)
+  clockOutLat     Decimal? @map("clock_out_lat") @db.Decimal(10, 7)
+  clockOutLng     Decimal? @map("clock_out_lng") @db.Decimal(10, 7)
+  status          String   @default("present") // present | absent | late | half_day | on_leave | holiday
+  overtimeMinutes Int      @default(0) @map("overtime_minutes")
+  undertimeMinutes Int     @default(0) @map("undertime_minutes")
+  isOfflineSynced Boolean  @default(false) @map("is_offline_synced")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+  @@index([date])
+  @@map("attendance_records")
+  @@schema("public")
+}
+
+model LeaveRequest {
+  id              String   @id @default(cuid())
+  employeeId      String   @map("employee_id")
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  type            String   // vacation | sick | emergency | maternity | paternity | unpaid
+  startDate       DateTime @map("start_date") @db.Date
+  endDate         DateTime @map("end_date") @db.Date
+  totalDays       Decimal  @map("total_days") @db.Decimal(4, 1)
+  reason          String?
+  status          String   @default("pending") // pending | approved | rejected | cancelled
+  approvedAt      DateTime? @map("approved_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([employeeId])
+  @@map("leave_requests")
+  @@schema("public")
+}
+
+model CashAdvance {
+  id              String   @id @default(cuid())
+  employeeId      String   @map("employee_id")
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  createdById     String   @map("created_by_id")
+  createdBy       User     @relation("CashAdvanceCreatedBy", fields: [createdById], references: [id])
+  approvedById    String?  @map("approved_by_id")
+  approvedBy      User?    @relation("CashAdvanceApprovedBy", fields: [approvedById], references: [id])
+  amount          Decimal  @db.Decimal(12, 2)
+  currency        String   @default("PHP")
+  reason          String
+  status          String   @default("pending") // pending | approved | rejected | partially_recovered | fully_recovered
+  approvedAt      DateTime? @map("approved_at")
+  disbursedAt     DateTime? @map("disbursed_at")
+  totalRecovered  Decimal  @default(0) @map("total_recovered") @db.Decimal(12, 2)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  recoveries      CashAdvanceRecovery[]
+
+  @@index([employeeId])
+  @@map("cash_advances")
+  @@schema("public")
+}
+
+model CashAdvanceRecovery {
+  id              String   @id @default(cuid())
+  cashAdvanceId   String   @map("cash_advance_id")
+  cashAdvance     CashAdvance @relation(fields: [cashAdvanceId], references: [id])
+  payslipId       String?  @map("payslip_id")
+  payslip         Payslip? @relation(fields: [payslipId], references: [id])
+  amount          Decimal  @db.Decimal(12, 2)
+  recoveredAt     DateTime @default(now()) @map("recovered_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([cashAdvanceId])
+  @@map("cash_advance_recoveries")
+  @@schema("public")
+}
+
+model Payroll {
+  id              String   @id @default(cuid())
+  payrollNumber   String   @unique @map("payroll_number")
+  periodStart     DateTime @map("period_start") @db.Date
+  periodEnd       DateTime @map("period_end") @db.Date
+  status          String   @default("draft") // draft | processing | approved | paid | void
+  totalGross      Decimal  @default(0) @map("total_gross") @db.Decimal(12, 2)
+  totalDeductions Decimal  @default(0) @map("total_deductions") @db.Decimal(12, 2)
+  totalNet        Decimal  @default(0) @map("total_net") @db.Decimal(12, 2)
+  currency        String   @default("PHP")
+  processedAt     DateTime? @map("processed_at")
+  paidAt          DateTime? @map("paid_at")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  payslips        Payslip[]
+
+  @@map("payrolls")
+  @@schema("public")
+}
+
+model Payslip {
+  id              String   @id @default(cuid())
+  payrollId       String   @map("payroll_id")
+  payroll         Payroll  @relation(fields: [payrollId], references: [id])
+  employeeId      String   @map("employee_id")
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  basicPay        Decimal  @map("basic_pay") @db.Decimal(12, 2)
+  overtimePay     Decimal  @default(0) @map("overtime_pay") @db.Decimal(12, 2)
+  allowances      Decimal  @default(0) @db.Decimal(12, 2)
+  grossPay        Decimal  @map("gross_pay") @db.Decimal(12, 2)
+  sssDeduction    Decimal  @default(0) @map("sss_deduction") @db.Decimal(12, 2)
+  philhealthDeduction Decimal @default(0) @map("philhealth_deduction") @db.Decimal(12, 2)
+  pagibigDeduction    Decimal @default(0) @map("pagibig_deduction") @db.Decimal(12, 2)
+  taxDeduction    Decimal  @default(0) @map("tax_deduction") @db.Decimal(12, 2)
+  cashAdvanceDeduction Decimal @default(0) @map("cash_advance_deduction") @db.Decimal(12, 2)
+  otherDeductions Decimal  @default(0) @map("other_deductions") @db.Decimal(12, 2)
+  totalDeductions Decimal  @map("total_deductions") @db.Decimal(12, 2)
+  netPay          Decimal  @map("net_pay") @db.Decimal(12, 2)
+  deductionDetails Json?   @map("deduction_details")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  cashAdvanceRecoveries CashAdvanceRecovery[]
+
+  @@unique([payrollId, employeeId])
+  @@index([employeeId])
+  @@map("payslips")
+  @@schema("public")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TENANT SCHEMA ENTITIES — Banking & Finance
+// ═══════════════════════════════════════════════════════════════
+
+model FundSource {
+  id              String   @id @default(cuid())
+  name            String
+  type            String   // cash_on_hand | e_wallet | bank | credit_card | loan
+  bankName        String?  @map("bank_name")
+  accountNumber   String?  @map("account_number")
+  currentBalance  Decimal  @default(0) @map("current_balance") @db.Decimal(12, 2)
+  creditLimit     Decimal? @map("credit_limit") @db.Decimal(12, 2)
+  outstandingBalance Decimal? @map("outstanding_balance") @db.Decimal(12, 2)
+  statementDueDay Int?     @map("statement_due_day")
+  loanProvider    String?  @map("loan_provider")
+  loanPrincipal   Decimal? @map("loan_principal") @db.Decimal(12, 2)
+  loanBalance     Decimal? @map("loan_balance") @db.Decimal(12, 2)
+  loanInterestRate Decimal? @map("loan_interest_rate") @db.Decimal(5, 4)
+  currency        String   @default("PHP")
+  isActive        Boolean  @default(true) @map("is_active")
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  transactions    FundTransaction[]
+  shippingCosts   ShippingCost[]
+  creditCardTransactions CreditCardTransaction[]
+  creditCardPayments CreditCardPayment[] @relation("CreditCardPaymentFundSource")
+
+  @@map("fund_sources")
+  @@schema("public")
+}
+
+model FundTransaction {
+  id              String   @id @default(cuid())
+  fundSourceId    String   @map("fund_source_id")
+  fundSource      FundSource @relation(fields: [fundSourceId], references: [id])
+  type            String   // deposit | withdrawal | transfer_in | transfer_out | expense | income | refund | adjustment | loan_disbursement | loan_repayment | loan_payback | credit_card_charge | credit_card_payment
+  amount          Decimal  @db.Decimal(12, 2)
+  runningBalance  Decimal  @map("running_balance") @db.Decimal(12, 2)
+  referenceType   String?  @map("reference_type")
+  referenceId     String?  @map("reference_id")
+  description     String?
+  category        String?
+  createdById     String   @map("created_by_id")
+  createdBy       User     @relation("FundTransactionCreatedBy", fields: [createdById], references: [id])
+  transactionDate DateTime @default(now()) @map("transaction_date")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  attachments     FundTransactionAttachment[]
+
+  @@index([fundSourceId])
+  @@index([type])
+  @@index([transactionDate])
+  @@map("fund_transactions")
+  @@schema("public")
+}
+
+model FundTransactionAttachment {
+  id              String   @id @default(cuid())
+  transactionId   String   @map("transaction_id")
+  transaction     FundTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  fileName        String   @map("file_name")
+  fileUrl         String   @map("file_url")
+  fileSizeBytes   Int      @map("file_size_bytes")
+  mimeType        String   @map("mime_type")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([transactionId])
+  @@map("fund_transaction_attachments")
+  @@schema("public")
+}
+
+model FundTransfer {
+  id              String   @id @default(cuid())
+  fromTransactionId String @map("from_transaction_id")
+  toTransactionId String   @map("to_transaction_id")
+  amount          Decimal  @db.Decimal(12, 2)
+  description     String?
+  createdById     String   @map("created_by_id")
+  createdBy       User     @relation("FundTransferCreatedBy", fields: [createdById], references: [id])
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("fund_transfers")
+  @@schema("public")
+}
+
+model FundRequest {
+  id              String   @id @default(cuid())
+  requestNumber   String   @unique @map("request_number")
+  createdById     String   @map("created_by_id")
+  createdBy       User     @relation("FundRequestCreatedBy", fields: [createdById], references: [id])
+  approvedById    String?  @map("approved_by_id")
+  approvedBy      User?    @relation("FundRequestApprovedBy", fields: [approvedById], references: [id])
+  amount          Decimal  @db.Decimal(12, 2)
+  currency        String   @default("PHP")
+  purpose         String
+  status          String   @default("pending") // pending | approved | rejected | disbursed
+  approvedAt      DateTime? @map("approved_at")
+  disbursedAt     DateTime? @map("disbursed_at")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("fund_requests")
+  @@schema("public")
+}
+
+model CreditCardTransaction {
+  id              String   @id @default(cuid())
+  fundSourceId    String   @map("fund_source_id")
+  fundSource      FundSource @relation(fields: [fundSourceId], references: [id])
+  description     String
+  amount          Decimal  @db.Decimal(12, 2)
+  bankFee         Decimal  @default(0) @map("bank_fee") @db.Decimal(12, 2)
+  totalAmount     Decimal  @map("total_amount") @db.Decimal(12, 2)
+  transactionDate DateTime @map("transaction_date")
+  isPaid          Boolean  @default(false) @map("is_paid")
+  paidAt          DateTime? @map("paid_at")
+  referenceType   String?  @map("reference_type")
+  referenceId     String?  @map("reference_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([fundSourceId])
+  @@index([isPaid])
+  @@map("credit_card_transactions")
+  @@schema("public")
+}
+
+model CreditCardPayment {
+  id              String   @id @default(cuid())
+  creditCardFundSourceId String @map("credit_card_fund_source_id")
+  creditCardFundSource FundSource @relation("CreditCardPaymentFundSource", fields: [creditCardFundSourceId], references: [id])
+  paymentType     String   @map("payment_type") // selective | bulk_statement | installment
+  amount          Decimal  @db.Decimal(12, 2)
+  transactionIds  Json?    @map("transaction_ids")
+  installmentMonths Int?   @map("installment_months")
+  installmentMonthlyAmount Decimal? @map("installment_monthly_amount") @db.Decimal(12, 2)
+  installmentBankCharges Decimal? @map("installment_bank_charges") @db.Decimal(12, 2)
+  paidFromFundSourceId String? @map("paid_from_fund_source_id")
+  paidAt          DateTime @default(now()) @map("paid_at")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("credit_card_payments")
+  @@schema("public")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TENANT SCHEMA ENTITIES — Accounting
+// ═══════════════════════════════════════════════════════════════
+
+model Account {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  name            String
+  type            String   // asset | liability | equity | revenue | expense
+  subtype         String?
+  parentId        String?  @map("parent_id")
+  parent          Account? @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children        Account[] @relation("AccountHierarchy")
+  isActive        Boolean  @default(true) @map("is_active")
+  isSystem        Boolean  @default(false) @map("is_system")
+  description     String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  journalLines    JournalLine[]
+
+  @@map("accounts")
+  @@schema("public")
+}
+
+model JournalEntry {
+  id              String   @id @default(cuid())
+  entryNumber     String   @unique @map("entry_number")
+  fiscalYearId    String   @map("fiscal_year_id")
+  fiscalYear      FiscalYear @relation(fields: [fiscalYearId], references: [id])
+  date            DateTime @db.Date
+  description     String
+  referenceType   String?  @map("reference_type")
+  referenceId     String?  @map("reference_id")
+  status          String   @default("draft") // draft | posted | void
+  createdById     String   @map("created_by_id")
+  createdBy       User     @relation("JournalCreatedBy", fields: [createdById], references: [id])
+  postedAt        DateTime? @map("posted_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  lines           JournalLine[]
+
+  @@index([fiscalYearId])
+  @@index([date])
+  @@map("journal_entries")
+  @@schema("public")
+}
+
+model JournalLine {
+  id              String   @id @default(cuid())
+  journalEntryId  String   @map("journal_entry_id")
+  journalEntry    JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  accountId       String   @map("account_id")
+  account         Account  @relation(fields: [accountId], references: [id])
+  debit           Decimal  @default(0) @db.Decimal(12, 2)
+  credit          Decimal  @default(0) @db.Decimal(12, 2)
+  description     String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@map("journal_lines")
+  @@schema("public")
+}
+
+model TaxRate {
+  id              String   @id @default(cuid())
+  name            String
+  code            String   @unique
+  rate            Decimal  @db.Decimal(5, 2)
+  type            String   @default("percentage") // percentage | fixed
+  isDefault       Boolean  @default(false) @map("is_default")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("tax_rates")
+  @@schema("public")
+}
+
+model FiscalYear {
+  id              String   @id @default(cuid())
+  name            String
+  startDate       DateTime @map("start_date") @db.Date
+  endDate         DateTime @map("end_date") @db.Date
+  isClosed        Boolean  @default(false) @map("is_closed")
+  closedAt        DateTime? @map("closed_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  journalEntries  JournalEntry[]
+
+  @@map("fiscal_years")
+  @@schema("public")
+}
+
+model ExpenseCategory {
+  id              String   @id @default(cuid())
+  name            String
+  code            String   @unique
+  description     String?
+  isDefault       Boolean  @default(false) @map("is_default")
+  isActive        Boolean  @default(true) @map("is_active")
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  expenses        Expense[]
+
+  @@map("expense_categories")
+  @@schema("public")
+}
+
+model Expense {
+  id              String   @id @default(cuid())
+  expenseNumber   String   @unique @map("expense_number")
+  expenseCategoryId String @map("expense_category_id")
+  expenseCategory ExpenseCategory @relation(fields: [expenseCategoryId], references: [id])
+  createdById     String   @map("created_by_id")
+  createdBy       User     @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
+  approvedById    String?  @map("approved_by_id")
+  approvedBy      User?    @relation("ExpenseApprovedBy", fields: [approvedById], references: [id])
+  projectId       String?  @map("project_id")
+  description     String
+  amount          Decimal  @db.Decimal(12, 2)
+  currency        String   @default("PHP")
+  date            DateTime @db.Date
+  status          String   @default("pending") // pending | approved | rejected | reimbursed
+  receiptUrl      String?  @map("receipt_url")
+  approvedAt      DateTime? @map("approved_at")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([expenseCategoryId])
+  @@map("expenses")
+  @@schema("public")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TENANT SCHEMA ENTITIES — POS
+// ═══════════════════════════════════════════════════════════════
+
+model POSSession {
+  id              String   @id @default(cuid())
+  sessionNumber   String   @unique @map("session_number")
+  userId          String   @map("user_id")
+  user            User     @relation(fields: [userId], references: [id])
+  openedAt        DateTime @default(now()) @map("opened_at")
+  closedAt        DateTime? @map("closed_at")
+  openingBalance  Decimal  @map("opening_balance") @db.Decimal(12, 2)
+  closingBalance  Decimal? @map("closing_balance") @db.Decimal(12, 2)
+  expectedBalance Decimal? @map("expected_balance") @db.Decimal(12, 2)
+  discrepancy     Decimal? @db.Decimal(12, 2)
+  status          String   @default("open") // open | closed
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  sales           POSSale[]
+
+  @@index([userId])
+  @@map("pos_sessions")
+  @@schema("public")
+}
+
+model POSSale {
+  id              String   @id @default(cuid())
+  saleNumber      String   @unique @map("sale_number")
+  sessionId       String   @map("session_id")
+  session         POSSession @relation(fields: [sessionId], references: [id])
+  customerId      String?  @map("customer_id")
+  subtotal        Decimal  @db.Decimal(12, 2)
+  taxAmount       Decimal  @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  discountAmount  Decimal  @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  totalAmount     Decimal  @map("total_amount") @db.Decimal(12, 2)
+  amountPaid      Decimal  @map("amount_paid") @db.Decimal(12, 2)
+  changeAmount    Decimal  @default(0) @map("change_amount") @db.Decimal(12, 2)
+  paymentMethod   String   @map("payment_method") // cash | gcash | maya | card | credit
+  status          String   @default("completed") // completed | voided | refunded
+  currency        String   @default("PHP")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  items           POSSaleItem[]
+
+  @@index([sessionId])
+  @@map("pos_sales")
+  @@schema("public")
+}
+
+model POSSaleItem {
+  id              String   @id @default(cuid())
+  saleId          String   @map("sale_id")
+  sale            POSSale  @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId       String   @map("product_id")
+  product         Product  @relation(fields: [productId], references: [id])
+  description     String
+  quantity        Decimal  @db.Decimal(12, 4)
+  unitPrice       Decimal  @map("unit_price") @db.Decimal(12, 2)
+  totalPrice      Decimal  @map("total_price") @db.Decimal(12, 2)
+  serialNumberIds Json?    @map("serial_number_ids")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([saleId])
+  @@map("pos_sale_items")
+  @@schema("public")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TENANT SCHEMA ENTITIES — Support
+// ═══════════════════════════════════════════════════════════════
+
+model SupportTicket {
+  id              String   @id @default(cuid())
+  ticketNumber    String   @unique @map("ticket_number")
+  createdById     String   @map("created_by_id")
+  createdBy       User     @relation("TicketCreatedBy", fields: [createdById], references: [id])
+  assignedToId    String?  @map("assigned_to_id")
+  title           String
+  description     String
+  category        String?
+  priority        String   @default("medium") // low | medium | high | critical
+  status          String   @default("open") // open | in_progress | waiting | resolved | closed
+  resolvedAt      DateTime? @map("resolved_at")
+  closedAt        DateTime? @map("closed_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  comments        TicketComment[]
+  attachments     TicketAttachment[]
+
+  @@map("support_tickets")
+  @@schema("public")
+}
+
+model TicketComment {
+  id              String   @id @default(cuid())
+  ticketId        String   @map("ticket_id")
+  ticket          SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId          String   @map("user_id")
+  user            User     @relation(fields: [userId], references: [id])
+  content         String
+  isInternal      Boolean  @default(false) @map("is_internal")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([ticketId])
+  @@map("ticket_comments")
+  @@schema("public")
+}
+
+model TicketAttachment {
+  id              String   @id @default(cuid())
+  ticketId        String   @map("ticket_id")
+  ticket          SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fileName        String   @map("file_name")
+  fileUrl         String   @map("file_url")
+  fileSizeBytes   Int      @map("file_size_bytes")
+  mimeType        String   @map("mime_type")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([ticketId])
+  @@map("ticket_attachments")
+  @@schema("public")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TENANT SCHEMA ENTITIES — E-commerce
+// ═══════════════════════════════════════════════════════════════
+
+model EcommerceOrder {
+  id              String   @id @default(cuid())
+  orderNumber     String   @unique @map("order_number")
+  customerId      String   @map("customer_id")
+  customer        Customer @relation(fields: [customerId], references: [id])
+  status          String   @default("pending") // pending | confirmed | processing | shipped | delivered | cancelled | refunded
+  subtotal        Decimal  @db.Decimal(12, 2)
+  taxAmount       Decimal  @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  shippingAmount  Decimal  @default(0) @map("shipping_amount") @db.Decimal(12, 2)
+  discountAmount  Decimal  @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  totalAmount     Decimal  @map("total_amount") @db.Decimal(12, 2)
+  currency        String   @default("PHP")
+  paymentMethod   String?  @map("payment_method")
+  paymentStatus   String   @default("pending") @map("payment_status") // pending | paid | failed | refunded
+  xenditPaymentId String?  @map("xendit_payment_id")
+  shippingAddress Json?    @map("shipping_address")
+  billingAddress  Json?    @map("billing_address")
+  trackingNumber  String?  @map("tracking_number")
+  notes           String?
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  items           EcommerceOrderItem[]
+
+  @@index([customerId])
+  @@map("ecommerce_orders")
+  @@schema("public")
+}
+
+model EcommerceOrderItem {
+  id              String   @id @default(cuid())
+  orderId         String   @map("order_id")
+  order           EcommerceOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId       String   @map("product_id")
+  product         Product  @relation(fields: [productId], references: [id])
+  description     String
+  quantity        Decimal  @db.Decimal(12, 4)
+  unitPrice       Decimal  @map("unit_price") @db.Decimal(12, 2)
+  totalPrice      Decimal  @map("total_price") @db.Decimal(12, 2)
+  tierApplied     String?  @map("tier_applied")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([orderId])
+  @@map("ecommerce_order_items")
+  @@schema("public")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TENANT SCHEMA ENTITIES — Job Orders (Repairs)
+// ═══════════════════════════════════════════════════════════════
+
+model JobOrder {
+  id              String   @id @default(cuid())
+  jobOrderNumber  String   @unique @map("job_order_number")
+  customerId      String   @map("customer_id")
+  customer        Customer @relation(fields: [customerId], references: [id])
+  createdById     String   @map("created_by_id")
+  createdBy       User     @relation("JobOrderCreatedBy", fields: [createdById], references: [id])
+  technicianId    String?  @map("technician_id")
+  technician      User?    @relation("JobOrderTechnician", fields: [technicianId], references: [id])
+  title           String
+  description     String
+  deviceType      String?  @map("device_type")
+  deviceBrand     String?  @map("device_brand")
+  deviceModel     String?  @map("device_model")
+  serialNumber    String?  @map("serial_number")
+  reportedIssue   String   @map("reported_issue")
+  diagnosis       String?
+  status          String   @default("received") // received | diagnosing | quoted | approved | in_progress | testing | completed | released | cancelled
+  priority        String   @default("medium") // low | medium | high | urgent
+  estimatedCost   Decimal? @map("estimated_cost") @db.Decimal(12, 2)
+  actualCost      Decimal? @map("actual_cost") @db.Decimal(12, 2)
+  laborCost       Decimal? @map("labor_cost") @db.Decimal(12, 2)
+  currency        String   @default("PHP")
+  quotationId     String?  @map("quotation_id")
+  invoiceId       String?  @map("invoice_id")
+  warranty        String?
+  customerSignatureUrl String? @map("customer_signature_url")
+  technicianSignatureUrl String? @map("technician_signature_url")
+  signedAt        DateTime? @map("signed_at")
+  completedAt     DateTime? @map("completed_at")
+  releasedAt      DateTime? @map("released_at")
+  notes           String?
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  parts           JobOrderPart[]
+
+  @@map("job_orders")
+  @@schema("public")
+}
+
+model JobOrderPart {
+  id              String   @id @default(cuid())
+  jobOrderId      String   @map("job_order_id")
+  jobOrder        JobOrder @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
+  productId       String?  @map("product_id")
+  product         Product? @relation(fields: [productId], references: [id])
+  description     String
+  quantity        Decimal  @db.Decimal(12, 4)
+  unitPrice       Decimal  @map("unit_price") @db.Decimal(12, 2)
+  totalPrice      Decimal  @map("total_price") @db.Decimal(12, 2)
+  isFromInventory Boolean  @default(false) @map("is_from_inventory")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([jobOrderId])
+  @@map("job_order_parts")
+  @@schema("public")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TENANT SCHEMA ENTITIES — Customer Portal
+// ═══════════════════════════════════════════════════════════════
+
+model CustomerDocument {
+  id              String   @id @default(cuid())
+  customerId      String   @map("customer_id")
+  customer        Customer @relation(fields: [customerId], references: [id])
+  title           String
+  description     String?
+  fileName        String   @map("file_name")
+  fileUrl         String   @map("file_url")
+  fileSizeBytes   Int      @map("file_size_bytes")
+  mimeType        String   @map("mime_type")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([customerId])
+  @@map("customer_documents")
+  @@schema("public")
+}

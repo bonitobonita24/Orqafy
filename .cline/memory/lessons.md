@@ -81,3 +81,27 @@
   this expansion. Boolean checks on `boolean | null` and `number | null` have
   similar rules — explicit comparison required, no truthy shortcut.
 # ---
+
+## 2026-05-03 — 🔴 npx resolves to global Prisma version, not project-local
+- Type:      🔴 gotcha
+- Phase:     Phase 4 Part 3
+- Files:     packages/db/prisma/schema.prisma
+- Concepts:  prisma, npx, pnpm, version resolution, global vs local
+- Narrative: Running `npx prisma generate` resolved to Prisma 7.8.0 (latest published)
+  instead of the project-local 6.19.3. Prisma 7.x has breaking changes (url property
+  in datasource block no longer supported). Fix: always use
+  `pnpm --filter @orqafy/db exec prisma generate` to invoke the project-local binary.
+  Never use `npx prisma` in this project — it bypasses the lockfile version.
+# ---
+
+## 2026-05-03 — 🔴 Prisma 6.x still requires multiSchema preview feature
+- Type:      🔴 gotcha
+- Phase:     Phase 4 Part 3
+- Files:     packages/db/prisma/schema.prisma
+- Concepts:  prisma, multiSchema, preview features, schema-per-tenant
+- Narrative: Prisma CLI emitted a deprecation warning for multiSchema preview feature.
+  Attempted removal caused 92 validation errors — every @@schema("...") annotation
+  requires the flag. The deprecation only applies to Prisma 7.x where multiSchema
+  became GA. On Prisma 6.x (our locked version), previewFeatures = ["multiSchema"]
+  is mandatory. Do NOT remove it until upgrading to Prisma 7.x.
+# ---
