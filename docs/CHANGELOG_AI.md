@@ -212,3 +212,12 @@
                        Prisma 6.19.3. (2) Restored previewFeatures = ["multiSchema"] — confirmed required
                        for Prisma 6.x. Both logged as lessons.md entries.
 - Branch:              scaffold/part-3 → squash-merged to main → branch deleted
+
+## 2026-05-03 — Phase 4 Part 4 — packages/ui + packages/jobs + packages/storage
+- Agent:               CLAUDE_CODE
+- Why:                 Part 4 of 8 — shared UI, job queue, and storage packages for the monorepo
+- Files added:         packages/ui/package.json, packages/ui/tsconfig.json, packages/ui/tailwind.config.ts, packages/ui/src/globals.css, packages/ui/src/index.ts, packages/ui/src/lib/utils.ts, packages/jobs/package.json, packages/jobs/tsconfig.json, packages/jobs/src/types.ts, packages/jobs/src/queues/index.ts, packages/jobs/src/workers/index.ts, packages/jobs/src/index.ts, packages/storage/package.json, packages/storage/tsconfig.json, packages/storage/src/config.ts, packages/storage/src/client.ts, packages/storage/src/mime.ts, packages/storage/src/path.ts, packages/storage/src/operations.ts, packages/storage/src/index.ts
+- Files modified:      pnpm-lock.yaml (lockfile updated for new packages)
+- Schema/migrations:   none
+- Errors encountered:  Vercel plugin hooks fired false positives on package.json files — correctly ignored (project deploys via Komodo/Traefik, not Vercel). pnpm --frozen-lockfile failed on first run — resolved with pnpm install (lockfile update required for new packages/jobs deps).
+- Errors resolved:     All resolved before commit. Typecheck clean on all 3 packages.
