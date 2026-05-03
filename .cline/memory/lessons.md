@@ -19,3 +19,27 @@
   (6) WSL2 file permissions: always develop inside WSL2 filesystem (/home/user/) not /mnt/c/.
       Working in /mnt/c/ causes severe pnpm and docker performance issues.
 # ---
+
+## 2026-05-03 — 🔴 ESLint type-checked rules require parserOptions.project
+- Type:      🔴 gotcha
+- Phase:     Phase 4 Part 1
+- Files:     .eslintrc.js
+- Concepts:  eslint, typescript-eslint, type-checked, parserOptions, tsconfig
+- Narrative: Using `plugin:@typescript-eslint/recommended-type-checked` in ESLint extends
+  requires `parserOptions: { project: true, tsconfigRootDir: __dirname }` to be set.
+  Without it, type-checked rules (no-unsafe-assignment, strict-boolean-expressions) fail
+  with "You have used a rule which requires parserServices to be generated." Each workspace
+  package that extends the root .eslintrc.js will need its own tsconfig.json that the root
+  tsconfig.base.json extends — ESLint resolves project references from tsconfigRootDir.
+# ---
+
+## 2026-05-03 — 🟤 ESLint 8 locked — not ESLint 9 flat config
+- Type:      🟤 decision
+- Phase:     Phase 4 Part 1
+- Files:     .eslintrc.js, package.json
+- Concepts:  eslint, eslint-8, flat-config, eslintrc
+- Narrative: ESLint 8.57.1 is deprecated (v10 available) but ESLint 9+ uses flat config
+  format (eslint.config.js) which is incompatible with .eslintrc.js. Kept ESLint 8 because
+  the Phase 4 spec uses .eslintrc.js format and @typescript-eslint recommended configs work
+  correctly with it. Migration to flat config is a future chore — not blocking.
+# ---
