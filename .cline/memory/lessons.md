@@ -133,3 +133,20 @@
   use `git branch -D` (force delete) after squash-merging. This is expected per Rule 23
   squash-merge strategy — not a mistake. Apply consistently to all future Part branches.
 # ---
+
+## 2026-05-05 — 🔴 Pre-existing lint + typecheck errors from Parts 5-6 (Phase 5 must fix)
+- Type:      🔴 gotcha
+- Phase:     Phase 4 Part 8 (discovered during verification)
+- Files:     apps/mobile/src/notifications/push.ts, apps/mobile/src/notifications/deep-link.ts, apps/mobile/src/sync/auto-sync.ts, apps/web/src/components/ui/button.tsx, apps/web/src/components/layout/app-header.tsx
+- Concepts:  eslint, typecheck, require-await, enum-comparison, misused-promises, ForwardRefExoticComponent, @types/react
+- Narrative: Part 8 verification revealed 15 ESLint errors in apps/mobile and TypeScript errors
+  in apps/web. These are NOT regressions from Part 8 (which added only YAML + txt files).
+  Mobile errors: (1) @typescript-eslint/require-await on async handlers without await in push.ts
+  and deep-link.ts, (2) @typescript-eslint/no-unsafe-enum-comparison in push.ts,
+  (3) @typescript-eslint/no-misused-promises — Promise in void function arg in auto-sync.ts.
+  6 of 15 are potentially auto-fixable with --fix.
+  Web errors: ForwardRefExoticComponent<ButtonProps & RefAttributes<HTMLButtonElement>> not
+  assignable as JSX component in button.tsx and app-header.tsx. Root cause: @types/react@19.2.14
+  type mismatch with ForwardRefExoticComponent. Likely fix: pin @types/react version or update
+  component signatures. All must be resolved in Phase 5 before Phase 6 can start.
+# ---
