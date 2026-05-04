@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ESNext",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@orqafy/shared": ["../../packages/shared/src"],
+      "@orqafy/api-client": ["../../packages/api-client/src"]
+    },
+    "types": ["nativewind/types", "@nozbe/watermelondb/types"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "app.config.ts", "nativewind-env.d.ts"],
+  "exclude": ["node_modules", "babel.config.js"]
+}
