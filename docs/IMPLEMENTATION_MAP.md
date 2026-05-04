@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-03 by CLAUDE_CODE (Phase 4 Part 5 complete — apps/web Next.js full scaffold — PAUSED)
+# Last updated: 2026-05-04 by CLAUDE_CODE (Phase 4 Part 7 complete — PAUSED)
 # ---
 
 ## Phase Status
@@ -14,7 +14,7 @@
 | Phase 2.6 — Design System | ✅ Complete | UI UX Pro Max v2.0.1 generated MASTER.md. Harmonised with docs/DESIGN.md (VoltAgent). Vercel guidelines + WCAG AA enforcement appended. |
 | Phase 2.7 — Spec Stress-Test | ✅ Complete | PASS — 0 gaps found across completeness/consistency/ambiguity/security checks. |
 | Phase 3 — Generate Spec Files | ✅ Complete | inputs.yml v3 + schema + 4 env files + sync script. Port base 42941. |
-| Phase 4 — Full Scaffold | ⏳ In Progress (Parts 1–5 complete) | Part 1 ✅ merged (`834c30b`). Part 2 ✅ merged (`2e8fce1`). Part 3 ✅ merged (`a494bd1`). Part 4 ✅ merged (`3c6aedc`). Part 5 ✅ merged (`44429d0`). Parts 6–8 ⬜. Next: open `phase4-part6.md` in a NEW session (apps/mobile Expo). |
+| Phase 4 — Full Scaffold | ⏳ In Progress (Parts 1–7 complete) | Part 1 ✅ merged (`834c30b`). Part 2 ✅ merged (`2e8fce1`). Part 3 ✅ merged (`a494bd1`). Part 4 ✅ merged (`3c6aedc`). Part 5 ✅ merged (`44429d0`). Part 6 ✅ merged (`55b9ac7`). Part 7 ✅ merged (`91818df`). Part 8 ⬜. Next: open `phase4-part8.md` in a NEW session (CI + governance + MANIFEST). |
 | Phase 5 — Validation | ⬜ Pending | Human trigger. Pre-flight will check CREDENTIALS.md ⏳ status. |
 | Phase 6 — Docker + Visual QA | ⬜ Pending | Human trigger. |
 | Phase 7 — Feature Updates | ⬜ Pending | The daily loop. |
@@ -32,7 +32,7 @@
 | `.env.example` | ✅ | Committed template — placeholders only, no real values. |
 | `scripts/sync-credentials-to-env.sh` | ✅ | Idempotent sync from CREDENTIALS.md → env files. |
 | `design-system/MASTER.md` | ✅ | Phase 2.6 output. DESIGN.md authoritative for color/typography. |
-| `.socraticodecontextartifacts.json` | ✅ | 2 entries: design-system, design-reference. Gitignored. |
+| `.socraticodecontextartifacts.json` | ✅ | 6 entries: design-system, design-reference, database-schema, implementation-map, decisions-log, product-definition. Gitignored. |
 
 ## Credentials State
 
@@ -70,19 +70,22 @@
 |-----|--------|-------------|
 | apps/web | ✅ Complete | Next.js 15 App Router. shadcn/ui (New York style, VoltAgent dark tokens). tRPC routers for all 13 entities (customer, project, task, timeEntry, expense, invoice, contract, team, subscription, report, storage, notification, auditLog). Auth.js v5 Credentials provider + bcrypt + securityVersion. 7 CSP headers (Turnstile + Google Fonts). In-memory LRU rate limiters (4 tiers). isomorphic-dompurify XSS sanitizer. Tenant-resolution middleware + RBAC guard + SESSION_INVALIDATED. Cloudflare Turnstile siteverify on public mutations. L1 tenant scoping on all protected procedures. Lint 0 errors, typecheck 0 errors across 7 packages. Merged `44429d0`. |
 | apps/worker | ⬜ | BullMQ worker runtime — Phase 4 Part 4/7 |
-| apps/mobile | ⬜ | Expo (Orqafy Mobile, enterprise distribution) — Phase 4 Part 6 |
+| apps/mobile | ✅ Complete | Expo SDK 52 with Expo Router v4 file-based navigation. React Native Reusables + NativeWind (VoltAgent dark tokens). WatermelonDB v0.27 offline-first with pull-based sync. 14 screens across 4 nav sections (Dashboard, Projects, Time, Settings). `packages/api-client` only (Rule 13). Expo Push notifications via expo-notifications. Typecheck clean. Merged `55b9ac7`. |
 
 ## Infrastructure
 
 | Component | Status | Description |
 |-----------|--------|-------------|
-| deploy/compose/dev/ | ⬜ | docker-compose.{db,cache,storage,infra,pgadmin,app}.yml — Phase 4 Part 7 |
-| deploy/compose/stage/ | ⬜ | + Traefik labels, no host ports on app — Phase 4 Part 7 |
-| deploy/compose/prod/ | ⬜ | Mirror staging — Phase 4 Part 7 |
-| deploy/compose/start.sh | ⬜ | Phase 4 Part 7 |
-| deploy/compose/push.sh | ⬜ | Manual image promotion (dev→staging→prod) — Phase 4 Part 7 |
-| COMMANDS.md | ⬜ | Master command reference — Phase 4 Part 7 |
-| tools/ | ⬜ | validate-inputs.mjs, check-env.mjs, check-product-sync.mjs — Phase 4 Part 7 |
+| deploy/compose/dev/ | ✅ Complete | docker-compose.{db,cache,storage,infra,pgadmin,app}.yml — 6 compose files. Dev ports from base 42941. App rebuilds from source via `--build`. pgadmin-servers.json pre-configured. Merged `91818df`. |
+| deploy/compose/stage/ | ✅ Complete | docker-compose.{db,cache,storage,pgadmin,app}.yml — 5 compose files. Standard ports. Traefik labels on app (no host port). APP_IMAGE_TAG=staging-latest. Merged `91818df`. |
+| deploy/compose/prod/ | ✅ Complete | Mirror staging. APP_IMAGE_TAG=latest. Traefik labels. Merged `91818df`. |
+| deploy/compose/start.sh | ✅ Complete | One-command startup for all envs. Dev applies `--build` flag to app service. Merged `91818df`. |
+| deploy/compose/push.sh | ✅ Complete | Manual image promotion (dev→staging→prod via Docker Hub). Guards: docker.publish check + docker login check. Merged `91818df`. |
+| COMMANDS.md | ✅ Complete | Master command reference — Docker start/stop/clean, image push, DB, testing, code quality, governance, git, AI triggers, dev URLs, credentials, utilities. Merged `91818df`. |
+| tools/validate-inputs.mjs | ✅ Complete | Validates inputs.yml against inputs.schema.json. Merged `91818df`. |
+| tools/check-env.mjs | ✅ Complete | Checks all required env vars are set. Merged `91818df`. |
+| tools/check-product-sync.mjs | ✅ Complete | Validates PRODUCT.md ↔ inputs.yml alignment + private tag leakage check. Pattern-matching with alternatives for section names. Merged `91818df`. |
+| tools/hydration-lint.mjs | ✅ Complete | Checks for SSR hydration mismatches (typeof window, Date.now, Math.random). Merged `91818df`. |
 | .github/workflows/ci.yml | ⬜ | Governance + quality + security audit — Phase 4 Part 8 |
 | .github/workflows/docker-publish.yml | ⬜ | Docker Hub :latest + :staging-latest + :sha — Phase 4 Part 8 |
 
@@ -93,12 +96,12 @@
 | docs/PRODUCT.md | ✅ | 2,160 lines, all 11 required sections + 11 optional |
 | docs/DESIGN.md | ✅ | VoltAgent aesthetic, authoritative visual reference |
 | docs/README.md | ✅ | HUMAN-owned project README — full feature description aligned with PRODUCT.md (added pre-Bootstrap, refined during Phase 2 commit `2ebf4b7`) |
-| docs/CHANGELOG_AI.md | ✅ | 10 entries (Bootstrap, Bootstrap Gap Fix, Phase 2, Phase 3, Governance Sync, Phase 4 Part 1, Skills Reorg, Phase 4 Parts 2+3, Phase 4 Part 4, Phase 4 Part 5) |
+| docs/CHANGELOG_AI.md | ✅ | 12 entries (Bootstrap through Part 7) |
 | docs/DECISIONS_LOG.md | ✅ | 7+ decisions (Visual evolution + Orqafy rename + Phase 2 + Phase 3 + storage security decisions from Part 4) |
 | docs/IMPLEMENTATION_MAP.md | ✅ | This file |
 | docs/PHASE3_BRIEFING.md | ❌ Removed | Deleted in `3e7bc82` — superseded by framework-native `.claude/rules/phases.md` |
 | project.memory.md | ✅ | Updated with skill installations (gitignored) |
-| .cline/STATE.md | ✅ | PHASE = "Phase 4 Part 5 complete — PAUSED" |
+| .cline/STATE.md | ✅ | PHASE = "Phase 4 Part 7 complete — PAUSED" |
 | .cline/memory/lessons.md | ✅ | 1 🔴 gotcha pre-seeded (WSL2 + Docker) |
 | .cline/memory/agent-log.md | ✅ | All Bootstrap + Phase 2 + Phase 3 + Governance Sync entries |
 | CREDENTIALS.md | ✅ | Gitignored. AI-generated values active; ⏳ for human-fill (GitHub, Docker Hub, Turnstile prod, third-party). |
@@ -162,15 +165,14 @@
 
 ## Next Action
 
-**CURRENT STATE: PAUSED after Part 5. Open `.cline/tasks/phase4-part6.md` in a NEW Claude Code session.**
+**CURRENT STATE: PAUSED after Part 7. Open `.cline/tasks/phase4-part8.md` in a NEW Claude Code session.**
 
-1. **Part 6 — apps/mobile (Expo)**:
-   - `inputs.yml` declares `mobile_app: true` — Part 6 is NOT skipped
-   - Open `.cline/tasks/phase4-part6.md` in a NEW Claude Code session per Rule 24
-   - Scope: Expo Router screens, WatermelonDB offline sync, React Native Reusables + NativeWind,
-     `packages/api-client` only (Rule 13 — no direct DB access from mobile)
+1. **Part 8 — CI + governance + MANIFEST + SocratiCode index**:
+   - Open `.cline/tasks/phase4-part8.md` in a NEW Claude Code session per Rule 24
+   - Scope: `.github/workflows/ci.yml`, `.github/workflows/docker-publish.yml`, governance docs final pass, `MANIFEST.txt`, SocratiCode initial index
+   - After Part 8: human triggers Phase 5 ("Start Phase 5")
 
-2. **a11y-skill** (non-blocking for Part 6, required before Phase 6 Visual QA):
+2. **a11y-skill** (non-blocking for Part 8, required before Phase 6 Visual QA):
    ```
    npx skills add airowe/claude-a11y-skill
    ```
