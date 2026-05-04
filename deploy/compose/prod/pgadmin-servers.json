@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "orqafy prod",
+      "Group": "Spec-Driven",
+      "Host": "orqafy_prod_postgres",
+      "Port": 5432,
+      "MaintenanceDB": "orqafy_prod",
+      "Username": "orqafy_prod",
+      "SSLMode": "prefer"
+    }
+  }
+}
