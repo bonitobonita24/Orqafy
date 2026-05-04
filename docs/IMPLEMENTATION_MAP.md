@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-04 by CLAUDE_CODE (Phase 4 Part 7 complete — PAUSED)
+# Last updated: 2026-05-05 by CLAUDE_CODE (Phase 4 Part 8 complete)
 # ---
 
 ## Phase Status
@@ -14,7 +14,7 @@
 | Phase 2.6 — Design System | ✅ Complete | UI UX Pro Max v2.0.1 generated MASTER.md. Harmonised with docs/DESIGN.md (VoltAgent). Vercel guidelines + WCAG AA enforcement appended. |
 | Phase 2.7 — Spec Stress-Test | ✅ Complete | PASS — 0 gaps found across completeness/consistency/ambiguity/security checks. |
 | Phase 3 — Generate Spec Files | ✅ Complete | inputs.yml v3 + schema + 4 env files + sync script. Port base 42941. |
-| Phase 4 — Full Scaffold | ⏳ In Progress (Parts 1–7 complete) | Part 1 ✅ merged (`834c30b`). Part 2 ✅ merged (`2e8fce1`). Part 3 ✅ merged (`a494bd1`). Part 4 ✅ merged (`3c6aedc`). Part 5 ✅ merged (`44429d0`). Part 6 ✅ merged (`55b9ac7`). Part 7 ✅ merged (`91818df`). Part 8 ⬜. Next: open `phase4-part8.md` in a NEW session (CI + governance + MANIFEST). |
+| Phase 4 — Full Scaffold | ✅ Complete (Parts 1–8) | Part 1 ✅ merged (`834c30b`). Part 2 ✅ merged (`2e8fce1`). Part 3 ✅ merged (`a494bd1`). Part 4 ✅ merged (`3c6aedc`). Part 5 ✅ merged (`44429d0`). Part 6 ✅ merged (`55b9ac7`). Part 7 ✅ merged (`91818df`). Part 8 ✅ merged. |
 | Phase 5 — Validation | ⬜ Pending | Human trigger. Pre-flight will check CREDENTIALS.md ⏳ status. |
 | Phase 6 — Docker + Visual QA | ⬜ Pending | Human trigger. |
 | Phase 7 — Feature Updates | ⬜ Pending | The daily loop. |
@@ -86,8 +86,9 @@
 | tools/check-env.mjs | ✅ Complete | Checks all required env vars are set. Merged `91818df`. |
 | tools/check-product-sync.mjs | ✅ Complete | Validates PRODUCT.md ↔ inputs.yml alignment + private tag leakage check. Pattern-matching with alternatives for section names. Merged `91818df`. |
 | tools/hydration-lint.mjs | ✅ Complete | Checks for SSR hydration mismatches (typeof window, Date.now, Math.random). Merged `91818df`. |
-| .github/workflows/ci.yml | ⬜ | Governance + quality + security audit — Phase 4 Part 8 |
-| .github/workflows/docker-publish.yml | ⬜ | Docker Hub :latest + :staging-latest + :sha — Phase 4 Part 8 |
+| .github/workflows/ci.yml | ✅ Complete | 3-job CI: governance gates → quality matrix (lint/typecheck/test/build via Turbo) → dependency security audit. pnpm/action-setup@v4, Node 22. |
+| .github/workflows/docker-publish.yml | ✅ Complete | Docker Hub build & push on push to main. Multi-platform (amd64+arm64). Tags: :latest, :staging-latest, :sha-{short}. GHA layer cache. |
+| MANIFEST.txt | ✅ Complete | ~280 files across all 8 Parts + Bootstrap + Design System + Spec Files. |
 
 ## Governance Docs
 
@@ -96,12 +97,12 @@
 | docs/PRODUCT.md | ✅ | 2,160 lines, all 11 required sections + 11 optional |
 | docs/DESIGN.md | ✅ | VoltAgent aesthetic, authoritative visual reference |
 | docs/README.md | ✅ | HUMAN-owned project README — full feature description aligned with PRODUCT.md (added pre-Bootstrap, refined during Phase 2 commit `2ebf4b7`) |
-| docs/CHANGELOG_AI.md | ✅ | 12 entries (Bootstrap through Part 7) |
+| docs/CHANGELOG_AI.md | ✅ | 13 entries (Bootstrap through Part 8) |
 | docs/DECISIONS_LOG.md | ✅ | 7+ decisions (Visual evolution + Orqafy rename + Phase 2 + Phase 3 + storage security decisions from Part 4) |
 | docs/IMPLEMENTATION_MAP.md | ✅ | This file |
 | docs/PHASE3_BRIEFING.md | ❌ Removed | Deleted in `3e7bc82` — superseded by framework-native `.claude/rules/phases.md` |
 | project.memory.md | ✅ | Updated with skill installations (gitignored) |
-| .cline/STATE.md | ✅ | PHASE = "Phase 4 Part 7 complete — PAUSED" |
+| .cline/STATE.md | ✅ | PHASE = "Phase 4 Part 8 complete" |
 | .cline/memory/lessons.md | ✅ | 1 🔴 gotcha pre-seeded (WSL2 + Docker) |
 | .cline/memory/agent-log.md | ✅ | All Bootstrap + Phase 2 + Phase 3 + Governance Sync entries |
 | CREDENTIALS.md | ✅ | Gitignored. AI-generated values active; ⏳ for human-fill (GitHub, Docker Hub, Turnstile prod, third-party). |

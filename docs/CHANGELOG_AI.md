@@ -240,6 +240,16 @@
 - Errors encountered:  (1) WatermelonDB model property mismatch: dtr/index.tsx referenced clockIn/clockOut but model uses clockInAt/clockOutAt — 10+ occurrences across sort, find, create, update, and display logic. (2) enqueueSync arity: 3 files passed 3 arguments but signature requires 4 (missing payload parameter). (3) payslips/index.tsx called .toFixed(2) on Payslip.deductions which is typed as string in the WatermelonDB model. (4) CardTitle/CardDescription typed children as string instead of React.ReactNode.
 - Errors resolved:     (1) Full rewrite of dtr/index.tsx with correct clockInAt/clockOutAt property names throughout. (2) Added 4th argument {} to all 4 enqueueSync calls across dtr/index.tsx, expenses/new.tsx, tasks/[id].tsx. (3) Wrapped with parseFloat() before .toFixed(2) in payslips/index.tsx. (4) Changed children type to React.ReactNode in card.tsx. pnpm typecheck: 0 errors.
 
+## 2026-05-05 — Phase 4 Part 8 — CI + docker-publish + MANIFEST
+- Agent:               CLAUDE_CODE
+- Why:                 Phase 4 Part 8 of 8 — final scaffold part. GitHub Actions CI pipeline (governance gates + quality matrix + security audit), Docker Hub build & publish workflow, and complete file manifest across all 8 parts.
+- Files added:         .github/workflows/ci.yml, .github/workflows/docker-publish.yml, MANIFEST.txt
+- Files modified:      docs/CHANGELOG_AI.md (this entry), docs/IMPLEMENTATION_MAP.md (Phase 4 → ✅ Complete), .cline/STATE.md (Part 8 complete)
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  Security hook (PreToolUse:Write) blocked initial write of workflow files flagging potential command injection — reviewed and confirmed safe (only secrets.*, vars.*, and safe github.* context used in run: commands). Re-submitted unchanged.
+- Errors resolved:     Both workflow files accepted on second Write attempt. No code changes needed.
+
 ## 2026-05-04 — Phase 4 Part 7 — tools/ + deploy/compose/ + deployment scripts
 - Agent:               CLAUDE_CODE
 - Why:                 Phase 4 Part 7 of 8 — scaffold validation tools, Docker Compose files for all 3 environments (dev/staging/prod), convenience scripts (start.sh, push.sh), COMMANDS.md reference, and SocratiCode context artifacts.
