@@ -1,12 +1,12 @@
 {
-  "scannedAt": "2026-05-03",
-  "previousScan": "2026-05-02",
+  "scannedAt": "2026-05-05",
+  "previousScan": "2026-05-03",
   "techStack": [
     "TypeScript (strict)",
-    "Next.js (App Router)",
+    "Next.js 15 (App Router)",
     "React",
     "tRPC",
-    "Prisma ORM",
+    "Prisma 6.19.3 ORM (45 models, 16 domain schemas)",
     "Auth.js v5",
     "PostgreSQL (schema-per-tenant)",
     "PgBouncer",
@@ -18,10 +18,10 @@
     "TanStack Table (via shadcn)",
     "Leaflet + OpenStreetMap",
     "lucide-react",
-    "Expo (managed)",
+    "Expo SDK 52 (managed)",
     "WatermelonDB",
     "Expo Push (FCM/APNs)",
-    "Xendit (payments)",
+    "Xendit (dual-level payments)",
     "Cloudflare Turnstile (bot protection)",
     "Docker Compose",
     "Komodo (deployment manager)",
@@ -30,72 +30,89 @@
     "pnpm monorepo + Turborepo"
   ],
   "projectType": "full-stack monorepo (web + mobile + worker, multi-tenant SaaS)",
-  "phaseAtScan": "Phase 4 Part 2 — packages/shared + api-client (branch: scaffold/part-2)",
+  "phaseAtScan": "Phase 4 Part 8 complete — all scaffold parts merged to main",
   "installedSkills": [
     {
       "name": "ui-ux-pro-max",
       "category": "Design & UI",
       "tier": "T1",
-      "reason": "Phase 2.6 design system generator. inputs.yml design.master_file: design-system/MASTER.md. 161 industry rules, shadcn/ui theming, WCAG AA enforcement."
+      "reason": "Phase 2.6 design system generator. 161 industry rules, shadcn/ui theming, WCAG AA enforcement."
     },
     {
       "name": "awesome-design-md",
       "category": "Design & UI",
       "tier": "T1",
-      "addedAt": "2026-05-03",
-      "reason": "inputs.yml design.aesthetic: voltagent + design.authoritative_visual_reference: docs/DESIGN.md. Skill provides 31 DESIGN.md aesthetic references for shadcn-compatible visual direction (Scenario 33)."
+      "reason": "VoltAgent aesthetic (docs/DESIGN.md). 31 DESIGN.md references for shadcn-compatible visual direction (Scenario 33)."
     },
     {
       "name": "postgres",
       "category": "Data & Analytics",
       "tier": "T1",
-      "reason": "PostgreSQL with schema-per-tenant isolation, Prisma ORM, PgBouncer pooler. Safe read-only query MCP for tenant-aware data exploration."
+      "reason": "PostgreSQL with schema-per-tenant isolation, Prisma ORM, PgBouncer pooler."
     },
     {
       "name": "test-driven-development",
       "category": "Development & DevOps",
       "tier": "T1",
-      "reason": "Rule 25 mandates RED-GREEN-refactor on every Feature Update. Phase 5 validation gate enforces pnpm test pass before Phase 6."
+      "reason": "Rule 25 mandates RED-GREEN-refactor on every Feature Update."
     },
     {
       "name": "systematic-debugging",
       "category": "Development & DevOps",
       "tier": "T2",
-      "reason": "Phase 6.5 error triage with 16+ named categories. TYPE 1-4 recovery procedures (Rule 21 H3 partial phase recovery)."
+      "reason": "Phase 6.5 error triage with 16+ named categories. TYPE 1-4 recovery procedures."
     },
     {
       "name": "using-git-worktrees",
       "category": "Development & DevOps",
       "tier": "T1",
-      "addedAt": "2026-05-03",
-      "reason": "inputs.yml git.use_worktrees: true. Phase 4 Parts run in isolated worktrees per Rule 24 fresh-context discipline. Was declared but skill not installed previously."
+      "reason": "Phase 4 Parts run in isolated worktrees per Rule 24 fresh-context discipline."
     },
     {
       "name": "planning-with-files",
       "category": "Development & DevOps",
       "tier": "T2",
-      "reason": "8-Part Phase 4 scaffold + multi-step Feature Updates + governance coordination. Manus-style task_plan.md/findings.md/progress.md aligns with .cline/STATE.md + .cline/handoffs/."
+      "reason": "8-Part Phase 4 scaffold + multi-step Feature Updates + governance coordination."
     },
     {
       "name": "mcp-builder",
       "category": "Development & DevOps",
       "tier": "T2",
-      "addedAt": "2026-05-03",
-      "reason": "4 MCP servers wired in .vscode/mcp.json (socraticode, context7, shadcn) + code-review-graph plugin. Reference for any future custom tenant-aware MCP development."
+      "reason": "4 MCP servers wired in .vscode/mcp.json. Reference for future custom MCP development."
     },
     {
       "name": "claude-api",
       "category": "Development & DevOps",
       "tier": "T4",
-      "addedAt": "2026-05-03",
-      "reason": "MEDIUM confidence — hedge for future Claude API features in tenant apps (demo-system, AI assistants per tenant). Remove if Claude API features remain out of scope through Phase 8."
+      "reason": "Hedge for future Claude API features in tenant apps. Remove if not needed through Phase 8."
+    },
+    {
+      "name": "webapp-testing",
+      "category": "Security & Testing",
+      "tier": "T2",
+      "addedAt": "2026-05-05",
+      "reason": "Next.js web app with localhost dev server, tRPC API endpoints, Docker-based services. Complements playwright-skill + test-fixing."
+    },
+    {
+      "name": "root-cause-tracing",
+      "category": "Security & Testing",
+      "tier": "T4",
+      "addedAt": "2026-05-05",
+      "reason": "Tracing cross-package bugs in monorepo (packages/db -> apps/web -> tRPC chain). Supplements systematic-debugging + debug-skill."
+    },
+    {
+      "name": "a11y-skill",
+      "category": "Security & Testing",
+      "tier": "T1",
+      "addedAt": "2026-05-05",
+      "reason": "WCAG 2.1 AA enforcement mandatory (accessibility.level: wcag_aa). axe-core runtime + eslint-plugin-jsx-a11y static analysis."
     }
   ],
   "removedSkills": [
     {
       "name": "vercel-agent-skills",
       "removedAt": "2026-05-03",
-      "reason": "Deployment mismatch. inputs.yml deploy.manager.type: komodo, deploy.reverse_proxy.type: traefik, docker.publish: true to Docker Hub. Not a Vercel deployment. Vercel-specific patterns (Edge, Fluid Compute, AI Gateway, Routing Middleware) do not apply. Live Next.js docs covered by Context7 MCP (already in .vscode/mcp.json)."
+      "reason": "Deployment mismatch — project uses Komodo + Traefik, not Vercel."
     },
     {
       "name": "design-system",
@@ -111,32 +128,34 @@
     { "name": "image-enhancer", "reason": "No image processing features declared in PRODUCT.md" },
     { "name": "youtube-transcript", "reason": "No video/transcript features in scope" },
     { "name": "google-workspace-skills", "reason": "No Google Workspace integration declared" },
-    { "name": "accesslint-contrast-checker", "reason": "Single-axis (contrast only) — superseded by full a11y-skill axe-core audit (manual install needed)" },
     { "name": "automate", "reason": "n8n automation not in stack — BullMQ jobs are the queue layer" },
     { "name": "deep-research", "reason": "No autonomous research workflow in scope" }
   ],
   "keepActiveFromGlobal": [
+    { "name": "accesslint-contrast-checker", "reason": "WCAG AA contrast verification — pairs with a11y-skill" },
     { "name": "debug-skill", "reason": "Runtime debugging for Phase 6.5 triage — complements systematic-debugging" },
-    { "name": "design-auditor", "reason": "Visual scoring (paired with future a11y-skill — different axes, no overlap)" },
+    { "name": "design-auditor", "reason": "Visual scoring — different axis than ui-ux-pro-max (no overlap)" },
     { "name": "git-pushing", "reason": "Squash-merge workflow on every Part + Feature Update (Rule 23)" },
-    { "name": "owasp-security", "reason": "pnpm audit runs in Phase 5 + CI; OWASP review for security-sensitive Parts" },
+    { "name": "owasp-security", "reason": "pnpm audit + OWASP review for security-sensitive Parts" },
     { "name": "playwright-skill", "reason": "Visual QA (Rule 16) after Phase 6 + major Phase 7 updates" },
     { "name": "review-implementing", "reason": "Two-stage review (Rule 25) maps directly to this skill" },
-    { "name": "test-fixing", "reason": "Phase 5 validation gate (pnpm test must pass before Phase 6)" }
+    { "name": "test-fixing", "reason": "Phase 5 validation gate (pnpm test must pass)" }
   ],
-  "manualInstallNeeded": [
+  "resolvedConflicts": [
     {
-      "name": "a11y-skill",
-      "tier": "T1",
-      "reason": "WCAG 2.1 AA enforcement is mandatory (inputs.yml accessibility.level: wcag_aa, enforce_pre_delivery_checklist: true). Skill listed in SKILLS-INDEX.md but folder not present in local library. Install via: npx skills add airowe/claude-a11y-skill (per CLAUDE.md Bootstrap Step 8 guidance)."
+      "recommended": "systematic-debugging",
+      "conflictsWith": "debug-skill",
+      "severity": "MEDIUM",
+      "resolution": "Keep both — systematic-debugging handles methodology, debug-skill handles runtime inspection"
+    },
+    {
+      "recommended": "root-cause-tracing",
+      "conflictsWith": "systematic-debugging",
+      "severity": "MEDIUM",
+      "resolution": "Keep both — root-cause-tracing for cross-package trace analysis, systematic-debugging for structured methodology"
     }
   ],
+  "manualInstallNeeded": [],
   "recommendedPlugins": [],
-  "skippedOptional": [
-    {
-      "name": "webapp-testing",
-      "category": "Security & Testing",
-      "reason": "Overlaps with playwright-skill (already global). Skipped to avoid duplication."
-    }
-  ]
+  "skippedOptional": []
 }
