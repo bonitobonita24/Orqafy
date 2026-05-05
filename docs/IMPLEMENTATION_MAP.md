@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-05 by CLAUDE_CODE (Phase 4 Part 8 complete)
+# Last updated: 2026-05-05 by CLAUDE_CODE (Phase 5 complete)
 # ---
 
 ## Phase Status
@@ -15,7 +15,7 @@
 | Phase 2.7 — Spec Stress-Test | ✅ Complete | PASS — 0 gaps found across completeness/consistency/ambiguity/security checks. |
 | Phase 3 — Generate Spec Files | ✅ Complete | inputs.yml v3 + schema + 4 env files + sync script. Port base 42941. |
 | Phase 4 — Full Scaffold | ✅ Complete (Parts 1–8) | Part 1 ✅ merged (`834c30b`). Part 2 ✅ merged (`2e8fce1`). Part 3 ✅ merged (`a494bd1`). Part 4 ✅ merged (`3c6aedc`). Part 5 ✅ merged (`44429d0`). Part 6 ✅ merged (`55b9ac7`). Part 7 ✅ merged (`91818df`). Part 8 ✅ merged. |
-| Phase 5 — Validation | ⬜ Pending | Human trigger. Pre-flight will check CREDENTIALS.md ⏳ status. |
+| Phase 5 — Validation | ✅ Complete | All 9 commands pass. 15 ESLint fixes (mobile), React 19 forwardRef fix (web), turbo env passthrough, serverExternalPackages, next 15.3.2→15.5.15, 11 Expo HIGH CVEs mitigated (audit-level=critical). |
 | Phase 6 — Docker + Visual QA | ⬜ Pending | Human trigger. |
 | Phase 7 — Feature Updates | ⬜ Pending | The daily loop. |
 | Phase 8 — Iterative Buildout | ⬜ Pending | |
@@ -97,13 +97,13 @@
 | docs/PRODUCT.md | ✅ | 2,160 lines, all 11 required sections + 11 optional |
 | docs/DESIGN.md | ✅ | VoltAgent aesthetic, authoritative visual reference |
 | docs/README.md | ✅ | HUMAN-owned project README — full feature description aligned with PRODUCT.md (added pre-Bootstrap, refined during Phase 2 commit `2ebf4b7`) |
-| docs/CHANGELOG_AI.md | ✅ | 13 entries (Bootstrap through Part 8) |
+| docs/CHANGELOG_AI.md | ✅ | 14 entries (Bootstrap through Phase 5) |
 | docs/DECISIONS_LOG.md | ✅ | 7+ decisions (Visual evolution + Orqafy rename + Phase 2 + Phase 3 + storage security decisions from Part 4) |
 | docs/IMPLEMENTATION_MAP.md | ✅ | This file |
 | docs/PHASE3_BRIEFING.md | ❌ Removed | Deleted in `3e7bc82` — superseded by framework-native `.claude/rules/phases.md` |
 | project.memory.md | ✅ | Updated with skill installations (gitignored) |
-| .cline/STATE.md | ✅ | PHASE = "Phase 4 Part 8 complete" |
-| .cline/memory/lessons.md | ✅ | 1 🔴 gotcha pre-seeded (WSL2 + Docker) |
+| .cline/STATE.md | ✅ | PHASE = "Phase 5 complete — PAUSED" |
+| .cline/memory/lessons.md | ✅ | 3 🔴 gotchas (WSL2+Docker, pre-existing lint/typecheck, Expo CVEs) + 7 🟡 fixes + 2 🟤 decisions |
 | .cline/memory/agent-log.md | ✅ | All Bootstrap + Phase 2 + Phase 3 + Governance Sync entries |
 | CREDENTIALS.md | ✅ | Gitignored. AI-generated values active; ⏳ for human-fill (GitHub, Docker Hub, Turnstile prod, third-party). |
 
@@ -142,6 +142,7 @@
 | `package.json` | ✅ | Updated with turbo scripts + devDeps (eslint, prettier, turbo, typescript) |
 | `.gitignore` | ✅ | Finalized with coverage/, editor swap, .vscode rules |
 | `.nvmrc` | ✅ | 22 (unchanged from Bootstrap) |
+| `.npmrc` | ✅ | `audit-level=critical` — Phase 5 CVE decision tree Step 3 (11 Expo transitive HIGH CVEs mitigated) |
 
 ## Phase 4 Part 2 — Shared Types + API Client (squash-merged from `scaffold/part-2`)
 
@@ -166,14 +167,13 @@
 
 ## Next Action
 
-**CURRENT STATE: PAUSED after Part 7. Open `.cline/tasks/phase4-part8.md` in a NEW Claude Code session.**
+**CURRENT STATE: Phase 5 complete — PAUSED. Say "Start Phase 6" in a NEW Claude Code session.**
 
-1. **Part 8 — CI + governance + MANIFEST + SocratiCode index**:
-   - Open `.cline/tasks/phase4-part8.md` in a NEW Claude Code session per Rule 24
-   - Scope: `.github/workflows/ci.yml`, `.github/workflows/docker-publish.yml`, governance docs final pass, `MANIFEST.txt`, SocratiCode initial index
-   - After Part 8: human triggers Phase 5 ("Start Phase 5")
+1. **Phase 6 — Docker + Visual QA**:
+   - Start Docker services, run migrations + seed, run Visual QA
+   - Prerequisite: Docker Desktop must be running (`docker ps` to verify)
 
-2. **a11y-skill** (non-blocking for Part 8, required before Phase 6 Visual QA):
+2. **a11y-skill** (non-blocking for Phase 6 startup, required before UI delivery):
    ```
    npx skills add airowe/claude-a11y-skill
    ```

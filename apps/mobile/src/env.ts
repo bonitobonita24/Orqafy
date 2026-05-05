@@ -6,9 +6,9 @@ const envSchema = z.object({
   APP_ENV: z.enum(["development", "staging", "production"]).default("development"),
 });
 
-const extra = Constants.expoConfig?.extra ?? {};
+const extra: Record<string, unknown> = (Constants.expoConfig?.extra as Record<string, unknown> | undefined) ?? {};
 
 export const env = envSchema.parse({
-  API_URL: extra.apiUrl ?? "http://localhost:42951",
-  APP_ENV: extra.appEnv ?? "development",
+  API_URL: typeof extra.apiUrl === "string" ? extra.apiUrl : "http://localhost:42951",
+  APP_ENV: typeof extra.appEnv === "string" ? extra.appEnv : "development",
 });

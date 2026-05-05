@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
 import { database } from "@/storage";
-import { Task } from "@/storage/models";
+import type { Task } from "@/storage/models";
 import { Button, Card, CardTitle, CardDescription } from "@/components/ui";
 import { LoadingScreen } from "@/components/common";
 import { enqueueSync } from "@/sync";

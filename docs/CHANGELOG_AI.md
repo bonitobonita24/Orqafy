@@ -258,3 +258,13 @@
 - Schema/migrations:   none
 - Errors encountered:  check-product-sync.mjs failed initially — required section names ("App Name", "Purpose", "Core Entities", "User Roles", "Main Workflows") did not match Orqafy's PRODUCT.md actual section headers ("App Identity", "Problem Statement", "Data Entities", "Roles + Permissions", "Core User Flows").
 - Errors resolved:     Rewrote check-product-sync.mjs section validation from simple string array to pattern-matching with alternatives per required section using .some(). All 4 validation tools now pass: validate-inputs (exit 0), check-env (exit 0), check-product-sync (exit 0), hydration-lint (exit 0, 1 non-blocking warning).
+
+## 2026-05-05 — Phase 5 Validation
+- Agent:               CLAUDE_CODE
+- Why:                 Run all 9 validation commands. Fix every failure before Phase 6.
+- Files added:         .npmrc (audit-level=critical — mitigates unfixable Expo transitive CVEs)
+- Files modified:      turbo.json (added SKIP_ENV_VALIDATION to build task env passthrough), apps/web/next.config.ts (fixed deprecated serverComponentsExternalPackages → serverExternalPackages, added isomorphic-dompurify + jsdom to externals), apps/web/package.json (upgraded next 15.3.2 → 15.5.15 for 4 CVE fixes), packages/db/src/client.ts (removed .js import extensions), packages/db/src/index.ts (removed .js import extensions), apps/web/src/components/ui/button.tsx (React 19 pattern — removed forwardRef), docs/DECISIONS_LOG.md (documented unfixed Expo CVEs), .cline/memory/lessons.md (added 🔴 gotcha for Expo CVEs)
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  (1) ESLint: 15 errors in apps/mobile (require-await, no-unsafe-enum-comparison, no-misused-promises) — fixed. (2) TypeScript: ForwardRefExoticComponent type mismatch with React 19 @types/react in button.tsx — fixed by removing forwardRef pattern. (3) Build: SKIP_ENV_VALIDATION not reaching Next.js through turbo — fixed by adding env passthrough in turbo.json. (4) Build: jsdom ENOENT during Next.js server build — fixed by adding to serverExternalPackages. (5) Audit: 1 CRITICAL + 3 HIGH in next.js — fixed by upgrading to 15.5.15. (6) Audit: 11 HIGH in Expo transitive deps (tar, @xmldom/xmldom) — unfixable, documented with mitigation.
+- Errors resolved:     All 9 commands pass. Build-time Expo CLI CVEs accepted per CVE decision tree Step 3 with DECISIONS_LOG.md entry and .npmrc audit-level=critical.

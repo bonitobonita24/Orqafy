@@ -9,12 +9,12 @@ export interface GpsCoordinates {
 
 export async function requestLocationPermission(): Promise<boolean> {
   const { status } = await Location.requestForegroundPermissionsAsync();
-  return status === "granted";
+  return status === Location.PermissionStatus.GRANTED;
 }
 
 export async function requestBackgroundLocationPermission(): Promise<boolean> {
   const { status } = await Location.requestBackgroundPermissionsAsync();
-  return status === "granted";
+  return status === Location.PermissionStatus.GRANTED;
 }
 
 export async function getCurrentPosition(): Promise<GpsCoordinates> {

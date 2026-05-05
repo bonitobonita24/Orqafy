@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { database } from "@/storage";
-import { Payslip } from "@/storage/models";
+import type { Payslip } from "@/storage/models";
 import { Card, CardTitle } from "@/components/ui";
 import { EmptyState } from "@/components/common";
 import { formatDate } from "@/lib/date";

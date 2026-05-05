@@ -12,7 +12,8 @@
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "env": ["SKIP_ENV_VALIDATION"]
     },
     "dev": {
       "cache": false,

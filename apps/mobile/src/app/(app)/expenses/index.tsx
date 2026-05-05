@@ -3,10 +3,9 @@ import { View, Text, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { database } from "@/storage";
-import { Expense } from "@/storage/models";
+import type { Expense } from "@/storage/models";
 import { Button, Card, CardTitle } from "@/components/ui";
 import { EmptyState } from "@/components/common";
-import { formatDate } from "@/lib/date";
 
 export default function ExpensesScreen(): React.JSX.Element {
   const [expenses, setExpenses] = useState<Expense[]>([]);

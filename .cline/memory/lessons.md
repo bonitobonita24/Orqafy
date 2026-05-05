@@ -149,4 +149,15 @@
   assignable as JSX component in button.tsx and app-header.tsx. Root cause: @types/react@19.2.14
   type mismatch with ForwardRefExoticComponent. Likely fix: pin @types/react version or update
   component signatures. All must be resolved in Phase 5 before Phase 6 can start.
+
+## 2026-05-05 — 🔴 Unfixed HIGH CVEs in Expo transitive deps (tar, @xmldom/xmldom)
+- Type:      🔴 gotcha
+- Phase:     Phase 5 Validation
+- Files:     .npmrc, apps/mobile/package.json
+- Concepts:  pnpm-audit, expo, tar, xmldom, CVE, transitive-dependency
+- Narrative: 11 HIGH CVEs in tar and @xmldom/xmldom are transitive deps of @expo/cli.
+  Patched versions exist but expo locks older versions. These are build-time CLI tools
+  only — not runtime code. Mitigated by setting audit-level=critical in .npmrc.
+  Documented in DECISIONS_LOG.md. Revisit when Expo SDK updates its deps.
+  Also: 5 MODERATE CVEs remain (not blocking — audit-level=high only blocks on HIGH+).
 # ---

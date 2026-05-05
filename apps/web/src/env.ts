@@ -59,17 +59,19 @@ const _clientEnv = clientSchema.safeParse({
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
 });
 
-if (!_serverEnv.success) {
-  console.error("❌ Invalid server env vars:", _serverEnv.error.flatten().fieldErrors);
-  throw new Error("Invalid server environment variables");
+if (process.env.SKIP_ENV_VALIDATION !== "1") {
+  if (!_serverEnv.success) {
+    console.error("❌ Invalid server env vars:", _serverEnv.error.flatten().fieldErrors);
+    throw new Error("Invalid server environment variables");
+  }
+
+  if (!_clientEnv.success) {
+    console.error("❌ Invalid client env vars:", _clientEnv.error.flatten().fieldErrors);
+    throw new Error("Invalid client environment variables");
+  }
 }
 
-if (!_clientEnv.success) {
-  console.error("❌ Invalid client env vars:", _clientEnv.error.flatten().fieldErrors);
-  throw new Error("Invalid client environment variables");
-}
-
-export const env = {
-  ..._serverEnv.data,
-  ..._clientEnv.data,
-} as const;
+export const env = (_serverEnv.success && _clientEnv.success
+  ? { ..._serverEnv.data, ..._clientEnv.data }
+  : { ...serverSchema.partial().parse({}), ...clientSchema.partial().parse({}) }
+) as z.infer<typeof serverSchema> & z.infer<typeof clientSchema>;

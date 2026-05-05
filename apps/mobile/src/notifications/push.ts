@@ -4,12 +4,13 @@ import { Platform } from "react-native";
 import { apiFetch } from "@/api";
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    priority: Notifications.AndroidNotificationPriority.HIGH,
-  }),
+  handleNotification: () =>
+    Promise.resolve({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      priority: Notifications.AndroidNotificationPriority.HIGH,
+    }),
 });
 
 export async function registerForPushNotifications(): Promise<string | null> {
@@ -20,12 +21,12 @@ export async function registerForPushNotifications(): Promise<string | null> {
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
 
-  if (existingStatus !== "granted") {
+  if (existingStatus !== Notifications.PermissionStatus.GRANTED) {
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
   }
 
-  if (finalStatus !== "granted") {
+  if (finalStatus !== Notifications.PermissionStatus.GRANTED) {
     return null;
   }
 

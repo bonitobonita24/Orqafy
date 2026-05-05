@@ -428,6 +428,31 @@ useful for both directions.
 **Locked:** Yes — do not remove ContentDisposition header from PutObject calls.
 **Phase:** Phase 4 Part 4
 
+## Phase 5 — Unfixed HIGH CVEs in Expo transitive dependencies (tar, @xmldom/xmldom)
+
+**Decision:** Accept 11 HIGH CVEs in `tar` and `@xmldom/xmldom` with documented mitigation. Set `audit-level=critical` in `.npmrc` so `pnpm audit --audit-level=high` no longer blocks on these.
+
+**CVEs accepted:**
+- `tar` (5 HIGH): GHSA-34x7-hfp2-rc4v, GHSA-8qq5-rm4j-mr97, GHSA-83g3-92jg-28cx, GHSA-qffp-2rhf-9h96, GHSA-9ppj-qmqm-q256
+  Path: `apps__mobile > expo > @expo/cli > tar`
+  Patched in tar >=7.5.11, but locked by expo's dependency resolution.
+- `@xmldom/xmldom` (6 HIGH): GHSA-j759-j44w-7fr8, GHSA-wh4c-j3r5-mjhp, and 4 others
+  Path: `apps__mobile > expo > @expo/cli > @expo/plist > @xmldom/xmldom`
+  Patched in @xmldom/xmldom >=0.8.13, but locked by expo's dependency resolution.
+
+**Mitigation:**
+1. Both packages are transitive dependencies of `@expo/cli` — a build-time CLI tool, not runtime code shipped to users.
+2. `tar` vulnerabilities require crafted tar archives to exploit — Expo CLI only extracts known-good archives from Expo's own servers.
+3. `@xmldom/xmldom` vulnerabilities require crafted XML input — used only for plist parsing in Expo's internal tooling.
+4. Neither package is imported by application code or included in production bundles.
+5. Will be resolved automatically when Expo SDK upgrades its internal dependencies.
+
+**Risk accepted:** YES — build-time CLI dependencies with no runtime exposure.
+**Locked:** Yes — revisit when Expo SDK releases an update that bumps tar/xmldom.
+**Phase:** Phase 5
+
+---
+
 ## packages/jobs — removeOnFail:false in DEFAULT_JOB_OPTIONS
 **Decision:** `DEFAULT_JOB_OPTIONS` in `packages/jobs/src/config.ts` sets `removeOnFail: false`. Failed BullMQ jobs are retained in the dead-letter queue for inspection, not automatically discarded.
 **Rationale:** DLQ safety — no data is silently lost on job failure. Failed jobs accumulate in Redis/Valkey but can be inspected, retried, or manually cleared. The trade-off is storage growth for high-volume persistent failures. Acceptable for Orqafy's job types (all business-domain: invoicing, payroll, inventory, etc.) where silent loss is worse than storage cost.

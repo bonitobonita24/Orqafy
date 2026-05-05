@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { View, Text, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { database } from "@/storage";
-import { DtrEntry } from "@/storage/models";
+import type { DtrEntry } from "@/storage/models";
 import { Button, Card, CardTitle } from "@/components/ui";
 import { useLocation } from "@/hooks";
 import { enqueueSync } from "@/sync";

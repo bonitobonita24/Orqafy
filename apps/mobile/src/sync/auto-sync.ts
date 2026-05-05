@@ -7,15 +7,17 @@ let syncTimer: ReturnType<typeof setInterval> | null = null;
 export function startAutoSync(): void {
   if (syncTimer !== null) return;
 
-  syncTimer = setInterval(async () => {
-    const netState = await NetInfo.fetch();
-    if (netState.isConnected !== true) return;
+  syncTimer = setInterval(() => {
+    void (async () => {
+      const netState = await NetInfo.fetch();
+      if (netState.isConnected !== true) return;
 
-    try {
-      await processQueue();
-    } catch {
-      // Silent fail — will retry on next interval
-    }
+      try {
+        await processQueue();
+      } catch {
+        // Silent fail — will retry on next interval
+      }
+    })();
   }, SYNC_INTERVAL_MS);
 }
 

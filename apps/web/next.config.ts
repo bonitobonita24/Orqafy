@@ -39,9 +39,12 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  experimental: {
-    serverComponentsExternalPackages: ["@blocknote/core", "@react-pdf/renderer"],
-  },
+  serverExternalPackages: [
+    "@blocknote/core",
+    "@react-pdf/renderer",
+    "isomorphic-dompurify",
+    "jsdom",
+  ],
   async headers() {
     return [
       {

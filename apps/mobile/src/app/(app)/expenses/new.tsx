@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { database } from "@/storage";
-import { Expense } from "@/storage/models";
+import type { Expense } from "@/storage/models";
 import { Button, Input } from "@/components/ui";
 import { enqueueSync } from "@/sync";
 import { getStoredTenantId } from "@/lib/auth";

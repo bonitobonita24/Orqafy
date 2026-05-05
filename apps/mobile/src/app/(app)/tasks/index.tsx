@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { database } from "@/storage";
-import { Task } from "@/storage/models";
+import type { Task } from "@/storage/models";
 import { Card, CardTitle, CardDescription } from "@/components/ui";
 import { EmptyState } from "@/components/common";
 
