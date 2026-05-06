@@ -7,16 +7,25 @@ ENV=${1:-dev}
 CMD=${@:2}
 BASE=deploy/compose/$ENV
 
-docker compose -f $BASE/docker-compose.db.yml $CMD
-docker compose -f $BASE/docker-compose.cache.yml $CMD
-docker compose -f $BASE/docker-compose.storage.yml $CMD
-docker compose -f $BASE/docker-compose.pgadmin.yml $CMD
+case "$ENV" in
+  dev)     ENV_FILE=.env.dev ;;
+  stage)   ENV_FILE=.env.staging ;;
+  prod)    ENV_FILE=.env.prod ;;
+  *)       ENV_FILE=.env.dev ;;
+esac
+
+DC="docker compose --env-file $ENV_FILE"
+
+$DC -f $BASE/docker-compose.db.yml $CMD
+$DC -f $BASE/docker-compose.cache.yml $CMD
+$DC -f $BASE/docker-compose.storage.yml $CMD
+$DC -f $BASE/docker-compose.pgadmin.yml $CMD
 if [ "$ENV" = "dev" ]; then
-  docker compose -f $BASE/docker-compose.infra.yml $CMD
+  $DC -f $BASE/docker-compose.infra.yml $CMD
 fi
 # Dev: --build forces rebuild from source every time
 if [ "$ENV" = "dev" ] && [[ "$CMD" == *"up"* ]]; then
-  docker compose -f $BASE/docker-compose.app.yml up --build -d
+  $DC -f $BASE/docker-compose.app.yml up --build -d
 else
-  docker compose -f $BASE/docker-compose.app.yml $CMD
+  $DC -f $BASE/docker-compose.app.yml $CMD
 fi

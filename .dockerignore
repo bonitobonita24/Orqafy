@@ -1,0 +1,16 @@
+node_modules
+.next
+.turbo
+.git
+.env*
+!.env.example
+*.md
+coverage
+.code-review-graph
+.specstory
+.cline
+.claude
+design-system
+docs
+AI
+.ai_prompt

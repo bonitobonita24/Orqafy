@@ -161,3 +161,24 @@
   Documented in DECISIONS_LOG.md. Revisit when Expo SDK updates its deps.
   Also: 5 MODERATE CVEs remain (not blocking — audit-level=high only blocks on HIGH+).
 # ---
+
+## 2026-05-07 — 🟡 Auth.js v5 needs AUTH_TRUST_HOST=true on non-Vercel hosts
+- Type:      🟡 fix
+- Phase:     Phase 6 Docker Services / Visual QA
+- Files:     .env.dev, .env.example
+- Concepts:  auth.js-v5, AUTH_TRUST_HOST, UntrustedHost, localhost, middleware, redirect
+- Narrative: Phase 6 Visual QA showed two symptoms: (1) GET / returned 404 instead of
+  redirecting to /login as the middleware intended, (2) app logs were spammed with
+  Auth.js "UntrustedHost: Host must be trusted. URL was: http://localhost:42951/api/auth/session"
+  on every request. Both had the same root cause: Auth.js v5 only auto-trusts the Vercel
+  preview/production host and returns errors elsewhere unless AUTH_TRUST_HOST=true
+  (or trustHost: true in the NextAuth config object) is set. With Auth.js refusing to
+  resolve session, req.auth in middleware was throwing/null in a way that the
+  `if (!session)` branch did NOT redirect — Next.js then fell through to route lookup
+  and returned 404 because there is no root page.tsx. Fix: add AUTH_TRUST_HOST=true
+  to .env.dev (and .env.example for future clones), recreate the app container so the
+  new env propagates, verify /  → 307 to /login?callbackUrl=%2F. Lesson for future
+  V31 projects: the V31 .env templates (Phase 3) should include AUTH_TRUST_HOST=true
+  by default for any non-Vercel deployment (Komodo + Traefik in this stack always
+  qualifies). Treat this as a Phase 7 framework fix to lift into the master prompt.
+# ---

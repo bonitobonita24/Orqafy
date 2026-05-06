@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-05 by CLAUDE_CODE (Phase 5 complete)
+# Last updated: 2026-05-07 by CLAUDE_CODE (Phase 6 complete — PAUSED)
 # ---
 
 ## Phase Status
@@ -16,7 +16,7 @@
 | Phase 3 — Generate Spec Files | ✅ Complete | inputs.yml v3 + schema + 4 env files + sync script. Port base 42941. |
 | Phase 4 — Full Scaffold | ✅ Complete (Parts 1–8) | Part 1 ✅ merged (`834c30b`). Part 2 ✅ merged (`2e8fce1`). Part 3 ✅ merged (`a494bd1`). Part 4 ✅ merged (`3c6aedc`). Part 5 ✅ merged (`44429d0`). Part 6 ✅ merged (`55b9ac7`). Part 7 ✅ merged (`91818df`). Part 8 ✅ merged. |
 | Phase 5 — Validation | ✅ Complete | All 9 commands pass. 15 ESLint fixes (mobile), React 19 forwardRef fix (web), turbo env passthrough, serverExternalPackages, next 15.3.2→15.5.15, 11 Expo HIGH CVEs mitigated (audit-level=critical). |
-| Phase 6 — Docker + Visual QA | ⬜ Pending | Human trigger. |
+| Phase 6 — Docker + Visual QA | ✅ Complete | All 7 dev services healthy, migrations in sync, seed populated (13 roles, 5 plans, demo tenant, webmaster, 9 depts, 9 expense cats, VAT 12%, warehouse, FY 2026, 31 CoA). Visual QA per Rule 16 passed: /api/health 200, /login 200 ("Sign In \| Orqafy"), / 307→/login (after AUTH_TRUST_HOST autofix), 6 security headers active. Browser-interactive auth flow QA deferred — needs system Chrome. |
 | Phase 7 — Feature Updates | ⬜ Pending | The daily loop. |
 | Phase 8 — Iterative Buildout | ⬜ Pending | |
 
@@ -97,13 +97,13 @@
 | docs/PRODUCT.md | ✅ | 2,160 lines, all 11 required sections + 11 optional |
 | docs/DESIGN.md | ✅ | VoltAgent aesthetic, authoritative visual reference |
 | docs/README.md | ✅ | HUMAN-owned project README — full feature description aligned with PRODUCT.md (added pre-Bootstrap, refined during Phase 2 commit `2ebf4b7`) |
-| docs/CHANGELOG_AI.md | ✅ | 14 entries (Bootstrap through Phase 5) |
+| docs/CHANGELOG_AI.md | ✅ | 15 entries (Bootstrap through Phase 6) |
 | docs/DECISIONS_LOG.md | ✅ | 7+ decisions (Visual evolution + Orqafy rename + Phase 2 + Phase 3 + storage security decisions from Part 4) |
 | docs/IMPLEMENTATION_MAP.md | ✅ | This file |
 | docs/PHASE3_BRIEFING.md | ❌ Removed | Deleted in `3e7bc82` — superseded by framework-native `.claude/rules/phases.md` |
 | project.memory.md | ✅ | Updated with skill installations (gitignored) |
-| .cline/STATE.md | ✅ | PHASE = "Phase 5 complete — PAUSED" |
-| .cline/memory/lessons.md | ✅ | 3 🔴 gotchas (WSL2+Docker, pre-existing lint/typecheck, Expo CVEs) + 7 🟡 fixes + 2 🟤 decisions |
+| .cline/STATE.md | ✅ | PHASE = "Phase 6 complete — PAUSED" |
+| .cline/memory/lessons.md | ✅ | 3 🔴 gotchas (WSL2+Docker, pre-existing lint/typecheck, Expo CVEs) + 8 🟡 fixes (added Auth.js v5 AUTH_TRUST_HOST) + 2 🟤 decisions |
 | .cline/memory/agent-log.md | ✅ | All Bootstrap + Phase 2 + Phase 3 + Governance Sync entries |
 | CREDENTIALS.md | ✅ | Gitignored. AI-generated values active; ⏳ for human-fill (GitHub, Docker Hub, Turnstile prod, third-party). |
 
@@ -167,14 +167,20 @@
 
 ## Next Action
 
-**CURRENT STATE: Phase 5 complete — PAUSED. Say "Start Phase 6" in a NEW Claude Code session.**
+**CURRENT STATE: Phase 6 complete — PAUSED. Say "Feature Update" or "Start Phase 8" in a NEW Claude Code session.**
 
-1. **Phase 6 — Docker + Visual QA**:
-   - Start Docker services, run migrations + seed, run Visual QA
-   - Prerequisite: Docker Desktop must be running (`docker ps` to verify)
+1. **Phase 7 — Feature Updates** (the daily loop):
+   - Edit `docs/PRODUCT.md` to describe a feature
+   - Say "Feature Update" — Claude Code reads 9 governance docs and implements
 
-2. **a11y-skill** (non-blocking for Phase 6 startup, required before UI delivery):
-   ```
-   npx skills add airowe/claude-a11y-skill
-   ```
-   Required by `inputs.yml accessibility.level: wcag_aa` + `enforce_pre_delivery_checklist: true`.
+2. **Phase 8 — Iterative Buildout** (roadmap proposal):
+   - Say "Start Phase 8" — Claude Code proposes the next batch from PRODUCT.md vs IMPLEMENTATION_MAP.md gaps
+
+3. **Browser-interactive Visual QA** is gated on system Chrome install
+   (MCP Playwright requires `/opt/google/chrome/chrome`). Not blocking
+   non-UI work. Resolve before the first Phase 7 that needs form-flow QA.
+
+4. **Framework lift candidate** (logged in lessons.md as 🟡 fix 2026-05-07):
+   Phase 3 env templates should default `AUTH_TRUST_HOST=true` for non-Vercel
+   stacks. Lift into V31 master prompt — saves every future project from
+   the same `/` 404 + UntrustedHost spam during Phase 6 QA.

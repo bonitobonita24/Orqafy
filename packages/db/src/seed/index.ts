@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { hash } from 'bcryptjs';
+import bcrypt from 'bcryptjs';
 import { createId } from '@paralleldrive/cuid2';
 
 const prisma = new PrismaClient();
@@ -127,26 +127,19 @@ async function main() {
       'WEBMASTER_PASSWORD env var is required. Set it from CREDENTIALS.md "First Admin Account" section.'
     );
   }
-  const passwordHash = await hash(webmasterPassword, 12);
+  const passwordHash = await bcrypt.hash(webmasterPassword, 12);
 
   const superAdminRoleId = roles['tenant_super_admin'];
   if (superAdminRoleId === undefined) {
     throw new Error('tenant_super_admin role not found');
   }
 
-  await prisma.$executeRawUnsafe(`
-    INSERT INTO "${schemaName}".users (id, email, password_hash, first_name, last_name, display_name, role_id, is_active, security_version, created_at, updated_at)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
-    ON CONFLICT (email) DO NOTHING
-  `.replace(/\$1/g, `'${createId()}'`)
-    .replace(/\$2/g, `'webmaster@orqafy.local'`)
-    .replace(/\$3/g, `'${passwordHash}'`)
-    .replace(/\$4/g, `'Web'`)
-    .replace(/\$5/g, `'Master'`)
-    .replace(/\$6/g, `'webmaster'`)
-    .replace(/\$7/g, `'${superAdminRoleId}'`)
-    .replace(/\$8/g, 'true')
-    .replace(/\$9/g, '1')
+  const webmasterId = createId();
+  const safeHash = passwordHash.replace(/'/g, "''");
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO "${schemaName}".users (id, email, password_hash, first_name, last_name, display_name, role_id, is_active, security_version, created_at, updated_at)
+     VALUES ('${webmasterId}', 'webmaster@orqafy.local', '${safeHash}', 'Web', 'Master', 'webmaster', '${superAdminRoleId}', true, 1, NOW(), NOW())
+     ON CONFLICT (email) DO NOTHING`
   );
   console.log('  ✅ Webmaster account seeded (webmaster@orqafy.local)');
 
@@ -156,11 +149,11 @@ async function main() {
     'Inventory', 'Projects', 'Support', 'Operations',
   ];
   for (const name of deptData) {
-    const slug = name.toLowerCase().replace(/ /g, '-');
+    const code = name.toLowerCase().replace(/ /g, '-');
     await prisma.$executeRawUnsafe(`
-      INSERT INTO "${schemaName}".departments (id, name, slug, is_active, created_at, updated_at)
-      VALUES ('${createId()}', '${name}', '${slug}', true, NOW(), NOW())
-      ON CONFLICT (slug) DO NOTHING
+      INSERT INTO "${schemaName}".departments (id, name, code, is_active, created_at, updated_at)
+      VALUES ('${createId()}', '${name}', '${code}', true, NOW(), NOW())
+      ON CONFLICT (code) DO NOTHING
     `);
   }
   console.log(`  ✅ ${deptData.length} departments seeded`);
@@ -173,36 +166,36 @@ async function main() {
   ];
   for (let i = 0; i < expenseCats.length; i++) {
     const name = expenseCats[i] as string;
-    const slug = name.toLowerCase().replace(/ & /g, '-').replace(/ /g, '-');
+    const code = name.toLowerCase().replace(/ & /g, '-').replace(/ /g, '-');
     await prisma.$executeRawUnsafe(`
-      INSERT INTO "${schemaName}".expense_categories (id, name, slug, is_active, sort_order, created_at, updated_at)
-      VALUES ('${createId()}', '${name}', '${slug}', true, ${i}, NOW(), NOW())
-      ON CONFLICT (slug) DO NOTHING
+      INSERT INTO "${schemaName}".expense_categories (id, name, code, is_active, sort_order, created_at, updated_at)
+      VALUES ('${createId()}', '${name}', '${code}', true, ${i}, NOW(), NOW())
+      ON CONFLICT (code) DO NOTHING
     `);
   }
   console.log(`  ✅ ${expenseCats.length} expense categories seeded`);
 
   // ── TaxRate (VAT 12%) ──
   await prisma.$executeRawUnsafe(`
-    INSERT INTO "${schemaName}".tax_rates (id, name, slug, rate, is_default, is_active, created_at, updated_at)
+    INSERT INTO "${schemaName}".tax_rates (id, name, code, rate, is_default, is_active, created_at, updated_at)
     VALUES ('${createId()}', 'VAT', 'vat-12', 12.00, true, true, NOW(), NOW())
-    ON CONFLICT (slug) DO NOTHING
+    ON CONFLICT (code) DO NOTHING
   `);
   console.log('  ✅ Default tax rate (VAT 12%) seeded');
 
   // ── Default warehouse ──
   await prisma.$executeRawUnsafe(`
-    INSERT INTO "${schemaName}".warehouses (id, name, slug, is_default, is_active, created_at, updated_at)
+    INSERT INTO "${schemaName}".warehouses (id, name, code, is_default, is_active, created_at, updated_at)
     VALUES ('${createId()}', 'Main Warehouse', 'main-warehouse', true, true, NOW(), NOW())
-    ON CONFLICT (slug) DO NOTHING
+    ON CONFLICT (code) DO NOTHING
   `);
   console.log('  ✅ Default warehouse seeded');
 
   // ── FiscalYear (current year) ──
   const year = new Date().getFullYear();
   await prisma.$executeRawUnsafe(`
-    INSERT INTO "${schemaName}".fiscal_years (id, name, start_date, end_date, is_closed, is_active, created_at, updated_at)
-    VALUES ('${createId()}', 'FY ${year}', '${year}-01-01', '${year}-12-31', false, true, NOW(), NOW())
+    INSERT INTO "${schemaName}".fiscal_years (id, name, start_date, end_date, is_closed, created_at, updated_at)
+    VALUES ('${createId()}', 'FY ${year}', '${year}-01-01', '${year}-12-31', false, NOW(), NOW())
     ON CONFLICT DO NOTHING
   `);
   console.log(`  ✅ Fiscal year FY ${year} seeded`);
@@ -247,9 +240,10 @@ async function main() {
     const id = createId();
     accountIds[acct.code] = id;
     const parentId = acct.parentCode !== undefined ? accountIds[acct.parentCode] ?? null : null;
+    const safeName = acct.name.replace(/'/g, "''");
     await prisma.$executeRawUnsafe(`
-      INSERT INTO "${schemaName}".accounts (id, code, name, type, is_group, parent_id, is_active, created_at, updated_at)
-      VALUES ('${id}', '${acct.code}', '${acct.name}', '${acct.type}', ${acct.isGroup}, ${parentId !== null ? `'${parentId}'` : 'NULL'}, true, NOW(), NOW())
+      INSERT INTO "${schemaName}".accounts (id, code, name, type, is_system, parent_id, is_active, created_at, updated_at)
+      VALUES ('${id}', '${acct.code}', '${safeName}', '${acct.type}', ${acct.isGroup}, ${parentId !== null ? `'${parentId}'` : 'NULL'}, true, NOW(), NOW())
       ON CONFLICT (code) DO NOTHING
     `);
   }

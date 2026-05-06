@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import type { Prisma } from "@prisma/client";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { prisma as db } from "@orqafy/db";
 
@@ -20,7 +21,7 @@ export const demoRouter = createTRPCRouter({
 
     // Delete all mutable tenant data — schema-isolated tables only
     // The seed script will re-populate demo data afterwards
-    await db.$transaction(async (tx) => {
+    await db.$transaction(async (tx: Prisma.TransactionClient) => {
       // Delete in dependency order (children before parents)
       // Schema-per-tenant: SET search_path handles isolation — no tenantId filters needed
       // lineItems are JSON on Invoice (no separate InvoiceItem model)

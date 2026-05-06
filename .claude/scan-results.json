@@ -1,6 +1,6 @@
 {
-  "scannedAt": "2026-05-05",
-  "previousScan": "2026-05-03",
+  "scannedAt": "2026-05-06",
+  "previousScan": "2026-05-05",
   "techStack": [
     "TypeScript (strict)",
     "Next.js 15 (App Router)",
@@ -30,7 +30,7 @@
     "pnpm monorepo + Turborepo"
   ],
   "projectType": "full-stack monorepo (web + mobile + worker, multi-tenant SaaS)",
-  "phaseAtScan": "Phase 4 Part 8 complete — all scaffold parts merged to main",
+  "phaseAtScan": "Phase 5 complete — ready for Phase 6",
   "installedSkills": [
     {
       "name": "ui-ux-pro-max",
@@ -75,37 +75,51 @@
       "reason": "8-Part Phase 4 scaffold + multi-step Feature Updates + governance coordination."
     },
     {
-      "name": "mcp-builder",
-      "category": "Development & DevOps",
-      "tier": "T2",
-      "reason": "4 MCP servers wired in .vscode/mcp.json. Reference for future custom MCP development."
-    },
-    {
-      "name": "claude-api",
-      "category": "Development & DevOps",
-      "tier": "T4",
-      "reason": "Hedge for future Claude API features in tenant apps. Remove if not needed through Phase 8."
-    },
-    {
       "name": "webapp-testing",
       "category": "Security & Testing",
       "tier": "T2",
-      "addedAt": "2026-05-05",
-      "reason": "Next.js web app with localhost dev server, tRPC API endpoints, Docker-based services. Complements playwright-skill + test-fixing."
-    },
-    {
-      "name": "root-cause-tracing",
-      "category": "Security & Testing",
-      "tier": "T4",
-      "addedAt": "2026-05-05",
-      "reason": "Tracing cross-package bugs in monorepo (packages/db -> apps/web -> tRPC chain). Supplements systematic-debugging + debug-skill."
+      "reason": "Next.js web app with localhost dev server, tRPC API endpoints, Docker-based services."
     },
     {
       "name": "a11y-skill",
       "category": "Security & Testing",
       "tier": "T1",
-      "addedAt": "2026-05-05",
       "reason": "WCAG 2.1 AA enforcement mandatory (accessibility.level: wcag_aa). axe-core runtime + eslint-plugin-jsx-a11y static analysis."
+    },
+    {
+      "name": "owasp-security",
+      "category": "Security & Testing",
+      "tier": "T1",
+      "addedAt": "2026-05-06",
+      "reason": "Multi-tenant SaaS with Xendit payments, Turnstile bot protection, L1-L6 security layers. OWASP Top 10 review essential."
+    },
+    {
+      "name": "playwright-skill",
+      "category": "Security & Testing",
+      "tier": "T4",
+      "addedAt": "2026-05-06",
+      "reason": "Visual QA (Rule 16) after Phase 6 + major Phase 7 updates. E2E testing for auth flows and multi-tenant routing."
+    },
+    {
+      "name": "design-auditor",
+      "category": "Design & UI",
+      "tier": "T4",
+      "addedAt": "2026-05-06",
+      "reason": "Visual design scoring alongside ui-ux-pro-max. Different axis: audits vs generates."
+    },
+    {
+      "name": "test-fixing",
+      "category": "Collaboration & Workflow",
+      "tier": "T4",
+      "addedAt": "2026-05-06",
+      "reason": "Phase 5 validation gate requires all tests pass. Pairs with systematic-debugging for test failures."
+    },
+    {
+      "name": "varlock-claude-skill",
+      "category": "Security & Testing",
+      "tier": "T4",
+      "addedAt": "2026-05-06",
+      "reason": "Environment variable auditing for .env.dev/.env.staging/.env.prod + CREDENTIALS.md validation."
     }
   ],
   "removedSkills": [
@@ -118,44 +132,33 @@
       "name": "design-system",
       "removedAt": "2026-05-02",
       "reason": "Redundant with shadcn/ui CSS variable system + ui-ux-pro-max."
+    },
+    {
+      "name": "claude-api",
+      "removedAt": "2026-05-06",
+      "reason": "No Claude API / Anthropic SDK usage in Orqafy. No AI integration features declared in PRODUCT.md."
+    },
+    {
+      "name": "mcp-builder",
+      "removedAt": "2026-05-06",
+      "reason": "Project consumes 4 pre-configured MCP servers but does not build custom MCPs."
+    },
+    {
+      "name": "root-cause-tracing",
+      "removedAt": "2026-05-06",
+      "reason": "Subset of systematic-debugging. Execution path tracing covered by systematic-debugging methodology."
     }
   ],
-  "excludedGlobals": [
-    { "name": "article-extractor", "reason": "No content extraction/scraping in Orqafy ERP scope" },
-    { "name": "content-research-writer", "reason": "No marketing content generation needed" },
-    { "name": "csv-data-summarizer-claude-skill", "reason": "Data lives in Postgres — postgres skill is the right fit" },
-    { "name": "imagen", "reason": "No AI image generation in ERP context" },
-    { "name": "image-enhancer", "reason": "No image processing features declared in PRODUCT.md" },
-    { "name": "youtube-transcript", "reason": "No video/transcript features in scope" },
-    { "name": "google-workspace-skills", "reason": "No Google Workspace integration declared" },
-    { "name": "automate", "reason": "n8n automation not in stack — BullMQ jobs are the queue layer" },
-    { "name": "deep-research", "reason": "No autonomous research workflow in scope" }
-  ],
-  "keepActiveFromGlobal": [
-    { "name": "accesslint-contrast-checker", "reason": "WCAG AA contrast verification — pairs with a11y-skill" },
-    { "name": "debug-skill", "reason": "Runtime debugging for Phase 6.5 triage — complements systematic-debugging" },
-    { "name": "design-auditor", "reason": "Visual scoring — different axis than ui-ux-pro-max (no overlap)" },
-    { "name": "git-pushing", "reason": "Squash-merge workflow on every Part + Feature Update (Rule 23)" },
-    { "name": "owasp-security", "reason": "pnpm audit + OWASP review for security-sensitive Parts" },
-    { "name": "playwright-skill", "reason": "Visual QA (Rule 16) after Phase 6 + major Phase 7 updates" },
-    { "name": "review-implementing", "reason": "Two-stage review (Rule 25) maps directly to this skill" },
-    { "name": "test-fixing", "reason": "Phase 5 validation gate (pnpm test must pass)" }
-  ],
+  "excludedGlobals": [],
   "resolvedConflicts": [
     {
       "recommended": "systematic-debugging",
-      "conflictsWith": "debug-skill",
+      "conflictsWith": "root-cause-tracing",
       "severity": "MEDIUM",
-      "resolution": "Keep both — systematic-debugging handles methodology, debug-skill handles runtime inspection"
-    },
-    {
-      "recommended": "root-cause-tracing",
-      "conflictsWith": "systematic-debugging",
-      "severity": "MEDIUM",
-      "resolution": "Keep both — root-cause-tracing for cross-package trace analysis, systematic-debugging for structured methodology"
+      "resolution": "Removed root-cause-tracing — systematic-debugging covers its execution path tracing methodology"
     }
   ],
-  "manualInstallNeeded": [],
   "recommendedPlugins": [],
-  "skippedOptional": []
+  "skippedOptional": [],
+  "globalCleanupAdvised": true
 }
