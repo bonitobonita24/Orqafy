@@ -23,7 +23,11 @@ export const DEFAULT_JOB_OPTIONS: JobsOptions = {
 export interface TenantProvisioningJobData extends BaseJobData {
   tenantSlug: string;
   tenantName: string;
+  schemaName: string;
   plan: string;
+  ownerEmail: string;
+  ownerName: string;
+  ownerPassword: string;
 }
 
 export interface TenantBillingJobData extends BaseJobData {

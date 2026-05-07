@@ -37,6 +37,17 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
 
 export const middleware = t.middleware;
 
+// Platform Owner procedure — requires "Platform Owner" role; no tenant scoping
+export const platformProcedure = t.procedure.use(({ ctx, next }) => {
+  if (ctx.userId === null) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+  if (!ctx.roles.includes("Platform Owner")) {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+  return next({ ctx: { ...ctx, userId: ctx.userId } });
+});
+
 // Demo-safe write procedure — blocks mutations on demo tenant
 export const writeProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.isDemoTenant === true) {
