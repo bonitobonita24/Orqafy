@@ -281,3 +281,38 @@
 - Visual QA (Rule 16): ✅ App loads (no 5xx). ✅ /api/health → 200 {"status":"ok"}. ✅ /login → 200, server-rendered HTML 9.3KB, <title>Sign In | Orqafy</title>. ✅ / → 307 redirect to /login?callbackUrl=%2F (after AUTH_TRUST_HOST fix). ✅ All 6 security headers active (X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security, Permissions-Policy, Referrer-Policy, Content-Security-Policy with Turnstile allowlist). ⚠ Browser-interactive auth flow QA (login→dashboard) deferred — MCP Playwright requires Chrome at /opt/google/chrome (not installed system-wide). HTTP-level QA confirms server-side rendering of login page; client-side React form hydration cannot be verified without browser. To be executed at first Phase 7 Feature Update needing browser QA, or separately when Chrome is installed.
 - Errors encountered:  (1) Initial `/` returned 404 — root has no page.tsx and middleware redirect was failing. (2) Auth.js v5 spammed UntrustedHost errors on every /api/auth/session call. Both root cause: AUTH_TRUST_HOST env var not set, causing Auth.js to refuse to trust the localhost origin and return null/error from req.auth — bypassing the unauthenticated→/login redirect path in middleware.
 - Errors resolved:     Added AUTH_TRUST_HOST=true to .env.dev and .env.example. Recreated app container via `docker compose --env-file .env.dev -f deploy/compose/dev/docker-compose.app.yml up -d`. Re-verified: `/` now 307s to /login, no UntrustedHost errors in logs since container recreate.
+
+## 2026-05-07 — Phase 8 Batch Proposal + Confirmation (PAUSED)
+- Agent:               CLAUDE_CODE
+- Why:                 User triggered Phase 8 (iterative buildout). Agent read 9 governance
+                       docs and proposed batch 1 — three foundation items that together
+                       unlock SaaS go-live (worker runtime, tenant onboarding, public
+                       landing + demo entry). User confirmed batch as proposed (no
+                       reorder requested) and then requested rest. State saved for
+                       clean resume next session — NO CODE WRITTEN YET.
+- Batch 1 confirmed:
+                       1. apps/worker scaffold + tenant-provisioning queue end-to-end
+                          (branch: feat/worker-tenant-provisioning)
+                       2. Module 17 platform-admin + tenant onboarding flow
+                          (branch: feat/platform-admin-tenant-onboarding)
+                       3. Module 1 public-landing + Module 2 demo-system signup entry
+                          (branch: feat/landing-demo-entry)
+                       Each item runs as its own Phase 7 cycle (TDD, two-stage review,
+                       squash-merge, fresh session). After batch: Phase 8 adaptive
+                       replanning runs before next batch proposal (V14).
+- Files added:         .cline/handoffs/2026-05-07-pause-phase8-batch1-confirmed.md
+- Files modified:      .cline/STATE.md (PHASE → "Phase 8 batch 1 confirmed — PAUSED";
+                       NEXT → "Resume Phase 8 batch 1 item 1 in NEW session"),
+                       .cline/memory/agent-log.md (Phase 8 entry appended),
+                       docs/CHANGELOG_AI.md (this entry)
+- Files deleted:       none
+- Schema/migrations:   none
+- Source code:         NONE — proposal + confirmation only
+- Errors encountered:  none (this is a proposal step, not implementation)
+- Errors resolved:     none
+- Branch:              main (clean; the 4 governance edits ARE the resume signal,
+                       intentionally uncommitted)
+- Resume trigger:      "Start batch 1 item 1" OR "Resume Phase 8 batch 1" in a new
+                       Claude Code session. Agent will re-read STATE.md + handoff +
+                       9 governance docs, run pre-flight checks, create
+                       feat/worker-tenant-provisioning branch, begin Item 1.
