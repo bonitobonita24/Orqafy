@@ -442,3 +442,52 @@
                        (10) Used git branch -D (force-delete) — correct for squash-merges.
 - Branch:              feat/platform-admin-tenant-onboarding → squash-merged to main
                          (commit 5da7607) → deleted
+
+## 2026-05-08 — Phase 8 Batch 1 Item 3 foothold: TDD plumbing for landing + demo entry
+- Agent:               CLAUDE_CODE
+- Why:                 Previous session thrashed on autocompact (context refilled to limit
+                         3 turns post-compact, 3 times in a row) right after writing the
+                         RED test file. Retried with tight scope: get the existing test
+                         file (apps/web/src/__tests__/landing-demo.test.ts) to GREEN as
+                         a discrete, committable unit, leaving the broader Item 3 UI
+                         work (/register page, /powerbyte-admin/*, middleware /register
+                         guard) to a fresh-context session.
+- Files added:         apps/web/src/server/trpc/routers/plan.ts
+                         (planRouter.listActive — public query, sorted by sortOrder)
+                       apps/web/src/lib/public-paths.ts
+                         (PUBLIC_PATHS + isPublic helper, extracted from middleware.ts so
+                          unit tests can import it without pulling next-auth + next/server
+                          side effects into vitest's Node runner — root cause of thrashing)
+- Files modified:      apps/web/src/server/trpc/routers/_app.ts (wire planRouter)
+                       apps/web/src/middleware.ts (import isPublic from helper, re-export
+                         for back-compat; PUBLIC_PATHS now in helper, includes "/" and
+                         "/demo-login")
+                       apps/web/src/__tests__/landing-demo.test.ts (import isPublic from
+                         @/lib/public-paths instead of @/middleware; removed unused
+                         publicProcedure import)
+- Files deleted:       none
+- Schema/migrations:   none
+- Tests:               8/8 GREEN in landing-demo.test.ts (3 plan.listActive +
+                         2 writeProcedure demo-blocking + 3 isPublic public-path).
+- Validation:          pnpm typecheck PASS · pnpm lint --max-warnings 0 PASS.
+- Two-stage review:    Stage 1 (spec compliance) PASS — all 8 declared behaviours
+                         implemented. Stage 2 (code quality) PASS — no any types, no
+                         unused imports, scope contained to 5 files, helper extraction
+                         is the simplest fix (vs heavy mock setup that thrashed before).
+- Errors encountered:  (1) Test file import @/middleware caused "Cannot find module
+                         '.../next/server' imported from .../next-auth/lib/env.js" under
+                         vitest — top-level auth(...) call in middleware.ts loads
+                         next-auth at import time, which fails to resolve next/server
+                         in vitest's Node runner.
+- Errors resolved:     (1) Extracted PUBLIC_PATHS + isPublic into apps/web/src/lib/
+                         public-paths.ts (no auth deps), updated middleware.ts to import
+                         + re-export from helper, updated test to import from helper
+                         path. Logged 🔴 gotcha to lessons.md so future tests for any
+                         middleware-adjacent helper extract first instead of mocking.
+- Branch:              feat/landing-demo-entry (committed, NOT squash-merged — left
+                         open for next session to layer Item 3 UI work on top before
+                         a single squash-merge of the full Item 3 feature).
+- Scope NOT covered:   /register page UI, /powerbyte-admin/* platform pages, middleware
+                         /register public-path entry, platform-admin route-group guard,
+                         IMPLEMENTATION_MAP rewrite, full Item 3 squash-merge.
+                         Tracked in STATE.md NEXT for the next session.

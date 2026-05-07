@@ -1,19 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/server/auth";
+import { isPublic } from "@/lib/public-paths";
 
-// Public paths that never require auth
-const PUBLIC_PATHS = [
-  "/login",
-  "/api/health",
-  "/api/auth",
-  "/api/webhooks",
-  "/_next",
-  "/favicon.ico",
-];
-
-function isPublic(pathname: string): boolean {
-  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
-}
+export { isPublic } from "@/lib/public-paths";
 
 export default auth(function middleware(req) {
   const { pathname } = req.nextUrl;
