@@ -1,0 +1,32 @@
+networks:
+  app_network:
+    name: ${COMPOSE_PROJECT_NAME}_network
+    external: true
+
+services:
+  worker:
+    build:
+      context: ../../..
+      dockerfile: apps/worker/Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME}_worker
+    hostname: ${COMPOSE_PROJECT_NAME}_worker
+    env_file: ../../../.env.dev
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${COMPOSE_PROJECT_NAME}_pgbouncer:5432/${DB_NAME}?schema=public
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@${COMPOSE_PROJECT_NAME}_valkey:6379
+      - WORKER_PORT=${WORKER_PORT}
+    ports:
+      - "${WORKER_PORT}:${WORKER_PORT}"
+    networks: [app_network]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://0.0.0.0:${WORKER_PORT}/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

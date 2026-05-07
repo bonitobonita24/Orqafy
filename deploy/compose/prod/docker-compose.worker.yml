@@ -1,0 +1,27 @@
+networks:
+  app_network:
+    name: ${COMPOSE_PROJECT_NAME}_network
+    external: true
+
+services:
+  worker:
+    # NO build: key — image pulled from Docker Hub only
+    image: ${DOCKERHUB_USERNAME}/${WORKER_IMAGE_NAME}:${APP_IMAGE_TAG:-latest}
+    container_name: ${COMPOSE_PROJECT_NAME}_worker
+    hostname: ${COMPOSE_PROJECT_NAME}_worker
+    env_file: ../../../.env.prod
+    environment:
+      - NODE_ENV=production
+      - WORKER_PORT=${WORKER_PORT}
+    networks: [app_network]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:${WORKER_PORT}/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
