@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-07 by CLAUDE_CODE (Phase 8 Batch 1 Item 1 complete — apps/worker merged)
+# Last updated: 2026-05-07 by CLAUDE_CODE (Phase 8 Batch 1 Item 2 complete — platform-admin + tenant onboarding merged)
 # ---
 
 ## Phase Status
@@ -18,7 +18,7 @@
 | Phase 5 — Validation | ✅ Complete | All 9 commands pass. 15 ESLint fixes (mobile), React 19 forwardRef fix (web), turbo env passthrough, serverExternalPackages, next 15.3.2→15.5.15, 11 Expo HIGH CVEs mitigated (audit-level=critical). |
 | Phase 6 — Docker + Visual QA | ✅ Complete | All 7 dev services healthy, migrations in sync, seed populated (13 roles, 5 plans, demo tenant, webmaster, 9 depts, 9 expense cats, VAT 12%, warehouse, FY 2026, 31 CoA). Visual QA per Rule 16 passed: /api/health 200, /login 200 ("Sign In \| Orqafy"), / 307→/login (after AUTH_TRUST_HOST autofix), 6 security headers active. Browser-interactive auth flow QA deferred — needs system Chrome. |
 | Phase 7 — Feature Updates | ⬜ Pending | The daily loop. Triggered per item by Phase 8 batch execution. |
-| Phase 8 — Iterative Buildout | 🔵 In Progress — Batch 1 | 3-item batch accepted 2026-05-07. Item 1 ✅ merged (`55d7650`) — apps/worker + BullMQ tenant-provisioning. Item 2 🔵 next — Module 17 platform-admin + tenant onboarding (branch: `feat/platform-admin-tenant-onboarding`). Item 3 ⬜ pending Item 2. |
+| Phase 8 — Iterative Buildout | 🔵 In Progress — Batch 1 | 3-item batch accepted 2026-05-07. Item 1 ✅ merged (`55d7650`) — apps/worker + BullMQ tenant-provisioning. Item 2 ✅ merged (`5da7607`) — Module 17 platform-admin + tenant onboarding (platformProcedure, platformRouter, registrationRouter, 25 tests). Item 3 ⬜ pending — Module 1 public-landing + Module 2 demo entry. |
 
 ## Spec Files (Phase 3 outputs)
 

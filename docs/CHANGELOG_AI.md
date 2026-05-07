@@ -360,3 +360,85 @@
                        (5) Changed async () => value to () => Promise.resolve(value).
                        (6) Changed !REDIS_URL to REDIS_URL == null || REDIS_URL === ''.
 - Branch:              feat/worker-tenant-provisioning → squash-merged to main → deleted
+
+## 2026-05-07 — Phase 8 Batch 1 Item 2: platform-admin + tenant onboarding
+- Agent:               CLAUDE_CODE
+- Why:                 Phase 8 Batch 1 Item 2 — platform-admin router and public tenant
+                       registration flow are the operational core of SaaS onboarding.
+                       Enables Platform Owners to list/suspend tenants and allows new
+                       organisations to self-register (slug validation → Tenant record →
+                       BullMQ provisioning job → worker picks up Item 1 queue).
+- Files added:         apps/web/src/server/trpc/routers/platform.ts
+                         (platformRouter: listTenants, getTenant, suspendTenant,
+                          reactivateTenant — all behind platformProcedure, AuditLog writes
+                          on every mutation, PLATFORM: action prefix)
+                       apps/web/src/server/trpc/routers/registration.ts
+                         (registrationRouter: validateSlug public query, createTenant
+                          public mutation — slug format + reserved-word guard, plan lookup,
+                          Tenant create with status "provisioning", BullMQ enqueue)
+                       apps/web/src/__tests__/platform-admin.test.ts
+                         (25 vitest tests — RED→GREEN TDD cycle; covers platformProcedure
+                          UNAUTHORIZED/FORBIDDEN, validateSlug format rules + reserved slugs
+                          + availability, createTenant happy path + error cases, listTenants
+                          RBAC, suspendTenant RBAC + NOT_FOUND + audit log write)
+- Files modified:      apps/web/src/server/trpc/trpc.ts
+                         (added platformProcedure export: throws UNAUTHORIZED if userId null,
+                          throws FORBIDDEN if "Platform Owner" not in ctx.roles)
+                       apps/web/src/server/trpc/routers/_app.ts
+                         (added platform: platformRouter, registration: registrationRouter)
+                       packages/jobs/src/types.ts
+                         (added schemaName field to TenantProvisioningJobData interface —
+                          required by registration.createTenant job dispatch)
+                       apps/web/package.json
+                         (added "@orqafy/jobs": "workspace:*" to dependencies —
+                          required for createQueues import in registration router)
+                       pnpm-lock.yaml (lockfile updated — frozen-lockfile not used after
+                         workspace dep addition, required pnpm install without --frozen)
+- Files deleted:       none
+- Schema/migrations:   none (Tenant + Plan + TenantAuditLog models already in schema)
+- Source code:         platformProcedure — protectedProcedure.use() middleware chain;
+                         UNAUTHORIZED if ctx.userId null, FORBIDDEN if "Platform Owner"
+                         not in ctx.roles.
+                       registrationRouter.validateSlug — SLUG_REGEX + 3–63 char bounds +
+                         RESERVED_SLUGS set (platform, demo, admin, api, www, mail, static,
+                         assets, app, auth, login, register, signup, dashboard, billing,
+                         support) + prisma.tenant.findFirst availability check.
+                       registrationRouter.createTenant — slug format guard → findFirst
+                         slug uniqueness → plan lookup → tenant create (status: provisioning)
+                         → createQueues dispatch with userId: "system" + full job payload.
+                       platformRouter.suspendTenant — findFirst guard → update status →
+                         tenantAuditLog.create (action: PLATFORM:SUSPEND_TENANT, entity:
+                         Tenant, after: { reason }).
+- TDD cycle:           RED: imports of non-existent routers + platformProcedure export
+                         caused vitest to fail on module resolution → GREEN: all 25 tests
+                         passing after implementation. REFACTOR: ESLint suppressions added
+                         at file level (unbound-method, no-unsafe-assignment,
+                         no-unsafe-member-access) — standard for vitest test files.
+- Two-stage review:    Stage 1 (spec compliance) PASS — all 5 declared behaviours
+                         implemented. Stage 2 (code quality) PASS — 0 TypeScript errors,
+                         0 lint errors on implementation files.
+- Errors encountered:  (1) TRPCError imported but unused in test file (lint error).
+                       (2) @typescript-eslint/unbound-method on all vitest expect() calls.
+                       (3) no-unsafe-assignment on expect.objectContaining({...}).
+                       (4) no-unsafe-member-access on queues?.tenantProvisioning.add.
+                       (5) Wrong TenantAuditLog field names (performedBy/reason top-level
+                         instead of userId/entity/entityId/after: { reason }).
+                       (6) @orqafy/jobs module not found — missing from web package.json.
+                       (7) schemaName missing from TenantProvisioningJobData interface.
+                       (8) userId missing from BullMQ job payload (BaseJobData requires it).
+                       (9) pnpm install --frozen-lockfile failed after workspace dep add.
+                       (10) git branch -d rejected squash-merge branch as "not fully merged".
+- Errors resolved:     (1) Removed unused TRPCError import from test file.
+                       (2–4) Added file-level ESLint disable comment + per-line comments
+                         for the queues mock extraction — industry standard for vitest.
+                       (5) Fixed to: { tenantId, action, userId: ctx.userId, entity:
+                         "Tenant", entityId, after: { reason } }.
+                       (6) Added "@orqafy/jobs": "workspace:*" to apps/web/package.json
+                         dependencies and ran pnpm install.
+                       (7) Added schemaName: string to TenantProvisioningJobData in
+                         packages/jobs/src/types.ts.
+                       (8) Added userId: "system" to createQueues job dispatch payload.
+                       (9) Ran pnpm install without --frozen-lockfile to update lockfile.
+                       (10) Used git branch -D (force-delete) — correct for squash-merges.
+- Branch:              feat/platform-admin-tenant-onboarding → squash-merged to main
+                         (commit 5da7607) → deleted
