@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-07 by CLAUDE_CODE (Phase 8 batch 1 confirmed — PAUSED)
+# Last updated: 2026-05-07 by CLAUDE_CODE (Phase 8 Batch 1 Item 1 complete — apps/worker merged)
 # ---
 
 ## Phase Status
@@ -18,7 +18,7 @@
 | Phase 5 — Validation | ✅ Complete | All 9 commands pass. 15 ESLint fixes (mobile), React 19 forwardRef fix (web), turbo env passthrough, serverExternalPackages, next 15.3.2→15.5.15, 11 Expo HIGH CVEs mitigated (audit-level=critical). |
 | Phase 6 — Docker + Visual QA | ✅ Complete | All 7 dev services healthy, migrations in sync, seed populated (13 roles, 5 plans, demo tenant, webmaster, 9 depts, 9 expense cats, VAT 12%, warehouse, FY 2026, 31 CoA). Visual QA per Rule 16 passed: /api/health 200, /login 200 ("Sign In \| Orqafy"), / 307→/login (after AUTH_TRUST_HOST autofix), 6 security headers active. Browser-interactive auth flow QA deferred — needs system Chrome. |
 | Phase 7 — Feature Updates | ⬜ Pending | The daily loop. Triggered per item by Phase 8 batch execution. |
-| Phase 8 — Iterative Buildout | 🔵 Batch 1 confirmed (PAUSED) | Proposal accepted 2026-05-07. 3-item batch: (1) apps/worker + tenant-provisioning, (2) Module 17 platform-admin + tenant onboarding, (3) Module 1 public-landing + Module 2 demo entry. NO CODE WRITTEN YET. Resume via "Start batch 1 item 1". See `.cline/handoffs/2026-05-07-pause-phase8-batch1-confirmed.md`. |
+| Phase 8 — Iterative Buildout | 🔵 In Progress — Batch 1 | 3-item batch accepted 2026-05-07. Item 1 ✅ merged (`55d7650`) — apps/worker + BullMQ tenant-provisioning. Item 2 🔵 next — Module 17 platform-admin + tenant onboarding (branch: `feat/platform-admin-tenant-onboarding`). Item 3 ⬜ pending Item 2. |
 
 ## Spec Files (Phase 3 outputs)
 
@@ -69,16 +69,16 @@
 | App | Status | Description |
 |-----|--------|-------------|
 | apps/web | ✅ Complete | Next.js 15 App Router. shadcn/ui (New York style, VoltAgent dark tokens). tRPC routers for all 13 entities (customer, project, task, timeEntry, expense, invoice, contract, team, subscription, report, storage, notification, auditLog). Auth.js v5 Credentials provider + bcrypt + securityVersion. 7 CSP headers (Turnstile + Google Fonts). In-memory LRU rate limiters (4 tiers). isomorphic-dompurify XSS sanitizer. Tenant-resolution middleware + RBAC guard + SESSION_INVALIDATED. Cloudflare Turnstile siteverify on public mutations. L1 tenant scoping on all protected procedures. Lint 0 errors, typecheck 0 errors across 7 packages. Merged `44429d0`. |
-| apps/worker | ⬜ | BullMQ worker runtime — Phase 4 Part 4/7 |
+| apps/worker | ✅ Complete | BullMQ worker runtime. `processTenantProvisioning` (idempotent schema creation via `createTenantSchema`). Health HTTP server on WORKER_PORT (42952). Graceful shutdown (SIGTERM/SIGINT). Multi-stage Dockerfile. Compose files (dev build, stage/prod image pull). Integration test GREEN. Lint 0, typecheck 0. Merged `55d7650`. |
 | apps/mobile | ✅ Complete | Expo SDK 52 with Expo Router v4 file-based navigation. React Native Reusables + NativeWind (VoltAgent dark tokens). WatermelonDB v0.27 offline-first with pull-based sync. 14 screens across 4 nav sections (Dashboard, Projects, Time, Settings). `packages/api-client` only (Rule 13). Expo Push notifications via expo-notifications. Typecheck clean. Merged `55b9ac7`. |
 
 ## Infrastructure
 
 | Component | Status | Description |
 |-----------|--------|-------------|
-| deploy/compose/dev/ | ✅ Complete | docker-compose.{db,cache,storage,infra,pgadmin,app}.yml — 6 compose files. Dev ports from base 42941. App rebuilds from source via `--build`. pgadmin-servers.json pre-configured. Merged `91818df`. |
-| deploy/compose/stage/ | ✅ Complete | docker-compose.{db,cache,storage,pgadmin,app}.yml — 5 compose files. Standard ports. Traefik labels on app (no host port). APP_IMAGE_TAG=staging-latest. Merged `91818df`. |
-| deploy/compose/prod/ | ✅ Complete | Mirror staging. APP_IMAGE_TAG=latest. Traefik labels. Merged `91818df`. |
+| deploy/compose/dev/ | ✅ Complete | docker-compose.{db,cache,storage,infra,pgadmin,app,worker}.yml — 7 compose files. Dev ports from base 42941. App+worker rebuild from source via `--build`. pgadmin-servers.json pre-configured. App merged `91818df`. Worker merged `55d7650`. |
+| deploy/compose/stage/ | ✅ Complete | docker-compose.{db,cache,storage,pgadmin,app,worker}.yml — 6 compose files. Standard ports. Traefik labels on app (no host port). APP_IMAGE_TAG=staging-latest. App merged `91818df`. Worker merged `55d7650`. |
+| deploy/compose/prod/ | ✅ Complete | Mirror staging. APP_IMAGE_TAG=latest. Traefik labels. App merged `91818df`. Worker merged `55d7650`. |
 | deploy/compose/start.sh | ✅ Complete | One-command startup for all envs. Dev applies `--build` flag to app service. Merged `91818df`. |
 | deploy/compose/push.sh | ✅ Complete | Manual image promotion (dev→staging→prod via Docker Hub). Guards: docker.publish check + docker login check. Merged `91818df`. |
 | COMMANDS.md | ✅ Complete | Master command reference — Docker start/stop/clean, image push, DB, testing, code quality, governance, git, AI triggers, dev URLs, credentials, utilities. Merged `91818df`. |
@@ -97,12 +97,12 @@
 | docs/PRODUCT.md | ✅ | 2,160 lines, all 11 required sections + 11 optional |
 | docs/DESIGN.md | ✅ | VoltAgent aesthetic, authoritative visual reference |
 | docs/README.md | ✅ | HUMAN-owned project README — full feature description aligned with PRODUCT.md (added pre-Bootstrap, refined during Phase 2 commit `2ebf4b7`) |
-| docs/CHANGELOG_AI.md | ✅ | 15 entries (Bootstrap through Phase 6) |
+| docs/CHANGELOG_AI.md | ✅ | 16 entries (Bootstrap through Phase 8 Batch 1 Item 1) |
 | docs/DECISIONS_LOG.md | ✅ | 7+ decisions (Visual evolution + Orqafy rename + Phase 2 + Phase 3 + storage security decisions from Part 4) |
 | docs/IMPLEMENTATION_MAP.md | ✅ | This file |
 | docs/PHASE3_BRIEFING.md | ❌ Removed | Deleted in `3e7bc82` — superseded by framework-native `.claude/rules/phases.md` |
 | project.memory.md | ✅ | Updated with skill installations (gitignored) |
-| .cline/STATE.md | ✅ | PHASE = "Phase 8 batch 1 confirmed — PAUSED" |
+| .cline/STATE.md | ✅ | PHASE = "Phase 8 Batch 1 Item 1 complete" |
 | .cline/memory/lessons.md | ✅ | 3 🔴 gotchas (WSL2+Docker, pre-existing lint/typecheck, Expo CVEs) + 8 🟡 fixes (added Auth.js v5 AUTH_TRUST_HOST) + 2 🟤 decisions |
 | .cline/memory/agent-log.md | ✅ | All Bootstrap + Phase 2 + Phase 3 + Governance Sync entries |
 | CREDENTIALS.md | ✅ | Gitignored. AI-generated values active; ⏳ for human-fill (GitHub, Docker Hub, Turnstile prod, third-party). |
@@ -167,14 +167,13 @@
 
 ## Next Action
 
-**CURRENT STATE: Phase 8 batch 1 confirmed — PAUSED. Say "Start batch 1 item 1" or "Resume Phase 8 batch 1" in a NEW Claude Code session.**
+**CURRENT STATE: Phase 8 Batch 1 — Item 1 ✅ complete. Next: Item 2 (Module 17 platform-admin + tenant onboarding).**
 
-1. **Resume Phase 8 batch 1** (the immediate next step):
-   - Item 1: `apps/worker` scaffold + tenant-provisioning queue end-to-end
-     (branch: `feat/worker-tenant-provisioning`)
-   - Item 2: Module 17 platform-admin + tenant onboarding flow
-     (branch: `feat/platform-admin-tenant-onboarding`, depends on Item 1)
-   - Item 3: Module 1 public-landing + Module 2 demo-system entry
+1. **Phase 8 Batch 1 progress**:
+   - Item 1 ✅ `apps/worker` scaffold + tenant-provisioning queue end-to-end — merged `55d7650`
+   - Item 2 🔵 Module 17 platform-admin + tenant onboarding flow
+     (branch: `feat/platform-admin-tenant-onboarding`)
+   - Item 3 ⬜ Module 1 public-landing + Module 2 demo-system entry
      (branch: `feat/landing-demo-entry`, depends on Item 2)
    - Each item runs as its own Phase 7 cycle (TDD, two-stage review,
      squash-merge), one fresh Claude Code session per item.

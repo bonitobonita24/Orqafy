@@ -316,3 +316,47 @@
                        Claude Code session. Agent will re-read STATE.md + handoff +
                        9 governance docs, run pre-flight checks, create
                        feat/worker-tenant-provisioning branch, begin Item 1.
+
+## 2026-05-07 — Phase 8 Batch 1 Item 1: apps/worker BullMQ tenant-provisioning
+- Agent:               CLAUDE_CODE
+- Why:                 Phase 8 Batch 1 Item 1 — BullMQ worker runtime is a prerequisite
+                       for end-to-end tenant provisioning (job enqueue → schema creation).
+                       Enables the platform-admin onboarding flow (Item 2) to fire real jobs.
+- Files added:         apps/worker/Dockerfile
+                       apps/worker/package.json
+                       apps/worker/tsconfig.json
+                       apps/worker/tsconfig.build.json
+                       apps/worker/vitest.config.ts
+                       apps/worker/src/index.ts
+                       apps/worker/src/health.ts
+                       apps/worker/src/processors/tenant-provisioning.ts
+                       apps/worker/src/__tests__/tenant-provisioning.test.ts
+                       deploy/compose/dev/docker-compose.worker.yml
+                       deploy/compose/stage/docker-compose.worker.yml
+                       deploy/compose/prod/docker-compose.worker.yml
+- Files modified:      pnpm-lock.yaml (bullmq + ioredis added to worker deps)
+- Files deleted:       none
+- Schema/migrations:   none (worker consumes existing createTenantSchema from @orqafy/db)
+- Source code:         processTenantProvisioning — idempotent BullMQ Processor;
+                       checks tenantSchemaExists before calling createTenantSchema.
+                       Health server on WORKER_PORT (/api/health → 200 JSON).
+                       Graceful SIGTERM/SIGINT shutdown with worker.close() + connection.quit().
+                       DLQ logger on 'failed' event. Integration test (RED→GREEN TDD).
+- TDD cycle:           RED: import of non-existent processor failed → GREEN: processor created.
+                       Test asserts tenantSchemaExists === true after processTenantProvisioning runs.
+- Two-stage review:    Stage 1 (spec compliance) PASS. Stage 2 (code quality) PASS.
+                       0 TypeScript errors. 0 lint errors.
+- Errors encountered:  (1) apps/worker/tsconfig.json overrode moduleResolution to NodeNext,
+                       conflicting with monorepo bundler standard — caused @orqafy/db import failures.
+                       (2) exactOptionalPropertyTypes violation when extracting ioredis options.
+                       (3) bullmq not in worker devDependencies.
+                       (4) Unused Queue import in test file (lint error).
+                       (5) require-await lint errors on fake Job async methods.
+                       (6) strict-boolean-expressions on nullable REDIS_URL check.
+- Errors resolved:     (1) Removed NodeNext overrides from tsconfig — inherits bundler from base.
+                       (2) Pass ioredis connection instance directly to createTenantProvisioningWorker.
+                       (3) pnpm --filter @orqafy/worker add bullmq.
+                       (4) Removed unused import.
+                       (5) Changed async () => value to () => Promise.resolve(value).
+                       (6) Changed !REDIS_URL to REDIS_URL == null || REDIS_URL === ''.
+- Branch:              feat/worker-tenant-provisioning → squash-merged to main → deleted
