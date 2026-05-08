@@ -1793,25 +1793,43 @@ tries to read the entire PRODUCT.md + entire codebase at once.
 
 **Rule:** At the START of every Part, BEFORE writing any code, Claude Code MUST:
 
-1. Count the number of modules/entities relevant to this Part from PRODUCT.md
-2. Estimate the token cost: CLAUDE.md (~5K) + active rules file (~3K) + PRODUCT.md
-   sections (~2-4K each) + existing source files to read (~1-3K each) + governance
-   docs (~10-15K) + output generation (~2-5K per file). If total exceeds 80K → MUST split.
-3. IF the Part scope exceeds 12 files to create/modify OR estimated context exceeds
-   80K tokens → the Part MUST be sub-divided into module-by-module sessions.
-   Do NOT attempt to build everything in one session.
-4. Report the sub-division plan to the human:
+1. List the files this Part will read (existing) and create (new).
+
+2. Run `pnpm preflight` to compute the deterministic context budget:
+   ```bash
+   pnpm preflight \
+     --task "Phase 4 Part [N]: [scope description]" \
+     --phase phase-4-part \
+     --read "<comma-separated paths the agent will read>" \
+     --new <count of new files to create>
    ```
-   ⚠ Part [N] scope assessment: [X] modules, ~[Y] files, ~[Z]K estimated tokens.
-   Exceeds 80K SAFE zone. Splitting into sub-sessions:
-     Part [N]a — [ModuleName]: [list of files] (~[N]K tokens)
-     Part [N]b — [ModuleName]: [list of files] (~[N]K tokens)
-     ...
-   Starting with Part [N]a. I'll commit and stop after each sub-session.
-   ```
-5. IF the Part scope is ≤12 files AND estimated context is ≤80K → proceed normally.
-6. The human may also FORCE sub-division at any time by saying:
-   "Split this Part by module" — even if the threshold is not reached.
+   The script outputs a verdict: SAFE | AT_RISK | MUST_SPLIT against the
+   80K SAFE zone and 100K hard ceiling. It exits non-zero on MUST_SPLIT.
+
+3. Honor the verdict — this is a hard pre-flight gate:
+   - **SAFE** (≤80K) → proceed normally.
+   - **AT_RISK** (80K–100K) → output the acknowledgment statement the
+     script provides, then proceed with discipline (PRODUCT.md sections only,
+     codebase_search over directory reads, /clear if context starts thrashing).
+   - **MUST_SPLIT** (>100K) → STOP. Sub-divide by module/feature/layer.
+     Re-run `pnpm preflight` on each sub-task. Each sub-task must verdict
+     SAFE or AT_RISK before writing any code. Report the sub-division plan
+     to the human:
+     ```
+     ⚠ Part [N] preflight = MUST_SPLIT (~[total]K tokens). Splitting:
+       Part [N]a — [ModuleName]: [files] (~[N]K) ✅ SAFE
+       Part [N]b — [ModuleName]: [files] (~[N]K) ✅ SAFE
+       ...
+     Starting with Part [N]a. Commit + STOP after each sub-session.
+     ```
+
+4. The human may FORCE sub-division at any time by saying:
+   "Split this Part by module" — even if `pnpm preflight` returns SAFE.
+
+5. Mental math is no longer acceptable as the budget computation method.
+   The script reads file sizes from disk and applies calibrated overhead
+   per phase profile — use it. Agent estimates without `pnpm preflight`
+   evidence are a Rule 29 (no fuzzy reasoning) violation.
 
 **Per sub-session rules (when sub-divided):**
 - Read ONLY the PRODUCT.md sections for the current module — do NOT read the entire file
@@ -3412,6 +3430,23 @@ Edit PRODUCT.md → trigger Phase 7 → agents implement everything and keep gov
    → Append to agent-log.md: "RESUMED existing branch feat/[slug] — branch already existed"
    → Inspect git log for any partial work already committed on this branch.
    → Continue from Phase 7 step 4 (SocratiCode search).
+
+4. Anti-thrashing preflight gate (V31 in-place addition):
+   After steps 1–3 pass, run:
+   ```bash
+   pnpm preflight \
+     --task "Phase 7 Feature Update: [feature slug]" \
+     --phase phase-7-feature \
+     --read "<comma-separated existing paths the agent will read>" \
+     --new <count of new files to create>
+   ```
+   - SAFE → proceed to the mandatory sequence below.
+   - AT_RISK → output the acknowledgment statement the script provides,
+     then proceed.
+   - MUST_SPLIT (script exits 1) → STOP. Sub-divide the feature into
+     smaller Feature Updates. Re-run preflight on each sub-task. Each
+     must verdict SAFE or AT_RISK before any code is written. Mental
+     token math is a Rule 29 violation.
 ```
 
 **Agent behavior — MANDATORY SEQUENCE. Execute in this exact order. Do not skip or reorder:**
@@ -3576,25 +3611,42 @@ without explicit human approval is a governance violation.
 **Rule:** AFTER the batch is confirmed but BEFORE writing any code, Claude Code MUST:
 
 1. **Scope assessment** — list every file that will be created or modified across ALL items
-   in this batch (routers, services, pages, components, tests, migrations, types)
-2. **Estimate the token cost:** CLAUDE.md (~5K) + active rules file (~3K) + PRODUCT.md
-   sections (~2-4K each) + existing source files to read (~1-3K each) + governance
-   docs (~10-15K) + output generation (~2-5K per file). If total exceeds 80K → MUST split.
-3. IF the batch scope exceeds 12 files to create/modify OR estimated context exceeds
-   80K tokens → the batch MUST be sub-divided into per-feature sub-batches.
-   Do NOT attempt to build multiple features in one session.
-4. Report the sub-division plan:
+   in this batch (routers, services, pages, components, tests, migrations, types).
+
+2. **Run `pnpm preflight`** to compute the deterministic context budget for this batch:
+   ```bash
+   pnpm preflight \
+     --task "Phase 8 Batch [N] [scope]" \
+     --phase phase-8-batch \
+     --read "<comma-separated existing paths the agent will read>" \
+     --new <count of new files>
    ```
-   ⚠ Phase 8 Batch [N] scope assessment: [X] features, ~[Y] files, ~[Z]K estimated tokens.
-   Exceeds 80K SAFE zone. Splitting into sub-batches:
-     Batch [N]-1 — [FeatureName]: [list of files] (~[N]K tokens)
-     Batch [N]-2 — [FeatureName]: [list of files] (~[N]K tokens)
-     Batch [N]-3 — [FeatureName]: [list of files] (~[N]K tokens)
-   Starting with Batch [N]-1. I'll commit and stop after each sub-batch.
-   ```
-5. IF the batch scope is ≤12 files AND estimated context ≤80K → proceed as a single session.
-6. The human may also FORCE sub-division at any time by saying:
-   "Split this batch by feature" — even if the threshold is not reached.
+   The script outputs SAFE | AT_RISK | MUST_SPLIT and exits non-zero on
+   MUST_SPLIT.
+
+3. Honor the verdict — this is a hard pre-flight gate:
+   - **SAFE** (≤80K) → proceed as a single session.
+   - **AT_RISK** (80K–100K) → output the acknowledgment statement the
+     script provides, then proceed with discipline (PRODUCT.md sections only,
+     codebase_search over directory reads, /clear if context starts thrashing).
+   - **MUST_SPLIT** (>100K) → STOP. Sub-divide by feature. Re-run `pnpm preflight`
+     on each sub-batch. Each sub-batch must verdict SAFE or AT_RISK before
+     writing any code. Report the sub-division plan:
+     ```
+     ⚠ Phase 8 Batch [N] preflight = MUST_SPLIT (~[total]K tokens). Splitting:
+       Batch [N]-1 — [FeatureName]: [files] (~[N]K) ✅ SAFE
+       Batch [N]-2 — [FeatureName]: [files] (~[N]K) ✅ SAFE
+       Batch [N]-3 — [FeatureName]: [files] (~[N]K) ✅ SAFE
+     Starting with Batch [N]-1. Commit + STOP after each sub-batch.
+     ```
+
+4. The human may FORCE sub-division at any time by saying:
+   "Split this batch by feature" — even if `pnpm preflight` returns SAFE.
+
+5. Mental token math is no longer acceptable. The script reads file sizes
+   from disk and applies calibrated overhead per phase profile — use it.
+   Agent estimates without `pnpm preflight` evidence are a Rule 29
+   (no fuzzy reasoning) violation.
 
 **Per sub-batch rules (when sub-divided):**
 - Read ONLY the PRODUCT.md sections for the current feature — do NOT read the entire file

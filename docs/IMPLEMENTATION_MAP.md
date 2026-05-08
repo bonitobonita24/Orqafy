@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-08 by CLAUDE_CODE (Phase 8 Batch 2 Item 2 complete — Module 3 CRM Phase 1 merged 0f00247)
+# Last updated: 2026-05-08 by CLAUDE_CODE (Phase 8 Batch 2 Item 3 complete — Module 5 Inventory Phase 1 merged 4c6b1f3; reconciled from stale STATE.md)
 # ---
 
 ## Phase Status
@@ -18,7 +18,7 @@
 | Phase 5 — Validation | ✅ Complete | All 9 commands pass. 15 ESLint fixes (mobile), React 19 forwardRef fix (web), turbo env passthrough, serverExternalPackages, next 15.3.2→15.5.15, 11 Expo HIGH CVEs mitigated (audit-level=critical). |
 | Phase 6 — Docker + Visual QA | ✅ Complete | All 7 dev services healthy, migrations in sync, seed populated (13 roles, 5 plans, demo tenant, webmaster, 9 depts, 9 expense cats, VAT 12%, warehouse, FY 2026, 31 CoA). Visual QA per Rule 16 passed: /api/health 200, /login 200 ("Sign In \| Orqafy"), / 307→/login (after AUTH_TRUST_HOST autofix), 6 security headers active. Browser-interactive auth flow QA deferred — needs system Chrome. |
 | Phase 7 — Feature Updates | ⬜ Pending | The daily loop. Triggered per item by Phase 8 batch execution. |
-| Phase 8 — Iterative Buildout | 🔵 In Progress — Batch 2 | Batch 1 ✅ all 3 items complete. Batch 2 accepted 2026-05-08: Item 1 ✅ merged (`20fe862`) — Module 9 Banking FundSource CRUD (bankingRouter 5 procedures, 12 tests GREEN, fund-sources UI page). Item 2 ✅ merged (`0f00247`) — Module 3 CRM Phase 1 (crmRouter 12 procedures, 23 tests GREEN, customers list + detail UI pages). Item 3 ⬜ pending — Module 5 Inventory Phase 1. |
+| Phase 8 — Iterative Buildout | 🔵 In Progress — Batch 2 complete, ready for adaptive replan | Batch 1 ✅ all 3 items complete. Batch 2 ✅ all 3 items complete: Item 1 ✅ merged (`20fe862`) — Module 9 Banking FundSource CRUD. Item 2 ✅ merged (`0f00247`) — Module 3 CRM Phase 1. Item 3 ✅ merged (`4c6b1f3`) — Module 5 Inventory Phase 1 (inventoryRouter 14 procedures, 33 tests GREEN, product catalog + warehouse UI). Next: Phase 8 adaptive replanning (V14) before proposing Batch 3. |
 
 ## Spec Files (Phase 3 outputs)
 
@@ -183,6 +183,24 @@
 - `.min(1)` not `.cuid()` for ID validation — Zod `.cuid()` rejects test fixture IDs like `"cuid-fs-1"` causing `BAD_REQUEST` before reaching mock. Lesson logged 🔴.
 - `bankName !== null` not `bankName &&` — `@typescript-eslint/strict-boolean-expressions` rejects nullable string in conditional.
 
+## Phase 8 Batch 2 Item 3 — Module 5 Inventory Phase 1 — Product catalog + Warehouse CRUD (commit `4c6b1f3`)
+
+✅ COMPLETE — squash-merged to main (4c6b1f3). Branch `feat/inventory-phase1` deleted.
+
+| File | Status | Notes |
+|------|--------|-------|
+| `apps/web/src/server/trpc/routers/inventory.ts` | ✏️ MODIFIED | `inventoryRouter` extended to 14 procedures: 5 product (`productList` paginated, `productById`, `productCreate` writeProcedure, `productUpdate`, `productToggleActive`), 4 category (`categoryList`, `categoryCreate`, `categoryUpdate`, `categoryToggleActive`), 4 warehouse (`warehouseList`, `warehouseCreate`, `warehouseUpdate`, `warehouseToggleActive`), 1 stock (`stockList`). +253 / -100 lines. ID inputs use `.min(1)` per banking lesson. |
+| `apps/web/src/__tests__/inventory.test.ts` | ✅ NEW | 33/33 GREEN — 14 describe blocks, one per procedure. 599 lines. |
+| `apps/web/src/app/(tenant)/[slug]/(app)/inventory/page.tsx` | ✏️ MODIFIED | Product catalog + Warehouse CRUD UI extension. +98 lines. |
+| `pnpm --filter @orqafy/web lint` | ✅ | 0 errors |
+| `pnpm --filter @orqafy/web typecheck` | ✅ | 0 errors |
+| Two-stage review | ✅ | Stage 1 (spec compliance) PASS + Stage 2 (code quality) PASS |
+
+**Key decisions / lessons applied:**
+- `.min(1)` not `.cuid()` for ID validation — applied proactively from banking lesson 🔴 2026-05-08.
+- `!== null` guards for nullable string JSX — applied proactively from CRM lesson.
+- No new schema migrations — Product, ProductCategory, Warehouse, Stock all live in Phase 4 Part 3 schema.
+
 ## Phase 8 Batch 1 Item 3 — Landing page, register flow, demo entry, platform-admin UI (commit `49e1002`)
 
 ✅ COMPLETE — squash-merged to main (49e1002). Branch `feat/landing-demo-entry` deleted.
@@ -213,12 +231,12 @@
 
 ## Next Action
 
-**CURRENT STATE: Phase 8 Batch 2 — Items 1 and 2 complete, Item 3 next.**
+**CURRENT STATE: Phase 8 Batch 2 complete. Ready for adaptive replan + Batch 3 proposal.**
 
-1. **Phase 8 Batch 2 summary so far**:
+1. **Phase 8 Batch 2 summary** (all complete):
    - Item 1 ✅ Module 9 Banking — FundSource CRUD (`bankingRouter` + 12 tests GREEN + fund-sources UI page) — merged `20fe862`
    - Item 2 ✅ Module 3 CRM Phase 1 — `crmRouter` 12 procedures + 23 tests GREEN + customers list + detail UI pages — merged `0f00247`
-   - Item 3 ⬜ Module 5 Inventory Phase 1 — Product catalog + Warehouse CRUD — **NEXT TARGET**
+   - Item 3 ✅ Module 5 Inventory Phase 1 — `inventoryRouter` 14 procedures + 33 tests GREEN + product catalog + warehouse UI — merged `4c6b1f3`
 
 2. **Phase 8 Batch 1 summary** (all complete):
    - Item 1 ✅ `apps/worker` scaffold + tenant-provisioning queue — merged `55d7650`

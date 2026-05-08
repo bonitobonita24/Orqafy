@@ -207,3 +207,35 @@
   extract the pure logic to apps/web/src/lib/<name>.ts first, then write the test
   against the helper path. Save yourself a thrashing session.
 # ---
+
+## 2026-05-08 — 🟢 Anti-thrashing pre-flight tool added (`pnpm preflight`)
+- Type:      🟢 change
+- Phase:     framework lift — applies to Phase 4 Parts, Phase 7 Feature Updates, Phase 8 Batches
+- Files:     tools/preflight-context.mjs (NEW)
+             package.json (+2 scripts: preflight, preflight:test)
+             .claude/rules/phases.md (Phase 4 + Phase 7 + Phase 8 anti-thrashing rules updated)
+             .cline/tasks/phase8-batch-template.md (NEW reusable template)
+- Concepts:  anti-thrashing, context budget, token estimation, pre-flight gate, rule 29
+- Narrative: The V31 anti-thrashing rules in phases.md previously required the agent
+  to do mental token math before every Part / Feature Update / Batch. Mental math is
+  unreliable and a Rule 29 (no fuzzy reasoning) anti-pattern — the agent would
+  approximate, often under-estimate, and start work that thrashed mid-session.
+  Replacement: `pnpm preflight` is a deterministic CLI that reads file sizes from
+  disk and applies calibrated overhead per phase profile (phase-4-part / phase-7-feature
+  / phase-8-batch / generic). Output: SAFE (≤80K) | AT_RISK (80–100K, exit 0 +
+  acknowledgment required) | MUST_SPLIT (>100K, exit 1, hard stop).
+  Calibration constants in the script:
+    CHARS_PER_TOKEN = 3.8           (TS/markdown average)
+    SAFE_CEILING    = 80,000
+    RISK_CEILING    = 100,000       (MUST_SPLIT above this)
+    CONVERSATION_OVERHEAD = 15,000
+    NEW_FILE_AVG_TOKENS   = 2,000
+    PHASE_OVERHEAD = { phase-4-part: 22K, phase-7-feature: 24K, phase-8-batch: 22K, generic: 18K }
+  Empirically validated on this codebase: docs/PRODUCT.md alone is ~40K tokens —
+  reading it in full would consume half the SAFE zone before any work starts.
+  This is why all anti-thrashing rules say "PRODUCT.md sections only, never full file."
+  Self-test: `pnpm preflight:test` runs 6 internal cases covering SAFE / AT_RISK /
+  MUST_SPLIT verdicts including boundary edges. Run on every change to the constants
+  above. RULE: any future agent that estimates token cost without invoking
+  `pnpm preflight` is a Rule 29 violation — the script is the source of truth.
+# ---

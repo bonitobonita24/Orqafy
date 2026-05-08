@@ -641,3 +641,42 @@
                        list page + detail page with contacts table and credit account section).
                        Stage 2 PASS (no any types, TDD RED→GREEN verified, blast-radius scope).
 - Branch:              feat/crm-phase1 — squash-merged to main (0f00247). Branch deleted.
+
+## 2026-05-08 — Phase 8 Batch 2 Item 3 — Module 5 Inventory Phase 1 Product/Category/Warehouse/Stock CRUD
+- Agent:               CLAUDE_CODE
+- Why:                 Phase 8 Batch 2 iterative buildout — Module 5 Inventory.
+                       Implements Product, ProductCategory, Warehouse, and Stock list CRUD
+                       as the foundation for the inventory module.
+- Files added:         apps/web/src/__tests__/inventory.test.ts (599 lines, 33 tests across
+                       14 describe blocks — one per procedure)
+- Files modified:      apps/web/src/server/trpc/routers/inventory.ts (14 procedures total:
+                         productList, productById, productCreate, productUpdate, productToggleActive,
+                         categoryList, categoryCreate, categoryUpdate, categoryToggleActive,
+                         warehouseList, warehouseCreate, warehouseUpdate, warehouseToggleActive,
+                         stockList)
+                       apps/web/src/app/(tenant)/[slug]/(app)/inventory/page.tsx (Product
+                         catalog + Warehouse CRUD UI extension; +98 lines)
+- Schema/migrations:   none (Product, ProductCategory, Warehouse, Stock models already exist
+                       in Prisma schema from Phase 4 Part 3)
+- Errors encountered:  none significant — banking + crm lessons applied proactively
+                       (.min(1) for IDs, !== null for nullable string JSX guards)
+- Errors resolved:     pnpm lint 0 errors. pnpm typecheck 0 errors. 33/33 tests GREEN.
+- Two-stage review:    Stage 1 PASS (all 14 procedures + UI page extended).
+                       Stage 2 PASS (no any types, TDD RED→GREEN verified, blast-radius scope).
+- Branch:              feat/inventory-phase1 — squash-merged to main (4c6b1f3). Branch deleted.
+- Governance debt:     This entry written via reconcile after STATE.md was found stale on
+                       2026-05-08 resume. STATE.md and IMPLEMENTATION_MAP.md updated alongside.
+
+## 2026-05-08 — Framework housekeeping — CLAUDE.md V31 backup snapshots (commit e0780ac)
+- Agent:               HUMAN
+- Why:                 Backup snapshots of CLAUDE.md, .claude/rules/phases.md,
+                       .claude/rules/templates.md, and .ai_prompt/* before V31 framework
+                       lift edits. No product code touched.
+- Files added:         .claude/rules/phases.md.20260508_*.bak (2 snapshots)
+                       .claude/rules/templates.md.20260508_*.bak
+                       CLAUDE.md.20260508_*.bak (multiple)
+                       .ai_prompt/* updates
+- Files modified:      CLAUDE.md, .claude/rules/phases.md, .claude/rules/templates.md
+                       (V31 framework content updates — no app behaviour change)
+- Schema/migrations:   none
+- Branch:              direct commit on main (e0780ac). Framework lift, not feature work.
