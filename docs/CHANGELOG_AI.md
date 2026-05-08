@@ -680,3 +680,46 @@
                        (V31 framework content updates — no app behaviour change)
 - Schema/migrations:   none
 - Branch:              direct commit on main (e0780ac). Framework lift, not feature work.
+
+## 2026-05-08 — Session pause (Phase 8 Batch 3 CONFIRMED — awaiting Sonnet 4.6 model switch)
+- Agent:               CLAUDE_CODE (Opus 4.7)
+- Why:                 User confirmed Batch 3 plan and explicitly paused before any code
+                         was written, requesting next session run in Claude Sonnet 4.6
+                         (project's primary execution model per inputs.yml). The anti-thrashing
+                         tooling (pnpm preflight) is calibrated for Sonnet 4.6's 80K SAFE
+                         zone — switching is the intended workflow.
+- Files added:         .cline/handoffs/2026-05-08-pause-batch3-confirmed-sonnet-handoff.md
+                         (full pause record — what this session accomplished, confirmed
+                          Batch 3 plan with per-item preflight numbers, deferred items
+                          and rationale, 10-step resume instructions for Sonnet 4.6,
+                          lessons-to-apply checklist, repo state snapshot)
+- Files modified:      .cline/STATE.md (PHASE → "Phase 8 Batch 3 CONFIRMED — PAUSED for
+                         Sonnet 4.6 model switch" + HANDOFF pointer + per-item Batch 3
+                         manifest with preflight numbers + deferred list)
+                       .cline/memory/agent-log.md (Opus 4.7 pause entry)
+                       docs/CHANGELOG_AI.md (this pause-stamp entry)
+- Files deleted:       none
+- Schema/migrations:   none
+- Decisions logged:    none — DECISIONS_LOG.md not updated. Batch 3 sequencing is a
+                         tactical plan, not architecture. Preflight calibration
+                         constants already in lessons.md as 🟢 change.
+- Lessons added:       none new this pause-stamp; existing 🔴 gotchas (vitest +
+                         @/middleware, .min(1) ID validation, !== null JSX guards) are
+                         already in lessons.md and inlined in the handoff for visibility.
+- Branch:              main (no feature branches). Tree clean. HEAD f980a48.
+- Confirmed Batch 3 manifest:
+                       Item 1: Module 12 Accounting Phase 1 (preflight 68.9K ✅ SAFE) —
+                         branch feat/accounting-phase1
+                       Item 2: Module 5 Inventory Phase 2 StockMovement (preflight 73.0K ✅ SAFE) —
+                         branch feat/inventory-phase2
+                       Item 3: Module 7 Tasks + Module 8 DTR Phase 1 combined (preflight 70.9K ✅ SAFE) —
+                         branch feat/tasks-dtr-phase1
+- Deferred (preflight AT_RISK or larger):
+                       Module 9 Banking Phase 2 full = ~88K AT_RISK (split 2a + 2b)
+                       Module 3 CRM Phase 2 full = ~97K AT_RISK (split 2a + 2b)
+                       Module 4 Purchasing Phase 1 (depends on Item 2)
+                       Module 6 Projects Phase 1 (depends on Item 3 Tasks)
+                       Module 10 HR/Payroll Phase 1 (depends on Item 3 DTR)
+- Next session begins: Sonnet 4.6, fresh context. Read STATE.md → handoff → run pnpm preflight
+                         on Item 1 → if SAFE, branch feat/accounting-phase1, follow
+                         .cline/tasks/phase8-batch-template.md.
