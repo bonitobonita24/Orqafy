@@ -875,3 +875,94 @@
                          validator hits ignored — line referenced local
                          URLSearchParams instances named "params", not Next.js
                          route props (page only awaits searchParams).
+
+## 2026-05-08 — Phase 8 Batch 3 Item 3 — Module 7 Tasks + Module 8 DTR Phase 1 (combined)
+- Agent:               CLAUDE_CODE (Opus 4.7 — same model continuity as Items 1+2)
+- Why:                 Phase 8 Batch 3 Item 3 — Module 7 Tasks Phase 1 + Module 8
+                         DTR Phase 1 combined into one preflight-validated session
+                         (~51K tokens SAFE). Combined per task file rationale:
+                         shared no entities, both small (Tasks ~15 lines spec, DTR
+                         ~5 lines), both unblock downstream modules (Tasks → Module
+                         6 Projects, DTR → Module 10 HR/Payroll). Resumed from
+                         prior session's uncommitted work pattern (Items 2+3 task
+                         files were pre-staged in commit a2bd856) — verified
+                         existing 25 tests + 134-line tasks.ts router via
+                         verify→checkpoint→continue (option 1, same as Item 2).
+- Files added:         apps/web/src/server/trpc/routers/tasks.ts (244 lines, 13
+                         procedures: task.list/byId/create/update/updateStatus/
+                         assign/unassign/addStatusReport, todo.list/create/update/
+                         delete/complete/addAttachment), apps/web/src/server/trpc/
+                         routers/dtr.ts (225 lines, 10 procedures: attendance.list/
+                         byId/clockIn/clockOut/approve/reject, leaveRequest.list/
+                         create/approve/reject), apps/web/src/__tests__/tasks.test
+                         .ts (677 lines, 38 unit tests GREEN), apps/web/src/__tests
+                         __/dtr.test.ts (407 lines, 25 unit tests GREEN), apps/web/
+                         src/app/(tenant)/[slug]/(app)/tasks/page.tsx (188 lines,
+                         Server Component, Kanban-style 5-column board + Calendar
+                         toggle stub, optional ?projectId= filter), apps/web/src/
+                         app/(tenant)/[slug]/(app)/dtr/page.tsx (221 lines, Server
+                         Component, Attendance table last-7-days + Leave Requests
+                         table)
+- Files modified:      apps/web/src/server/trpc/routers/_app.ts (atomic single-
+                         Edit added both `tasks: tasksRouter` + `dtr: dtrRouter`
+                         entries plus both imports — multi-router single-file
+                         batch lesson applied)
+- Files deleted:       none
+- Schema/migrations:   none — both modules use existing schema entities (Task,
+                         TaskAssignment, TaskAttachment, TaskStatusReport, ToDo,
+                         ToDoAttachment, AttendanceRecord, LeaveRequest, Employee,
+                         Plan, Tenant)
+- Errors encountered:  1. taskAddStatusReport in prior-session tasks.ts wrote
+                            `reportedById: ctx.userId` but TaskStatusReport schema
+                            field is `userId` — typecheck-latent bug masked because
+                            mocks don't enforce Prisma input shape. 2. todoAddAttach
+                            ment used `(plan as { code: string }).code === "free"`
+                            but Plan schema has `slug`, not `code` — same masking.
+                         3. UI pages used `User.name` field which doesn't exist
+                            (User has firstName/lastName/displayName). 4. Initial
+                            `Record<string, unknown>` builder pattern triggered
+                            ESLint `no-unnecessary-type-assertion` after I added
+                            `as Parameters<...>` casts to silence
+                            exactOptionalPropertyTypes errors — circular fix loop.
+                         5. `getTasks` Parameters-typed args path lost specific
+                            select inference, breaking project/assignments
+                            properties on TaskRow.
+- Errors resolved:     1. Replaced `reportedById` with `userId` in both router
+                            and added explicit RED test asserting field name.
+                         2. Replaced `code` cast with `slug` cast in router AND
+                            updated test mocks (`{ slug: "free" }` /
+                            `{ slug: "pro" }`) to match schema.
+                         3. Replaced `name` selects with `firstName`/`lastName`/
+                            `displayName` and `displayName ?? firstName + lastName`
+                            render fallback.
+                         4. Replaced `Record<string, unknown>` + `if (def) data[k]
+                            = v` pattern with conditional spread `...(input.x !==
+                            undefined && { x: input.x })` — same exactOptional
+                            semantics, no cast needed, ESLint clean.
+                         5. Replaced `Parameters<...>` typed args object with
+                            explicit if/else branches calling findMany twice with
+                            shared `TASK_SELECT as const`. Inference now flows
+                            correctly.
+                         All 222 tests GREEN (38 tasks + 25 dtr + 159 prior).
+                         Lint clean (--max-warnings 0). Typecheck clean.
+- Two-stage review:    PASS — STAGE 1 every spec procedure implemented + UI
+                         renders both module sections. STAGE 2 zero `any` in
+                         routers, narrow `as { x: string }` casts only on Prisma
+                         extension types matching inventory.ts pattern, RED→GREEN
+                         tdd visible in Bash transcript order, only blast-radius
+                         files touched.
+- Documented deviations: a) attendance.approve/reject — schema lacks reviewedById/
+                         reviewedAt fields, only flips `status`. Reject reason
+                         stored in existing `notes` field. b) leaveRequest.reject
+                         — schema lacks rejectionReason field, currently dropped
+                         (test doesn't assert persistence). c) Calendar view —
+                         stub-only ("coming in Phase 2"). d) Drag-and-drop
+                         interactivity — out of scope per task file line 86.
+- Vercel plugin:       Multiple auto-injected skill recommendations (verification,
+                         next-cache-components, next-forge, nextjs, bootstrap,
+                         vercel-storage) ignored — V31 framework rules priority 2
+                         > skill auto-injection priority 7. Five PostToolUse
+                         params-await validator hits ignored — false positives
+                         pattern-matching on local variable name `params` (which
+                         is `await searchParams`), not on a Next.js route `params`
+                         prop (the Tasks page does not consume route params).

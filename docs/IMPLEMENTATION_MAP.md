@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-08 by CLAUDE_CODE Opus 4.7 (Phase 8 Batch 3 Item 2 complete — Module 5 Inventory Phase 2 merged 710fbba)
+# Last updated: 2026-05-08 by CLAUDE_CODE Opus 4.7 (Phase 8 Batch 3 COMPLETE — Item 3 Module 7 Tasks + Module 8 DTR Phase 1 merged 4708bb1)
 # ---
 
 ## Phase Status
@@ -18,7 +18,7 @@
 | Phase 5 — Validation | ✅ Complete | All 9 commands pass. 15 ESLint fixes (mobile), React 19 forwardRef fix (web), turbo env passthrough, serverExternalPackages, next 15.3.2→15.5.15, 11 Expo HIGH CVEs mitigated (audit-level=critical). |
 | Phase 6 — Docker + Visual QA | ✅ Complete | All 7 dev services healthy, migrations in sync, seed populated (13 roles, 5 plans, demo tenant, webmaster, 9 depts, 9 expense cats, VAT 12%, warehouse, FY 2026, 31 CoA). Visual QA per Rule 16 passed: /api/health 200, /login 200 ("Sign In \| Orqafy"), / 307→/login (after AUTH_TRUST_HOST autofix), 6 security headers active. Browser-interactive auth flow QA deferred — needs system Chrome. |
 | Phase 7 — Feature Updates | ⬜ Pending | The daily loop. Triggered per item by Phase 8 batch execution. |
-| Phase 8 — Iterative Buildout | 🔵 In Progress — Batch 3 Item 2 complete (2/3) | Batch 1 ✅ all 3 items complete. Batch 2 ✅ all 3 items complete. Batch 3 in progress: Item 1 ✅ merged (`69d1c6a`) — Module 12 Accounting Phase 1 (16 procedures, 37 tests GREEN, Chart of Accounts + Journal Entries UI). Item 2 ✅ merged (`710fbba`) — Module 5 Inventory Phase 2 StockMovement/Transfer/Adjustment (5 procedures, 21 new tests GREEN, stock-movements page + inventory header link). Item 3 ⬜ pending — Module 7 Tasks + Module 8 DTR Phase 1 (preflight 70.9K SAFE, branch feat/tasks-dtr-phase1). |
+| Phase 8 — Iterative Buildout | 🔵 In Progress — Batch 3 ✅ COMPLETE (3/3); Batch 4 pending | Batch 1 ✅ all 3 items complete. Batch 2 ✅ all 3 items complete. Batch 3 ✅ all 3 items complete: Item 1 ✅ merged (`69d1c6a`) — Module 12 Accounting Phase 1 (16 procedures, 37 tests). Item 2 ✅ merged (`710fbba`) — Module 5 Inventory Phase 2 (5 procedures, 21 new tests). Item 3 ✅ merged (`4708bb1`) — Module 7 Tasks Phase 1 (13 procedures, 38 tests) + Module 8 DTR Phase 1 (10 procedures, 25 tests) combined. **Next: Phase 8 adaptive replan in a new session for Batch 4.** |
 
 ## Spec Files (Phase 3 outputs)
 
@@ -97,12 +97,12 @@
 | docs/PRODUCT.md | ✅ | 2,160 lines, all 11 required sections + 11 optional |
 | docs/DESIGN.md | ✅ | VoltAgent aesthetic, authoritative visual reference |
 | docs/README.md | ✅ | HUMAN-owned project README — full feature description aligned with PRODUCT.md (added pre-Bootstrap, refined during Phase 2 commit `2ebf4b7`) |
-| docs/CHANGELOG_AI.md | ✅ | Updated through Phase 8 Batch 3 Item 2 |
+| docs/CHANGELOG_AI.md | ✅ | Updated through Phase 8 Batch 3 Item 3 (Batch 3 COMPLETE) |
 | docs/DECISIONS_LOG.md | ✅ | 7+ decisions (Visual evolution + Orqafy rename + Phase 2 + Phase 3 + storage security decisions from Part 4) |
 | docs/IMPLEMENTATION_MAP.md | ✅ | This file |
 | docs/PHASE3_BRIEFING.md | ❌ Removed | Deleted in `3e7bc82` — superseded by framework-native `.claude/rules/phases.md` |
 | project.memory.md | ✅ | Updated with skill installations (gitignored) |
-| .cline/STATE.md | ✅ | PHASE = "Phase 8 Batch 3 Item 2 complete" |
+| .cline/STATE.md | ✅ | PHASE = "Phase 8 Batch 3 COMPLETE — Item 3 merged" |
 | .cline/memory/lessons.md | ✅ | 3 🔴 gotchas (WSL2+Docker, pre-existing lint/typecheck, Expo CVEs) + 8 🟡 fixes (added Auth.js v5 AUTH_TRUST_HOST) + 2 🟤 decisions |
 | .cline/memory/agent-log.md | ✅ | All Bootstrap + Phase 2 + Phase 3 + Governance Sync entries |
 | CREDENTIALS.md | ✅ | Gitignored. AI-generated values active; ⏳ for human-fill (GitHub, Docker Hub, Turnstile prod, third-party). |
@@ -215,6 +215,53 @@
 - P&L / Balance Sheet / Trial Balance reporting — defer to dedicated reporting feature.
 - db.$transaction wrapping on reverse — harden later, matches existing `post` pattern.
 
+## Phase 8 Batch 3 Item 3 — Module 7 Tasks Phase 1 + Module 8 DTR Phase 1 (combined) (commit `4708bb1`)
+
+✅ COMPLETE — squash-merged to main (4708bb1). Branch `feat/tasks-dtr-phase1` deleted. **Closes Phase 8 Batch 3.**
+
+Combined two small modules into one preflight-validated session per task file rationale (shared no entities, both small specs, both unblock downstream work).
+
+| File | Status | Notes |
+|------|--------|-------|
+| `apps/web/src/server/trpc/routers/tasks.ts` | ✅ NEW (244 lines) | `tasksRouter` — 13 procedures: `taskList` (5 filters: status/priority/projectId/assigneeId via TaskAssignment-some/parentTaskId), `taskGetById` (include assignments+attachments+subtasks), `taskCreate` (optional description/priority/parentTaskId), `taskUpdate` (partial title/description/priority), `taskUpdateStatus` (full state-machine via `TASK_STATUS_TRANSITIONS` const map: todo↔in_progress↔review→done, blocked recovery to todo/in_progress; rejects skipping todo→done), `taskAssign`/`taskUnassign` (multi-assignee CONFLICT/NOT_FOUND), `taskAddStatusReport` (writes `userId` field — fixed prior session's `reportedById` bug), `todoList`, `todoCreate`, `todoUpdate`, `todoDelete`, `todoComplete`, `todoAddAttachment` (free-plan gate via `Plan.slug === "free"` — fixed prior session's `Plan.code` bug). Conditional spread pattern (`...(input.x !== undefined && { x: input.x })`) for `exactOptionalPropertyTypes`. ID inputs use `.min(1)` per banking lesson. |
+| `apps/web/src/server/trpc/routers/dtr.ts` | ✅ NEW (225 lines) | `dtrRouter` — 10 procedures: `attendanceList` (employeeId required, optional status + date range), `attendanceById`, `attendanceClockIn` (CONFLICT on duplicate today via `[employeeId, date]` unique constraint check, captures GPS lat/lng), `attendanceClockOut` (NOT_FOUND if record missing), `attendanceApprove`/`attendanceReject` (HR Manager/Manager/Administrator role gate via inline `requireApproverRole`; reject reason persisted to existing `notes` field since schema lacks `rejectionReason`), `leaveRequestList`, `leaveRequestCreate` (verifies Employee exists, computes `totalDays` via inclusive day count helper), `leaveRequestApprove` (sets `status: "approved"` + `approvedAt: now`), `leaveRequestReject` (rejects if not `pending` via BAD_REQUEST). |
+| `apps/web/src/server/trpc/routers/_app.ts` | ✏️ MODIFIED (+4 lines) | Atomic single-Edit added both imports + both map entries (`tasks: tasksRouter`, `dtr: dtrRouter`) — multi-router single-file batch lesson applied. |
+| `apps/web/src/__tests__/tasks.test.ts` | ✅ NEW (677 lines) | 38 unit tests across 13 describe blocks. Coverage: filter/query argument shape assertions (`mock.calls[0]![0]` introspection), include-clause assertions, NOT_FOUND/CONFLICT/FORBIDDEN paths, free-plan gate happy + reject paths, full state-machine transition matrix (legal + illegal moves), unauthenticated rejection on read+write procedures, explicit `userId` (not `reportedById`) field assertion. |
+| `apps/web/src/__tests__/dtr.test.ts` | ✅ NEW (407 lines) | 25 unit tests. Coverage: list/byId/clockIn/clockOut/approve/reject for attendance + list/create/approve/reject for leaveRequest. Role-gated procedures tested with `authenticatedCtx("HR Manager")` (passes) + `authenticatedCtx("Employee")` (FORBIDDEN). BAD_REQUEST when leaveRequestReject called on already-approved record. |
+| `apps/web/src/app/(tenant)/[slug]/(app)/tasks/page.tsx` | ✅ NEW (188 lines) | Server Component, `force-dynamic`. Direct `prisma.task.findMany` (L6 auto-injects tenantId). 5-column Kanban (todo/in_progress/review/done/blocked) — XL grid 5-up, MD 3-up. Optional `?projectId=` URL filter. Calendar toggle stub via `?view=calendar`. Priority badge color tokens from VoltAgent palette (#00d992 high, red-500 critical). `TASK_SELECT as const` pattern + dual `findMany` calls to preserve Prisma select-inference (Parameters-typed args path lost specific select shape). User name renders `displayName ?? \`${firstName} ${lastName}\`` since User has no plain `name` field. |
+| `apps/web/src/app/(tenant)/[slug]/(app)/dtr/page.tsx` | ✅ NEW (221 lines) | Server Component, `force-dynamic`. Two sections: Attendance table (last 7 days, 30 max, with overtime/clock-in/clock-out columns) + Leave Requests table (30 max, status-grouped). Status badges via shared `STATUS_BADGE` map. Date range computed via UTC midnight helper. |
+| `pnpm --filter @orqafy/web typecheck` | ✅ | 0 errors |
+| `pnpm --filter @orqafy/web lint --max-warnings 0` | ✅ | 0 warnings, 0 errors |
+| `pnpm --filter @orqafy/web vitest run` | ✅ | 222/222 GREEN (38 tasks + 25 dtr + 159 prior) |
+| Two-stage review | ✅ | Stage 1 (spec compliance) PASS + Stage 2 (code quality) PASS |
+| Visual QA | ⚠ Deferred | Playwright MCP still blocked (Chrome not at `/opt/google/chrome/chrome`). Pages mirror inventory + journal-entries Server Component pattern — risk low. |
+
+**Resume context:** Session began with branch `feat/tasks-dtr-phase1` already created and three uncommitted files from a prior session (134-line `tasks.ts` router, 482-line `tasks.test.ts` with 25 GREEN tests, 332-line `dtr.test.ts` with 17 RED tests because `dtr.ts` was missing). Same TYPE 4 pattern as Item 2 — resolved via verify→checkpoint→continue (option 1):
+
+1. Read STATE.md → confirmed `NEXT="Open .cline/tasks/phase8-batch3-item3.md in a NEW Claude Code session"`. Ran `pnpm preflight` per task file: `~51K tokens` SAFE (vs 70.9K predicted). Audited Prisma schema for Task/AttendanceRecord/LeaveRequest/Employee/Plan/User — discovered prior session bugs (`TaskStatusReport.userId` not `reportedById`; `Plan.slug` not `Plan.code`; `User` has no plain `name` field).
+2. Extended `tasks.test.ts` with 13 RED tests for spec gaps (filters/include/state-machine/todo update+delete/field-mapping). Confirmed 12 RED. Patched `tasks.ts` to GREEN — all 38 tests pass.
+3. Added 7 missing tests to `dtr.test.ts` (`attendance.byId`, `attendance.approve`, `attendance.reject`). Built `dtr.ts` from scratch (10 procedures) — all 25 tests GREEN.
+4. Wired both routers atomically into `_app.ts`. Built two UI pages mirroring inventory pattern. Hit `User.name` typecheck errors → switched to `firstName/lastName/displayName`. Hit `exactOptionalPropertyTypes` errors on `string | undefined` for nullable Prisma fields → replaced `Record<string, unknown>` builder with conditional spread pattern. Hit `as Parameters<...>` lint errors after the spread fix worked → removed unnecessary casts. Hit `getTasks` inference loss → split into two `findMany` branches sharing `TASK_SELECT as const`.
+5. All 222 tests GREEN, lint clean, typecheck clean. Committed feature commit `3f0b437`, squash-merged to main as `4708bb1`. Deleted branch.
+
+**Key decisions / lessons applied or discovered:**
+- `Record<string, unknown>` builder + cast → conditional spread (`...(input.x !== undefined && { x: input.x })`). Cleaner, ESLint-friendly, satisfies `exactOptionalPropertyTypes`. Logged as 🟢 change lesson.
+- Prisma typed-args parameterization (`args: Parameters<typeof X>[0]`) loses select-inference. Use shared `as const` select object + branched findMany calls instead. Logged as 🔴 gotcha.
+- Schema field mismatches (`reportedById` vs `userId`, `code` vs `slug`) silently passed prior session's tests because mocks don't enforce Prisma input shape — only typecheck catches these. Same root cause as Item 2's `createdById` bug. Logged as 🔴 gotcha (recurring pattern).
+- User model has `firstName`/`lastName`/`displayName` only — no `name`. Render: `displayName ?? \`${firstName} ${lastName}\``.
+- HR/payroll role-gated procedures: inline `requireApproverRole(ctx.roles)` against const tuple `["HR Manager", "Manager", "Administrator"]`. Cleaner than per-procedure middleware for small approver sets.
+
+**Documented spec deviations (deferred to Phase 2):**
+- `attendance.approve/reject`: schema lacks `reviewedById`/`reviewedAt` fields, only flips `status`. Reject `reason` stored in existing `notes` field.
+- `leaveRequest.reject`: schema lacks `rejectionReason` field, currently dropped (test doesn't assert persistence).
+- Calendar view on Tasks page: stub-only ("coming in Phase 2").
+- Drag-and-drop on Tasks Kanban: out of scope per task file line 86.
+
+**What unblocks after this item:**
+- Module 6 Projects Phase 1 — needs Tasks ✅ (this item). Likely Batch 4 candidate.
+- Module 10 HR/Payroll Phase 1 — needs DTR ✅ (this item) + Employee model.
+- Mobile DTR sync engine — once `apps/mobile` WatermelonDB is wired, `AttendanceRecord.isOfflineSynced` becomes meaningful.
+
 ## Phase 8 Batch 3 Item 2 — Module 5 Inventory Phase 2 — StockMovement / Transfer / Adjustment (commit `710fbba`)
 
 ✅ COMPLETE — squash-merged to main (710fbba). Branch `feat/inventory-phase2` deleted.
@@ -301,19 +348,14 @@
 
 ## Next Action
 
-**CURRENT STATE: Phase 8 Batch 3 Item 2 complete (2/3). Item 3 pending — fresh session.**
+**CURRENT STATE: Phase 8 Batch 3 ✅ COMPLETE (3/3). Adaptive replan for Batch 4 next — fresh session.**
 
 1. **Phase 8 Batch 3 progress:**
    - Item 1 ✅ Module 12 Accounting Phase 1 — 16 procedures + 37 tests GREEN + Chart of Accounts + Journal Entries UI — merged `69d1c6a`
    - Item 2 ✅ Module 5 Inventory Phase 2 — 5 procedures (StockMovement/Transfer/Adjustment) + 21 new tests GREEN + stock-movements page + inventory header link — merged `710fbba` (resumed from uncommitted prior-session work via verify → checkpoint → continue; 6-edit `createdById` typecheck fix applied during verification)
-   - Item 3 ⬜ pending — Module 7 Tasks + Module 8 DTR Phase 1 combined (preflight 70.9K SAFE, branch `feat/tasks-dtr-phase1`)
+   - Item 3 ✅ Module 7 Tasks Phase 1 (13 procedures, 38 tests) + Module 8 DTR Phase 1 (10 procedures, 25 tests) combined — merged `4708bb1` (resumed from uncommitted prior-session work; fixed two latent bugs: `TaskStatusReport.userId` not `reportedById`, `Plan.slug` not `Plan.code`). **Closes Phase 8 Batch 3.**
 
-   **Resume next item:**
-   1. Open a NEW Claude Code session (fresh context per Rule 24).
-   2. Read `.cline/STATE.md` first.
-   3. Open `.cline/tasks/phase8-batch3-item3.md` — pre-filled task file.
-   4. Run the `pnpm preflight` command in that file BEFORE writing any code. Honor the verdict.
-   5. Follow the working pattern: branch → TDD RED→GREEN → lint/typecheck → two-stage review → squash-merge → governance writes → STOP.
+   **Next: Phase 8 adaptive replan (in a new session)** — re-cross-reference PRODUCT.md modules vs IMPLEMENTATION_MAP.md and propose Batch 4. Likely candidates per Item 3 task file: Banking 2a (further banking work), Module 4 Purchasing Phase 1 (unblocked by Inventory 2), Module 6 Projects Phase 1 (unblocked by Tasks ✅), Module 10 HR/Payroll Phase 1 (unblocked by DTR ✅).
 
 2. **Phase 8 Batch 2 summary** (all complete):
    - Item 1 ✅ Module 9 Banking — FundSource CRUD (`bankingRouter` + 12 tests GREEN + fund-sources UI page) — merged `20fe862`

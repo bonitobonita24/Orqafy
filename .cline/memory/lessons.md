@@ -302,3 +302,105 @@
   didn't see. Verification trio (vitest + lint + typecheck) is the empirical
   safety net that lets you keep work whose audit trail is unverifiable.
 # ---
+
+## 2026-05-08 — 🔴 Schema-field-name bugs survive vitest because mocks don't enforce Prisma input shapes
+- Type:      🔴 gotcha
+- Phase:     Phase 7 Feature Update / Phase 8 implementation
+- Files:     any apps/web/src/server/trpc/routers/*.ts paired with apps/web/src/__tests__/*.test.ts
+- Concepts:  prisma, vitest, mock, typecheck, exactOptionalPropertyTypes
+- Narrative: This is the SECOND time this pattern bit us — Item 2 had `createdById`
+  missing on 3 stockMovement.create calls (typecheck-only signal); Item 3 had
+  TWO instances:
+    (a) `taskAddStatusReport` writing `reportedById: ctx.userId` when the
+        TaskStatusReport schema field is `userId`. Vitest mock returned a
+        canned object regardless of input shape — tests PASSED.
+    (b) `todoAddAttachment` casting `(plan as { code: string }).code === "free"`
+        when Plan model has `slug`, not `code`. Same mock-blind pattern.
+  Root cause: vitest mocks are `vi.fn()` returning `mockResolvedValue(X)` —
+  whatever you pass IN is ignored, only what you tell it to return matters.
+  Prisma's typed input contract is enforced by tsc only.
+  Counter-measures (defense in depth):
+  1. ALWAYS run `pnpm typecheck` before claiming RED→GREEN cycle complete —
+     not just at end-of-session validation gate.
+  2. Tests that hit a write procedure should ALSO assert the call shape:
+     `expect(mockDb.X.create).toHaveBeenCalledWith(
+       expect.objectContaining({
+         data: expect.objectContaining({ createdById: expect.any(String) }),
+       }),
+     );`
+     This locks the contract at runtime too, catching the bug even before tsc.
+  3. When auditing a prior-session resume, grep the router for any cast
+     `(x as { someField: string }).someField` and verify each fieldname
+     against the actual Prisma schema with `grep -A 30 "^model X"`.
+  This pattern WILL recur every time a session resumes someone else's
+  uncommitted work. Treat verification trio (vitest + lint + typecheck)
+  as MANDATORY on any resumed work — same rule as fresh work.
+# ---
+
+## 2026-05-08 — 🟢 Conditional spread beats Record<string, unknown> for exactOptionalPropertyTypes
+- Type:      🟢 change
+- Phase:     any tRPC procedure with optional Prisma create/update fields
+- Files:     all routers with partial input handling
+- Concepts:  prisma, exactOptionalPropertyTypes, eslint, no-unnecessary-type-assertion
+- Narrative: With `exactOptionalPropertyTypes: true` in tsconfig, you cannot
+  pass `{ field: string | undefined }` to a Prisma input expecting
+  `{ field?: string }` — `undefined` is rejected because it's distinct
+  from "field absent".
+  TWO patterns I tried; one works, one doesn't:
+  ❌ DOESN'T WORK well:
+    const data: Record<string, unknown> = { ... required fields };
+    if (input.x !== undefined) data["x"] = input.x;
+    return db.X.create({ data });
+  Problem: Record<string, unknown> isn't assignable to Prisma's typed input,
+  so you need `as Parameters<typeof db.X.create>[0]["data"]` cast — but
+  ESLint flags that as `no-unnecessary-type-assertion` once the cast is
+  redundant in some paths. Fix-loop hell.
+  ✅ WORKS CLEANLY:
+    return db.X.create({
+      data: {
+        ...required fields,
+        ...(input.description !== undefined && { description: input.description }),
+        ...(input.priority !== undefined && { priority: input.priority }),
+      },
+    });
+  The conditional spread either contributes the property (when defined) or
+  contributes nothing (when undefined → `false` → spread of `false` is no-op).
+  TypeScript handles this perfectly. No cast needed. ESLint clean.
+  Use this pattern going forward for all partial-input write procedures.
+# ---
+
+## 2026-05-08 — 🔴 Parameters<typeof X>[0] typed args object loses Prisma select-inference
+- Type:      🔴 gotcha
+- Phase:     any Server Component or query helper using prisma.X.findMany
+- Files:     pages or services that conditionally vary `where` but share `select`
+- Concepts:  prisma, typescript, generics, select inference
+- Narrative: When you want to share the same `select` shape across two
+  conditional findMany calls (e.g. with vs without `where`), the tempting
+  pattern is:
+    const args: Parameters<typeof prisma.task.findMany>[0] = {
+      orderBy: ...,
+      select: { ... },
+    };
+    if (cond) args.where = { ... };
+    return prisma.task.findMany(args);
+  This widens the `select` to the union type defining all valid select
+  shapes — so the inferred return row TYPE drops the specific fields you
+  selected. You get `Task[]` (the bare model type) instead of the rich
+  shape with includes/relations.
+  Symptom: typecheck error "Type X is missing the following properties from
+  type TaskRow: project, assignments" — even though your `select` clearly
+  asks for those.
+  ✅ FIX: extract the select object as a const and call findMany twice:
+    const TASK_SELECT = {
+      id: true, title: true,
+      project: { select: { id: true, name: true } },
+      assignments: { select: { user: { select: ... } } },
+    } as const;
+    if (cond) {
+      return prisma.task.findMany({ where, orderBy, select: TASK_SELECT });
+    }
+    return prisma.task.findMany({ orderBy, select: TASK_SELECT });
+  The `as const` preserves the literal shape, and inline call sites give
+  TypeScript enough to infer the full row type. ~5 LOC of duplication is
+  worth correct types.
+# ---
