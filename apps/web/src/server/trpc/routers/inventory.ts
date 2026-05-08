@@ -5,12 +5,12 @@ import { prisma as db } from "@orqafy/db";
 
 export const inventoryRouter = createTRPCRouter({
   // ── Products ──────────────────────────────────────────────────────────────
-  listProducts: protectedProcedure
+  productList: protectedProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
         limit: z.number().int().min(1).max(200).default(50),
-        categoryId: z.string().cuid().optional(),
+        categoryId: z.string().min(1).optional(),
         search: z.string().optional(),
         isActive: z.boolean().optional(),
       })
@@ -32,12 +32,6 @@ export const inventoryRouter = createTRPCRouter({
       const [items, total] = await Promise.all([
         db.product.findMany({
           where,
-          include: {
-            category: { select: { name: true } },
-            warehouseStocks: {
-              include: { warehouse: { select: { name: true } } },
-            },
-          },
           skip: (input.page - 1) * input.limit,
           take: input.limit,
           orderBy: { name: "asc" },
@@ -48,28 +42,21 @@ export const inventoryRouter = createTRPCRouter({
     }),
 
   productById: protectedProcedure
-    .input(z.object({ id: z.string().cuid() }))
+    .input(z.object({ id: z.string().min(1) }))
     .query(async ({ input }) => {
-      const item = await db.product.findUnique({
-        where: { id: input.id },
-        include: {
-          category: true,
-          warehouseStocks: { include: { warehouse: true } },
-          serialNumbers: { where: { status: "in_stock" } },
-        },
-      });
-      if (!item) throw new TRPCError({ code: "NOT_FOUND" });
+      const item = await db.product.findUnique({ where: { id: input.id } });
+      if (item === null) throw new TRPCError({ code: "NOT_FOUND" });
       return item;
     }),
 
-  createProduct: writeProcedure
+  productCreate: writeProcedure
     .input(
       z.object({
         name: z.string().min(1).max(500),
         sku: z.string().max(100).optional(),
         barcode: z.string().max(100).optional(),
         description: z.string().max(2000).optional(),
-        categoryId: z.string().cuid().optional(),
+        categoryId: z.string().min(1).optional(),
         unit: z.string().max(50).default("pcs"),
         baseCost: z.number().min(0).default(0),
         reorderLevel: z.number().int().min(0).optional(),
@@ -94,15 +81,15 @@ export const inventoryRouter = createTRPCRouter({
       });
     }),
 
-  updateProduct: writeProcedure
+  productUpdate: writeProcedure
     .input(
       z.object({
-        id: z.string().cuid(),
+        id: z.string().min(1),
         name: z.string().min(1).max(500).optional(),
         sku: z.string().max(100).optional(),
         barcode: z.string().max(100).optional(),
         description: z.string().max(2000).optional(),
-        categoryId: z.string().cuid().optional(),
+        categoryId: z.string().min(1).optional(),
         unit: z.string().max(50).optional(),
         baseCost: z.number().min(0).optional(),
         reorderLevel: z.number().int().min(0).optional(),
@@ -112,117 +99,195 @@ export const inventoryRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const { id, ...rest } = input;
       const existing = await db.product.findUnique({ where: { id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
       return db.product.update({
         where: { id },
         data: {
           ...(rest.name !== undefined ? { name: rest.name } : {}),
-          ...(rest.sku !== undefined ? { sku: rest.sku ?? null } : {}),
-          ...(rest.barcode !== undefined ? { barcode: rest.barcode ?? null } : {}),
-          ...(rest.description !== undefined ? { description: rest.description ?? null } : {}),
-          ...(rest.categoryId !== undefined ? { categoryId: rest.categoryId ?? null } : {}),
+          ...(rest.sku !== undefined ? { sku: rest.sku } : {}),
+          ...(rest.barcode !== undefined ? { barcode: rest.barcode } : {}),
+          ...(rest.description !== undefined ? { description: rest.description } : {}),
+          ...(rest.categoryId !== undefined ? { categoryId: rest.categoryId } : {}),
           ...(rest.unit !== undefined ? { unit: rest.unit } : {}),
           ...(rest.baseCost !== undefined ? { baseCost: rest.baseCost } : {}),
-          ...(rest.reorderLevel !== undefined ? { reorderLevel: rest.reorderLevel ?? null } : {}),
+          ...(rest.reorderLevel !== undefined ? { reorderLevel: rest.reorderLevel } : {}),
           ...(rest.isActive !== undefined ? { isActive: rest.isActive } : {}),
         },
       });
     }),
 
-  // ── Categories ────────────────────────────────────────────────────────────
-  categories: protectedProcedure.query(async () => {
-    return db.category.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: "asc" },
-    });
-  }),
-
-  // ── Warehouses ────────────────────────────────────────────────────────────
-  warehouses: protectedProcedure.query(async () => {
-    return db.warehouse.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-    });
-  }),
-
-  // ── Stock movements ───────────────────────────────────────────────────────
-  listMovements: protectedProcedure
-    .input(
-      z.object({
-        page: z.number().int().min(1).default(1),
-        limit: z.number().int().min(1).max(200).default(50),
-        productId: z.string().cuid().optional(),
-        type: z.enum(["in", "out", "adjustment", "transfer"]).optional(),
-      })
-    )
-    .query(async ({ input }) => {
-      const where = {
-        ...(input.productId !== undefined ? { productId: input.productId } : {}),
-        ...(input.type !== undefined ? { type: input.type } : {}),
-      };
-      const [items, total] = await Promise.all([
-        db.stockMovement.findMany({
-          where,
-          include: {
-            product: { select: { name: true, sku: true } },
-            fromWarehouse: { select: { name: true } },
-            toWarehouse: { select: { name: true } },
-            createdBy: { select: { firstName: true, lastName: true, displayName: true } },
-          },
-          skip: (input.page - 1) * input.limit,
-          take: input.limit,
-          orderBy: { createdAt: "desc" },
-        }),
-        db.stockMovement.count({ where }),
-      ]);
-      return { items, total, page: input.page, limit: input.limit };
+  productToggleActive: writeProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const existing = await db.product.findUnique({ where: { id: input.id } });
+      if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
+      return db.product.update({
+        where: { id: input.id },
+        data: { isActive: !existing.isActive },
+      });
     }),
 
-  createMovement: writeProcedure
+  // ── Categories ────────────────────────────────────────────────────────────
+  categoryList: protectedProcedure
+    .input(z.object({ isActive: z.boolean().optional() }).default({}))
+    .query(async ({ input }) => {
+      return db.category.findMany({
+        where: {
+          ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+        },
+        orderBy: { sortOrder: "asc" },
+      });
+    }),
+
+  categoryCreate: writeProcedure
     .input(
       z.object({
-        productId: z.string().cuid(),
-        type: z.enum(["in", "out", "adjustment", "transfer"]),
-        quantity: z.number().positive(),
-        fromWarehouseId: z.string().cuid().optional(),
-        toWarehouseId: z.string().cuid().optional(),
-        notes: z.string().max(1000).optional(),
+        name: z.string().min(1).max(200),
+        slug: z.string().min(1).max(200),
+        description: z.string().max(1000).optional(),
+        parentId: z.string().min(1).optional(),
+        sortOrder: z.number().int().min(0).default(0),
       })
     )
-    .mutation(async ({ input, ctx }) => {
-      const product = await db.product.findUnique({ where: { id: input.productId } });
-      if (!product) throw new TRPCError({ code: "BAD_REQUEST", message: "Product not found." });
-      return db.stockMovement.create({
+    .mutation(async ({ input }) => {
+      return db.category.create({
         data: {
-          productId: input.productId,
-          type: input.type,
-          quantity: input.quantity,
-          fromWarehouseId: input.fromWarehouseId ?? null,
-          toWarehouseId: input.toWarehouseId ?? null,
-          notes: input.notes ?? null,
-          createdById: ctx.userId,
+          name: input.name,
+          slug: input.slug,
+          description: input.description ?? null,
+          parentId: input.parentId ?? null,
+          sortOrder: input.sortOrder,
         },
       });
     }),
 
-  // ── Stock levels ──────────────────────────────────────────────────────────
-  stockLevels: protectedProcedure
+  categoryUpdate: writeProcedure
     .input(
       z.object({
-        warehouseId: z.string().cuid().optional(),
-        lowStock: z.boolean().optional(),
+        id: z.string().min(1),
+        name: z.string().min(1).max(200).optional(),
+        slug: z.string().min(1).max(200).optional(),
+        description: z.string().max(1000).optional(),
+        parentId: z.string().min(1).optional(),
+        sortOrder: z.number().int().min(0).optional(),
+        isActive: z.boolean().optional(),
       })
+    )
+    .mutation(async ({ input }) => {
+      const { id, ...rest } = input;
+      const existing = await db.category.findUnique({ where: { id } });
+      if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
+      return db.category.update({
+        where: { id },
+        data: {
+          ...(rest.name !== undefined ? { name: rest.name } : {}),
+          ...(rest.slug !== undefined ? { slug: rest.slug } : {}),
+          ...(rest.description !== undefined ? { description: rest.description } : {}),
+          ...(rest.parentId !== undefined ? { parentId: rest.parentId } : {}),
+          ...(rest.sortOrder !== undefined ? { sortOrder: rest.sortOrder } : {}),
+          ...(rest.isActive !== undefined ? { isActive: rest.isActive } : {}),
+        },
+      });
+    }),
+
+  categoryToggleActive: writeProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const existing = await db.category.findUnique({ where: { id: input.id } });
+      if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
+      return db.category.update({
+        where: { id: input.id },
+        data: { isActive: !existing.isActive },
+      });
+    }),
+
+  // ── Warehouses ────────────────────────────────────────────────────────────
+  warehouseList: protectedProcedure
+    .input(z.object({ isActive: z.boolean().optional() }).default({}))
+    .query(async ({ input }) => {
+      return db.warehouse.findMany({
+        where: {
+          ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+        },
+        orderBy: { name: "asc" },
+      });
+    }),
+
+  warehouseCreate: writeProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(200),
+        code: z.string().min(1).max(50),
+        address: z.string().max(500).optional(),
+        isDefault: z.boolean().default(false),
+      })
+    )
+    .mutation(async ({ input }) => {
+      return db.warehouse.create({
+        data: {
+          name: input.name,
+          code: input.code,
+          address: input.address ?? null,
+          isDefault: input.isDefault,
+        },
+      });
+    }),
+
+  warehouseUpdate: writeProcedure
+    .input(
+      z.object({
+        id: z.string().min(1),
+        name: z.string().min(1).max(200).optional(),
+        code: z.string().min(1).max(50).optional(),
+        address: z.string().max(500).optional(),
+        isDefault: z.boolean().optional(),
+        isActive: z.boolean().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const { id, ...rest } = input;
+      const existing = await db.warehouse.findUnique({ where: { id } });
+      if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
+      return db.warehouse.update({
+        where: { id },
+        data: {
+          ...(rest.name !== undefined ? { name: rest.name } : {}),
+          ...(rest.code !== undefined ? { code: rest.code } : {}),
+          ...(rest.address !== undefined ? { address: rest.address } : {}),
+          ...(rest.isDefault !== undefined ? { isDefault: rest.isDefault } : {}),
+          ...(rest.isActive !== undefined ? { isActive: rest.isActive } : {}),
+        },
+      });
+    }),
+
+  warehouseToggleActive: writeProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const existing = await db.warehouse.findUnique({ where: { id: input.id } });
+      if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
+      return db.warehouse.update({
+        where: { id: input.id },
+        data: { isActive: !existing.isActive },
+      });
+    }),
+
+  // ── Stock levels ──────────────────────────────────────────────────────────
+  stockList: protectedProcedure
+    .input(
+      z.object({
+        warehouseId: z.string().min(1).optional(),
+        productId: z.string().min(1).optional(),
+      }).default({})
     )
     .query(async ({ input }) => {
       return db.warehouseStock.findMany({
         where: {
           ...(input.warehouseId !== undefined ? { warehouseId: input.warehouseId } : {}),
+          ...(input.productId !== undefined ? { productId: input.productId } : {}),
         },
         include: {
-          product: {
-            select: { name: true, sku: true, reorderLevel: true, unit: true },
-          },
-          warehouse: { select: { name: true } },
+          warehouse: true,
+          product: true,
         },
         orderBy: { product: { name: "asc" } },
       });
