@@ -491,3 +491,32 @@
                          /register public-path entry, platform-admin route-group guard,
                          IMPLEMENTATION_MAP rewrite, full Item 3 squash-merge.
                          Tracked in STATE.md NEXT for the next session.
+
+## 2026-05-08 — Session pause (Phase 8 Batch 1 Item 3 PARTIAL)
+- Agent:               CLAUDE_CODE
+- Why:                 User requested formal session pause after the TDD foothold
+                         landed. Per V31 pause protocol: write handoff, mark STATE.md
+                         PAUSED, update IMPLEMENTATION_MAP, commit on the feature
+                         branch, do NOT squash-merge, do NOT delete the branch.
+- Files added:         .cline/handoffs/2026-05-08-pause-item3-tdd-foothold.md
+                         (full pause record — root cause of prior thrashing,
+                          structural fix applied, what's deferred, resume
+                          instructions, pre-flight checks)
+- Files modified:      .cline/STATE.md (PHASE → "Phase 8 Batch 1 Item 3 PARTIAL
+                         PAUSED" + HANDOFF pointer)
+                       docs/IMPLEMENTATION_MAP.md (Item 3 row updated to
+                         🟡 PARTIAL with foothold deliverables listed)
+                       docs/CHANGELOG_AI.md (this pause-stamp entry)
+- Files deleted:       none
+- Schema/migrations:   none
+- Decisions logged:    none — DECISIONS_LOG.md not updated. The PUBLIC_PATHS
+                         helper extraction is a tactical fix already captured
+                         in lessons.md as a 🔴 gotcha. Architecture decisions
+                         for the remaining UI work (platform-admin guard
+                         pattern, demo impersonation flow) deferred to the
+                         resume session — must be asked, not inferred (Rule 29).
+- Lessons added:       none new this pause-stamp; the 🔴 gotcha from the
+                         prior commit (a6755c5) covers the thrashing root cause.
+- Branch:              feat/landing-demo-entry (open; pause-stamp commit lands
+                         here; next session resumes on this branch and layers
+                         the remaining Item 3 UI before a single squash-merge).
