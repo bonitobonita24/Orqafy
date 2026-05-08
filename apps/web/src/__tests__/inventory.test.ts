@@ -46,6 +46,12 @@ vi.mock("@orqafy/db", () => ({
     warehouseStock: {
       findMany: vi.fn(),
     },
+    stockMovement: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      count: vi.fn(),
+    },
   },
 }));
 
@@ -108,6 +114,12 @@ const mockDb = db as unknown as {
   warehouseStock: {
     findMany: ReturnType<typeof vi.fn>;
   };
+  stockMovement: {
+    findMany: ReturnType<typeof vi.fn>;
+    findUnique: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+    count: ReturnType<typeof vi.fn>;
+  };
 };
 
 const sampleCategory = {
@@ -169,6 +181,23 @@ const sampleStock = {
   updatedAt: new Date("2026-01-01"),
   warehouse: sampleWarehouse,
   product: sampleProduct,
+};
+
+const sampleStockMovement = {
+  id: "sm-1",
+  type: "in",
+  productId: "prod-1",
+  quantity: "10.0000",
+  fromWarehouseId: null,
+  toWarehouseId: "wh-1",
+  notes: null,
+  referenceType: null,
+  referenceId: null,
+  createdAt: new Date("2026-01-01"),
+  updatedAt: new Date("2026-01-01"),
+  product: sampleProduct,
+  fromWarehouse: null,
+  toWarehouse: sampleWarehouse,
 };
 
 // ---------------------------------------------------------------------------
@@ -595,5 +624,274 @@ describe("inventory.stockList", () => {
   it("rejects unauthenticated requests", async () => {
     const caller = createCaller(unauthenticatedCtx());
     await expect(caller.inventory.stockList({})).rejects.toThrow();
+  });
+});
+
+// 14. inventory.stockMovementList
+describe("inventory.stockMovementList", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns paginated stock movements for authenticated user", async () => {
+    mockDb.stockMovement.findMany.mockResolvedValue([sampleStockMovement]);
+    mockDb.stockMovement.count.mockResolvedValue(1);
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.inventory.stockMovementList({});
+
+    expect(result.items).toHaveLength(1);
+    expect(result.total).toBe(1);
+    expect(result.page).toBe(1);
+    expect(result.items[0]!.id).toBe("sm-1");
+    expect(mockDb.stockMovement.findMany).toHaveBeenCalledOnce();
+    expect(mockDb.stockMovement.count).toHaveBeenCalledOnce();
+  });
+
+  it("filters by productId when provided", async () => {
+    mockDb.stockMovement.findMany.mockResolvedValue([sampleStockMovement]);
+    mockDb.stockMovement.count.mockResolvedValue(1);
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.inventory.stockMovementList({ productId: "prod-1" });
+
+    const call = mockDb.stockMovement.findMany.mock.calls[0] as [{ where: unknown }];
+    expect(call[0].where).toMatchObject({ productId: "prod-1" });
+  });
+
+  it("filters by warehouseId when provided", async () => {
+    mockDb.stockMovement.findMany.mockResolvedValue([sampleStockMovement]);
+    mockDb.stockMovement.count.mockResolvedValue(1);
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.inventory.stockMovementList({ warehouseId: "wh-1" });
+
+    const call = mockDb.stockMovement.findMany.mock.calls[0] as [{ where: unknown }];
+    expect(call[0].where).toMatchObject({
+      OR: [{ fromWarehouseId: "wh-1" }, { toWarehouseId: "wh-1" }],
+    });
+  });
+
+  it("filters by type when provided", async () => {
+    mockDb.stockMovement.findMany.mockResolvedValue([sampleStockMovement]);
+    mockDb.stockMovement.count.mockResolvedValue(1);
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.inventory.stockMovementList({ type: "in" });
+
+    const call = mockDb.stockMovement.findMany.mock.calls[0] as [{ where: unknown }];
+    expect(call[0].where).toMatchObject({ type: "in" });
+  });
+
+  it("rejects unauthenticated requests", async () => {
+    const caller = createCaller(unauthenticatedCtx());
+    await expect(caller.inventory.stockMovementList({})).rejects.toThrow();
+  });
+});
+
+// 15. inventory.stockMovementById
+describe("inventory.stockMovementById", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a single stock movement by id", async () => {
+    mockDb.stockMovement.findUnique.mockResolvedValue(sampleStockMovement);
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.inventory.stockMovementById({ id: "sm-1" });
+
+    expect(result.id).toBe("sm-1");
+    expect(mockDb.stockMovement.findUnique).toHaveBeenCalledOnce();
+  });
+
+  it("throws NOT_FOUND when movement does not exist", async () => {
+    mockDb.stockMovement.findUnique.mockResolvedValue(null);
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(caller.inventory.stockMovementById({ id: "no-such" })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+  });
+
+  it("rejects unauthenticated requests", async () => {
+    const caller = createCaller(unauthenticatedCtx());
+    await expect(caller.inventory.stockMovementById({ id: "sm-1" })).rejects.toThrow();
+  });
+});
+
+// 16. inventory.stockMovementCreate
+describe("inventory.stockMovementCreate", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("creates an inbound movement (type=in) with toWarehouseId", async () => {
+    mockDb.stockMovement.create.mockResolvedValue(sampleStockMovement);
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.inventory.stockMovementCreate({
+      type: "in",
+      productId: "prod-1",
+      quantity: 10,
+      toWarehouseId: "wh-1",
+    });
+
+    expect(result.id).toBe("sm-1");
+    expect(mockDb.stockMovement.create).toHaveBeenCalledOnce();
+  });
+
+  it("rejects type=in without toWarehouseId", async () => {
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.inventory.stockMovementCreate({
+        type: "in",
+        productId: "prod-1",
+        quantity: 10,
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("rejects type=out without fromWarehouseId", async () => {
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.inventory.stockMovementCreate({
+        type: "out",
+        productId: "prod-1",
+        quantity: 5,
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("rejects demo tenant mutations", async () => {
+    const demoCaller = createCaller({ ...authenticatedCtx(), isDemoTenant: true });
+    await expect(
+      demoCaller.inventory.stockMovementCreate({
+        type: "in",
+        productId: "prod-1",
+        quantity: 10,
+        toWarehouseId: "wh-1",
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects unauthenticated requests", async () => {
+    const caller = createCaller(unauthenticatedCtx());
+    await expect(
+      caller.inventory.stockMovementCreate({
+        type: "in",
+        productId: "prod-1",
+        quantity: 10,
+        toWarehouseId: "wh-1",
+      })
+    ).rejects.toThrow();
+  });
+});
+
+// 17. inventory.stockTransfer
+describe("inventory.stockTransfer", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("creates a transfer movement between two different warehouses", async () => {
+    const transferMovement = { ...sampleStockMovement, type: "transfer", fromWarehouseId: "wh-2", toWarehouseId: "wh-1" };
+    mockDb.stockMovement.create.mockResolvedValue(transferMovement);
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.inventory.stockTransfer({
+      productId: "prod-1",
+      quantity: 5,
+      fromWarehouseId: "wh-2",
+      toWarehouseId: "wh-1",
+    });
+
+    expect(result.type).toBe("transfer");
+    expect(mockDb.stockMovement.create).toHaveBeenCalledOnce();
+  });
+
+  it("rejects transfer when fromWarehouseId equals toWarehouseId", async () => {
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.inventory.stockTransfer({
+        productId: "prod-1",
+        quantity: 5,
+        fromWarehouseId: "wh-1",
+        toWarehouseId: "wh-1",
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("rejects demo tenant mutations", async () => {
+    const demoCaller = createCaller({ ...authenticatedCtx(), isDemoTenant: true });
+    await expect(
+      demoCaller.inventory.stockTransfer({
+        productId: "prod-1",
+        quantity: 5,
+        fromWarehouseId: "wh-2",
+        toWarehouseId: "wh-1",
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects unauthenticated requests", async () => {
+    const caller = createCaller(unauthenticatedCtx());
+    await expect(
+      caller.inventory.stockTransfer({
+        productId: "prod-1",
+        quantity: 5,
+        fromWarehouseId: "wh-2",
+        toWarehouseId: "wh-1",
+      })
+    ).rejects.toThrow();
+  });
+});
+
+// 18. inventory.stockAdjustment
+describe("inventory.stockAdjustment", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("creates an adjustment movement with notes", async () => {
+    const adjustmentMovement = { ...sampleStockMovement, type: "adjustment", toWarehouseId: "wh-1", notes: "Cycle count correction" };
+    mockDb.stockMovement.create.mockResolvedValue(adjustmentMovement);
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.inventory.stockAdjustment({
+      productId: "prod-1",
+      quantity: 2,
+      warehouseId: "wh-1",
+      notes: "Cycle count correction",
+    });
+
+    expect(result.type).toBe("adjustment");
+    expect(mockDb.stockMovement.create).toHaveBeenCalledOnce();
+  });
+
+  it("rejects adjustment without notes", async () => {
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.inventory.stockAdjustment({
+        productId: "prod-1",
+        quantity: 2,
+        warehouseId: "wh-1",
+        notes: "",
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("rejects demo tenant mutations", async () => {
+    const demoCaller = createCaller({ ...authenticatedCtx(), isDemoTenant: true });
+    await expect(
+      demoCaller.inventory.stockAdjustment({
+        productId: "prod-1",
+        quantity: 2,
+        warehouseId: "wh-1",
+        notes: "Correction",
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects unauthenticated requests", async () => {
+    const caller = createCaller(unauthenticatedCtx());
+    await expect(
+      caller.inventory.stockAdjustment({
+        productId: "prod-1",
+        quantity: 2,
+        warehouseId: "wh-1",
+        notes: "Correction",
+      })
+    ).rejects.toThrow();
   });
 });

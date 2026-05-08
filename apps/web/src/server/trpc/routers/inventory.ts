@@ -292,4 +292,147 @@ export const inventoryRouter = createTRPCRouter({
         orderBy: { product: { name: "asc" } },
       });
     }),
+
+  // ── Stock Movements ───────────────────────────────────────────────────────
+  stockMovementList: protectedProcedure
+    .input(
+      z.object({
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(200).default(50),
+        productId: z.string().min(1).optional(),
+        warehouseId: z.string().min(1).optional(),
+        type: z.enum(["in", "out", "adjustment", "transfer"]).optional(),
+      }).default({})
+    )
+    .query(async ({ input }) => {
+      const where = {
+        ...(input.productId !== undefined ? { productId: input.productId } : {}),
+        ...(input.type !== undefined ? { type: input.type } : {}),
+        ...(input.warehouseId !== undefined
+          ? {
+              OR: [
+                { fromWarehouseId: input.warehouseId },
+                { toWarehouseId: input.warehouseId },
+              ],
+            }
+          : {}),
+      };
+      const [items, total] = await Promise.all([
+        db.stockMovement.findMany({
+          where,
+          skip: (input.page - 1) * input.limit,
+          take: input.limit,
+          include: { product: true, fromWarehouse: true, toWarehouse: true },
+          orderBy: { createdAt: "desc" },
+        }),
+        db.stockMovement.count({ where }),
+      ]);
+      return { items, total, page: input.page, limit: input.limit };
+    }),
+
+  stockMovementById: protectedProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const item = await db.stockMovement.findUnique({
+        where: { id: input.id },
+        include: { product: true, fromWarehouse: true, toWarehouse: true },
+      });
+      if (item === null) throw new TRPCError({ code: "NOT_FOUND" });
+      return item;
+    }),
+
+  stockMovementCreate: writeProcedure
+    .input(
+      z.object({
+        type: z.enum(["in", "out", "adjustment", "transfer"]),
+        productId: z.string().min(1),
+        quantity: z.number().positive(),
+        fromWarehouseId: z.string().min(1).optional(),
+        toWarehouseId: z.string().min(1).optional(),
+        notes: z.string().optional(),
+        referenceType: z.string().optional(),
+        referenceId: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      if (input.type === "in" && input.toWarehouseId === undefined) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "toWarehouseId required for type 'in'" });
+      }
+      if (input.type === "out" && input.fromWarehouseId === undefined) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "fromWarehouseId required for type 'out'" });
+      }
+      if (input.type === "transfer" && (input.fromWarehouseId === undefined || input.toWarehouseId === undefined)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Both fromWarehouseId and toWarehouseId required for type 'transfer'" });
+      }
+      if (input.type === "adjustment" && input.fromWarehouseId === undefined && input.toWarehouseId === undefined) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "At least one warehouse required for type 'adjustment'" });
+      }
+      return db.stockMovement.create({
+        data: {
+          type: input.type,
+          productId: input.productId,
+          quantity: input.quantity,
+          fromWarehouseId: input.fromWarehouseId ?? null,
+          toWarehouseId: input.toWarehouseId ?? null,
+          notes: input.notes ?? null,
+          referenceType: input.referenceType ?? null,
+          referenceId: input.referenceId ?? null,
+          createdById: ctx.userId,
+        },
+      });
+    }),
+
+  stockTransfer: writeProcedure
+    .input(
+      z.object({
+        productId: z.string().min(1),
+        quantity: z.number().positive(),
+        fromWarehouseId: z.string().min(1),
+        toWarehouseId: z.string().min(1),
+        notes: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      if (input.fromWarehouseId === input.toWarehouseId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Source and destination warehouses must differ" });
+      }
+      return db.stockMovement.create({
+        data: {
+          type: "transfer",
+          productId: input.productId,
+          quantity: input.quantity,
+          fromWarehouseId: input.fromWarehouseId,
+          toWarehouseId: input.toWarehouseId,
+          notes: input.notes ?? null,
+          referenceType: null,
+          referenceId: null,
+          createdById: ctx.userId,
+        },
+      });
+    }),
+
+  stockAdjustment: writeProcedure
+    .input(
+      z.object({
+        productId: z.string().min(1),
+        quantity: z.number(),
+        warehouseId: z.string().min(1),
+        notes: z.string().min(1),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      return db.stockMovement.create({
+        data: {
+          type: "adjustment",
+          productId: input.productId,
+          quantity: Math.abs(input.quantity),
+          fromWarehouseId: input.quantity < 0 ? input.warehouseId : null,
+          toWarehouseId: input.quantity >= 0 ? input.warehouseId : null,
+          notes: input.notes,
+          referenceType: null,
+          referenceId: null,
+          createdById: ctx.userId,
+        },
+      });
+    }),
 });
