@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-07 by CLAUDE_CODE (Phase 8 Batch 1 Item 2 complete — platform-admin + tenant onboarding merged)
+# Last updated: 2026-05-08 by CLAUDE_CODE (Phase 8 Batch 1 Item 3 complete — landing + demo-login + register + powerbyte-admin merged 49e1002)
 # ---
 
 ## Phase Status
@@ -165,58 +165,49 @@
 
 **Architectural decision recorded inline:** `packages/api-client` is a typed fetch wrapper, NOT a tRPC client. Phase 4 Part 5 will add tRPC routers on the server; the api-client can be extended (or replaced with a tRPC proxy) at that point. Mobile apps will consume this same package per Rule 13 (mobile never imports `packages/db`).
 
-## Phase 8 Batch 1 Item 3 — TDD Foothold (commit `a6755c5`, branch `feat/landing-demo-entry`, NOT yet merged)
+## Phase 8 Batch 1 Item 3 — Landing page, register flow, demo entry, platform-admin UI (commit `49e1002`)
 
-🟡 PARTIAL — TDD plumbing only; UI work deferred to fresh-context resume session.
+✅ COMPLETE — squash-merged to main (49e1002). Branch `feat/landing-demo-entry` deleted.
 
 | File | Status | Notes |
 |------|--------|-------|
-| `apps/web/src/server/trpc/routers/plan.ts` | ✅ NEW | `planRouter.listActive` public query — `prisma.plan.findMany({ where: { isActive: true }, orderBy: { sortOrder: "asc" } })` returning `{ plans }`. Will be called by the landing page for pricing tiers. |
+| `apps/web/src/server/trpc/routers/plan.ts` | ✅ NEW | `planRouter.listActive` public query — `prisma.plan.findMany` sorted by sortOrder. Called by landing page pricing section. |
 | `apps/web/src/server/trpc/routers/_app.ts` | ✏️ MODIFIED | Wires `planRouter` as `plan` on `appRouter` |
-| `apps/web/src/lib/public-paths.ts` | ✅ NEW | Pure helper module — `PUBLIC_PATHS` array + `isPublic(pathname)`. Zero auth deps so vitest can import without pulling next-auth + next/server side effects (root cause of prior session's autocompact thrashing — see 🔴 gotcha 2026-05-08 in lessons.md). `PUBLIC_PATHS` includes `/` and `/demo-login`. |
-| `apps/web/src/middleware.ts` | ✏️ MODIFIED | Imports + re-exports `isPublic` from `@/lib/public-paths` for back-compat. `PUBLIC_PATHS` array removed (now lives in helper). Auth/redirect logic unchanged. |
-| `apps/web/src/__tests__/landing-demo.test.ts` | ✅ NEW | 8 tests (3 plan.listActive + 2 writeProcedure demo-blocking + 3 isPublic public-path matching). All GREEN. Imports `isPublic` from `@/lib/public-paths` (NOT `@/middleware`). |
+| `apps/web/src/lib/public-paths.ts` | ✅ NEW | `PUBLIC_PATHS` array (`/`, `/demo-login`, `/register`) + `isPublic(pathname)`. Zero auth deps — safe to import in vitest. |
+| `apps/web/src/middleware.ts` | ✏️ MODIFIED | Imports `isPublic` from `@/lib/public-paths`. `PUBLIC_PATHS` removed from middleware (now in helper). |
+| `apps/web/src/__tests__/landing-demo.test.ts` | ✅ NEW | 8/8 GREEN (3 plan.listActive + 2 write-procedure demo-blocking + 3 isPublic public-path). |
+| `apps/web/src/app/page.tsx` | ✅ NEW | Landing page — hero + pricing tiers (plan.listActive) + CTAs to /register and /demo-login. VoltAgent #050507 + #00d992. Prisma.JsonValue → string[] via type predicate. |
+| `apps/web/src/app/register/page.tsx` | ✅ NEW | Registration shell — renders RegisterForm client component. |
+| `apps/web/src/app/register/actions.ts` | ✅ NEW | Server Action `createTenantAction` — auth() guard + calls registration.createTenant tRPC + redirect on success. Return type `Promise<{ error: string }>` (no `| never`). |
+| `apps/web/src/app/register/register-form.tsx` | ✅ NEW | Client Component — debounced slug availability check (void IIFE setTimeout), plan radio select, form submit. `defaultPlan?: string | undefined` for exactOptionalPropertyTypes. |
+| `apps/web/src/app/demo-login/page.tsx` | ✅ NEW | Server Component + Server Action `enterDemo` — reads `WEBMASTER_PASSWORD` env var, guards on `undefined \|\| ""`, calls `signIn("credentials", { ..., tenantSlug: "demo", redirectTo: "/demo/dashboard" })`. |
+| `apps/web/src/app/powerbyte-admin/layout.tsx` | ✅ NEW | Platform Owner guard — `auth()` + `session.user.roles.includes("Platform Owner")` + `redirect("/login")`. Sidebar nav. Decision locked as Option A (server-side layout guard). |
+| `apps/web/src/app/powerbyte-admin/page.tsx` | ✅ NEW | Tenant list — `force-dynamic`, `prisma.tenant.findMany` with plan join, status badge color map. |
+| `apps/web/src/app/powerbyte-admin/[tenantId]/page.tsx` | ✅ NEW | Tenant detail — Next.js 15 async params, `notFound()`, inline Server Actions `suspendTenant` + `reactivateTenant`. |
+| `pnpm lint --max-warnings 0` | ✅ | 0 errors (after 3 lint fixes: no-base-to-string, no-redundant-type-constituents, no-misused-promises) |
 | `pnpm typecheck` | ✅ | 0 errors |
-| `pnpm lint --max-warnings 0` | ✅ | 0 errors |
-| `pnpm vitest run apps/web/src/__tests__/landing-demo.test.ts` | ✅ | 8/8 GREEN |
+| Two-stage review | ✅ | Stage 1 (spec compliance) PASS + Stage 2 (code quality) PASS |
 
-**Pending for Item 3 completion (next session, same branch):**
-
-- Root landing page `apps/web/src/app/page.tsx` — hero + pricing tiers (calls `plan.listActive`) + CTAs to `/register` and `/demo-login`. Use VoltAgent palette per `docs/DESIGN.md`.
-- `apps/web/src/app/register/page.tsx` — uses `registration.validateSlug` + `registration.createTenant` (Item 2 deliverables, already on main).
-- `apps/web/src/app/demo-login/page.tsx` — one-click demo tenant sign-in.
-- `apps/web/src/app/powerbyte-admin/` — `layout.tsx` with platform-admin guard (decide pattern + lock in DECISIONS_LOG.md), `page.tsx` (list tenants), `[tenantId]/page.tsx` (tenant detail with suspend/reactivate). Uses `platform.*` router (Item 2).
-- Add `/register` to `PUBLIC_PATHS` in `apps/web/src/lib/public-paths.ts`.
-- Visual QA per Rule 16, two-stage review on full feature, squash-merge.
-
-Pause handoff: `.cline/handoffs/2026-05-08-pause-item3-tdd-foothold.md`
+**Lint fixes applied before merge:**
+- `no-base-to-string`: filter `plan.features` to `string[]` with `(f): f is string => typeof f === "string"` before rendering
+- `no-redundant-type-constituents`: changed `Promise<{ error: string } | never>` → `Promise<{ error: string }>`
+- `no-misused-promises`: `setTimeout(() => { void (async () => { ... })(); }, 400)` — void IIFE wraps async function
 
 ## Next Action
 
-**CURRENT STATE: Phase 8 Batch 1 — Item 1 ✅ complete. Item 2 ✅ complete. Item 3 🟡 PARTIAL PAUSED (TDD foothold only — see table above).**
+**CURRENT STATE: Phase 8 Batch 1 — ALL 3 ITEMS COMPLETE.**
 
-1. **Phase 8 Batch 1 progress**:
+1. **Phase 8 Batch 1 summary**:
    - Item 1 ✅ `apps/worker` scaffold + tenant-provisioning queue end-to-end — merged `55d7650`
-   - Item 2 ✅ Module 17 platform-admin + tenant onboarding flow — merged `5da7607` / `837adbf`
-   - Item 3 🟡 PARTIAL Module 1 public-landing + Module 2 demo-system entry
-     (branch `feat/landing-demo-entry` — TDD foothold committed `a6755c5`,
-      NOT squash-merged; UI pending in fresh-context resume session)
-   - Each item runs as its own Phase 7 cycle (TDD, two-stage review,
-     squash-merge), one fresh Claude Code session per item.
-   - Item 3 resume scope + pre-flight checklist in
-     `.cline/handoffs/2026-05-08-pause-item3-tdd-foothold.md`
+   - Item 2 ✅ Module 17 platform-admin tRPC + tenant onboarding flow — merged `5da7607` / `837adbf`
+   - Item 3 ✅ Module 1 landing + Module 2 demo-system + public-paths /register — merged `49e1002`
 
-2. **After batch 1 completes**: Phase 8 adaptive replanning runs (V14)
-   before proposing batch 2. Likely candidates: Module 3 CRM (Customer
-   foundational entity for 6 other modules) OR Module 9 Banking (FundSource
-   foundational for payments/payroll/expenses).
+2. **Phase 8 adaptive replanning** is next: re-read PRODUCT.md vs this map, determine Batch 2
+   candidates. Likely high-value targets: Module 3 CRM (Customer foundational entity for 6+ modules)
+   OR Module 9 Banking (FundSource foundational for payments/payroll/expenses).
 
-3. **Browser-interactive Visual QA** is gated on system Chrome install
-   (MCP Playwright requires `/opt/google/chrome/chrome`). Will block
-   item 2 (platform-admin form QA) and item 3 (landing CTA QA) unless
-   resolved or HTTP-level QA workaround applied (same as Phase 6).
+3. **Browser-interactive Visual QA** remains gated on system Chrome install
+   (`/opt/google/chrome/chrome`). HTTP-level health-check QA used as workaround.
 
-4. **Framework lift candidate** (logged in lessons.md as 🟡 fix 2026-05-07):
-   Phase 3 env templates should default `AUTH_TRUST_HOST=true` for non-Vercel
-   stacks. Lift into V31 master prompt — saves every future project from
-   the same `/` 404 + UntrustedHost spam during Phase 6 QA.
+4. **Framework lift candidate** (🟡 fix 2026-05-07 in lessons.md):
+   Phase 3 env templates should default `AUTH_TRUST_HOST=true` for non-Vercel stacks.

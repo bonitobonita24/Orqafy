@@ -487,6 +487,81 @@
 - Branch:              feat/landing-demo-entry (committed, NOT squash-merged — left
                          open for next session to layer Item 3 UI work on top before
                          a single squash-merge of the full Item 3 feature).
+
+## 2026-05-08 — Phase 8 Batch 1 Item 3: landing page, register flow, demo entry, platform-admin UI
+- Agent:               CLAUDE_CODE
+- Why:                 Phase 8 Batch 1 Item 3 — complete implementation of Module 1
+                         (public landing page with pricing tiers) and Module 2 (demo-system
+                         entry + /register public path), plus platform-admin detail pages.
+                         Built on top of Item 3 TDD foothold (commit a6755c5) on the same
+                         branch. Full feature squash-merged as a single unit with the foothold.
+- Files added:         apps/web/src/app/page.tsx
+                         (rewritten landing — hero, pricing tiers via plan.listActive tRPC,
+                          CTAs to /register and /demo-login; VoltAgent palette #050507 +
+                          #00d992; signal-glow utility; Prisma.JsonValue → string[] type
+                          predicate for plan.features rendering)
+                       apps/web/src/app/register/page.tsx
+                         (registration landing — slug input + plan selector shell; calls
+                          register-form.tsx client component)
+                       apps/web/src/app/register/actions.ts
+                         (Server Action createTenantAction — reads session via auth(),
+                          calls registration.createTenant tRPC procedure server-side,
+                          returns { error: string } on failure or redirects to /[slug]/dashboard)
+                       apps/web/src/app/register/register-form.tsx
+                         (Client Component — slug availability indicator via debounced
+                          fetch to /api/trpc/registration.validateSlug; plan radio select;
+                          form submit calls createTenantAction Server Action)
+                       apps/web/src/app/demo-login/page.tsx
+                         (Server Component — one-click demo entry; Server Action enterDemo
+                          reads WEBMASTER_PASSWORD env var, guards on undefined/empty,
+                          calls signIn("credentials", { email: "webmaster@orqafy.local",
+                          password, tenantSlug: "demo", redirectTo: "/demo/dashboard" });
+                          redirect() outside try/catch per Next.js 15 requirement)
+                       apps/web/src/app/powerbyte-admin/layout.tsx
+                         (Platform Owner guard — auth() + session.user.roles.includes
+                          ("Platform Owner") check; redirect("/login") if unauthorized;
+                          sidebar nav with Tenants link; decision locked in DECISIONS_LOG.md:
+                          server-side layout guard, Option A)
+                       apps/web/src/app/powerbyte-admin/page.tsx
+                         (Tenant list — force-dynamic; prisma.tenant.findMany with plan
+                          join; status badge color map; link to /powerbyte-admin/[tenantId])
+                       apps/web/src/app/powerbyte-admin/[tenantId]/page.tsx
+                         (Tenant detail — Next.js 15 async params: Promise<{tenantId:string}>;
+                          notFound() if missing; inline Server Actions suspendTenant +
+                          reactivateTenant; status-conditional action buttons)
+- Files modified:      apps/web/src/lib/public-paths.ts
+                         (added "/register" to PUBLIC_PATHS array — allows unauthenticated
+                          access to registration page per middleware public-path check)
+- Files deleted:       none
+- Schema/migrations:   none
+- TDD cycle:           RED established by foothold (commit a6755c5 — 8 tests in
+                         landing-demo.test.ts). GREEN confirmed after all UI files
+                         implemented — 8/8 tests remain passing.
+- Two-stage review:    Stage 1 (spec compliance) PASS — all declared behaviours
+                         implemented at correct routes (/register, /demo-login,
+                         /powerbyte-admin/, /powerbyte-admin/[tenantId]).
+                       Stage 2 (code quality) PASS — 0 TypeScript errors, 0 lint
+                         errors after 3 lint fixes below, blast-radius scope contained.
+- Errors encountered:  (1) @typescript-eslint/no-base-to-string in page.tsx lines 113
+                           and 149 — String(f) called on Prisma.JsonValue (includes
+                           unknown-typed JsonObject/JsonArray).
+                       (2) @typescript-eslint/no-redundant-type-constituents in
+                           register/actions.ts line 17 — return type declared as
+                           Promise<{ error: string } | never>; | never is always redundant.
+                       (3) @typescript-eslint/no-misused-promises in register/register-
+                           form.tsx line 44 — setTimeout(async () => {...}) passes an
+                           async function to a void callback slot.
+- Errors resolved:     (1) Filtered plan.features to string[] with type predicate before
+                           rendering: (Array.isArray(plan.features) ? plan.features : [])
+                           .filter((f): f is string => typeof f === "string").
+                       (2) Removed | never — changed return type to Promise<{ error: string }>.
+                       (3) void IIFE pattern: setTimeout(() => { void (async () => {
+                           try { ... } catch { ... } })(); }, 400).
+- Branch:              feat/landing-demo-entry → squash-merged to main
+                         (commit 49e1002, 25 files, 14658 insertions, 39 deletions)
+                         → deleted with git branch -D (force-delete required for
+                           squash-merges — git cannot trace detached squash commit
+                           via merge ancestry)
 - Scope NOT covered:   /register page UI, /powerbyte-admin/* platform pages, middleware
                          /register public-path entry, platform-admin route-group guard,
                          IMPLEMENTATION_MAP rewrite, full Item 3 squash-merge.
