@@ -723,3 +723,61 @@
 - Next session begins: Sonnet 4.6, fresh context. Read STATE.md → handoff → run pnpm preflight
                          on Item 1 → if SAFE, branch feat/accounting-phase1, follow
                          .cline/tasks/phase8-batch-template.md.
+
+## 2026-05-08 — Phase 8 Batch 3 Item 1 — Module 12 Accounting Phase 1 (commit 69d1c6a)
+- Agent:               CLAUDE_CODE (Opus 4.7 — user resumed in Opus 4.7 rather than the
+                       paused-for Sonnet 4.6 session; explicit user instruction overrode
+                       the model preference. Preflight discipline still honored under
+                       same 80K SAFE zone calibration.)
+- Why:                 Module 12 Accounting Phase 1 is the foundation that every
+                       transaction-bearing module hooks into (PO, Invoice, Payment,
+                       Payroll, Credit Card billing, POS). Without it, every later
+                       module would have to stub or defer its accounting hook.
+- Files added:         apps/web/src/server/trpc/routers/accounting.ts (378 lines)
+                       apps/web/src/__tests__/accounting.test.ts (794 lines, 37 tests)
+                       apps/web/src/app/(tenant)/[slug]/(app)/accounting/page.tsx
+                         (Chart of Accounts list — server component, force-dynamic)
+                       apps/web/src/app/(tenant)/[slug]/(app)/accounting/journal-entries/page.tsx
+                         (Journal Entries list — server component, force-dynamic)
+- Files modified:      apps/web/src/server/trpc/routers/_app.ts (wired accountingRouter)
+- Files deleted:       none
+- Schema/migrations:   none — Account, JournalEntry, JournalLine, FiscalYear, TaxRate
+                         models were already present in packages/db/prisma/schema.prisma
+                         from Phase 4 Part 3 + Phase 6 seed.
+- Procedures (16):     account.list/byId/create/update/toggleActive
+                       journalEntry.list/byId/create/post/reverse
+                       fiscalYear.list/byId/create
+                       taxRate.list/byId/create
+- Tests:               37/37 GREEN. Reverse procedure followed strict TDD: 5 tests written
+                         first, 3 confirmed RED on missing procedure, then implementation
+                         brought all 5 to GREEN.
+- Reverse semantics:   creates counter-entry with swapped debits/credits,
+                         referenceType="reversal" + referenceId=originalEntry.id,
+                         status="posted" (auto-posted), description="Reversal of <orig>".
+                         Marks original entry status="void". Validates source must be
+                         'posted' (rejects draft + already-void → BAD_REQUEST).
+- Out of scope:        ProjectExpense.costType=inventory_consumed exception (PRODUCT.md
+                         line 596-598) — deferred to ProjectExpense module.
+                       P&L / Balance Sheet / Trial Balance reporting — deferred to a
+                         dedicated reporting feature.
+                       db.$transaction wrapping on reverse — matches existing 'post'
+                         pattern, documented as Phase 1 limitation, can harden later.
+- Validation:          pnpm lint --max-warnings 0 → 0 warnings, 0 errors
+                       pnpm typecheck → clean
+                       pnpm vitest run → 138/138 (6 test files; accounting 37/37)
+- Visual QA:           NOT performed — Playwright MCP blocked (Chrome not installed at
+                         /opt/google/chrome/chrome per STATE.md). New pages mirror
+                         inventory/page.tsx pattern (known-good) so risk is low.
+                         Tracked as pending framework lift.
+- Branch:              feat/accounting-phase1 → squash-merged to main (69d1c6a). Branch deleted.
+- Preflight evidence:  Pre-RESUME preflight ran on actual remaining scope (router + test
+                         already existed when session started — only reverse + UI pages
+                         + _app.ts wire remained). Returned ~50,185 tokens ✅ SAFE,
+                         well within 80K calibration.
+- Resume note:         When this session began, accounting.ts (332 lines, 13 procedures)
+                         and accounting.test.ts (695 lines, 32 tests) were already
+                         present as untracked files from an undocumented prior session.
+                         All 32 baseline tests passed. This session added the missing
+                         'reverse' procedure (handoff explicitly required both 'post'
+                         and 'reverse'), wired into _app.ts, built the 2 UI pages,
+                         and merged. Pre-existing work was validated by passing tests.

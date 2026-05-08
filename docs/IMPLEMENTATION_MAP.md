@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-08 by CLAUDE_CODE (Phase 8 Batch 2 Item 3 complete — Module 5 Inventory Phase 1 merged 4c6b1f3; reconciled from stale STATE.md)
+# Last updated: 2026-05-08 by CLAUDE_CODE Opus 4.7 (Phase 8 Batch 3 Item 1 complete — Module 12 Accounting Phase 1 merged 69d1c6a)
 # ---
 
 ## Phase Status
@@ -18,7 +18,7 @@
 | Phase 5 — Validation | ✅ Complete | All 9 commands pass. 15 ESLint fixes (mobile), React 19 forwardRef fix (web), turbo env passthrough, serverExternalPackages, next 15.3.2→15.5.15, 11 Expo HIGH CVEs mitigated (audit-level=critical). |
 | Phase 6 — Docker + Visual QA | ✅ Complete | All 7 dev services healthy, migrations in sync, seed populated (13 roles, 5 plans, demo tenant, webmaster, 9 depts, 9 expense cats, VAT 12%, warehouse, FY 2026, 31 CoA). Visual QA per Rule 16 passed: /api/health 200, /login 200 ("Sign In \| Orqafy"), / 307→/login (after AUTH_TRUST_HOST autofix), 6 security headers active. Browser-interactive auth flow QA deferred — needs system Chrome. |
 | Phase 7 — Feature Updates | ⬜ Pending | The daily loop. Triggered per item by Phase 8 batch execution. |
-| Phase 8 — Iterative Buildout | 🔵 In Progress — Batch 2 complete, ready for adaptive replan | Batch 1 ✅ all 3 items complete. Batch 2 ✅ all 3 items complete: Item 1 ✅ merged (`20fe862`) — Module 9 Banking FundSource CRUD. Item 2 ✅ merged (`0f00247`) — Module 3 CRM Phase 1. Item 3 ✅ merged (`4c6b1f3`) — Module 5 Inventory Phase 1 (inventoryRouter 14 procedures, 33 tests GREEN, product catalog + warehouse UI). Next: Phase 8 adaptive replanning (V14) before proposing Batch 3. |
+| Phase 8 — Iterative Buildout | 🔵 In Progress — Batch 3 Item 1 complete (1/3) | Batch 1 ✅ all 3 items complete. Batch 2 ✅ all 3 items complete. Batch 3 in progress: Item 1 ✅ merged (`69d1c6a`) — Module 12 Accounting Phase 1 (16 procedures, 37 tests GREEN, Chart of Accounts + Journal Entries UI). Item 2 ⬜ pending — Module 5 Inventory Phase 2 StockMovement (preflight 73.0K SAFE, branch feat/inventory-phase2). Item 3 ⬜ pending — Module 7 Tasks + Module 8 DTR Phase 1 (preflight 70.9K SAFE, branch feat/tasks-dtr-phase1). |
 
 ## Spec Files (Phase 3 outputs)
 
@@ -183,6 +183,38 @@
 - `.min(1)` not `.cuid()` for ID validation — Zod `.cuid()` rejects test fixture IDs like `"cuid-fs-1"` causing `BAD_REQUEST` before reaching mock. Lesson logged 🔴.
 - `bankName !== null` not `bankName &&` — `@typescript-eslint/strict-boolean-expressions` rejects nullable string in conditional.
 
+## Phase 8 Batch 3 Item 1 — Module 12 Accounting Phase 1 (commit `69d1c6a`)
+
+✅ COMPLETE — squash-merged to main (69d1c6a). Branch `feat/accounting-phase1` deleted.
+
+| File | Status | Notes |
+|------|--------|-------|
+| `apps/web/src/server/trpc/routers/accounting.ts` | ✅ NEW | `accountingRouter` with 4 sub-routers, 16 procedures total: 5 account (`list` paginated/`byId`/`create`/`update`/`toggleActive`), 5 journalEntry (`list`/`byId`/`create`/`post`/`reverse`), 3 fiscalYear (`list`/`byId`/`create`), 3 taxRate (`list`/`byId`/`create`). 378 lines. ID inputs use `.min(1)` per banking lesson. |
+| `apps/web/src/__tests__/accounting.test.ts` | ✅ NEW | 37/37 GREEN — 14 describe blocks. 794 lines. Mocks `@orqafy/db` (account/journalEntry/fiscalYear/taxRate). Reverse tested with 5 cases: success path (debit/credit swap + void original) + NOT_FOUND + BAD_REQUEST(draft) + BAD_REQUEST(already void) + demo tenant rejection. |
+| `apps/web/src/server/trpc/routers/_app.ts` | ✏️ MODIFIED | Wires `accountingRouter` as `accounting` on `appRouter` (+2 lines). |
+| `apps/web/src/app/(tenant)/[slug]/(app)/accounting/page.tsx` | ✅ NEW | Chart of Accounts list — server component, `force-dynamic`, prisma direct. Mirrors inventory/page.tsx pattern. Type label map (asset/liability/equity/revenue/expense). System badge. VoltAgent #00d992 active state. |
+| `apps/web/src/app/(tenant)/[slug]/(app)/accounting/journal-entries/page.tsx` | ✅ NEW | Journal Entries list — server component, `force-dynamic`, last 100 entries by date desc. Status pill (draft/posted/void) with three style maps. Reference type badge for reversals. Decimal sum via `Number(line.debit)`. |
+| `pnpm --filter @orqafy/web lint --max-warnings 0` | ✅ | 0 warnings, 0 errors |
+| `pnpm --filter @orqafy/web typecheck` | ✅ | 0 errors |
+| `pnpm --filter @orqafy/web vitest run` | ✅ | 138/138 (6 test files; accounting 37/37) |
+| Two-stage review | ✅ | Stage 1 (spec compliance) PASS + Stage 2 (code quality) PASS |
+| Visual QA | ⚠ Deferred | Playwright MCP blocked (Chrome not at /opt/google/chrome/chrome per STATE.md). Pages mirror known-good inventory pattern — risk low. Tracked as pending framework lift. |
+
+**Key decisions / lessons applied:**
+- TDD strict on `reverse`: 5 tests written first → 3 confirmed RED on missing procedure → implementation brought all to GREEN.
+- `.min(1)` not `.cuid()` for ID validation — applied proactively from banking lesson 🔴 2026-05-08.
+- `value !== null` JSX guards for nullable string fields — applied from CRM lesson.
+- No middleware imports in tests — applied from vitest+@/middleware lesson 🔴 2026-05-08.
+- No new schema migrations — Account, JournalEntry, JournalLine, FiscalYear, TaxRate all live in Phase 4 Part 3 schema and were seeded in Phase 6 (31 CoA, FY 2026, VAT 12%).
+- Reverse semantics: counter-entry with swapped debits/credits, `referenceType="reversal"` + `referenceId=originalId`, status="posted" (auto-posted), original marked "void". Validates source must be 'posted'.
+- Reverse not wrapped in `db.$transaction` — matches existing `post` pattern, documented as Phase 1 limitation.
+- Resume context: when this session began on `feat/accounting-phase1`, accounting.ts (332 lines, 13 procedures) and accounting.test.ts (695 lines, 32 tests) were already present as untracked files from an undocumented prior session. All 32 baseline tests passed. This session added the missing `reverse` (handoff required both `post` and `reverse`), wired into _app.ts, built the 2 UI pages, verified, merged.
+
+**Out of scope (deferred):**
+- ProjectExpense.costType=inventory_consumed exception logic (PRODUCT.md 596–598) — defer to ProjectExpense module.
+- P&L / Balance Sheet / Trial Balance reporting — defer to dedicated reporting feature.
+- db.$transaction wrapping on reverse — harden later, matches existing `post` pattern.
+
 ## Phase 8 Batch 2 Item 3 — Module 5 Inventory Phase 1 — Product catalog + Warehouse CRUD (commit `4c6b1f3`)
 
 ✅ COMPLETE — squash-merged to main (4c6b1f3). Branch `feat/inventory-phase1` deleted.
@@ -231,20 +263,32 @@
 
 ## Next Action
 
-**CURRENT STATE: Phase 8 Batch 2 complete. Ready for adaptive replan + Batch 3 proposal.**
+**CURRENT STATE: Phase 8 Batch 3 Item 1 complete (1/3). Items 2 and 3 pending — each in its own fresh session.**
 
-1. **Phase 8 Batch 2 summary** (all complete):
+1. **Phase 8 Batch 3 progress:**
+   - Item 1 ✅ Module 12 Accounting Phase 1 — 16 procedures + 37 tests GREEN + Chart of Accounts + Journal Entries UI — merged `69d1c6a`
+   - Item 2 ⬜ pending — Module 5 Inventory Phase 2 StockMovement (preflight 73.0K SAFE, branch `feat/inventory-phase2`)
+   - Item 3 ⬜ pending — Module 7 Tasks + Module 8 DTR Phase 1 combined (preflight 70.9K SAFE, branch `feat/tasks-dtr-phase1`)
+
+   **Resume next item:**
+   1. Open a NEW Claude Code session (fresh context per Rule 24).
+   2. Read `.cline/STATE.md` first.
+   3. Open `.cline/tasks/phase8-batch3-item2.md` (or item3.md) — pre-filled task file.
+   4. Run the `pnpm preflight` command in that file BEFORE writing any code. Honor the verdict.
+   5. Follow the working pattern: branch → TDD RED→GREEN → lint/typecheck → two-stage review → squash-merge → governance writes → STOP.
+
+2. **Phase 8 Batch 2 summary** (all complete):
    - Item 1 ✅ Module 9 Banking — FundSource CRUD (`bankingRouter` + 12 tests GREEN + fund-sources UI page) — merged `20fe862`
    - Item 2 ✅ Module 3 CRM Phase 1 — `crmRouter` 12 procedures + 23 tests GREEN + customers list + detail UI pages — merged `0f00247`
    - Item 3 ✅ Module 5 Inventory Phase 1 — `inventoryRouter` 14 procedures + 33 tests GREEN + product catalog + warehouse UI — merged `4c6b1f3`
 
-2. **Phase 8 Batch 1 summary** (all complete):
+3. **Phase 8 Batch 1 summary** (all complete):
    - Item 1 ✅ `apps/worker` scaffold + tenant-provisioning queue — merged `55d7650`
    - Item 2 ✅ Module 17 platform-admin tRPC + tenant onboarding — merged `5da7607` / `837adbf`
    - Item 3 ✅ Module 1 landing + Module 2 demo-system + /register — merged `49e1002`
 
-3. **Browser-interactive Visual QA** remains gated on system Chrome install
+4. **Browser-interactive Visual QA** remains gated on system Chrome install
    (`/opt/google/chrome/chrome`). HTTP-level health-check QA used as workaround.
 
-4. **Framework lift candidate** (🟡 fix 2026-05-07 in lessons.md):
+5. **Framework lift candidate** (🟡 fix 2026-05-07 in lessons.md):
    Phase 3 env templates should default `AUTH_TRUST_HOST=true` for non-Vercel stacks.
