@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-08 by CLAUDE_CODE Opus 4.7 (Phase 8 Batch 3 Item 1 complete — Module 12 Accounting Phase 1 merged 69d1c6a)
+# Last updated: 2026-05-08 by CLAUDE_CODE Opus 4.7 (Phase 8 Batch 3 Item 2 complete — Module 5 Inventory Phase 2 merged 710fbba)
 # ---
 
 ## Phase Status
@@ -18,7 +18,7 @@
 | Phase 5 — Validation | ✅ Complete | All 9 commands pass. 15 ESLint fixes (mobile), React 19 forwardRef fix (web), turbo env passthrough, serverExternalPackages, next 15.3.2→15.5.15, 11 Expo HIGH CVEs mitigated (audit-level=critical). |
 | Phase 6 — Docker + Visual QA | ✅ Complete | All 7 dev services healthy, migrations in sync, seed populated (13 roles, 5 plans, demo tenant, webmaster, 9 depts, 9 expense cats, VAT 12%, warehouse, FY 2026, 31 CoA). Visual QA per Rule 16 passed: /api/health 200, /login 200 ("Sign In \| Orqafy"), / 307→/login (after AUTH_TRUST_HOST autofix), 6 security headers active. Browser-interactive auth flow QA deferred — needs system Chrome. |
 | Phase 7 — Feature Updates | ⬜ Pending | The daily loop. Triggered per item by Phase 8 batch execution. |
-| Phase 8 — Iterative Buildout | 🔵 In Progress — Batch 3 Item 1 complete (1/3) | Batch 1 ✅ all 3 items complete. Batch 2 ✅ all 3 items complete. Batch 3 in progress: Item 1 ✅ merged (`69d1c6a`) — Module 12 Accounting Phase 1 (16 procedures, 37 tests GREEN, Chart of Accounts + Journal Entries UI). Item 2 ⬜ pending — Module 5 Inventory Phase 2 StockMovement (preflight 73.0K SAFE, branch feat/inventory-phase2). Item 3 ⬜ pending — Module 7 Tasks + Module 8 DTR Phase 1 (preflight 70.9K SAFE, branch feat/tasks-dtr-phase1). |
+| Phase 8 — Iterative Buildout | 🔵 In Progress — Batch 3 Item 2 complete (2/3) | Batch 1 ✅ all 3 items complete. Batch 2 ✅ all 3 items complete. Batch 3 in progress: Item 1 ✅ merged (`69d1c6a`) — Module 12 Accounting Phase 1 (16 procedures, 37 tests GREEN, Chart of Accounts + Journal Entries UI). Item 2 ✅ merged (`710fbba`) — Module 5 Inventory Phase 2 StockMovement/Transfer/Adjustment (5 procedures, 21 new tests GREEN, stock-movements page + inventory header link). Item 3 ⬜ pending — Module 7 Tasks + Module 8 DTR Phase 1 (preflight 70.9K SAFE, branch feat/tasks-dtr-phase1). |
 
 ## Spec Files (Phase 3 outputs)
 
@@ -97,12 +97,12 @@
 | docs/PRODUCT.md | ✅ | 2,160 lines, all 11 required sections + 11 optional |
 | docs/DESIGN.md | ✅ | VoltAgent aesthetic, authoritative visual reference |
 | docs/README.md | ✅ | HUMAN-owned project README — full feature description aligned with PRODUCT.md (added pre-Bootstrap, refined during Phase 2 commit `2ebf4b7`) |
-| docs/CHANGELOG_AI.md | ✅ | 17 entries (Bootstrap through Phase 8 Batch 2 Item 1) |
+| docs/CHANGELOG_AI.md | ✅ | Updated through Phase 8 Batch 3 Item 2 |
 | docs/DECISIONS_LOG.md | ✅ | 7+ decisions (Visual evolution + Orqafy rename + Phase 2 + Phase 3 + storage security decisions from Part 4) |
 | docs/IMPLEMENTATION_MAP.md | ✅ | This file |
 | docs/PHASE3_BRIEFING.md | ❌ Removed | Deleted in `3e7bc82` — superseded by framework-native `.claude/rules/phases.md` |
 | project.memory.md | ✅ | Updated with skill installations (gitignored) |
-| .cline/STATE.md | ✅ | PHASE = "Phase 8 Batch 2 Item 1 complete" |
+| .cline/STATE.md | ✅ | PHASE = "Phase 8 Batch 3 Item 2 complete" |
 | .cline/memory/lessons.md | ✅ | 3 🔴 gotchas (WSL2+Docker, pre-existing lint/typecheck, Expo CVEs) + 8 🟡 fixes (added Auth.js v5 AUTH_TRUST_HOST) + 2 🟤 decisions |
 | .cline/memory/agent-log.md | ✅ | All Bootstrap + Phase 2 + Phase 3 + Governance Sync entries |
 | CREDENTIALS.md | ✅ | Gitignored. AI-generated values active; ⏳ for human-fill (GitHub, Docker Hub, Turnstile prod, third-party). |
@@ -215,6 +215,44 @@
 - P&L / Balance Sheet / Trial Balance reporting — defer to dedicated reporting feature.
 - db.$transaction wrapping on reverse — harden later, matches existing `post` pattern.
 
+## Phase 8 Batch 3 Item 2 — Module 5 Inventory Phase 2 — StockMovement / Transfer / Adjustment (commit `710fbba`)
+
+✅ COMPLETE — squash-merged to main (710fbba). Branch `feat/inventory-phase2` deleted.
+
+| File | Status | Notes |
+|------|--------|-------|
+| `apps/web/src/server/trpc/routers/inventory.ts` | ✏️ MODIFIED (+143 lines) | `inventoryRouter` extended with 5 procedures: `stockMovementList` (paginated, type/productId/warehouseId filters with OR for warehouse), `stockMovementById` (NOT_FOUND on miss), `stockMovementCreate` (type-specific guards: in→toWarehouseId, out→fromWarehouseId, transfer→both, adjustment→at-least-one + note), `stockTransfer` (rejects same-warehouse), `stockAdjustment` (signed quantity routes from/to by sign, note required). All three writes inject `createdById: ctx.userId`. Schema discriminator pattern — single StockMovement table + type column. ID inputs use `.min(1)` per banking lesson. |
+| `apps/web/src/__tests__/inventory.test.ts` | ✏️ MODIFIED (+298 lines) | 21 new tests across 5 describes (54 total in file). Coverage: paginated returns, where-clause filter assertions, NOT_FOUND, type-specific validation rejections, demo-tenant rejection, unauthenticated rejection. Mock surface extended for `stockMovement` (findMany/findUnique/create/count). |
+| `apps/web/src/app/(tenant)/[slug]/(app)/inventory/stock-movements/page.tsx` | ✅ NEW | Server Component, `force-dynamic`. Direct `prisma.stockMovement.findMany` (L6 auto-injects tenantId). Type filter via Link chips (`all`/`in`/`out`/`transfer`/`adjustment`) preserving warehouse selection. Warehouse filter via GET form + `<select>` (vanilla HTML, no client component). Last 100 movements ordered desc. Counts strip in header. Decimal Qty rendered via `Number(quantity).toLocaleString("en-PH")`. Filter object built lazily for `exactOptionalPropertyTypes`. |
+| `apps/web/src/app/(tenant)/[slug]/(app)/inventory/page.tsx` | ✏️ MODIFIED (+6 lines) | Header gains "Stock Movements →" Link mirroring journal-entries → chart-of-accounts cross-link pattern. |
+| `pnpm --filter @orqafy/web lint --max-warnings 0` | ✅ | 0 warnings, 0 errors |
+| `pnpm --filter @orqafy/web typecheck` | ✅ | 0 errors |
+| `pnpm --filter @orqafy/web vitest run inventory.test.ts` | ✅ | 54/54 GREEN |
+| Two-stage review | ✅ | Stage 1 (spec compliance) PASS + Stage 2 (code quality) PASS |
+| Visual QA | ⚠ Deferred | Playwright MCP blocked (Chrome not at /opt/google/chrome/chrome). New page mirrors known-good journal-entries pattern — risk low. |
+
+**Resume context:** Session began with STATE.md saying `GIT_BRANCH=main` and Item 2 ⬜ pending, but the actual working tree was on `feat/inventory-phase2` with 438 uncommitted lines (TYPE 4 mid-part interruption signature, no PARTIAL flag). Prior undocumented session had built backend (5 procedures + 21 tests) but stopped before committing. Resolved via option 1 of three (verify → checkpoint → continue):
+
+1. Inspected git status / diff / stash — confirmed work was high-quality and pure additions.
+2. Ran vitest + lint + typecheck on dirty tree. Vitest GREEN, lint clean, **typecheck FAILED**: 3 `db.stockMovement.create` calls missing `createdById` (required Prisma field, mocks don't enforce).
+3. Applied 6 minimal edits — added `ctx` to mutation destructure + `createdById: ctx.userId` on `stockMovementCreate` / `stockTransfer` / `stockAdjustment`. Mirrors job-order/invoice/expense canonical pattern.
+4. Re-verified all three GREEN. Committed checkpoint `ee49527` ("feat(inventory): Phase 2 backend").
+5. Preflight on remaining UI scope: `~45.6K tokens` SAFE (well under 80K, much smaller than the original 73K full-Item estimate).
+6. Built UI, second commit `2447688`, squash-merged.
+
+**Key decisions / lessons applied:**
+- `.min(1)` not `.cuid()` for ID validation (banking 🔴 2026-05-08).
+- `value !== null` JSX guards for nullable string fields (CRM lesson).
+- `exactOptionalPropertyTypes` requires lazy filter-object construction (cannot pass `{ key: undefined }` to `{ key?: string }`).
+- Prisma schema-required fields surface ONLY via tsc — vitest mocks bypass them. Future tests should assert `createdById` was passed via `expect.objectContaining({ data: ... })`. Logged as 🟢 change lesson.
+- Server Component + URL search-params filter pattern keeps the page free of `'use client'`. GET form for warehouse select uses native HTML form submission.
+
+**Out of scope (deferred per task spec):**
+- Purchasing receipt flow — Module 4 Phase 1 will write StockMovement records.
+- Serial-number lifecycle deep-dive — basic `ProductSerialNumber` interactions only.
+- POS stock deduction trigger — Module 11 territory.
+- Direct WarehouseStock mutation API — StockMovement remains canonical write path.
+
 ## Phase 8 Batch 2 Item 3 — Module 5 Inventory Phase 1 — Product catalog + Warehouse CRUD (commit `4c6b1f3`)
 
 ✅ COMPLETE — squash-merged to main (4c6b1f3). Branch `feat/inventory-phase1` deleted.
@@ -263,17 +301,17 @@
 
 ## Next Action
 
-**CURRENT STATE: Phase 8 Batch 3 Item 1 complete (1/3). Items 2 and 3 pending — each in its own fresh session.**
+**CURRENT STATE: Phase 8 Batch 3 Item 2 complete (2/3). Item 3 pending — fresh session.**
 
 1. **Phase 8 Batch 3 progress:**
    - Item 1 ✅ Module 12 Accounting Phase 1 — 16 procedures + 37 tests GREEN + Chart of Accounts + Journal Entries UI — merged `69d1c6a`
-   - Item 2 ⬜ pending — Module 5 Inventory Phase 2 StockMovement (preflight 73.0K SAFE, branch `feat/inventory-phase2`)
+   - Item 2 ✅ Module 5 Inventory Phase 2 — 5 procedures (StockMovement/Transfer/Adjustment) + 21 new tests GREEN + stock-movements page + inventory header link — merged `710fbba` (resumed from uncommitted prior-session work via verify → checkpoint → continue; 6-edit `createdById` typecheck fix applied during verification)
    - Item 3 ⬜ pending — Module 7 Tasks + Module 8 DTR Phase 1 combined (preflight 70.9K SAFE, branch `feat/tasks-dtr-phase1`)
 
    **Resume next item:**
    1. Open a NEW Claude Code session (fresh context per Rule 24).
    2. Read `.cline/STATE.md` first.
-   3. Open `.cline/tasks/phase8-batch3-item2.md` (or item3.md) — pre-filled task file.
+   3. Open `.cline/tasks/phase8-batch3-item3.md` — pre-filled task file.
    4. Run the `pnpm preflight` command in that file BEFORE writing any code. Honor the verdict.
    5. Follow the working pattern: branch → TDD RED→GREEN → lint/typecheck → two-stage review → squash-merge → governance writes → STOP.
 

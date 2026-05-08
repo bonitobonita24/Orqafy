@@ -239,3 +239,66 @@
   above. RULE: any future agent that estimates token cost without invoking
   `pnpm preflight` is a Rule 29 violation — the script is the source of truth.
 # ---
+
+## 2026-05-08 — 🟢 Resume-from-uncommitted-prior-session pattern (verify → checkpoint → continue)
+- Type:      🟢 change
+- Phase:     Phase 7 / Phase 8 Batch — applies whenever STATE.md mismatch + dirty working tree on a feature branch
+- Files:     none (process pattern)
+- Concepts:  resume, mid-part interruption, type-4-recovery, verify-checkpoint-continue,
+             tdd-audit-trail, prisma-typecheck-vs-vitest-mocks
+- Narrative: A clean instance of TYPE 4 recovery emerged on Phase 8 Batch 3 Item 2.
+  STATE.md said GIT_BRANCH=main + Item 2 ⬜ pending, but the actual repo was on
+  feat/inventory-phase2 with 438 lines uncommitted across inventory.ts +
+  inventory.test.ts. A prior session had built the backend (5 procedures + 21 tests)
+  but ended before committing. There was no PARTIAL flag in STATE.md.
+
+  Three options presented to user (always present these explicitly, do not auto-choose):
+    Option 1 — verify → checkpoint → continue
+    Option 2 — verify only, no checkpoint, squash everything at end
+    Option 3 — discard via git restore + restart cleanly with strict TDD audit trail
+
+  User chose option 1. Resolution sequence:
+    1. git status + git diff --stat + git stash list — see scope
+    2. git diff <files> — judge quality (look for: any types, schema mismatches,
+       lessons-from-prior-items violated, unsafe patterns)
+    3. Run vitest + lint + typecheck on the dirty tree
+    4. If GREEN — git commit a checkpoint on the feature branch with descriptive
+       subject ("feat(<module>): Phase N backend — checkpoint"). The checkpoint is
+       the recovery point if the second half fails.
+    5. If RED — fix minimally, then re-verify. ON THIS RUN: typecheck FAILED — three
+       db.stockMovement.create calls missing required createdById field. Vitest
+       passed (mocks don't enforce Prisma input contracts). Lint passed. Only tsc
+       caught it. Six minimal edits applied. Re-verified GREEN, then checkpoint.
+    6. Re-run pnpm preflight on the REMAINING scope (NOT the original full-Item
+       scope). The remaining scope is much smaller — original 73K SAFE became
+       45.6K SAFE on the UI-only resume.
+    7. Build the remaining work (one or two atomic commits on the feature branch).
+    8. Two-stage review → squash-merge → governance writes.
+
+  Why this works: the checkpoint commit creates a recovery point. The squash-merge
+  collapses both commits into one final history entry per Rule 23.
+
+  CAVEATS:
+    - TDD audit trail (RED-before-GREEN) is unverifiable when the prior session
+      committed nothing. The user must explicitly accept this deviation. Document
+      in CHANGELOG_AI under "Resume note".
+    - Prisma create-call type-error class: required schema fields can be missing
+      from a write call and vitest mocks will still pass (mocks don't enforce the
+      Prisma type contract). ONLY tsc catches it. Recommendation: tests should
+      assert the create call was made with the expected required fields via
+      `expect.objectContaining({ data: expect.objectContaining({ createdById:
+      expect.any(String) }) })` to lock the contract at runtime too.
+
+  WHEN NOT TO USE option 1:
+    - git diff reveals broken or contradictory work
+    - Prior session's approach conflicts with current PRODUCT.md / DECISIONS_LOG
+    - Lessons added since the prior session contradict its patterns
+    - User wants strict TDD audit trail enforced
+  → In any of those cases, option 3 (discard + restart) is the right call.
+
+  RULE: never auto-resume blindly. Always inspect first. Always preflight the
+  REMAINING scope (not the original scope). Always present user with the three
+  options before committing if the uncommitted work was novel work the user
+  didn't see. Verification trio (vitest + lint + typecheck) is the empirical
+  safety net that lets you keep work whose audit trail is unverifiable.
+# ---

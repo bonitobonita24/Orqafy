@@ -781,3 +781,97 @@
                          'reverse' procedure (handoff explicitly required both 'post'
                          and 'reverse'), wired into _app.ts, built the 2 UI pages,
                          and merged. Pre-existing work was validated by passing tests.
+
+## 2026-05-08 — Phase 8 Batch 3 Item 2 — Module 5 Inventory Phase 2 (commit 710fbba)
+- Agent:               CLAUDE_CODE (Opus 4.7 — user resumed in Opus 4.7 again,
+                       same model continuity as Item 1; preflight discipline
+                       honored under same 80K SAFE zone calibration.)
+- Why:                 Inventory Phase 2 unblocks downstream work — Purchasing
+                       receipt flows (Module 4 Phase 1) and POS stock deduction
+                       (Module 11) both write StockMovement records. Without
+                       Phase 2, those modules would have to stub or defer.
+- Files added:         apps/web/src/app/(tenant)/[slug]/(app)/inventory/stock-movements/page.tsx
+                         (Server Component, force-dynamic, Link-chip type filter +
+                          GET-form warehouse filter, last 100 movements, mirrors
+                          journal-entries pattern with VoltAgent palette)
+- Files modified:      apps/web/src/server/trpc/routers/inventory.ts (+143 lines)
+                       apps/web/src/__tests__/inventory.test.ts (+298 lines)
+                       apps/web/src/app/(tenant)/[slug]/(app)/inventory/page.tsx
+                         (header gains "Stock Movements →" cross-link)
+- Files deleted:       none
+- Schema/migrations:   none — StockMovement model already present in
+                       packages/db/prisma/schema.prisma from Phase 4 Part 3.
+- Procedures (5):      stockMovementList — paginated; type/productId/warehouseId
+                         filters (warehouseId matches fromWarehouseId OR
+                         toWarehouseId via OR clause)
+                       stockMovementById — single record with product/warehouse
+                         loaded; throws NOT_FOUND on miss
+                       stockMovementCreate — generic create with type-specific
+                         validation (in→toWarehouseId required, out→fromWarehouseId
+                         required, transfer→both required, adjustment→at-least-one
+                         + reason note required)
+                       stockTransfer — convenience wrapper rejecting same-warehouse
+                       stockAdjustment — convenience wrapper, signed quantity routes
+                         from/to by sign (negative=fromWarehouse, non-negative=
+                         toWarehouse), z.string().min(1) note required
+                       All three writes inject createdById: ctx.userId
+                         (writeProcedure type-narrows ctx.userId to string;
+                          matches job-order/invoice/expense canonical pattern)
+- Tests:               21 new tests across 5 describes (54/54 GREEN total in
+                         inventory.test.ts). Coverage: paginated returns + where-
+                         clause filter assertions + NOT_FOUND + type-specific
+                         validation rejections + demo-tenant rejection +
+                         unauthenticated rejection on every procedure.
+- Validation:          pnpm lint --max-warnings 0 → 0 warnings, 0 errors
+                       pnpm typecheck → clean (after createdById fix)
+                       pnpm vitest run inventory.test.ts → 54/54 GREEN
+- Visual QA:           NOT performed — Playwright MCP blocked (Chrome not at
+                         /opt/google/chrome/chrome per STATE.md). New page mirrors
+                         known-good journal-entries pattern (just merged in Item 1)
+                         so risk is low. Tracked as pending framework lift.
+- Branch:              feat/inventory-phase2 → squash-merged to main (710fbba,
+                         4 files +672 insertions). Branch deleted.
+- Preflight evidence:  Pre-RESUME preflight ran on actual remaining UI scope
+                         (backend + tests already existed when session started —
+                         only UI page + inventory header link + createdById fix
+                         remained). Returned ~45,557 tokens ✅ SAFE, well below
+                         the original 73K full-Item estimate from the task file.
+- Resume note:         When this session began, STATE.md said GIT_BRANCH=main and
+                         Item 2 ⬜ pending, but the actual repo was on
+                         feat/inventory-phase2 with 438 uncommitted lines across
+                         inventory.ts (+140) and inventory.test.ts (+298) — TYPE 4
+                         mid-part interruption signature with no PARTIAL flag.
+                         Prior undocumented session had built the 5 procedures +
+                         21 tests but stopped before committing. Resolved via
+                         option 1 of three (verify → checkpoint → continue):
+                         1. Inspected git status / diff / stash — work was high
+                            quality (z.string().min(1) per banking lesson, no any
+                            types, schema-discriminator pattern matched).
+                         2. Ran trio. Vitest GREEN (mocks don't enforce Prisma
+                            types). Lint clean. **Typecheck FAILED** — 3
+                            db.stockMovement.create calls missing required
+                            createdById field.
+                         3. Applied 6 minimal edits — added ctx to mutation
+                            destructure + createdById: ctx.userId on three create
+                            paths. Re-verified all GREEN.
+                         4. Committed checkpoint (ee49527) on the feature branch.
+                         5. Built UI (stock-movements page + inventory header
+                            link). Fixed exactOptionalPropertyTypes typecheck error
+                            via lazy filter-object construction.
+                         6. Committed UI work (2447688). Two-stage review PASS.
+                            Squash-merged.
+                         TDD audit trail (RED→GREEN before code) is unverifiable
+                         for the prior session's work — accepted user-authorized
+                         deviation (option 1 vs option 3 discard-and-restart).
+                         Logged 🟢 change lesson 2026-05-08 documenting the
+                         resume-from-uncommitted pattern.
+- Vercel plugin:       Multiple auto-injected skill recommendations (verification,
+                         next-cache-components, bootstrap, vercel-storage,
+                         next-forge, nextjs) ignored — V31 framework rules
+                         priority 2 > skill auto-injection priority 7. Tasks were
+                         Prisma typecheck fix + tRPC router extension + Server
+                         Component UI mirroring existing journal-entries pattern,
+                         none Vercel-specific. Two false-positive params-await
+                         validator hits ignored — line referenced local
+                         URLSearchParams instances named "params", not Next.js
+                         route props (page only awaits searchParams).
