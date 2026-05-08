@@ -17,6 +17,7 @@ import { notificationRouter } from "./notification";
 import { platformRouter } from "./platform";
 import { registrationRouter } from "./registration";
 import { planRouter } from "./plan";
+import { bankingRouter } from "./banking";
 
 export const appRouter = createTRPCRouter({
   auth: authRouter,
@@ -37,6 +38,7 @@ export const appRouter = createTRPCRouter({
   platform: platformRouter,
   registration: registrationRouter,
   plan: planRouter,
+  banking: bankingRouter,
 });
 
 export type AppRouter = typeof appRouter;
