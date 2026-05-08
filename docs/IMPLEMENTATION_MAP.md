@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-08 by CLAUDE_CODE (Phase 8 Batch 1 Item 3 complete — landing + demo-login + register + powerbyte-admin merged 49e1002)
+# Last updated: 2026-05-08 by CLAUDE_CODE (Phase 8 Batch 2 Item 2 complete — Module 3 CRM Phase 1 merged 0f00247)
 # ---
 
 ## Phase Status
@@ -18,7 +18,7 @@
 | Phase 5 — Validation | ✅ Complete | All 9 commands pass. 15 ESLint fixes (mobile), React 19 forwardRef fix (web), turbo env passthrough, serverExternalPackages, next 15.3.2→15.5.15, 11 Expo HIGH CVEs mitigated (audit-level=critical). |
 | Phase 6 — Docker + Visual QA | ✅ Complete | All 7 dev services healthy, migrations in sync, seed populated (13 roles, 5 plans, demo tenant, webmaster, 9 depts, 9 expense cats, VAT 12%, warehouse, FY 2026, 31 CoA). Visual QA per Rule 16 passed: /api/health 200, /login 200 ("Sign In \| Orqafy"), / 307→/login (after AUTH_TRUST_HOST autofix), 6 security headers active. Browser-interactive auth flow QA deferred — needs system Chrome. |
 | Phase 7 — Feature Updates | ⬜ Pending | The daily loop. Triggered per item by Phase 8 batch execution. |
-| Phase 8 — Iterative Buildout | 🔵 In Progress — Batch 1 | 3-item batch accepted 2026-05-07. Item 1 ✅ merged (`55d7650`) — apps/worker + BullMQ tenant-provisioning. Item 2 ✅ merged (`5da7607`) — Module 17 platform-admin + tenant onboarding (platformProcedure, platformRouter, registrationRouter, 25 tests). Item 3 ⬜ pending — Module 1 public-landing + Module 2 demo entry. |
+| Phase 8 — Iterative Buildout | 🔵 In Progress — Batch 2 | Batch 1 ✅ all 3 items complete. Batch 2 accepted 2026-05-08: Item 1 ✅ merged (`20fe862`) — Module 9 Banking FundSource CRUD (bankingRouter 5 procedures, 12 tests GREEN, fund-sources UI page). Item 2 ✅ merged (`0f00247`) — Module 3 CRM Phase 1 (crmRouter 12 procedures, 23 tests GREEN, customers list + detail UI pages). Item 3 ⬜ pending — Module 5 Inventory Phase 1. |
 
 ## Spec Files (Phase 3 outputs)
 
@@ -68,7 +68,7 @@
 
 | App | Status | Description |
 |-----|--------|-------------|
-| apps/web | ✅ Complete | Next.js 15 App Router. shadcn/ui (New York style, VoltAgent dark tokens). tRPC routers for all 13 entities (customer, project, task, timeEntry, expense, invoice, contract, team, subscription, report, storage, notification, auditLog). Auth.js v5 Credentials provider + bcrypt + securityVersion. 7 CSP headers (Turnstile + Google Fonts). In-memory LRU rate limiters (4 tiers). isomorphic-dompurify XSS sanitizer. Tenant-resolution middleware + RBAC guard + SESSION_INVALIDATED. Cloudflare Turnstile siteverify on public mutations. L1 tenant scoping on all protected procedures. Lint 0 errors, typecheck 0 errors across 7 packages. Merged `44429d0`. |
+| apps/web | ✅ Complete + Phase 8 additions | Next.js 15 App Router. shadcn/ui (New York style, VoltAgent dark tokens). tRPC routers for all 13 base entities (customer, project, task, timeEntry, expense, invoice, contract, team, subscription, report, storage, notification, auditLog) + bankingRouter (list/byId/create/update/toggleActive). Auth.js v5 Credentials provider + bcrypt + securityVersion. 7 CSP headers (Turnstile + Google Fonts). In-memory LRU rate limiters (4 tiers). isomorphic-dompurify XSS sanitizer. Tenant-resolution middleware + RBAC guard + SESSION_INVALIDATED. Cloudflare Turnstile siteverify on public mutations. L1 tenant scoping on all protected procedures. Lint 0 errors, typecheck 0 errors. Merged `44429d0` (scaffold) + `20fe862` (banking). |
 | apps/worker | ✅ Complete | BullMQ worker runtime. `processTenantProvisioning` (idempotent schema creation via `createTenantSchema`). Health HTTP server on WORKER_PORT (42952). Graceful shutdown (SIGTERM/SIGINT). Multi-stage Dockerfile. Compose files (dev build, stage/prod image pull). Integration test GREEN. Lint 0, typecheck 0. Merged `55d7650`. |
 | apps/mobile | ✅ Complete | Expo SDK 52 with Expo Router v4 file-based navigation. React Native Reusables + NativeWind (VoltAgent dark tokens). WatermelonDB v0.27 offline-first with pull-based sync. 14 screens across 4 nav sections (Dashboard, Projects, Time, Settings). `packages/api-client` only (Rule 13). Expo Push notifications via expo-notifications. Typecheck clean. Merged `55b9ac7`. |
 
@@ -97,12 +97,12 @@
 | docs/PRODUCT.md | ✅ | 2,160 lines, all 11 required sections + 11 optional |
 | docs/DESIGN.md | ✅ | VoltAgent aesthetic, authoritative visual reference |
 | docs/README.md | ✅ | HUMAN-owned project README — full feature description aligned with PRODUCT.md (added pre-Bootstrap, refined during Phase 2 commit `2ebf4b7`) |
-| docs/CHANGELOG_AI.md | ✅ | 16 entries (Bootstrap through Phase 8 Batch 1 Item 1) |
+| docs/CHANGELOG_AI.md | ✅ | 17 entries (Bootstrap through Phase 8 Batch 2 Item 1) |
 | docs/DECISIONS_LOG.md | ✅ | 7+ decisions (Visual evolution + Orqafy rename + Phase 2 + Phase 3 + storage security decisions from Part 4) |
 | docs/IMPLEMENTATION_MAP.md | ✅ | This file |
 | docs/PHASE3_BRIEFING.md | ❌ Removed | Deleted in `3e7bc82` — superseded by framework-native `.claude/rules/phases.md` |
 | project.memory.md | ✅ | Updated with skill installations (gitignored) |
-| .cline/STATE.md | ✅ | PHASE = "Phase 8 Batch 1 Item 1 complete" |
+| .cline/STATE.md | ✅ | PHASE = "Phase 8 Batch 2 Item 1 complete" |
 | .cline/memory/lessons.md | ✅ | 3 🔴 gotchas (WSL2+Docker, pre-existing lint/typecheck, Expo CVEs) + 8 🟡 fixes (added Auth.js v5 AUTH_TRUST_HOST) + 2 🟤 decisions |
 | .cline/memory/agent-log.md | ✅ | All Bootstrap + Phase 2 + Phase 3 + Governance Sync entries |
 | CREDENTIALS.md | ✅ | Gitignored. AI-generated values active; ⏳ for human-fill (GitHub, Docker Hub, Turnstile prod, third-party). |
@@ -165,6 +165,24 @@
 
 **Architectural decision recorded inline:** `packages/api-client` is a typed fetch wrapper, NOT a tRPC client. Phase 4 Part 5 will add tRPC routers on the server; the api-client can be extended (or replaced with a tRPC proxy) at that point. Mobile apps will consume this same package per Rule 13 (mobile never imports `packages/db`).
 
+## Phase 8 Batch 2 Item 1 — Module 9 Banking & Finance — FundSource CRUD (commit `20fe862`)
+
+✅ COMPLETE — squash-merged to main (20fe862). Branch `feat/banking-fundsource` deleted.
+
+| File | Status | Notes |
+|------|--------|-------|
+| `apps/web/src/server/trpc/routers/banking.ts` | ✅ NEW | `bankingRouter` — 5 procedures: `list` (paginated, isActive/type filters), `byId` (NOT_FOUND guard), `create` (writeProcedure, initialBalance→currentBalance), `update` (partial, NOT_FOUND guard), `toggleActive` (flips isActive). No tenantId scoping per project tenancy pattern. |
+| `apps/web/src/server/trpc/routers/_app.ts` | ✏️ MODIFIED | Wires `bankingRouter` as `banking` on `appRouter` |
+| `apps/web/src/__tests__/banking.test.ts` | ✅ NEW | 12/12 GREEN — 5 describe blocks: list (pagination, isActive filter, type filter, unauthenticated rejection), byId (found, NOT_FOUND), create (success, demo-tenant rejection), update (success, NOT_FOUND), toggleActive (true→false, false→true). ID validation uses `.min(1)` not `.cuid()`. |
+| `apps/web/src/app/(tenant)/[slug]/(app)/banking/fund-sources/page.tsx` | ✅ NEW | Server component. Direct `prisma.fundSource.findMany`. TYPE_LABELS/TYPE_COLORS badge maps. `formatBalance` via `Intl.NumberFormat("en-PH")`. Table: name/type-badge/balance/accountNumber/isActive-badge. `bankName !== null` guard for strict-boolean-expressions lint rule. |
+| `pnpm --filter @orqafy/web lint` | ✅ | 0 errors |
+| `pnpm --filter @orqafy/web typecheck` | ✅ | 0 errors |
+| Two-stage review | ✅ | Stage 1 (spec compliance) PASS + Stage 2 (code quality) PASS |
+
+**Key decisions:**
+- `.min(1)` not `.cuid()` for ID validation — Zod `.cuid()` rejects test fixture IDs like `"cuid-fs-1"` causing `BAD_REQUEST` before reaching mock. Lesson logged 🔴.
+- `bankName !== null` not `bankName &&` — `@typescript-eslint/strict-boolean-expressions` rejects nullable string in conditional.
+
 ## Phase 8 Batch 1 Item 3 — Landing page, register flow, demo entry, platform-admin UI (commit `49e1002`)
 
 ✅ COMPLETE — squash-merged to main (49e1002). Branch `feat/landing-demo-entry` deleted.
@@ -195,16 +213,17 @@
 
 ## Next Action
 
-**CURRENT STATE: Phase 8 Batch 1 — ALL 3 ITEMS COMPLETE.**
+**CURRENT STATE: Phase 8 Batch 2 — Items 1 and 2 complete, Item 3 next.**
 
-1. **Phase 8 Batch 1 summary**:
-   - Item 1 ✅ `apps/worker` scaffold + tenant-provisioning queue end-to-end — merged `55d7650`
-   - Item 2 ✅ Module 17 platform-admin tRPC + tenant onboarding flow — merged `5da7607` / `837adbf`
-   - Item 3 ✅ Module 1 landing + Module 2 demo-system + public-paths /register — merged `49e1002`
+1. **Phase 8 Batch 2 summary so far**:
+   - Item 1 ✅ Module 9 Banking — FundSource CRUD (`bankingRouter` + 12 tests GREEN + fund-sources UI page) — merged `20fe862`
+   - Item 2 ✅ Module 3 CRM Phase 1 — `crmRouter` 12 procedures + 23 tests GREEN + customers list + detail UI pages — merged `0f00247`
+   - Item 3 ⬜ Module 5 Inventory Phase 1 — Product catalog + Warehouse CRUD — **NEXT TARGET**
 
-2. **Phase 8 adaptive replanning** is next: re-read PRODUCT.md vs this map, determine Batch 2
-   candidates. Likely high-value targets: Module 3 CRM (Customer foundational entity for 6+ modules)
-   OR Module 9 Banking (FundSource foundational for payments/payroll/expenses).
+2. **Phase 8 Batch 1 summary** (all complete):
+   - Item 1 ✅ `apps/worker` scaffold + tenant-provisioning queue — merged `55d7650`
+   - Item 2 ✅ Module 17 platform-admin tRPC + tenant onboarding — merged `5da7607` / `837adbf`
+   - Item 3 ✅ Module 1 landing + Module 2 demo-system + /register — merged `49e1002`
 
 3. **Browser-interactive Visual QA** remains gated on system Chrome install
    (`/opt/google/chrome/chrome`). HTTP-level health-check QA used as workaround.
