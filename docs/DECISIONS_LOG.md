@@ -458,3 +458,11 @@ useful for both directions.
 **Rationale:** DLQ safety — no data is silently lost on job failure. Failed jobs accumulate in Redis/Valkey but can be inspected, retried, or manually cleared. The trade-off is storage growth for high-volume persistent failures. Acceptable for Orqafy's job types (all business-domain: invoicing, payroll, inventory, etc.) where silent loss is worse than storage cost.
 **Locked:** Yes — do not change to removeOnFail:true globally. Per-queue override is acceptable if a queue is explicitly designed for fire-and-forget workloads (log to DECISIONS_LOG.md).
 **Phase:** Phase 4 Part 4
+
+---
+
+## Platform-Admin Route Guard — Server-Side Layout Check (Option A)
+**Decision:** `/powerbyte-admin/*` routes are protected by a server-side check in `apps/web/src/app/powerbyte-admin/layout.tsx` using `getServerSession()` + `roles.includes("Platform Owner")`. Unauthorized requests are redirected to `/login`.
+**Rationale:** Option A (server-side layout) was chosen over Option B (middleware fast-path) because it keeps the auth logic co-located with the admin route tree, avoids adding another conditional branch to `middleware.ts` (already complex), and Next.js App Router layout components are guaranteed to run server-side before any child page renders. Middleware Option B would be marginally faster but adds cognitive overhead to an already-critical security file.
+**Locked:** Yes — do not move the platform-admin guard into middleware without a security review and DECISIONS_LOG.md update.
+**Phase:** Phase 8 Batch 1 Item 3

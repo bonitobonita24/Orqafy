@@ -1,0 +1,51 @@
+import type { Metadata } from "next";
+import { prisma } from "@orqafy/db";
+import { RegisterForm } from "./register-form";
+
+export const metadata: Metadata = { title: "Create your workspace" };
+
+export const dynamic = "force-dynamic";
+
+async function getActivePlans() {
+  return prisma.plan.findMany({
+    where: { isActive: true },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, slug: true, name: true, priceMonthly: true },
+  });
+}
+
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ plan?: string }>;
+}) {
+  const [plans, { plan: defaultPlan }] = await Promise.all([
+    getActivePlans(),
+    searchParams,
+  ]);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
+      <div className="w-full max-w-md space-y-6">
+        <div className="space-y-2 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg border border-[#00d992] bg-card signal-glow">
+            <span className="text-2xl font-bold text-[#00d992]">O</span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight">Create your workspace</h1>
+          <p className="text-sm text-muted-foreground">
+            Set up your Orqafy account in under 2 minutes
+          </p>
+        </div>
+        <div className="rounded-lg border border-border bg-card p-6">
+          <RegisterForm plans={plans} defaultPlan={defaultPlan} />
+        </div>
+        <p className="text-center text-sm text-muted-foreground">
+          Already have an account?{" "}
+          <a href="/login" className="text-[#00d992] hover:underline">
+            Sign in
+          </a>
+        </p>
+      </div>
+    </div>
+  );
+}

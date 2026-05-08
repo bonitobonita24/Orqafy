@@ -182,3 +182,28 @@
   by default for any non-Vercel deployment (Komodo + Traefik in this stack always
   qualifies). Treat this as a Phase 7 framework fix to lift into the master prompt.
 # ---
+
+## 2026-05-08 — 🔴 Vitest + Auth.js v5: never import middleware.ts from a unit test
+- Type:      🔴 gotcha
+- Phase:     Phase 7 / Phase 8 (any TDD on middleware-adjacent helpers)
+- Files:     apps/web/src/middleware.ts, apps/web/src/lib/public-paths.ts,
+             apps/web/src/__tests__/landing-demo.test.ts
+- Concepts:  vitest, auth.js-v5, next-auth, next/server, module-resolution, TDD,
+             helper-extraction, side-effect-import, autocompact, thrashing
+- Narrative: A unit test (landing-demo.test.ts) imported isPublic from "@/middleware".
+  middleware.ts has `export default auth(function middleware(req)...)` at module top —
+  that auth(...) call fires at IMPORT time, which loads next-auth, which then fails to
+  resolve "next/server" under vitest's Node runner ("Cannot find module .../next/server
+  imported from .../next-auth/lib/env.js. Did you mean to import next/server.js?").
+  No vitest config tweak or vi.mock() on next-auth fixes this cleanly because the
+  failing import is transitive via env.js — and chasing the right mock setup is exactly
+  what caused the previous Claude Code session to thrash (autocompact refilled to limit
+  3 turns post-compact, 3 times in a row, before /clear). The fix is structural, not
+  configuration: extract any pure helper that a unit test needs OUT of middleware.ts
+  into its own module (e.g. apps/web/src/lib/public-paths.ts), have middleware.ts
+  import + optionally re-export it, and have the test import from the helper path.
+  The helper module then has zero auth dependencies and loads cleanly under vitest.
+  RULE: when you write a TDD test that imports anything from "@/middleware", stop —
+  extract the pure logic to apps/web/src/lib/<name>.ts first, then write the test
+  against the helper path. Save yourself a thrashing session.
+# ---
