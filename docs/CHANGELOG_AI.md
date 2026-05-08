@@ -595,3 +595,49 @@
 - Branch:              feat/landing-demo-entry (open; pause-stamp commit lands
                          here; next session resumes on this branch and layers
                          the remaining Item 3 UI before a single squash-merge).
+
+## 2026-05-08 — Phase 8 Batch 2 Item 1 — Module 9 Banking & Finance FundSource CRUD
+- Agent:               CLAUDE_CODE
+- Why:                 Phase 8 Batch 2 iterative buildout — Module 9 Banking & Finance.
+                       Implements FundSource CRUD as the foundation for transaction tracking.
+- Files added:         apps/web/src/server/trpc/routers/banking.ts
+                       apps/web/src/__tests__/banking.test.ts
+                       apps/web/src/app/(tenant)/[slug]/(app)/banking/fund-sources/page.tsx
+- Files modified:      apps/web/src/server/trpc/routers/_app.ts (banking router wired)
+- Schema/migrations:   none (FundSource model already exists in Prisma schema)
+- Errors encountered:  z.string().cuid() rejected test fixture IDs like "cuid-fs-1"
+                       because they are not valid CUIDs. All three .cuid() calls replaced
+                       with .min(1) in banking.ts.
+                       @typescript-eslint/strict-boolean-expressions rejected
+                       `{fs.bankName && ...}` on nullable string; fixed with !== null check.
+- Errors resolved:     Both fixed. pnpm lint 0 errors. pnpm typecheck 0 errors. 12/12 tests GREEN.
+- Two-stage review:    Stage 1 PASS (all 5 CRUD procedures + UI page implemented).
+                       Stage 2 PASS (no any types, TDD RED→GREEN, blast-radius scope only).
+- Branch:              feat/banking-fundsource — squash-merged to main (20fe862). Branch deleted.
+
+## 2026-05-08 — Phase 8 Batch 2 Item 2 — Module 3 CRM Phase 1 Customer/Contact/Credit CRUD
+- Agent:               CLAUDE_CODE
+- Why:                 Phase 8 Batch 2 iterative buildout — Module 3 CRM.
+                       Implements Customer, CustomerContact, and CustomerCreditAccount
+                       CRUD as the foundation for the CRM module.
+- Files added:         apps/web/src/server/trpc/routers/crm.ts
+                       apps/web/src/__tests__/crm.test.ts
+                       apps/web/src/app/(tenant)/[slug]/(app)/crm/customers/page.tsx
+                       apps/web/src/app/(tenant)/[slug]/(app)/crm/customers/[id]/page.tsx
+- Files modified:      apps/web/src/server/trpc/routers/_app.ts (crm router wired)
+- Schema/migrations:   none (Customer, CustomerContact, CustomerCreditAccount models
+                       already exist in Prisma schema)
+- Errors encountered:  z.string().cuid() would have rejected test fixture IDs — avoided
+                       upfront based on prior banking lesson; all ID inputs use .min(1).
+                       @typescript-eslint/strict-boolean-expressions requires !== null
+                       checks for nullable string fields in JSX — applied throughout
+                       both UI pages.
+                       creditGet returns null (not TRPCError NOT_FOUND) because findUnique
+                       returns null when no credit account exists — correct behaviour for
+                       optional relation.
+- Errors resolved:     All applied proactively. pnpm lint 0 errors. pnpm typecheck 0 errors.
+                       23/23 tests GREEN.
+- Two-stage review:    Stage 1 PASS (all 12 procedures: 5 customer + 4 contact + 3 credit;
+                       list page + detail page with contacts table and credit account section).
+                       Stage 2 PASS (no any types, TDD RED→GREEN verified, blast-radius scope).
+- Branch:              feat/crm-phase1 — squash-merged to main (0f00247). Branch deleted.
