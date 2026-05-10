@@ -404,3 +404,80 @@
   TypeScript enough to infer the full row type. ~5 LOC of duplication is
   worth correct types.
 # ---
+
+## 2026-05-11 — 🔴 Sonnet 30K subagent budget exceeds in practice on combined-domain tasks
+- Type:      🔴 gotcha
+- Phase:     Phase 8 Batch 4 Item 1 (Banking Phase 2a)
+- Files:     n/a (architectural — affects how Opus dispatches Sonnet subagents)
+- Concepts:  architect-execute, subagent-budget, thrashing, sonnet-4.6, opus-escalation
+- Narrative: Combined task spec (~20K input estimate) covering 9 procedures + ~25 tests
+  + 2 UI pages thrashed Sonnet 4.6 at 44 tool uses. Sonnet had laid down most of the
+  structure — branch created, router with 9 procedures present, 41 tests written,
+  2 UI page files created — but no commit before context blew up.
+  ROOT CAUSE: tool-result accumulation. Each Read of a 300+ line existing file
+  (banking.ts at 123 lines, banking.test.ts at 302 lines, schema files), each
+  Bash output (typecheck/lint/test runs), each search/grep result piles into
+  context. Even when each individual file is small, repeated reads + retries +
+  validation cycles compound past the 30K subagent budget mid-task.
+  FIX going forward: For multi-domain Tier 2 tasks (router + tests + UI in one
+  task file), do NOT dispatch as a single Sonnet task. Pre-decompose along
+  read-write boundary: Sonnet Pass 1 = router + tests only (commit RED→GREEN);
+  Sonnet Pass 2 = UI pages only (consumes Pass 1's committed shape).
+  OR: Escalate to Opus executor up front via §1 Step 2.5b — accept the higher
+  per-token cost in exchange for guaranteed completion. Especially valid when
+  the work has deep paired-transaction interdependence that splitting risks
+  breaking. Item 1 was both — paired-tx is interdependent, and combined-domain
+  was too big for Sonnet in practice.
+  Lesson for Items 2 + 3 of Batch 4: Item 2 (Projects expansion ~25K estimate)
+  is HIGHER risk than Item 1 was. Pre-decompose by default. Item 3 (~30K
+  task-file estimate) explicitly mentions "split-on-preflight" — honor that.
+
+## 2026-05-11 — 🔴 Cascading Prisma select-inference loss from single bad sub-select
+- Type:      🔴 gotcha
+- Phase:     Phase 8 Batch 4 Item 1 (Banking Phase 2a)
+- Files:     apps/web/src/app/(tenant)/[slug]/(app)/banking/transactions/page.tsx
+             apps/web/src/app/(tenant)/[slug]/(app)/banking/[fundSourceId]/transactions/page.tsx
+- Concepts:  prisma, typescript, select-inference, type-error-debugging
+- Narrative: A single invalid `select: { <relation>: { <bad-field>: true } }` in
+  a Prisma findMany call causes the ENTIRE returned row type to fall back to the
+  base scalar shape — hiding correct relation accesses behind misleading
+  TS2551 "Property 'X' does not exist" errors that suggest the include itself
+  is broken when actually only one nested field is wrong.
+  Symptom: Sonnet wrote `createdBy: { select: { name: true } }` (User has
+  firstName/lastName/displayName, NOT name). Typecheck reported 5 errors:
+    - The literal `name: true` error (line 37 — the actual bug)
+    - 4 cascading errors at access sites: `tx.fundSource` and `tx.createdBy`
+      both reported as "does not exist on type {...flat scalars}" — even though
+      both relations were correctly listed in the select object alongside the
+      bad sub-field.
+  Fix the bad sub-select FIRST. Do not get distracted chasing the cascading
+  access errors — they resolve themselves once the underlying select is valid.
+  Debugging heuristic: when typecheck shows multiple "does not exist on type"
+  errors in the same file referencing relation accesses that ARE in the
+  select, look for a single TS2353 "may only specify known properties"
+  error nearby — that is the root cause.
+
+## 2026-05-11 — 🟢 Conditional-spread idiom for nullable filter args
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 4 Item 1 (Banking Phase 2a)
+- Files:     apps/web/src/server/trpc/routers/banking.ts (transactionDate handling)
+             apps/web/src/app/(tenant)/[slug]/(app)/banking/**/page.tsx (where filters)
+- Concepts:  typescript, eslint, strict-boolean-expressions, prisma-args, exactOptionalPropertyTypes
+- Narrative: Project ESLint config enables @typescript-eslint/strict-boolean-expressions,
+  which forbids implicit truthiness checks on nullable strings. Patterns like
+  `where: { ...(type ? { type } : {}) }` or
+  `${typeFilter ? \`&type=${typeFilter}\` : ""}` lint as errors because string|undefined
+  could be `""` (falsy but defined).
+  CANONICAL FIX (apply going forward, repeated from prior batches):
+    `where: { ...(type !== undefined && { type }) }`
+    `${typeFilter !== undefined ? \`&type=${typeFilter}\` : ""}`
+    `input.transactionDate !== undefined ? new Date(input.transactionDate) : new Date()`
+  This satisfies strict-boolean-expressions, preserves exactOptionalPropertyTypes
+  semantics (undefined-vs-null distinction), and is single-line. Already used
+  successfully in tasks.ts / dtr.ts (Batch 3 Item 3) and is now established as
+  the project pattern. No `Record<string, unknown>` + cast needed.
+  Bonus: For mixed `??` and `||` chains under TS5076, parenthesize the `||` group:
+    `displayName ?? (\`${first} ${last}\`.trim() || "—")`
+  not
+    `displayName ?? \`${first} ${last}\`.trim() || "—"`.
+# ---

@@ -966,3 +966,95 @@
                          pattern-matching on local variable name `params` (which
                          is `await searchParams`), not on a Next.js route `params`
                          prop (the Tasks page does not consume route params).
+
+## 2026-05-11 — Phase 8 Batch 4 Item 1 — Module 9 Banking Phase 2a (FundTransaction + Transfer)
+- Agent:               CLAUDE_CODE (Sonnet 4.6 executor → Opus 4.7 escalation via §1 Step 2.5b)
+- Why:                 PRODUCT.md Banking & Finance Phase 2 Phase 1: 9 transaction CRUD
+                         procedures + paired-transaction atomicity for transfer / payCC /
+                         loanOut / loanIn. Unblocks Module 6 Projects expansion (Item 2)
+                         and Module 4 Purchasing (Item 3) via shared FundTransaction primitive.
+- Files added:         apps/web/src/app/(tenant)/[slug]/(app)/banking/transactions/page.tsx
+                         (301 lines — paginated ledger, type + fund-source filters)
+                       apps/web/src/app/(tenant)/[slug]/(app)/banking/[fundSourceId]/transactions/page.tsx
+                         (319 lines — per-account drilldown)
+- Files modified:      apps/web/src/server/trpc/routers/banking.ts (+533 lines, +9 procedures
+                         in nested transactionRouter under bankingRouter.transaction)
+                       apps/web/src/__tests__/banking.test.ts (+621 lines, +25 tests
+                         covering happy path + insufficient balance + same-source rejection
+                         + paired-tx integrity + cross-tenant isolation)
+- Files deleted:       none
+- Schema/migrations:   none — FundTransaction + FundTransfer entities already in
+                         packages/db/prisma/schema/banking.prisma from Phase 4 Part 3
+- Errors encountered:  (1) Sonnet executor THRASHED at 44 tool uses on the combined task
+                         (procedures + tests + UI). Tool-result accumulation pushed
+                         working context past 30K subagent budget despite ~20K input
+                         estimate. Branch + most code already laid down by Sonnet —
+                         partial committed nothing.
+                       (2) After Opus takeover: 5 typecheck errors in UI pages all
+                         rooted in `createdBy: { select: { name: true } }` — User has
+                         no `name` field. Cascading select-inference loss made
+                         `tx.fundSource` and `tx.createdBy` access also fail.
+                       (3) 15 lint errors @typescript-eslint/strict-boolean-expressions
+                         on nullable string filter args used in ternary spreads
+                         (`x ? {x} : {}`) and template-string conditionals.
+                       (4) After fixing lint: 2 TS5076 errors — mixed `??` and `||`
+                         operators in displayName fallback chain need parens.
+- Errors resolved:     (1) Opus 4.7 escalated via memory-governance.md §1 Step 2.5b
+                         (genuinely interdependent paired-tx logic + significant Sonnet
+                         progress already on disk justified completion-over-rebuild).
+                       (2) Replaced `name: true` with
+                         `firstName: true, lastName: true, displayName: true` per
+                         existing pattern in expense.ts/invoice.ts/job-order.ts.
+                         Cascading inference resolved 5 errors with 1 edit.
+                         Display: `tx.createdBy.displayName ??
+                           (\`${firstName} ${lastName}\`.trim() || "—")`.
+                       (3) Replaced `...(x ? {x} : {})` with conditional-spread idiom
+                         `...(x !== undefined && {x})`. Same fix on inline template
+                         conditionals: `${x !== undefined ? \`...\` : ""}`.
+                         Banking router pattern: `input.transactionDate !== undefined`.
+                       (4) Wrapped fallback in parens:
+                         `displayName ?? (\`${first} ${last}\`.trim() || "—")`.
+- Two-stage review:    PASS — STAGE 1 every spec procedure implemented (9/9), atomic
+                         db.$transaction on all write paths (7 occurrences), validation
+                         (same-source rejection, insufficient-balance, NOT_FOUND, type
+                         guards), 2 UI pages render. STAGE 2 zero `any` types,
+                         conditional-spread idiom applied throughout, only blast-radius
+                         files modified, lint --max-warnings 0 clean, typecheck clean,
+                         vitest 251/251 GREEN (banking 41/41, +25 from prior 16).
+- Documented deviations: a) Transfer paired rows linked via separate FundTransfer junction
+                         table (existing schema entity) instead of self-referential
+                         referenceType=transfer + referenceId=peer.id pattern in task
+                         spec — equivalent atomicity, cleaner separation, schema-driven.
+                       b) recordIncome / recordExpense / recordCreditCardCharge wrapped
+                         in db.$transaction even though they only update a single source
+                         (defensive — ensures balance update + audit log atomicity if
+                         AuditLog write is later layered in).
+- Vercel plugin:       Multiple PostToolUse params-await validator hits ignored — false
+                         positives pattern-matching on local variable `params` from
+                         `await searchParams`, not Next.js dynamic route params props.
+                         Skipped next-cache-components / next-forge / nextjs auto-
+                         injected skill recommendations — V31 framework rules priority
+                         2 > skill auto-injection priority 7; tasks were tRPC router
+                         work + Server Component UI mirroring known-good patterns
+                         (journal-entries, stock-movements), none Vercel-specific.
+- Commit:              feat/banking-phase-2a (8d0b477) → main (6650c61, squash, branch
+                         deleted with -D as required post-squash)
+- Lessons applied:     prior 🔴 (mock-vs-typecheck gap on Prisma create field names —
+                         Plan.code/slug, reportedById/userId from Batch 3) — verified
+                         createdById injection on every write path BEFORE marking GREEN
+                         this time, not just at end-of-session validation gate.
+- Lessons captured:    🔴 Sonnet 30K subagent budget can be exceeded in practice for
+                         seemingly Tier 2 tasks combining router + tests + UI when
+                         tool-result accumulation kicks in. Future combined tasks should
+                         pre-decompose into 2 Sonnet passes (router/tests + UI) or
+                         escalate to Opus executor up front.
+                       🔴 Cascading select-inference loss: a single invalid
+                         `select.<relation>: { <bad-field>: true }` in a Prisma findMany
+                         falls back the ENTIRE row type to base scalars, hiding correct
+                         relations like `fundSource` and `createdBy` from .access. Fix
+                         the bad select first; cascading errors resolve themselves.
+                       🟢 Conditional-spread idiom for nullable filter args under
+                         strict-boolean-expressions: prefer
+                         `where: { ...(x !== undefined && { x }) }` over
+                         `where: { ...(x ? { x } : {}) }`. The latter trips lint;
+                         the former is single-line, type-safe, and idiomatic.

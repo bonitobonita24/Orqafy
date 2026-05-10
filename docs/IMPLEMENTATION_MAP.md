@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-08 by CLAUDE_CODE Opus 4.7 (Phase 8 Batch 3 COMPLETE — Item 3 Module 7 Tasks + Module 8 DTR Phase 1 merged 4708bb1)
+# Last updated: 2026-05-11 by CLAUDE_CODE Opus 4.7 (Phase 8 Batch 4 Item 1 — Module 9 Banking Phase 2a merged 6650c61)
 # ---
 
 ## Phase Status
@@ -18,7 +18,7 @@
 | Phase 5 — Validation | ✅ Complete | All 9 commands pass. 15 ESLint fixes (mobile), React 19 forwardRef fix (web), turbo env passthrough, serverExternalPackages, next 15.3.2→15.5.15, 11 Expo HIGH CVEs mitigated (audit-level=critical). |
 | Phase 6 — Docker + Visual QA | ✅ Complete | All 7 dev services healthy, migrations in sync, seed populated (13 roles, 5 plans, demo tenant, webmaster, 9 depts, 9 expense cats, VAT 12%, warehouse, FY 2026, 31 CoA). Visual QA per Rule 16 passed: /api/health 200, /login 200 ("Sign In \| Orqafy"), / 307→/login (after AUTH_TRUST_HOST autofix), 6 security headers active. Browser-interactive auth flow QA deferred — needs system Chrome. |
 | Phase 7 — Feature Updates | ⬜ Pending | The daily loop. Triggered per item by Phase 8 batch execution. |
-| Phase 8 — Iterative Buildout | 🔵 In Progress — Batch 3 ✅ COMPLETE (3/3); Batch 4 pending | Batch 1 ✅ all 3 items complete. Batch 2 ✅ all 3 items complete. Batch 3 ✅ all 3 items complete: Item 1 ✅ merged (`69d1c6a`) — Module 12 Accounting Phase 1 (16 procedures, 37 tests). Item 2 ✅ merged (`710fbba`) — Module 5 Inventory Phase 2 (5 procedures, 21 new tests). Item 3 ✅ merged (`4708bb1`) — Module 7 Tasks Phase 1 (13 procedures, 38 tests) + Module 8 DTR Phase 1 (10 procedures, 25 tests) combined. **Next: Phase 8 adaptive replan in a new session for Batch 4.** |
+| Phase 8 — Iterative Buildout | 🔵 In Progress — Batch 3 ✅ COMPLETE (3/3); Batch 4 ▶ IN PROGRESS (1/3) | Batch 1 ✅ all 3 items complete. Batch 2 ✅ all 3 items complete. Batch 3 ✅ all 3 items complete. Batch 4 Item 1 ✅ merged (`6650c61`) — Module 9 Banking Phase 2a (9 transaction procedures, 25 new tests, paired-tx via FundTransfer junction table, 2 UI pages). Items 2 (Module 6 Projects expansion) + 3 (Module 4 Purchasing) pending in fresh sessions. **Next: Item 2 (.cline/tasks/phase8-batch4-item2.md).** |
 
 ## Spec Files (Phase 3 outputs)
 
@@ -97,12 +97,12 @@
 | docs/PRODUCT.md | ✅ | 2,160 lines, all 11 required sections + 11 optional |
 | docs/DESIGN.md | ✅ | VoltAgent aesthetic, authoritative visual reference |
 | docs/README.md | ✅ | HUMAN-owned project README — full feature description aligned with PRODUCT.md (added pre-Bootstrap, refined during Phase 2 commit `2ebf4b7`) |
-| docs/CHANGELOG_AI.md | ✅ | Updated through Phase 8 Batch 3 Item 3 (Batch 3 COMPLETE) |
+| docs/CHANGELOG_AI.md | ✅ | Updated through Phase 8 Batch 4 Item 1 (Banking Phase 2a) |
 | docs/DECISIONS_LOG.md | ✅ | 7+ decisions (Visual evolution + Orqafy rename + Phase 2 + Phase 3 + storage security decisions from Part 4) |
 | docs/IMPLEMENTATION_MAP.md | ✅ | This file |
 | docs/PHASE3_BRIEFING.md | ❌ Removed | Deleted in `3e7bc82` — superseded by framework-native `.claude/rules/phases.md` |
 | project.memory.md | ✅ | Updated with skill installations (gitignored) |
-| .cline/STATE.md | ✅ | PHASE = "Phase 8 Batch 3 COMPLETE — Item 3 merged" |
+| .cline/STATE.md | ✅ | PHASE = "Phase 8 Batch 4 Item 1 merged (6650c61); Item 2 pending" |
 | .cline/memory/lessons.md | ✅ | 3 🔴 gotchas (WSL2+Docker, pre-existing lint/typecheck, Expo CVEs) + 8 🟡 fixes (added Auth.js v5 AUTH_TRUST_HOST) + 2 🟤 decisions |
 | .cline/memory/agent-log.md | ✅ | All Bootstrap + Phase 2 + Phase 3 + Governance Sync entries |
 | CREDENTIALS.md | ✅ | Gitignored. AI-generated values active; ⏳ for human-fill (GitHub, Docker Hub, Turnstile prod, third-party). |
@@ -346,16 +346,67 @@ Combined two small modules into one preflight-validated session per task file ra
 - `no-redundant-type-constituents`: changed `Promise<{ error: string } | never>` → `Promise<{ error: string }>`
 - `no-misused-promises`: `setTimeout(() => { void (async () => { ... })(); }, 400)` — void IIFE wraps async function
 
+## Phase 8 Batch 4 Item 1 — Module 9 Banking Phase 2a — FundTransaction CRUD + Transfer (commit `6650c61`)
+
+✅ COMPLETE — squash-merged to main (`6650c61`). Branch `feat/banking-phase-2a` deleted.
+
+**Procedures added (9 in nested `bankingRouter.transaction`):**
+- `transaction.list` — paginated, filters by fundSourceId / type / dateRange (`createdAt` gte/lte)
+- `transaction.byId` — NOT_FOUND guard
+- `transaction.recordIncome` — `+amount` on FundSource.currentBalance, `type=income`, atomic
+- `transaction.recordExpense` — `-amount` on real-cash sources (rejects below 0); credit_card increases liability; atomic
+- `transaction.transfer` — paired transfer_out + transfer_in atomically via `db.$transaction`, linked through FundTransfer junction table; rejects same-source and insufficient balance on real-cash `from`
+- `transaction.recordCreditCardCharge` — increases outstandingBalance on credit_card-typed sources only (type guard)
+- `transaction.payCreditCard` — atomic: `-amount` on payer (real cash), `-amount` on cc liability
+- `transaction.loanMoneyOutTo` — atomic: loan currentBalance `-=`, target `+=`; loan-account type guard; rejects exhausted loans
+- `transaction.loanMoneyIn` — atomic: loan outstandingBalance `-=`, source `-=`; tracks principal repayment
+
+**Tests:** 25 new across 9 `banking.transaction.*` describe blocks (banking.test.ts now 41 total). Full apps/web suite: 251/251 GREEN (+29 from Batch 3's 222).
+
+**UI pages added:**
+- `/banking/transactions` — paginated ledger, type chip filter, fund-source select filter (Server Component, force-dynamic, VoltAgent #00d992 / #050507 palette, formatAmount in PHP, formatDate in en-PH locale)
+- `/banking/[fundSourceId]/transactions` — per-account drilldown with currency-aware formatting
+
+**Validation patterns:**
+- `isRealCashType` helper guards insufficient-balance rejection (cash / bank / e-wallet) — credit_card increases liability instead
+- `from === to` rejection on transfer with explicit BAD_REQUEST message
+- NOT_FOUND on missing source(s)
+- `ctx.userId` injected as `createdById` on every write path (canonical pattern from job-order/invoice/expense/inventory)
+- Cross-tenant isolation via L6 Prisma guardrails (tenant-guard extension)
+
+**Schema deviations from task spec:**
+- Transfer paired rows linked via separate `FundTransfer` junction table (existing schema entity, links `fromTransactionId` + `toTransactionId`) instead of self-referential `referenceType=transfer + referenceId=peer.id` pattern in task file. Equivalent atomicity, cleaner separation of concerns.
+- recordIncome / recordExpense / recordCreditCardCharge use `db.$transaction` even for single-source updates — defensive atomicity for future AuditLog write layering.
+
+**Architect-Execute Model session note (memory-governance.md §4):**
+Sonnet 4.6 executor THRASHED at 44 tool uses on the combined task (procedures + tests + UI). Sonnet had laid down most of the structure — branch created, router with all 9 procedures, 25 tests, 2 UI page files — but no commit before context overflow. Per §4 THRASHING handling, did NOT re-dispatch same task. Audited surviving progress, escalated to Opus 4.7 executor via §1 Step 2.5b (justified by paired-tx interdependence + significant progress on disk). Opus completed remaining UI typecheck/lint fixes:
+- 5 typecheck errors all rooted in `createdBy: { select: { name: true } }` — User has firstName/lastName/displayName, NOT name. Single edit per page resolved cascading select-inference loss (`tx.fundSource` and `tx.createdBy` access errors disappeared with the parent fix).
+- 15 lint errors @typescript-eslint/strict-boolean-expressions on nullable string filter args. Replaced ternary spreads `...(x ? {x} : {})` with conditional-spread idiom `...(x !== undefined && {x})` and template-string conditionals `${typeFilter !== undefined ? \`...\` : ""}`. Banking router: `input.transactionDate !== undefined ? new Date(input.transactionDate) : new Date()`.
+- 2 TS5076 errors — mixed `??` and `||` in displayName fallback chain — wrapped fallback group in parens.
+
+**Files:**
+- `apps/web/src/server/trpc/routers/banking.ts` (123 → 656 lines, +9 procedures in `transactionRouter` exposed as `bankingRouter.transaction`)
+- `apps/web/src/__tests__/banking.test.ts` (302 → 923 lines, +25 tests)
+- `apps/web/src/app/(tenant)/[slug]/(app)/banking/transactions/page.tsx` (NEW, 301 lines)
+- `apps/web/src/app/(tenant)/[slug]/(app)/banking/[fundSourceId]/transactions/page.tsx` (NEW, 319 lines)
+
+**Lessons captured:** 🔴 Sonnet 30K subagent budget exceeds in practice for combined-domain tasks via tool-result accumulation; 🔴 cascading Prisma select-inference loss debugging heuristic; 🟢 conditional-spread idiom canonical for nullable filter args under strict-boolean-expressions. See `.cline/memory/lessons.md` 2026-05-11 entries.
+
+---
+
 ## Next Action
 
-**CURRENT STATE: Phase 8 Batch 3 ✅ COMPLETE (3/3). Adaptive replan for Batch 4 next — fresh session.**
+**CURRENT STATE: Phase 8 Batch 4 Item 1 ✅ merged. Items 2 + 3 pending in fresh sessions.**
 
-1. **Phase 8 Batch 3 progress:**
-   - Item 1 ✅ Module 12 Accounting Phase 1 — 16 procedures + 37 tests GREEN + Chart of Accounts + Journal Entries UI — merged `69d1c6a`
-   - Item 2 ✅ Module 5 Inventory Phase 2 — 5 procedures (StockMovement/Transfer/Adjustment) + 21 new tests GREEN + stock-movements page + inventory header link — merged `710fbba` (resumed from uncommitted prior-session work via verify → checkpoint → continue; 6-edit `createdById` typecheck fix applied during verification)
-   - Item 3 ✅ Module 7 Tasks Phase 1 (13 procedures, 38 tests) + Module 8 DTR Phase 1 (10 procedures, 25 tests) combined — merged `4708bb1` (resumed from uncommitted prior-session work; fixed two latent bugs: `TaskStatusReport.userId` not `reportedById`, `Plan.slug` not `Plan.code`). **Closes Phase 8 Batch 3.**
+1. **Phase 8 Batch 4 progress:**
+   - Item 1 ✅ Module 9 Banking Phase 2a — 9 transaction procedures + 25 new tests GREEN + paired-tx atomicity + 2 UI pages — merged `6650c61` (Sonnet thrashed → Opus 4.7 escalation via §1 Step 2.5b)
+   - Item 2 ⬜ pending — Module 6 Projects Phase 1 Expansion (.cline/tasks/phase8-batch4-item2.md, ~25K estimate). **CRITICAL: pre-decompose into 2 Sonnet passes (router/tests + UI) OR escalate to Opus executor up front per Item 1 lesson — combined-domain Tier 2 tasks exceed Sonnet 30K budget in practice.**
+   - Item 3 ⬜ pending — Module 4 Purchasing Phase 1 (.cline/tasks/phase8-batch4-item3.md, ~30K estimate, split-on-preflight per task file)
 
-   **Next: Phase 8 adaptive replan (in a new session)** — re-cross-reference PRODUCT.md modules vs IMPLEMENTATION_MAP.md and propose Batch 4. Likely candidates per Item 3 task file: Banking 2a (further banking work), Module 4 Purchasing Phase 1 (unblocked by Inventory 2), Module 6 Projects Phase 1 (unblocked by Tasks ✅), Module 10 HR/Payroll Phase 1 (unblocked by DTR ✅).
+2. **Phase 8 Batch 3 summary** (all complete):
+   - Item 1 ✅ Module 12 Accounting Phase 1 — 16 procedures + 37 tests GREEN — merged `69d1c6a`
+   - Item 2 ✅ Module 5 Inventory Phase 2 — 5 procedures + 21 new tests GREEN + stock-movements page — merged `710fbba`
+   - Item 3 ✅ Module 7 Tasks Phase 1 (13 procedures, 38 tests) + Module 8 DTR Phase 1 (10 procedures, 25 tests) — merged `4708bb1`
 
 2. **Phase 8 Batch 2 summary** (all complete):
    - Item 1 ✅ Module 9 Banking — FundSource CRUD (`bankingRouter` + 12 tests GREEN + fund-sources UI page) — merged `20fe862`
