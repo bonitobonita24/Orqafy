@@ -4,6 +4,19 @@ import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
 import { prisma as db } from "@orqafy/db";
 import { sanitizePlainText } from "@/server/lib/sanitize";
 
+const REAL_CASH_TYPES = new Set(["cash_on_hand", "bank", "e_wallet"]);
+function isRealCashType(type: string): boolean {
+  return REAL_CASH_TYPES.has(type);
+}
+
+const VALID_TRANSITIONS: Record<string, string[]> = {
+  planning: ["active", "cancelled"],
+  active: ["on_hold", "completed", "cancelled"],
+  on_hold: ["active", "cancelled"],
+  completed: [],
+  cancelled: [],
+};
+
 const projectInput = z.object({
   name: z.string().min(1).max(200),
   customerId: z.string().cuid().optional(),
@@ -14,9 +27,198 @@ const projectInput = z.object({
   budget: z.number().positive().optional(),
 });
 
+const expenseRouter = createTRPCRouter({
+  listByProject: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string().min(1),
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(200).default(50),
+      }),
+    )
+    .query(async ({ input }) => {
+      const where = { projectId: input.projectId };
+      const [items, total] = await Promise.all([
+        db.projectExpense.findMany({
+          where,
+          skip: (input.page - 1) * input.limit,
+          take: input.limit,
+          orderBy: { date: "desc" },
+        }),
+        db.projectExpense.count({ where }),
+      ]);
+      return { items, total, page: input.page, limit: input.limit };
+    }),
+
+  recordProjectExpense: writeProcedure
+    .input(
+      z.object({
+        projectId: z.string().min(1),
+        amount: z.number().positive(),
+        type: z.enum([
+          "direct",
+          "inventory_consumed",
+          "labor",
+          "materials",
+          "subcontractor",
+          "other",
+        ]),
+        description: z.string().min(1).max(500),
+        fundSourceId: z.string().min(1),
+        expenseDate: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const project = await db.project.findUnique({ where: { id: input.projectId } });
+      if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found." });
+
+      const fundSource = await db.fundSource.findUnique({ where: { id: input.fundSourceId } });
+      if (!fundSource) throw new TRPCError({ code: "NOT_FOUND", message: "Fund source not found." });
+
+      const currentBalance = parseFloat(fundSource.currentBalance.toString());
+      if (isRealCashType(fundSource.type) && currentBalance < input.amount) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Insufficient balance" });
+      }
+      const newBalance = currentBalance - input.amount;
+      const expenseDate = input.expenseDate !== undefined ? new Date(input.expenseDate) : new Date();
+      const cleanDescription = sanitizePlainText(input.description);
+
+      return db.$transaction(async (tx) => {
+        const expense = await tx.projectExpense.create({
+          data: {
+            projectId: input.projectId,
+            type: input.type,
+            description: cleanDescription,
+            amount: input.amount,
+            date: expenseDate,
+          },
+        });
+
+        const transaction = await tx.fundTransaction.create({
+          data: {
+            fundSourceId: input.fundSourceId,
+            type: "expense",
+            amount: input.amount,
+            runningBalance: newBalance,
+            description: `Project expense: ${cleanDescription}`,
+            referenceType: "project_expense",
+            referenceId: expense.id,
+            transactionDate: expenseDate,
+            createdById: ctx.userId,
+          },
+        });
+
+        const updatedExpense = await tx.projectExpense.update({
+          where: { id: expense.id },
+          data: {
+            referenceType: "fund_transaction",
+            referenceId: transaction.id,
+          },
+        });
+
+        if (isRealCashType(fundSource.type)) {
+          await tx.fundSource.update({
+            where: { id: input.fundSourceId },
+            data: { currentBalance: newBalance },
+          });
+        }
+
+        return { expense: updatedExpense, transaction };
+      });
+    }),
+});
+
+const milestoneRouter = createTRPCRouter({
+  listByProject: protectedProcedure
+    .input(z.object({ projectId: z.string().min(1) }))
+    .query(async ({ input }) => {
+      return db.milestone.findMany({
+        where: { projectId: input.projectId },
+        orderBy: { sortOrder: "asc" },
+      });
+    }),
+
+  create: writeProcedure
+    .input(
+      z.object({
+        projectId: z.string().min(1),
+        name: z.string().min(1).max(200),
+        dueDate: z.date().optional(),
+        description: z.string().max(1000).optional(),
+        sortOrder: z.number().int().min(0).optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const project = await db.project.findUnique({ where: { id: input.projectId } });
+      if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found." });
+
+      return db.milestone.create({
+        data: {
+          projectId: input.projectId,
+          name: sanitizePlainText(input.name),
+          dueDate: input.dueDate ?? null,
+          description: input.description !== undefined ? sanitizePlainText(input.description) : null,
+          sortOrder: input.sortOrder ?? 0,
+          progress: 0,
+          completedAt: null,
+        },
+      });
+    }),
+
+  update: writeProcedure
+    .input(
+      z.object({
+        milestoneId: z.string().min(1),
+        name: z.string().min(1).max(200).optional(),
+        dueDate: z.date().optional(),
+        description: z.string().max(1000).optional(),
+        progress: z.number().int().min(0).max(100).optional(),
+        sortOrder: z.number().int().min(0).optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const { milestoneId, ...rest } = input;
+      const existing = await db.milestone.findUnique({ where: { id: milestoneId } });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      return db.milestone.update({
+        where: { id: milestoneId },
+        data: {
+          ...(rest.name !== undefined ? { name: sanitizePlainText(rest.name) } : {}),
+          ...(rest.dueDate !== undefined ? { dueDate: rest.dueDate } : {}),
+          ...(rest.description !== undefined ? { description: sanitizePlainText(rest.description) } : {}),
+          ...(rest.progress !== undefined ? { progress: rest.progress } : {}),
+          ...(rest.sortOrder !== undefined ? { sortOrder: rest.sortOrder } : {}),
+        },
+      });
+    }),
+
+  complete: writeProcedure
+    .input(z.object({ milestoneId: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const existing = await db.milestone.findUnique({ where: { id: input.milestoneId } });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      if (existing.completedAt !== null) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Milestone already completed." });
+      }
+
+      return db.milestone.update({
+        where: { id: input.milestoneId },
+        data: { progress: 100, completedAt: new Date() },
+      });
+    }),
+});
+
 export const projectRouter = createTRPCRouter({
   list: protectedProcedure
-    .input(z.object({ page: z.number().int().min(1).default(1), limit: z.number().int().min(1).max(200).default(50), customerId: z.string().cuid().optional(), status: z.string().optional() }))
+    .input(
+      z.object({
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(200).default(50),
+        customerId: z.string().cuid().optional(),
+        status: z.string().optional(),
+      }),
+    )
     .query(async ({ input }) => {
       const where = {
         ...(input.customerId !== undefined ? { customerId: input.customerId } : {}),
@@ -35,7 +237,7 @@ export const projectRouter = createTRPCRouter({
     }),
 
   byId: protectedProcedure
-    .input(z.object({ id: z.string().cuid() }))
+    .input(z.object({ id: z.string().min(1) }))
     .query(async ({ input }) => {
       const item = await db.project.findUnique({
         where: { id: input.id },
@@ -69,17 +271,30 @@ export const projectRouter = createTRPCRouter({
     }),
 
   update: writeProcedure
-    .input(projectInput.partial().extend({ id: z.string().cuid() }))
+    .input(projectInput.partial().extend({ id: z.string().min(1) }))
     .mutation(async ({ input }) => {
       const { id, ...rest } = input;
       const existing = await db.project.findUnique({ where: { id } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      if (rest.status !== undefined && rest.status !== existing.status) {
+        const allowed = VALID_TRANSITIONS[existing.status] ?? [];
+        if (!allowed.includes(rest.status)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Cannot transition from ${existing.status} to ${rest.status}.`,
+          });
+        }
+      }
+
       return db.project.update({
         where: { id },
         data: {
           ...(rest.name !== undefined ? { name: sanitizePlainText(rest.name) } : {}),
           ...(rest.customerId !== undefined ? { customerId: rest.customerId ?? null } : {}),
-          ...(rest.description !== undefined ? { description: rest.description !== "" ? sanitizePlainText(rest.description) : null } : {}),
+          ...(rest.description !== undefined
+            ? { description: rest.description !== "" ? sanitizePlainText(rest.description) : null }
+            : {}),
           ...(rest.status !== undefined ? { status: rest.status } : {}),
           ...(rest.startDate !== undefined ? { startDate: rest.startDate ?? null } : {}),
           ...(rest.targetEndDate !== undefined ? { targetEndDate: rest.targetEndDate ?? null } : {}),
@@ -87,4 +302,47 @@ export const projectRouter = createTRPCRouter({
         },
       });
     }),
+
+  archive: writeProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const existing = await db.project.findUnique({ where: { id: input.id } });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const expenseCount = await db.projectExpense.count({ where: { projectId: input.id } });
+      if (expenseCount > 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot archive a project with recorded expenses.",
+        });
+      }
+
+      return db.project.update({
+        where: { id: input.id },
+        data: { status: "cancelled" },
+      });
+    }),
+
+  budgetSummary: protectedProcedure
+    .input(z.object({ projectId: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const project = await db.project.findUnique({ where: { id: input.projectId } });
+      if (!project) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const agg = await db.projectExpense.aggregate({
+        where: { projectId: input.projectId },
+        _sum: { amount: true },
+      });
+      const sumValue = agg._sum.amount;
+      const totalSpent =
+        sumValue !== null && sumValue !== undefined ? parseFloat(sumValue.toString()) : 0;
+      const totalBudget = project.budget !== null ? parseFloat(project.budget.toString()) : 0;
+      const totalCommitted = 0;
+      const remaining = totalBudget - totalSpent;
+
+      return { totalBudget, totalSpent, totalCommitted, remaining };
+    }),
+
+  expense: expenseRouter,
+  milestone: milestoneRouter,
 });
