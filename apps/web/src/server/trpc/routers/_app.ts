@@ -4,6 +4,7 @@ import { tenantRouter } from "./tenant";
 import { userRouter } from "./user";
 import { clientRouter } from "./client";
 import { projectRouter } from "./project";
+import { purchasingRouter } from "./purchasing";
 import { invoiceRouter } from "./invoice";
 import { expenseRouter } from "./expense";
 import { employeeRouter } from "./employee";
@@ -29,6 +30,7 @@ export const appRouter = createTRPCRouter({
   user: userRouter,
   client: clientRouter,
   project: projectRouter,
+  purchasing: purchasingRouter,
   invoice: invoiceRouter,
   expense: expenseRouter,
   employee: employeeRouter,
