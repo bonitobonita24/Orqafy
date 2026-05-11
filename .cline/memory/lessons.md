@@ -481,3 +481,83 @@
   not
     `displayName ?? \`${first} ${last}\`.trim() || "—"`.
 # ---
+
+## 2026-05-11 — 🔴 Pre-decomposition into 2 Sonnet passes is INSUFFICIENT — verification thrash is the new bottleneck
+- Type:      🔴 gotcha
+- Phase:     Phase 8 Batch 4 Item 2 (Projects Phase 1 Expansion)
+- Files:     N/A (process / dispatch model)
+- Concepts:  sonnet, subagent, 30K-budget, autocompact-thrashing, architect-execute,
+             memory-governance, verification-gates, vitest, typecheck, lint
+- Narrative: Item 1 lesson said "for Tier 2 combined-domain tasks, pre-decompose into
+             2 Sonnet passes (router/tests + UI) OR escalate to Opus executor up front".
+             Tested pre-decomposition on Item 2: Pass A (router + 35 tests, ~14K input
+             prompt) and Pass B (3 UI pages, ~16K input prompt). BOTH passes thrashed at
+             EXACTLY 11 tool uses with the autocompact-thrashing error. In each case the
+             writes were 100% complete (Pass A: 228 LOC router + 571 LOC tests; Pass B:
+             1216 LOC across 3 pages) — the thrash trigger was tool-result accumulation
+             during the verification rounds (vitest run + tsc --noEmit + eslint), not
+             the write-phase scope. The verify gates run multiple commands each
+             producing 5-15K output that lands in subagent context. After 3 verify
+             cycles tool-results push the subagent over its working budget.
+             NEW RULE for similar future work: dispatch Sonnet for WRITES ONLY (omit
+             verification + commit instructions from the prompt entirely) and have
+             Architect (Opus, in-session) run vitest/typecheck/lint and apply fixes
+             after Sonnet returns. OR escalate to Opus executor up front for any task
+             touching 3+ files in apps/web. Pre-decomposition by domain (router vs UI)
+             is necessary but not sufficient — splitting WRITE-PHASE from VERIFY-PHASE
+             is the missing axis.
+
+## 2026-05-11 — 🔴 Schema-vs-PRODUCT.md drift larger than expected on mature projects
+- Type:      🔴 gotcha
+- Phase:     Phase 8 Batch 4 Item 2 (Projects Phase 1 Expansion)
+- Files:     packages/db/prisma/schema.prisma, .cline/tasks/phase8-batch4-item2.md
+- Concepts:  prisma, schema, product-md, spec-drift, architect-preflight,
+             ProjectExpense, Milestone, Project, Customer
+- Narrative: Item 2 task spec assumed PRODUCT.md fields that don't exist in actual
+             schema. 8 mechanical fixes were forced by schema reality:
+             (1) ProjectExpense lacks costType/fundSourceId/fundTransactionId/
+                 recordedById columns — only has type/description/amount/currency/
+                 referenceType/referenceId/date.
+             (2) Model is `Milestone` not `ProjectMilestone`. Fields are name (not
+                 title), sortOrder (not order), progress (additional).
+             (3) Project requires managerId (not createdById). The `manager` relation
+                 IS defined; default to ctx.userId in create.
+             (4) Project has no `customer` relation field — only customerId String? FK.
+                 Adding `customer:` to a select rejects the entire select returning
+                 base scalars (cascading typecheck failure on `manager` access too).
+                 Workaround: fetch Customer separately by ID. Bulk findMany + Map for
+                 list pages; single findUnique for detail pages.
+             (5) Customer has no displayName field. Only firstName/lastName/companyName.
+                 getCustomerName helper falls through companyName ?? firstName+lastName.
+             (6) ProjectExpense.type column is String (not Postgres enum) so Zod can
+                 widen accepted values without migration. Schema column comment lists
+                 only "direct | inventory_consumed" but the column accepts any string.
+             (7) ProjectExpense ↔ FundTransaction linkage requires using existing
+                 referenceType/referenceId convention (no FK columns added). Banking
+                 router already accepts these as inputs from prior items.
+             (8) @orqafy/db package only exports `prisma`, `createTenantPrisma`,
+                 `writeAuditLog`, helpers — does NOT re-export the `Prisma` namespace.
+                 Use inline minimal type aliases instead of importing Prisma types.
+             ARCHITECT PRE-FLIGHT MUST grep actual schema.prisma model definitions for
+             every entity in scope BEFORE writing the Sonnet dispatch prompt. Pre-
+             inlining real field names in the prompt prevents at least 8 typecheck-
+             driven retries downstream. The PRODUCT.md spec is aspirational; the schema
+             is reality.
+
+## 2026-05-11 — 🟢 URL-driven tabs via Link chips is canonical for tabbed Server Component pages
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 4 Item 2 (Projects Phase 1 Expansion)
+- Files:     apps/web/src/app/(tenant)/[slug]/(app)/projects/[id]/page.tsx (precedent)
+- Concepts:  shadcn, tabs, server-components, url-driven-state, searchParams,
+             conditional-fetch, framework-pattern
+- Narrative: shadcn `Tabs` component is not installed in apps/web/src/components/ui/
+             (current set: avatar/badge/button/card/dialog/dropdown-menu/input/label/
+             select/separator/sonner/table/textarea). Until/unless it's installed, the
+             canonical pattern for tabbed Server Component pages is URL-driven tabs:
+             `?tab=overview|tasks|expenses|milestones` searchParam, each tab is a
+             `<Link>` chip with active-state highlight via theme tokens. Conditional
+             fetch only the data for the active tab — saves DB queries. Cleaner than
+             client component + useState since each tab can independently fetch only
+             its data without prop drilling. Same pattern as banking ledger filter
+             chips (?type=) and inventory stock-movements (?warehouseId=). Accept
+             slight UX trade-off (full page nav per tab) for simpler architecture.

@@ -1058,3 +1058,123 @@
                          `where: { ...(x !== undefined && { x }) }` over
                          `where: { ...(x ? { x } : {}) }`. The latter trips lint;
                          the former is single-line, type-safe, and idiomatic.
+
+## 2026-05-11 — Phase 8 Batch 4 Item 2 — Module 6 Projects Phase 1 Expansion (squash 0604f47)
+- Agent:               CLAUDE_CODE (Opus 4.7 architect + executor; Sonnet 4.6 attempted
+                         twice as Pass A/B executor, thrashed both times at 11 tool uses
+                         on verification — writes 100% complete, gates escalated to Opus
+                         in-session per memory-governance §1 Step 2.5b)
+- Why:                 PRODUCT.md Module 6 Projects Phase 1 Expansion — extend project
+                         tracking with line-item ProjectExpense recording (atomically
+                         linked to Banking FundTransaction from Item 1), milestone
+                         scheduling with idempotent completion, project lifecycle state
+                         machine, and per-project budget aggregation. UI: detail page
+                         with 4 tabs, per-project expenses ledger, status-counts +
+                         filter on the projects list.
+- Files added:         apps/web/src/__tests__/project.test.ts (571 LOC, 35 tests)
+                       apps/web/src/app/(tenant)/[slug]/(app)/projects/[id]/page.tsx
+                         (574 LOC — detail with URL-driven tabs)
+                       apps/web/src/app/(tenant)/[slug]/(app)/projects/[id]/expenses/page.tsx
+                         (306 LOC — per-project ledger)
+- Files modified:      apps/web/src/server/trpc/routers/project.ts (+266 LOC — 9 new
+                         procedures, nested expense + milestone sub-routers, inline
+                         isRealCashType helper, VALID_TRANSITIONS state-machine map)
+                       apps/web/src/app/(tenant)/[slug]/(app)/projects/page.tsx
+                         (rewrite from 12-line stub to 339 LOC — status counts header,
+                         filter chips, project table, customer bulk-fetch via Map)
+- Files deleted:       none
+- Schema/migrations:   none (work entirely against existing schema; spec drift handled
+                         via Zod-level adaptations + separate Customer fetch)
+- Procedures added:    project.update (state-machine: planning↔active↔on_hold,
+                         active→completed, *→cancelled; rejects others with BAD_REQUEST),
+                       project.archive (NOT_FOUND guard + projectExpense.count > 0 →
+                         BAD_REQUEST; demo tenant FORBIDDEN via writeProcedure),
+                       project.budgetSummary (aggregate _sum, returns
+                         { totalBudget, totalSpent, totalCommitted: 0, remaining }),
+                       project.expense.listByProject (paginated, page/limit defaults),
+                       project.expense.recordProjectExpense (atomic db.$transaction:
+                         create ProjectExpense → create FundTransaction with
+                         referenceType='project_expense' + referenceId → back-link
+                         expense referenceType='fund_transaction' + referenceId →
+                         decrement FundSource.currentBalance for real-cash sources;
+                         consumes Item 1 banking pattern; returns
+                         { expense: <updated>, transaction }),
+                       project.milestone.listByProject (orderBy sortOrder asc),
+                       project.milestone.create (with optional sortOrder default 0),
+                       project.milestone.complete (idempotent: completedAt !== null →
+                         BAD_REQUEST),
+                       project.milestone.update (partial w/ conditional spread for all
+                         5 fields name/description/dueDate/progress/sortOrder)
+- Quality gates:       Two-stage review (Rule 25) Stage 1 spec compliance + Stage 2
+                         code quality both PASS. pnpm vitest 286/286 GREEN (35 new
+                         project tests, 251 prior preserved across 8 prior suites).
+                         pnpm tsc --noEmit clean. pnpm eslint --max-warnings 0 clean
+                         across changed files.
+- Documented deviations: a) Schema differs from PRODUCT.md spec assumptions:
+                         ProjectExpense lacks costType/fundSourceId/fundTransactionId/
+                         recordedById columns — used existing referenceType/referenceId
+                         convention for FundTransaction linkage (no FK columns added).
+                         Milestone model named Milestone not ProjectMilestone, fields
+                         name/sortOrder/progress not title/order/completedAt-only.
+                         Project requires managerId not createdById — defaulted to
+                         ctx.userId in create. ProjectExpense.type column is String
+                         (not Postgres enum) so widened Zod enum to 6 values
+                         (direct/inventory_consumed/labor/materials/subcontractor/
+                         other) without migration. Customer has no displayName field —
+                         getCustomerName helper falls through companyName →
+                         firstName+lastName. Project has no `customer` relation in
+                         schema (only customerId FK) — fetch Customer separately by ID
+                         (bulk findMany + Map for list page; single findUnique for
+                         detail page). All locked in DECISIONS_LOG.
+                       b) shadcn Tabs component not installed — used URL-driven tabs
+                         via Link chips (?tab=overview|tasks|expenses|milestones)
+                         matching existing banking/inventory pattern. Avoids new dep.
+- Vercel plugin:       Skipped next-forge / next-cache-components / nextjs auto-
+                         injected skill recommendations — V31 framework rules priority
+                         2 > skill auto-injection priority 7; tasks mirrored
+                         known-good Server Component patterns from banking/inventory.
+- Commit:              feat/projects-phase1-expand: 24d2ae4 (Pass A) + 914ad6c (Pass B)
+                         → main (0604f47, squash, branch deleted with -D)
+- Lessons applied:     prior 🔴 (Sonnet 30K subagent budget exceeded for combined
+                         router+tests+UI tasks from Item 1) — pre-decomposed into 2
+                         Sonnet passes; both still thrashed at 11 tool uses during
+                         verification gates despite reduced per-pass scope. Lesson
+                         strengthened (see captured below).
+                       prior 🔴 (Prisma mock-vs-typecheck gap from Batch 3) — ran
+                         typecheck IMMEDIATELY after each test file write, before
+                         marking RED→GREEN. Caught Sonnet's incorrect schema field
+                         names (fundSource.balance vs currentBalance, missing
+                         runningBalance, ProjectExpense fundSourceId/recordedById)
+                         before commit.
+                       prior 🟢 (conditional-spread idiom from Batch 3 + Item 1) —
+                         applied throughout new procedures.
+- Lessons captured:    🔴 Pre-decomposing combined tasks into 2 Sonnet passes is
+                         INSUFFICIENT — Sonnet still thrashes at 11 tool uses on
+                         verification rounds (vitest + typecheck + lint), regardless
+                         of whether the writes were 80% complete. The thrash trigger
+                         is tool-result accumulation during verify, not write-phase
+                         scope. NEW RULE: split write-phase from verify-phase, or
+                         escalate to Opus executor up front for any task touching
+                         3+ files in apps/web. Pre-decomposition by domain (router
+                         vs UI) does NOT solve this on its own.
+                       🔴 Schema-vs-PRODUCT.md drift larger than expected on mature
+                         projects: even "established" entities (Project, Customer,
+                         ProjectExpense, Milestone) have schema field names that
+                         diverge significantly from spec text. Architect pre-flight
+                         MUST grep actual Prisma model definitions for every entity
+                         in scope BEFORE writing the Sonnet dispatch prompt.
+                         Pre-inlining the actual schema fields in the dispatch saved
+                         Sonnet from at least 8 typecheck-driven retries.
+                       🟢 @orqafy/db package exports only `prisma`, `createTenantPrisma`,
+                         and helpers — does NOT re-export the `Prisma` namespace. Use
+                         inline minimal type aliases for WhereInput/Decimal in
+                         Server Component files instead of importing Prisma types.
+                       🟢 For Project entities lacking back-relation FK definitions
+                         (e.g. customerId String? without customer Customer? relation),
+                         fetch related entity separately by ID. Bulk pattern for list
+                         pages: findMany + Map; single pattern for detail pages:
+                         findUnique. Both are cheap since FK is indexed.
+                       🟢 URL-driven tabs via Link chips + ?tab= searchParam is the
+                         framework standard for tabbed Server Component pages until
+                         shadcn Tabs is installed. Cleaner than client component +
+                         useState since each tab can independently fetch only its data.

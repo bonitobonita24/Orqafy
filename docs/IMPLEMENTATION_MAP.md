@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-11 by CLAUDE_CODE Opus 4.7 (Phase 8 Batch 4 Item 1 — Module 9 Banking Phase 2a merged 6650c61)
+# Last updated: 2026-05-11 by CLAUDE_CODE Opus 4.7 (Phase 8 Batch 4 Item 2 — Module 6 Projects Phase 1 Expansion merged 0604f47)
 # ---
 
 ## Phase Status
@@ -18,7 +18,7 @@
 | Phase 5 — Validation | ✅ Complete | All 9 commands pass. 15 ESLint fixes (mobile), React 19 forwardRef fix (web), turbo env passthrough, serverExternalPackages, next 15.3.2→15.5.15, 11 Expo HIGH CVEs mitigated (audit-level=critical). |
 | Phase 6 — Docker + Visual QA | ✅ Complete | All 7 dev services healthy, migrations in sync, seed populated (13 roles, 5 plans, demo tenant, webmaster, 9 depts, 9 expense cats, VAT 12%, warehouse, FY 2026, 31 CoA). Visual QA per Rule 16 passed: /api/health 200, /login 200 ("Sign In \| Orqafy"), / 307→/login (after AUTH_TRUST_HOST autofix), 6 security headers active. Browser-interactive auth flow QA deferred — needs system Chrome. |
 | Phase 7 — Feature Updates | ⬜ Pending | The daily loop. Triggered per item by Phase 8 batch execution. |
-| Phase 8 — Iterative Buildout | 🔵 In Progress — Batch 3 ✅ COMPLETE (3/3); Batch 4 ▶ IN PROGRESS (1/3) | Batch 1 ✅ all 3 items complete. Batch 2 ✅ all 3 items complete. Batch 3 ✅ all 3 items complete. Batch 4 Item 1 ✅ merged (`6650c61`) — Module 9 Banking Phase 2a (9 transaction procedures, 25 new tests, paired-tx via FundTransfer junction table, 2 UI pages). Items 2 (Module 6 Projects expansion) + 3 (Module 4 Purchasing) pending in fresh sessions. **Next: Item 2 (.cline/tasks/phase8-batch4-item2.md).** |
+| Phase 8 — Iterative Buildout | 🔵 In Progress — Batch 3 ✅ COMPLETE (3/3); Batch 4 ▶ IN PROGRESS (2/3) | Batch 1 ✅ all 3 items complete. Batch 2 ✅ all 3 items complete. Batch 3 ✅ all 3 items complete. Batch 4 Item 1 ✅ merged (`6650c61`) — Module 9 Banking Phase 2a. Item 2 ✅ merged (`0604f47`) — Module 6 Projects Phase 1 Expansion (9 procedures across 3 nested sub-routers, 35 new tests, atomic ProjectExpense ↔ FundTransaction linkage via referenceType convention, 3 UI pages with URL-driven tabs). Item 3 (Module 4 Purchasing) pending in fresh session. **Next: Item 3 (.cline/tasks/phase8-batch4-item3.md).** |
 
 ## Spec Files (Phase 3 outputs)
 
@@ -97,12 +97,12 @@
 | docs/PRODUCT.md | ✅ | 2,160 lines, all 11 required sections + 11 optional |
 | docs/DESIGN.md | ✅ | VoltAgent aesthetic, authoritative visual reference |
 | docs/README.md | ✅ | HUMAN-owned project README — full feature description aligned with PRODUCT.md (added pre-Bootstrap, refined during Phase 2 commit `2ebf4b7`) |
-| docs/CHANGELOG_AI.md | ✅ | Updated through Phase 8 Batch 4 Item 1 (Banking Phase 2a) |
+| docs/CHANGELOG_AI.md | ✅ | Updated through Phase 8 Batch 4 Item 2 (Projects Phase 1 Expansion) |
 | docs/DECISIONS_LOG.md | ✅ | 7+ decisions (Visual evolution + Orqafy rename + Phase 2 + Phase 3 + storage security decisions from Part 4) |
 | docs/IMPLEMENTATION_MAP.md | ✅ | This file |
 | docs/PHASE3_BRIEFING.md | ❌ Removed | Deleted in `3e7bc82` — superseded by framework-native `.claude/rules/phases.md` |
 | project.memory.md | ✅ | Updated with skill installations (gitignored) |
-| .cline/STATE.md | ✅ | PHASE = "Phase 8 Batch 4 Item 1 merged (6650c61); Item 2 pending" |
+| .cline/STATE.md | ✅ | PHASE = "Phase 8 Batch 4 Item 2 merged (0604f47); Item 3 pending" |
 | .cline/memory/lessons.md | ✅ | 3 🔴 gotchas (WSL2+Docker, pre-existing lint/typecheck, Expo CVEs) + 8 🟡 fixes (added Auth.js v5 AUTH_TRUST_HOST) + 2 🟤 decisions |
 | .cline/memory/agent-log.md | ✅ | All Bootstrap + Phase 2 + Phase 3 + Governance Sync entries |
 | CREDENTIALS.md | ✅ | Gitignored. AI-generated values active; ⏳ for human-fill (GitHub, Docker Hub, Turnstile prod, third-party). |
@@ -394,14 +394,94 @@ Sonnet 4.6 executor THRASHED at 44 tool uses on the combined task (procedures + 
 
 ---
 
+## Phase 8 Batch 4 Item 2 — Module 6 Projects Phase 1 Expansion (commit `0604f47`)
+
+**Branch:** `feat/projects-phase1-expand` → squash-merged to `main` (deleted with `-D`)
+
+**Commits:**
+- `24d2ae4` — Pass A (projectRouter +9 procedures + 35 tests GREEN)
+- `914ad6c` — Pass B (3 UI pages: detail w/ 4 tabs + expenses ledger + projects list modify)
+- `0604f47` — squash-merge to main (5 files +2049 insertions)
+
+**Backend (`apps/web/src/server/trpc/routers/project.ts` +266 LOC):**
+
+projectRouter extended with 9 new procedures organized via nested sub-routers:
+
+- `update` — writeProcedure, state machine validates 7 valid transitions (planning→active|cancelled, active→on_hold|completed|cancelled, on_hold→active|cancelled), rejects others with BAD_REQUEST. Partial w/ conditional spread for all 7 fields.
+- `archive` — writeProcedure, NOT_FOUND guard + projectExpense.count > 0 → BAD_REQUEST. Demo tenant FORBIDDEN automatically via writeProcedure middleware.
+- `budgetSummary` — protectedProcedure, returns `{ totalBudget, totalSpent, totalCommitted: 0, remaining }` via Prisma aggregate `_sum: { amount: true }` on ProjectExpense.
+- `expense.listByProject` — protectedProcedure, paginated (page/limit defaults 1/50), orderBy date desc.
+- `expense.recordProjectExpense` — writeProcedure, **atomic via `db.$transaction`**: validates project + fundSource exist (NOT_FOUND), real-cash insufficient-balance check via inline `isRealCashType` helper. Creates ProjectExpense → creates FundTransaction with `referenceType="project_expense" + referenceId=expense.id` → back-links ProjectExpense `referenceType="fund_transaction" + referenceId=transaction.id` → decrements FundSource.currentBalance for real-cash sources only. Returns `{ expense: <updated>, transaction }`. Mirrors Item 1 banking pattern; same atomicity guarantee.
+- `milestone.listByProject` — protectedProcedure, orderBy `sortOrder asc`.
+- `milestone.create` — writeProcedure, sortOrder defaults to 0 if omitted.
+- `milestone.complete` — writeProcedure, **idempotent**: rejects if `completedAt !== null` with BAD_REQUEST. Sets progress=100 + completedAt=now().
+- `milestone.update` — writeProcedure, partial w/ conditional spread for 5 fields (name/description/dueDate/progress/sortOrder).
+
+Inline helpers:
+- `REAL_CASH_TYPES = new Set(["cash_on_hand", "bank", "e_wallet"])` + `isRealCashType(type: string): boolean` — mirrors banking.ts pattern.
+- `VALID_TRANSITIONS: Record<string, string[]>` — state-machine map.
+
+**Tests (`apps/web/src/__tests__/project.test.ts` NEW, 571 LOC, 35 tests):**
+
+Categories: project.update (8 tests — 6 valid + 3 invalid transitions + name-only + NOT_FOUND + auth), project.archive (3 tests — GREEN/expenses-exist REJECT/demo FORBIDDEN), project.budgetSummary (3 tests — 0 expenses/multi-expense aggregation/NOT_FOUND), expense.listByProject (2 tests — paginated + auth gate), expense.recordProjectExpense (6 tests — real-cash GREEN/insufficient-balance REJECT/fund-source NOT_FOUND/project NOT_FOUND/credit-card GREEN/transaction rollback), milestone.listByProject (2 tests — ordered + empty), milestone.create (2 tests — GREEN + project NOT_FOUND), milestone.complete (3 tests — GREEN sets completedAt+progress=100/idempotency REJECT/NOT_FOUND), milestone.update (2 tests — partial GREEN + NOT_FOUND).
+
+mockDb uses explicit object types (not `Record<string, fn>`) to satisfy `noUncheckedIndexedAccess`.
+
+**UI (3 pages, 1216 LOC, VoltAgent palette `#00d992` / `#050507` per docs/DESIGN.md):**
+
+- `apps/web/src/app/(tenant)/[slug]/(app)/projects/page.tsx` (rewritten from 12-line stub to 339 LOC):
+  - Status counts header via `prisma.project.groupBy({ by: ["status"] })` — 5 status chips with counts + "All" total
+  - Status filter chips → URL `?status=` preserving `?page=`
+  - Table columns: projectNumber (mono), name (link to detail), customer, status badge, budget (right-aligned), targetEnd, manager
+  - **Customer fetched separately** via bulk `findMany({ where: { id: { in: customerIds } } })` + Map (Project schema has `customerId String?` FK without back-relation field)
+  - Pagination preserving filter
+  - "New Project" CTA stub link
+
+- `apps/web/src/app/(tenant)/[slug]/(app)/projects/[id]/page.tsx` (NEW, 574 LOC):
+  - URL-driven tabs via `?tab=overview|tasks|expenses|milestones` (default overview) — shadcn Tabs not installed; Link chips pattern matches banking/inventory precedent
+  - **Overview**: 4 cards (Status+Priority, Budget Summary w/ progress bar, Dates, Customer+Manager) + Description
+  - **Tasks**: list (limit 50) with milestone include
+  - **Expenses**: total spent + last 5 inline + "View All →" deep link to expenses page
+  - **Milestones**: ordered by sortOrder, progress bar, completedAt badge, "Mark Complete" stub per non-completed milestone
+  - Conditional fetches per active tab — only loads what's shown
+
+- `apps/web/src/app/(tenant)/[slug]/(app)/projects/[id]/expenses/page.tsx` (NEW, 306 LOC):
+  - Per-project ledger header: project name + "Expenses" subtitle + Total Spent (aggregate sum)
+  - Type filter chips (6 values): direct/inventory_consumed/labor/materials/subcontractor/other → URL `?type=`
+  - Table: date, type colored badge (EXPENSE_TYPE_COLORS map), description, right-aligned amount
+  - Pagination preserving filter
+  - "Record Expense" CTA stub link
+
+**Schema-driven adaptations vs PRODUCT.md spec (no migrations):**
+
+| Spec assumed | Schema reality | Adaptation |
+|---|---|---|
+| ProjectMilestone | Milestone | Use actual model name |
+| Milestone.title / order | Milestone.name / sortOrder | Use actual fields |
+| ProjectExpense.costType | ProjectExpense.type | Use actual field |
+| Expense type values 5+ | Schema comment says only 2 | Zod widened to 6 (column is String, not enum) |
+| ProjectExpense.fundSourceId / fundTransactionId / recordedById | None | Use referenceType + referenceId convention (back-link pattern from banking) |
+| Project.createdById | Project.managerId (required) | Default managerId to ctx.userId |
+| Project.customer relation | Only customerId FK | Fetch Customer separately by ID (bulk + Map for list, single findUnique for detail) |
+| Customer.displayName | None | getCustomerName falls through companyName → firstName+lastName |
+| @orqafy/db exports Prisma namespace | Only exports `prisma`, helpers | Use inline minimal type aliases for WhereInput / Decimal aggregate result |
+
+**Quality gates:** Two-stage review (Rule 25) Stage 1 (spec compliance) + Stage 2 (code quality) both PASS. pnpm vitest 286/286 GREEN (35 new project tests, 251 prior preserved across 8 prior suites). pnpm tsc --noEmit clean. pnpm eslint --max-warnings 0 clean across changed files.
+
+**Dispatch model:** Architect-Execute pre-decomposed into 2 Sonnet passes per Item 1 lesson. **Both passes thrashed at exactly 11 tool uses** on verification gates (vitest + typecheck + lint accumulation), despite reduced per-pass scope. Sonnet writes were 100% complete each time (Pass A: 228+571 LOC; Pass B: 1216 LOC); Opus 4.7 escalated in-session per §1 Step 2.5b for 15 surgical fixes total — 7 in Pass A (procedure renames recordProjectExpense/listByProject, recordProjectExpense full schema-field rewrite, archive expense-count check, budgetSummary projectId input + aggregate sum return shape, milestone idempotency guard, mockDb explicit object types resolving 50+ TS18048) + 8 in Pass B (drop Prisma import x2, drop customer:select x2, drop displayName x4, add separate getCustomer helper).
+
+**Lessons captured:** 🔴 Pre-decomposition by domain alone INSUFFICIENT — verification gates are the new thrash bottleneck; new rule = dispatch Sonnet for writes only OR escalate to Opus up front. 🔴 Schema-vs-PRODUCT.md drift larger than expected on mature projects — Architect pre-flight MUST grep actual schema for every entity in scope BEFORE writing dispatch prompt. 🟢 URL-driven tabs via Link chips canonical for tabbed Server Component pages until shadcn Tabs installed. See `.cline/memory/lessons.md` 2026-05-11 entries.
+
+---
+
 ## Next Action
 
-**CURRENT STATE: Phase 8 Batch 4 Item 1 ✅ merged. Items 2 + 3 pending in fresh sessions.**
+**CURRENT STATE: Phase 8 Batch 4 Items 1 + 2 ✅ merged. Item 3 pending in fresh session.**
 
 1. **Phase 8 Batch 4 progress:**
    - Item 1 ✅ Module 9 Banking Phase 2a — 9 transaction procedures + 25 new tests GREEN + paired-tx atomicity + 2 UI pages — merged `6650c61` (Sonnet thrashed → Opus 4.7 escalation via §1 Step 2.5b)
-   - Item 2 ⬜ pending — Module 6 Projects Phase 1 Expansion (.cline/tasks/phase8-batch4-item2.md, ~25K estimate). **CRITICAL: pre-decompose into 2 Sonnet passes (router/tests + UI) OR escalate to Opus executor up front per Item 1 lesson — combined-domain Tier 2 tasks exceed Sonnet 30K budget in practice.**
-   - Item 3 ⬜ pending — Module 4 Purchasing Phase 1 (.cline/tasks/phase8-batch4-item3.md, ~30K estimate, split-on-preflight per task file)
+   - Item 2 ✅ Module 6 Projects Phase 1 Expansion — 9 procedures across 3 nested sub-routers + 35 new tests GREEN + atomic ProjectExpense ↔ FundTransaction linkage + 3 UI pages with URL-driven tabs — merged `0604f47` (BOTH Sonnet passes thrashed at 11 tool uses on verification → Opus 4.7 escalation in-session for 15 surgical fixes; significant schema-vs-spec drift required 8 mechanical adaptations)
+   - Item 3 ⬜ pending — Module 4 Purchasing Phase 1 (.cline/tasks/phase8-batch4-item3.md, ~30K estimate, split-on-preflight per task file). **CRITICAL: dispatch Sonnet for WRITES ONLY (no verification step in prompt) and run vitest/typecheck/lint myself in this Opus session, OR escalate to Opus executor up front. Pre-decomposition by domain alone is insufficient per Item 2 lesson. Pre-grep Prisma schema for Vendor/PurchaseOrder/GoodsReceipt entities BEFORE writing the dispatch prompt to avoid Item 2 schema-drift retries.**
 
 2. **Phase 8 Batch 3 summary** (all complete):
    - Item 1 ✅ Module 12 Accounting Phase 1 — 16 procedures + 37 tests GREEN — merged `69d1c6a`
