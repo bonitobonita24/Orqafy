@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-11 by CLAUDE_CODE Opus 4.7 (Phase 8 Batch 4 Item 2 — Module 6 Projects Phase 1 Expansion merged 0604f47)
+# Last updated: 2026-05-11 by CLAUDE_CODE Opus 4.7 (Phase 8 Batch 4 ✅ COMPLETE 3/3 — Module 4 Purchasing Phase 1 merged 306229e)
 # ---
 
 ## Phase Status
@@ -18,7 +18,7 @@
 | Phase 5 — Validation | ✅ Complete | All 9 commands pass. 15 ESLint fixes (mobile), React 19 forwardRef fix (web), turbo env passthrough, serverExternalPackages, next 15.3.2→15.5.15, 11 Expo HIGH CVEs mitigated (audit-level=critical). |
 | Phase 6 — Docker + Visual QA | ✅ Complete | All 7 dev services healthy, migrations in sync, seed populated (13 roles, 5 plans, demo tenant, webmaster, 9 depts, 9 expense cats, VAT 12%, warehouse, FY 2026, 31 CoA). Visual QA per Rule 16 passed: /api/health 200, /login 200 ("Sign In \| Orqafy"), / 307→/login (after AUTH_TRUST_HOST autofix), 6 security headers active. Browser-interactive auth flow QA deferred — needs system Chrome. |
 | Phase 7 — Feature Updates | ⬜ Pending | The daily loop. Triggered per item by Phase 8 batch execution. |
-| Phase 8 — Iterative Buildout | 🔵 In Progress — Batch 3 ✅ COMPLETE (3/3); Batch 4 ▶ IN PROGRESS (2/3) | Batch 1 ✅ all 3 items complete. Batch 2 ✅ all 3 items complete. Batch 3 ✅ all 3 items complete. Batch 4 Item 1 ✅ merged (`6650c61`) — Module 9 Banking Phase 2a. Item 2 ✅ merged (`0604f47`) — Module 6 Projects Phase 1 Expansion (9 procedures across 3 nested sub-routers, 35 new tests, atomic ProjectExpense ↔ FundTransaction linkage via referenceType convention, 3 UI pages with URL-driven tabs). Item 3 (Module 4 Purchasing) pending in fresh session. **Next: Item 3 (.cline/tasks/phase8-batch4-item3.md).** |
+| Phase 8 — Iterative Buildout | 🔵 In Progress — Batches 1-4 ✅ COMPLETE | Batch 1 ✅, Batch 2 ✅, Batch 3 ✅, Batch 4 ✅ ALL 3 ITEMS MERGED. Item 1 ✅ Module 9 Banking Phase 2a (`6650c61`). Item 2 ✅ Module 6 Projects Phase 1 Expansion (`0604f47`). Item 3 ✅ Module 4 Purchasing Phase 1 (`306229e`) — Vendor + PO + GoodsReceipt with atomic stock/project_expense allocation routing, 16 procedures, 33 GREEN tests, 3 UI pages, cumulative 319/319. **Next: Phase 8 adaptive replan for Batch 5 in fresh Claude Code session.** |
 
 ## Spec Files (Phase 3 outputs)
 
@@ -474,14 +474,117 @@ mockDb uses explicit object types (not `Record<string, fn>`) to satisfy `noUnche
 
 ---
 
+## Phase 8 Batch 4 Item 3 — Module 4 Purchasing Phase 1 (commit `306229e`)
+
+**Branch:** `feat/purchasing-phase1` → squash-merged to `main` (deleted with `-D` post-squash-merge)
+
+**Commits:**
+- `83c61a1` — feature work on branch (Sonnet writes + Opus 70+ fixes + 33-test rewrite)
+- `306229e` — squash-merge to main (6 files +2140 insertions)
+
+**Adapted scope decision:** Task file spec required entities/fields that don't exist in Prisma (paymentStatus, paymentFundSourceId, GoodsReceiptItem.allocationId). Per Option B (locked in DECISIONS_LOG.md and this commit): adopt schema-faithful scope, defer po.recordPayment + company_expense allocation routing to Phase 2. Implementable with zero migrations.
+
+**Backend (`apps/web/src/server/trpc/routers/purchasing.ts` NEW, 706 LOC):**
+
+Three nested sub-routers under `purchasingRouter`:
+
+**vendorRouter** (5 procedures):
+- `list` — paginated `{items, total, page, limit}`, filters: search (companyName/contactName/email OR), type, isActive
+- `byId` — NOT_FOUND guard
+- `create` — writeProcedure, 16-field input matching schema (companyName required, type direct|ecommerce, all other optional with conditional spread)
+- `update` — writeProcedure, partial w/ 17 optional fields + isActive toggle
+- `deactivate` — writeProcedure, sets isActive=false (NOT toggleActive — Sonnet built it as one-way deactivation)
+
+**poRouter** (8 procedures):
+- `list` — paginated, filters: search (poNumber OR vendor.companyName), vendorId, status. Includes vendor + createdBy + approvedBy (User selects use firstName/lastName, NOT name — User has no name field).
+- `byId` — NOT_FOUND guard. Full include: vendor + createdBy + approvedBy + items (with product + allocations) + goodsReceipts (id/grNumber/status/receivedAt).
+- `create` — writeProcedure, **validates allocations** (added by Opus after vitest revealed missing checks):
+  - Allocation sum per item must equal item.quantity (tolerance 1e-6) → BAD_REQUEST else
+  - type="stock" requires warehouseId → BAD_REQUEST else
+  - type="project_expense" requires projectId → BAD_REQUEST else
+  - Vendor NOT_FOUND guard
+  - Atomic `db.$transaction`: creates PO + items + allocations sequentially
+  - Auto-generates poNumber `PO-{YY}{MM}-{seq:0000}` via `findFirst+desc+parseInt` pattern
+  - subtotal = sum(qty × unitPrice); taxAmount = 0 (Phase 2); totalAmount = subtotal
+  - status='draft', createdById = ctx.userId
+- `update` — writeProcedure, only when status='draft' else BAD_REQUEST. Partial 4 fields (vendorId/expectedDelivery/currency/notes).
+- `submit` — writeProcedure, draft → pending_approval
+- `approve` — writeProcedure, **role-gated** to ["Administrator","Purchasing Manager","admin"] → FORBIDDEN else. pending_approval → approved + sets approvedById + approvedAt
+- `markOrdered` — writeProcedure, approved → ordered + sets orderedAt
+- `cancel` — writeProcedure, cancellable from draft|pending_approval|approved (router is more permissive than spec — accepted as reasonable user flow)
+
+**goodsReceiptRouter** (3 procedures):
+- `list` — paginated `{items, total, page, limit}`, filters: purchaseOrderId + status. Includes purchaseOrder + receivedBy.
+- `byId` — NOT_FOUND guard. Full include: purchaseOrder (with vendor) + receivedBy + items (with product).
+- `create` — writeProcedure, **the largest atomic op in the codebase**:
+  - Validates PO exists + PO.status ∈ ["approved","ordered","partially_received"] else BAD_REQUEST
+  - Auto-generates grNumber `GR-{YY}{MM}-{seq:0000}` via findFirst pattern
+  - Atomic `db.$transaction`: creates GoodsReceipt (status="accepted") + for each input item: creates GoodsReceiptItem (productId/description/quantityExpected/quantityReceived/quantityRejected) → matches PO item by productId OR description → routes each allocation proportionally:
+    - **stock allocation** → `tx.stockMovement.create` (type="in", productId, toWarehouseId, referenceType="goods_receipt", referenceId=gr.id, createdById=ctx.userId, quantity = (alloc.qty / totalAllocQty) × received.qty)
+    - **project_expense allocation** → `tx.projectExpense.create` (projectId, type="inventory_consumed", amount = allocatedQty × unitPrice, currency, referenceType="goods_receipt", referenceId=gr.id)
+    - **company_expense** → SKIPPED (Phase 2 — Expense.expenseCategoryId required field, no provisioning at this layer)
+    - Sets allocation.processedAt=now() on first routing (idempotency marker)
+    - Updates PO item.quantityReceived
+  - Recomputes PO.status from `tx.purchaseOrderItem.findMany` aggregate: all received → "received", any received → "partially_received", else unchanged
+
+Cross-module integration: PO with stock allocation → increments Inventory (Module 5 stockMovement); PO with project_expense allocation → creates ProjectExpense (Module 6 — Item 2 pattern) linked via referenceType/referenceId convention.
+
+Inline helpers: `generatePoNumber()` + `generateGrNumber()` — findFirst+desc+parseInt sequence generators.
+
+**Tests (`apps/web/src/__tests__/purchasing.test.ts` NEW, 720 LOC, 33 GREEN):**
+
+Sonnet's original test file (853 LOC, 35 tests) had deep API drift — used `name`/`code`/`tenantId`/array results vs router's `companyName`/no-code/no-tenantId/paginated. Opus 4.7 rewrote the file from scratch to match actual router API.
+
+Coverage: vendor (5: list paginated + isActive filter / byId NOT_FOUND / create + invalid-email reject / update partial + NOT_FOUND / deactivate), po (15: list + filter / byId NOT_FOUND / create success + 4 validation rejects + vendor NOT_FOUND / update non-draft reject / submit + reject / approve admin + manager + staff FORBIDDEN + invalid-status / cancel draft + cancel-received reject / markOrdered), goodsReceipt (8: list paginated by PO / byId NOT_FOUND / create full receipt routes stock+project / create partial receipt → PO partially_received / create rejects when PO not receivable / create rejects when PO missing / create atomic rollback — $transaction.mockRejectedValueOnce verifies stockMovement+projectExpense+goodsReceiptItem NOT called).
+
+mockDb uses explicit per-table object types (not Record). $transaction mock pattern: `mockImplementation(async (fn: any) => fn(mockDb))` for happy path, `mockRejectedValueOnce(new Error(...))` for rollback verification. ESLint disable header extended with `@typescript-eslint/no-unsafe-return, no-unsafe-call, require-await` for the async-callback mock pattern.
+
+**UI (3 pages, 712 LOC total — Server Components, direct Prisma reads, VoltAgent palette `#00d992` / `#050507` per docs/DESIGN.md):**
+
+- `apps/web/src/app/(tenant)/[slug]/(app)/purchasing/page.tsx` (171 LOC): PO list with 8 status filter chips (All + 7 PO statuses), columns PO# (mono link), Vendor (companyName), Status badge, Order Date (orderedAt), Expected Delivery, Total (right-aligned), Items count. Conditional `where` via spread for exactOptionalPropertyTypes compliance. Header link → /purchasing/vendors.
+- `apps/web/src/app/(tenant)/[slug]/(app)/purchasing/vendors/page.tsx` (139 LOC): Vendor list with Active/All filter chips, columns Vendor Name (companyName), Contact Person (contactName), Email (mailto link), Phone, POs count (`_count.purchaseOrders`), Status pill.
+- `apps/web/src/app/(tenant)/[slug]/(app)/purchasing/orders/[id]/page.tsx` (402 LOC): PO detail. Header (PO# mono + status badge + createdAt). Two info cards (Vendor block w/ companyName + contactName + email link + phone; Order Details w/ orderedAt + expectedDelivery + totalAmount + items count + qty-received total). Notes block (conditional). Line items table (Product/description + qtyOrdered + qtyReceived w/ color state + unitPrice + totalPrice + tfoot totalAmount). Goods Receipts section (conditional, per-GR card with grNumber + receivedAt + items count + per-item product/description + qtyReceived).
+
+**Schema-driven adaptations vs task spec (no migrations, locked in commit + DECISIONS_LOG.md):**
+
+| Spec assumed | Schema reality | Adaptation |
+|---|---|---|
+| Vendor.name | Vendor.companyName | Use actual field |
+| Vendor.type 3 values (direct_supplier/ecommerce/marketplace) | 2 values (direct/ecommerce) | Use schema enum |
+| Vendor.contactPerson | Vendor.contactName | Use actual field |
+| User.name (in createdBy/approvedBy/receivedBy selects) | User has firstName/lastName/displayName (no name) | Select firstName + lastName |
+| PurchaseOrder.tax | PO.taxAmount | Use actual field |
+| PurchaseOrder.paymentStatus | NOT IN SCHEMA | Deferred to Phase 2 |
+| PurchaseOrder.paymentFundSourceId | NOT IN SCHEMA | Deferred po.recordPayment to Phase 2 |
+| PO status 5 values | 7 values (draft|pending_approval|approved|ordered|partially_received|received|cancelled) | Use schema enum (richer state machine) |
+| PO.orderDate | PO.orderedAt | Use actual field |
+| PurchaseOrderLine.unitCost/lineTotal | PurchaseOrderItem.unitPrice/totalPrice | Use actual fields |
+| PurchaseAllocation.poLineId | PurchaseOrderItemAllocation.itemId | Use actual field |
+| GoodsReceiptLine.allocationId FK | GoodsReceiptItem keyed by productId+description (no allocationId) | Routing computed proportionally in goodsReceipt.create from (alloc.qty / item.qty) × received.qty |
+| GR status partial/complete (2 values) | pending|inspecting|accepted|rejected|partial (5 values) | Router sets status="accepted" on create (Phase 2 will add inspecting workflow) |
+| GR.receivedDate | GR.receivedAt | Use actual field |
+| Atomic Expense creation for company_expense allocation | Expense.expenseCategoryId required field | SKIPPED — Phase 2 needs setup wizard or default-category |
+| @orqafy/db exports Prisma namespace | Only exports prisma + helpers | Use inline minimal type aliases (none needed in this Item — all Prisma usage is server-side fluent API) |
+
+**Dispatch model & lessons:** Architect-Execute with Sonnet WRITES-ONLY dispatch per Item 2 lesson. **Sonnet still thrashed at 24 tool uses** (Items 1+2 thrashed at 11, this thrashed at 24) — but all 5 large files (router 706 + test 853 + 3 UI pages 712) were successfully written before thrash. Only `_app.ts` wiring (2 lines) was left to Opus. Lesson: thrash threshold scales with prompt size + file count, NOT just verification. Pre-inlined ~15K-token prompt × 6 files via Write tool ≈ 24-tool ceiling for Sonnet. Future multi-domain Items should dispatch ≤4 files per Sonnet call OR escalate to Opus up front.
+
+Schema-vs-spec drift remained the biggest source of post-write fixes despite explicit pre-flight grep + schema-fields-inlined in dispatch prompt. Sonnet hallucinated User.name and Vendor.contactPerson even though dispatch explicitly stated otherwise. Lesson: pre-inline ALL schema fields in test fixture format (so Sonnet copies rather than derives), not just narrative description.
+
+**Quality gates:** Two-stage review (Rule 25) Stage 1 (spec compliance vs adapted scope) + Stage 2 (code quality) both PASS. pnpm vitest 319/319 GREEN (33 new purchasing + 286 prior across 9 prior suites). pnpm tsc --noEmit clean. pnpm eslint --max-warnings 0 clean.
+
+**Closes Phase 8 Batch 4 ✅ (3/3 items merged).**
+
+---
+
 ## Next Action
 
-**CURRENT STATE: Phase 8 Batch 4 Items 1 + 2 ✅ merged. Item 3 pending in fresh session.**
+**CURRENT STATE: Phase 8 Batch 4 ✅ COMPLETE (3/3). Next: Phase 8 adaptive replan for Batch 5.**
 
-1. **Phase 8 Batch 4 progress:**
-   - Item 1 ✅ Module 9 Banking Phase 2a — 9 transaction procedures + 25 new tests GREEN + paired-tx atomicity + 2 UI pages — merged `6650c61` (Sonnet thrashed → Opus 4.7 escalation via §1 Step 2.5b)
-   - Item 2 ✅ Module 6 Projects Phase 1 Expansion — 9 procedures across 3 nested sub-routers + 35 new tests GREEN + atomic ProjectExpense ↔ FundTransaction linkage + 3 UI pages with URL-driven tabs — merged `0604f47` (BOTH Sonnet passes thrashed at 11 tool uses on verification → Opus 4.7 escalation in-session for 15 surgical fixes; significant schema-vs-spec drift required 8 mechanical adaptations)
-   - Item 3 ⬜ pending — Module 4 Purchasing Phase 1 (.cline/tasks/phase8-batch4-item3.md, ~30K estimate, split-on-preflight per task file). **CRITICAL: dispatch Sonnet for WRITES ONLY (no verification step in prompt) and run vitest/typecheck/lint myself in this Opus session, OR escalate to Opus executor up front. Pre-decomposition by domain alone is insufficient per Item 2 lesson. Pre-grep Prisma schema for Vendor/PurchaseOrder/GoodsReceipt entities BEFORE writing the dispatch prompt to avoid Item 2 schema-drift retries.**
+1. **Phase 8 Batch 4 ✅ COMPLETE (3/3):**
+   - Item 1 ✅ Module 9 Banking Phase 2a — merged `6650c61` (Sonnet thrashed at 44 tool uses → Opus escalation)
+   - Item 2 ✅ Module 6 Projects Phase 1 Expansion — merged `0604f47` (Both Sonnet passes thrashed at 11 tool uses on verification → Opus in-session escalation; 15 surgical fixes)
+   - Item 3 ✅ Module 4 Purchasing Phase 1 — merged `306229e` (Sonnet thrashed at 24 tool uses with WRITES-ONLY dispatch but all 5 large files persisted; Opus completed wiring + 70+ verification fixes including 33-test rewrite + 3 missing router validations). Cumulative 319/319 tests across 10 files.
+   - **Next: Phase 8 adaptive replan for Batch 5 in fresh Claude Code session.** Candidates per Item 3 task file: HR/Payroll Phase 1 (test coverage gap on existing employee.ts/payroll.ts), POS Phase 1 (POS session + cart + FundTransaction payment), Job Order Phase 1 expansion (188-line stub), E-commerce Phase 1 (Customer ✅ + Order + EcommerceOrder), Support Phase 1 (Ticket + SupportComment + link to Project ✅ + Customer ✅), Reports module. Also: Mobile app Phase 1 (apps/mobile WatermelonDB) — DTR clock-in offline sync meaningful with full backend in place.
 
 2. **Phase 8 Batch 3 summary** (all complete):
    - Item 1 ✅ Module 12 Accounting Phase 1 — 16 procedures + 37 tests GREEN — merged `69d1c6a`
