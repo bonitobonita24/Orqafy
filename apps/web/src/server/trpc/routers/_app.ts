@@ -24,6 +24,7 @@ import { accountingRouter } from "./accounting";
 import { tasksRouter } from "./tasks";
 import { dtrRouter } from "./dtr";
 import { supportRouter } from "./support";
+import { posRouter } from "./pos";
 
 export const appRouter = createTRPCRouter({
   auth: authRouter,
@@ -51,6 +52,7 @@ export const appRouter = createTRPCRouter({
   tasks: tasksRouter,
   dtr: dtrRouter,
   support: supportRouter,
+  pos: posRouter,
 });
 
 export type AppRouter = typeof appRouter;
