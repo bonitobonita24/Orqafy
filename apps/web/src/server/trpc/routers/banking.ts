@@ -36,6 +36,76 @@ function isRealCashType(type: string): type is RealCashType {
 }
 
 const transactionRouter = createTRPCRouter({
+  // Phase 2b: aggregate dashboard data for the banking overview.
+  // Sums real-cash sources (cash_on_hand + bank + e_wallet), credit-card
+  // outstanding, loan balances, plus this-month income/expense and the most
+  // recent 10 transactions across all sources.
+  summary: protectedProcedure.query(async () => {
+    const allSources = await db.fundSource.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        type: true,
+        currentBalance: true,
+        outstandingBalance: true,
+        loanBalance: true,
+        loanPrincipal: true,
+      },
+    });
+
+    let cashTotal = 0;
+    let creditCardOutstanding = 0;
+    let loanBalanceTotal = 0;
+    for (const s of allSources) {
+      if (s.type === "cash_on_hand" || s.type === "bank" || s.type === "e_wallet") {
+        cashTotal += parseFloat(s.currentBalance.toString());
+      } else if (s.type === "credit_card") {
+        creditCardOutstanding += parseFloat((s.outstandingBalance ?? "0").toString());
+      } else if (s.type === "loan") {
+        loanBalanceTotal += parseFloat(
+          (s.loanBalance ?? s.loanPrincipal ?? "0").toString()
+        );
+      }
+    }
+
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+
+    const monthTxs = await db.fundTransaction.findMany({
+      where: { transactionDate: { gte: monthStart } },
+      select: { type: true, amount: true },
+    });
+
+    let thisMonthIncome = 0;
+    let thisMonthExpense = 0;
+    for (const t of monthTxs) {
+      const amt = parseFloat(t.amount.toString());
+      if (t.type === "income" || t.type === "refund") {
+        thisMonthIncome += amt;
+      } else if (t.type === "expense") {
+        thisMonthExpense += amt;
+      }
+    }
+
+    const recentTransactions = await db.fundTransaction.findMany({
+      orderBy: { transactionDate: "desc" },
+      take: 10,
+      include: {
+        fundSource: { select: { id: true, name: true, type: true } },
+      },
+    });
+
+    return {
+      cashTotal,
+      creditCardOutstanding,
+      loanBalance: loanBalanceTotal,
+      thisMonthIncome,
+      thisMonthExpense,
+      recentTransactions,
+    };
+  }),
+
   list: protectedProcedure
     .input(
       z.object({
@@ -538,6 +608,107 @@ const transactionRouter = createTRPCRouter({
           data: { loanBalance: newLoanBalance },
         });
         return { payerTx, loanTx };
+      });
+    }),
+
+  // Phase 2b: refund — money returned TO us (e.g. vendor refund). Behaves
+  // like income but tagged type=refund and optionally linked to the original
+  // outgoing transaction via referenceId.
+  recordRefund: writeProcedure
+    .input(
+      z.object({
+        fundSourceId: z.string().min(1),
+        amount: z.number().positive(),
+        originalTransactionId: z.string().min(1).optional(),
+        description: z.string().optional(),
+        transactionDate: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const source = await db.fundSource.findUnique({ where: { id: input.fundSourceId } });
+      if (!source) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const newBalance = parseFloat(source.currentBalance.toString()) + input.amount;
+
+      return db.$transaction(async (tx) => {
+        const transaction = await tx.fundTransaction.create({
+          data: {
+            fundSourceId: input.fundSourceId,
+            type: "refund",
+            amount: input.amount,
+            runningBalance: newBalance,
+            description: input.description ?? null,
+            category: null,
+            referenceType: input.originalTransactionId !== undefined ? "refund" : null,
+            referenceId: input.originalTransactionId ?? null,
+            transactionDate: input.transactionDate !== undefined ? new Date(input.transactionDate) : new Date(),
+            createdById: ctx.userId,
+          },
+        });
+        await tx.fundSource.update({
+          where: { id: input.fundSourceId },
+          data: { currentBalance: newBalance },
+        });
+        return transaction;
+      });
+    }),
+
+  // Phase 2b: manual adjustment — corrects balance discrepancies (e.g. cash
+  // count off vs ledger). Delta can be positive or negative; reason is required
+  // for audit trail. Restricted to real-cash types (cash_on_hand, bank,
+  // e_wallet) — credit cards and loans need their own reconciliation paths.
+  recordAdjustment: writeProcedure
+    .input(
+      z.object({
+        fundSourceId: z.string().min(1),
+        delta: z.number().refine((n) => n !== 0, {
+          message: "Adjustment delta must be non-zero",
+        }),
+        reason: z.string().trim().min(1),
+        transactionDate: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const source = await db.fundSource.findUnique({ where: { id: input.fundSourceId } });
+      if (!source) throw new TRPCError({ code: "NOT_FOUND" });
+
+      if (!isRealCashType(source.type)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Adjustments are only supported on real-cash fund sources (cash_on_hand, bank, e_wallet).",
+        });
+      }
+
+      const currentBalance = parseFloat(source.currentBalance.toString());
+      const newBalance = currentBalance + input.delta;
+
+      if (newBalance < 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Adjustment would drive balance negative.",
+        });
+      }
+
+      return db.$transaction(async (tx) => {
+        const transaction = await tx.fundTransaction.create({
+          data: {
+            fundSourceId: input.fundSourceId,
+            type: "adjustment",
+            amount: Math.abs(input.delta),
+            runningBalance: newBalance,
+            description: input.reason,
+            category: input.delta > 0 ? "adjustment_credit" : "adjustment_debit",
+            referenceType: null,
+            referenceId: null,
+            transactionDate: input.transactionDate !== undefined ? new Date(input.transactionDate) : new Date(),
+            createdById: ctx.userId,
+          },
+        });
+        await tx.fundSource.update({
+          where: { id: input.fundSourceId },
+          data: { currentBalance: newBalance },
+        });
+        return transaction;
       });
     }),
 });

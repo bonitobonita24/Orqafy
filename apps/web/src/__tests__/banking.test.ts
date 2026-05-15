@@ -20,7 +20,7 @@
  * 13.  transaction.loanMoneyOutTo  — atomic: loanBalance -=, target currentBalance +=
  * 14.  transaction.loanMoneyIn     — atomic: loanBalance +=, source currentBalance -=
  */
-/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/require-await */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -919,5 +919,284 @@ describe("banking.transaction.loanMoneyIn", () => {
         amount: 5000,
       })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Phase 2b: transaction.summary
+// ═══════════════════════════════════════════════════════════════
+describe("banking.transaction.summary", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("aggregates active sources by type and returns this-month + recent transactions", async () => {
+    mockDb.fundSource.findMany.mockResolvedValue([
+      { id: "fs-1", type: "cash_on_hand", currentBalance: "1000.00", outstandingBalance: null, loanBalance: null, loanPrincipal: null },
+      { id: "fs-2", type: "bank", currentBalance: "5000.00", outstandingBalance: null, loanBalance: null, loanPrincipal: null },
+      { id: "fs-3", type: "e_wallet", currentBalance: "250.50", outstandingBalance: null, loanBalance: null, loanPrincipal: null },
+      { id: "fs-4", type: "credit_card", currentBalance: "0.00", outstandingBalance: "1500.00", loanBalance: null, loanPrincipal: null },
+      { id: "fs-5", type: "loan", currentBalance: "0.00", outstandingBalance: null, loanBalance: "20000.00", loanPrincipal: "25000.00" },
+    ]);
+    // First findMany call inside summary returns active sources; second returns this-month
+    // transactions; third returns recent transactions. We use mockResolvedValueOnce for ordering.
+    mockDb.fundTransaction.findMany
+      .mockResolvedValueOnce([
+        { type: "income", amount: "500.00" },
+        { type: "income", amount: "750.00" },
+        { type: "refund", amount: "100.00" },
+        { type: "expense", amount: "300.00" },
+        { type: "transfer_out", amount: "50.00" }, // ignored
+      ])
+      .mockResolvedValueOnce([
+        { id: "tx-1", type: "income", amount: "500", description: "client payment", transactionDate: new Date(), fundSource: { id: "fs-2", name: "BDO", type: "bank" } },
+      ]);
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.banking.transaction.summary();
+
+    expect(result.cashTotal).toBeCloseTo(6250.5);
+    expect(result.creditCardOutstanding).toBeCloseTo(1500);
+    expect(result.loanBalance).toBeCloseTo(20000);
+    expect(result.thisMonthIncome).toBeCloseTo(1350); // 500+750+100 (refund counts as income)
+    expect(result.thisMonthExpense).toBeCloseTo(300);
+    expect(result.recentTransactions).toHaveLength(1);
+  });
+
+  it("falls back to loanPrincipal when loanBalance is null", async () => {
+    mockDb.fundSource.findMany.mockResolvedValue([
+      { id: "fs-loan", type: "loan", currentBalance: "0", outstandingBalance: null, loanBalance: null, loanPrincipal: "30000" },
+    ]);
+    mockDb.fundTransaction.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.banking.transaction.summary();
+
+    expect(result.loanBalance).toBeCloseTo(30000);
+    expect(result.cashTotal).toBe(0);
+  });
+
+  it("returns zero totals when no active sources exist", async () => {
+    mockDb.fundSource.findMany.mockResolvedValue([]);
+    mockDb.fundTransaction.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.banking.transaction.summary();
+
+    expect(result).toEqual({
+      cashTotal: 0,
+      creditCardOutstanding: 0,
+      loanBalance: 0,
+      thisMonthIncome: 0,
+      thisMonthExpense: 0,
+      recentTransactions: [],
+    });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Phase 2b: transaction.recordRefund
+// ═══════════════════════════════════════════════════════════════
+describe("banking.transaction.recordRefund", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("creates a refund transaction and credits currentBalance atomically", async () => {
+    mockDb.fundSource.findUnique.mockResolvedValue({ ...sampleFundSource, currentBalance: "5000.00" });
+    mockDb.$transaction.mockImplementation(async (fn: any) => fn(mockDb));
+    mockDb.fundTransaction.create.mockResolvedValue({ id: "tx-refund-1", type: "refund", amount: "200.00", runningBalance: "5200.00" });
+    mockDb.fundSource.update.mockResolvedValue({});
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.banking.transaction.recordRefund({
+      fundSourceId: "cuid-fs-1",
+      amount: 200,
+      originalTransactionId: "cuid-tx-orig",
+      description: "Vendor refund",
+    });
+
+    expect(result.id).toBe("tx-refund-1");
+    expect(mockDb.$transaction).toHaveBeenCalledOnce();
+    expect(mockDb.fundTransaction.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        fundSourceId: "cuid-fs-1",
+        type: "refund",
+        amount: 200,
+        runningBalance: 5200,
+        description: "Vendor refund",
+        referenceType: "refund",
+        referenceId: "cuid-tx-orig",
+        createdById: "user-1",
+      }),
+    });
+    expect(mockDb.fundSource.update).toHaveBeenCalledWith({
+      where: { id: "cuid-fs-1" },
+      data: { currentBalance: 5200 },
+    });
+  });
+
+  it("omits referenceType when no originalTransactionId provided", async () => {
+    mockDb.fundSource.findUnique.mockResolvedValue({ ...sampleFundSource, currentBalance: "1000.00" });
+    mockDb.$transaction.mockImplementation(async (fn: any) => fn(mockDb));
+    mockDb.fundTransaction.create.mockResolvedValue({ id: "tx-refund-2" });
+    mockDb.fundSource.update.mockResolvedValue({});
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.banking.transaction.recordRefund({
+      fundSourceId: "cuid-fs-1",
+      amount: 50,
+    });
+
+    expect(mockDb.fundTransaction.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          referenceType: null,
+          referenceId: null,
+        }),
+      })
+    );
+  });
+
+  it("rejects when fund source not found", async () => {
+    mockDb.fundSource.findUnique.mockResolvedValue(null);
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.banking.transaction.recordRefund({ fundSourceId: "missing", amount: 100 })
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Phase 2b: transaction.recordAdjustment
+// ═══════════════════════════════════════════════════════════════
+describe("banking.transaction.recordAdjustment", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("applies positive delta atomically with adjustment_credit category", async () => {
+    mockDb.fundSource.findUnique.mockResolvedValue({ ...sampleFundSource, type: "cash_on_hand", currentBalance: "1000.00" });
+    mockDb.$transaction.mockImplementation(async (fn: any) => fn(mockDb));
+    mockDb.fundTransaction.create.mockResolvedValue({ id: "tx-adj-1", type: "adjustment", amount: "50.00", runningBalance: "1050.00" });
+    mockDb.fundSource.update.mockResolvedValue({});
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.banking.transaction.recordAdjustment({
+      fundSourceId: "cuid-fs-1",
+      delta: 50,
+      reason: "Cash count over by 50",
+    });
+
+    expect(result.id).toBe("tx-adj-1");
+    expect(mockDb.fundTransaction.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        fundSourceId: "cuid-fs-1",
+        type: "adjustment",
+        amount: 50,
+        runningBalance: 1050,
+        description: "Cash count over by 50",
+        category: "adjustment_credit",
+      }),
+    });
+    expect(mockDb.fundSource.update).toHaveBeenCalledWith({
+      where: { id: "cuid-fs-1" },
+      data: { currentBalance: 1050 },
+    });
+  });
+
+  it("applies negative delta atomically with adjustment_debit category", async () => {
+    mockDb.fundSource.findUnique.mockResolvedValue({ ...sampleFundSource, type: "bank", currentBalance: "5000.00" });
+    mockDb.$transaction.mockImplementation(async (fn: any) => fn(mockDb));
+    mockDb.fundTransaction.create.mockResolvedValue({ id: "tx-adj-2" });
+    mockDb.fundSource.update.mockResolvedValue({});
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.banking.transaction.recordAdjustment({
+      fundSourceId: "cuid-fs-1",
+      delta: -75.5,
+      reason: "Bank fee not previously recorded",
+    });
+
+    expect(mockDb.fundTransaction.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          type: "adjustment",
+          amount: 75.5, // amount stored absolute
+          runningBalance: 4924.5,
+          category: "adjustment_debit",
+        }),
+      })
+    );
+  });
+
+  it("rejects zero delta via Zod refinement", async () => {
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.banking.transaction.recordAdjustment({
+        fundSourceId: "cuid-fs-1",
+        delta: 0,
+        reason: "should fail",
+      })
+    ).rejects.toBeDefined();
+  });
+
+  it("rejects empty reason via Zod min(1)", async () => {
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.banking.transaction.recordAdjustment({
+        fundSourceId: "cuid-fs-1",
+        delta: 10,
+        reason: "",
+      })
+    ).rejects.toBeDefined();
+  });
+
+  it("rejects credit_card sources (not real-cash)", async () => {
+    mockDb.fundSource.findUnique.mockResolvedValue({ ...sampleFundSource, type: "credit_card" });
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.banking.transaction.recordAdjustment({
+        fundSourceId: "cuid-fs-cc",
+        delta: 100,
+        reason: "x",
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("rejects loan sources (not real-cash)", async () => {
+    mockDb.fundSource.findUnique.mockResolvedValue({ ...sampleFundSource, type: "loan" });
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.banking.transaction.recordAdjustment({
+        fundSourceId: "cuid-fs-loan",
+        delta: 100,
+        reason: "x",
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("rejects when adjustment would drive balance negative", async () => {
+    mockDb.fundSource.findUnique.mockResolvedValue({ ...sampleFundSource, type: "cash_on_hand", currentBalance: "100.00" });
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.banking.transaction.recordAdjustment({
+        fundSourceId: "cuid-fs-1",
+        delta: -200,
+        reason: "would drive negative",
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("rejects when fund source not found", async () => {
+    mockDb.fundSource.findUnique.mockResolvedValue(null);
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.banking.transaction.recordAdjustment({
+        fundSourceId: "missing",
+        delta: 10,
+        reason: "x",
+      })
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });
