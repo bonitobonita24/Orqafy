@@ -23,6 +23,7 @@ import { crmRouter } from "./crm";
 import { accountingRouter } from "./accounting";
 import { tasksRouter } from "./tasks";
 import { dtrRouter } from "./dtr";
+import { supportRouter } from "./support";
 
 export const appRouter = createTRPCRouter({
   auth: authRouter,
@@ -49,6 +50,7 @@ export const appRouter = createTRPCRouter({
   accounting: accountingRouter,
   tasks: tasksRouter,
   dtr: dtrRouter,
+  support: supportRouter,
 });
 
 export type AppRouter = typeof appRouter;
