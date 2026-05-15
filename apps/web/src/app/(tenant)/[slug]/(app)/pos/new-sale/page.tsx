@@ -68,9 +68,12 @@ export default async function POSNewSalePage({
         </Link>
         <h1 className="mt-2 text-2xl font-bold tracking-tight">New Sale</h1>
         <p className="text-sm text-muted-foreground">
-          Ring up products and accept payment. Interactive cart UI lands in
-          Phase 2 — backend tRPC (<code className="font-mono text-[#00d992]">pos.sale.create</code>)
-          is live and atomic.
+          Ring up products and accept payment. Backend tRPC procedures
+          (<code className="font-mono text-[#00d992]">pos.sale.create</code>,
+          {" "}
+          <code className="font-mono text-[#00d992]">pos.sale.void</code> with
+          atomic inventory reversal) are live and tested. Interactive cart UI
+          lands in Phase 3 once the tRPC React client is wired in.
         </p>
       </div>
 
@@ -178,12 +181,14 @@ export default async function POSNewSalePage({
       </section>
 
       <section className="rounded-lg border border-dashed border-border bg-card px-6 py-8 text-center">
-        <h3 className="text-sm font-semibold">Interactive Cart — Phase 2</h3>
+        <h3 className="text-sm font-semibold">Interactive Cart — Phase 3</h3>
         <p className="mt-2 text-xs text-muted-foreground">
           Wire up product search, line-item editing, payment method picker, and
           change calculation against{" "}
-          <code className="font-mono text-[#00d992]">pos.sale.create</code>. Backend
-          is fully implemented and tested — UI is the remaining piece.
+          <code className="font-mono text-[#00d992]">pos.sale.create</code>. Requires
+          the tRPC React client (<code className="font-mono text-[#00d992]">@trpc/react-query</code>{" "}
+          provider chain) to be wired in first — slated for the infrastructure batch
+          before Phase 3 UI work.
         </p>
       </section>
     </div>

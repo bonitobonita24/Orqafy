@@ -356,7 +356,11 @@ const saleRouter = createTRPCRouter({
 
   void: writeProcedure
     .input(z.object({ id: cuid, reason: z.string().trim().min(1) }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.userId === null) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
+
       const sale = await db.pOSSale.findUnique({
         where: { id: input.id },
         select: { id: true, status: true },
@@ -370,10 +374,44 @@ const saleRouter = createTRPCRouter({
           message: `Cannot void a sale with status "${sale.status}".`,
         });
       }
-      // Phase 2 will reverse the stockMovement entries; Phase 1 only flips status.
-      return db.pOSSale.update({
-        where: { id: input.id },
-        data: { status: "voided" },
+
+      // Phase 2: reverse each original out-movement so on-hand stock returns to
+      // its source warehouse. Pre-Phase-1 sales (or sales that never produced
+      // movements) still flip status cleanly when the find returns [].
+      const movements = await db.stockMovement.findMany({
+        where: {
+          referenceType: "pos_sale",
+          referenceId: input.id,
+          type: "out",
+        },
+        select: {
+          productId: true,
+          quantity: true,
+          fromWarehouseId: true,
+        },
+      });
+
+      const userId = ctx.userId;
+
+      return db.$transaction(async (tx) => {
+        for (const m of movements) {
+          await tx.stockMovement.create({
+            data: {
+              productId: m.productId,
+              type: "in",
+              quantity: m.quantity,
+              ...(m.fromWarehouseId !== null && { toWarehouseId: m.fromWarehouseId }),
+              referenceType: "pos_sale_void",
+              referenceId: input.id,
+              createdById: userId,
+              notes: input.reason,
+            },
+          });
+        }
+        return tx.pOSSale.update({
+          where: { id: input.id },
+          data: { status: "voided" },
+        });
       });
     }),
 });

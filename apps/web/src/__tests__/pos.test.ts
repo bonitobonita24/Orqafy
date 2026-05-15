@@ -31,6 +31,7 @@ vi.mock("@orqafy/db", () => ({
     },
     stockMovement: {
       create: vi.fn(),
+      findMany: vi.fn(),
     },
     $transaction: vi.fn(),
   },
@@ -97,7 +98,7 @@ const mockDb = db as unknown as {
   };
   pOSSaleItem: { create: any };
   product: { findMany: any };
-  stockMovement: { create: any };
+  stockMovement: { create: any; findMany: any };
   $transaction: any;
 };
 
@@ -733,20 +734,91 @@ describe("pos.sale.create", () => {
 // ── sale.void ─────────────────────────────────────────────────────────────────
 
 describe("pos.sale.void", () => {
-  it("flips status from completed to voided", async () => {
+  function setupCompletedSale(movements: Array<{
+    productId: string;
+    quantity: number;
+    fromWarehouseId: string | null;
+  }> = []) {
     mockDb.pOSSale.findUnique.mockResolvedValue({
       id: SALE_ID,
       status: "completed",
     });
+    mockDb.stockMovement.findMany.mockResolvedValue(movements);
+    mockDb.stockMovement.create.mockResolvedValue({ id: "sm-rev" });
     mockDb.pOSSale.update.mockResolvedValue({ id: SALE_ID, status: "voided" });
+    mockDb.$transaction.mockImplementation(async (fn: any) => fn(mockDb));
+  }
+
+  it("flips status from completed to voided (no movements)", async () => {
+    setupCompletedSale([]);
 
     const caller = createCaller(authenticatedCtx());
     const result = await caller.pos.sale.void({ id: SALE_ID, reason: "wrong item" });
+
     expect(result.status).toBe("voided");
+    expect(mockDb.$transaction).toHaveBeenCalledTimes(1);
+    expect(mockDb.stockMovement.create).not.toHaveBeenCalled();
     expect(mockDb.pOSSale.update).toHaveBeenCalledWith({
       where: { id: SALE_ID },
       data: { status: "voided" },
     });
+  });
+
+  it("reverses each original out-movement (out → in) inside the transaction", async () => {
+    setupCompletedSale([
+      { productId: PRODUCT_A, quantity: 2, fromWarehouseId: WAREHOUSE_ID },
+      { productId: PRODUCT_B, quantity: 1, fromWarehouseId: WAREHOUSE_ID },
+    ]);
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.pos.sale.void({ id: SALE_ID, reason: "customer return" });
+
+    expect(mockDb.stockMovement.findMany).toHaveBeenCalledWith({
+      where: {
+        referenceType: "pos_sale",
+        referenceId: SALE_ID,
+        type: "out",
+      },
+      select: {
+        productId: true,
+        quantity: true,
+        fromWarehouseId: true,
+      },
+    });
+    expect(mockDb.stockMovement.create).toHaveBeenCalledTimes(2);
+    expect(mockDb.stockMovement.create).toHaveBeenNthCalledWith(1, {
+      data: expect.objectContaining({
+        productId: PRODUCT_A,
+        type: "in",
+        quantity: 2,
+        toWarehouseId: WAREHOUSE_ID,
+        referenceType: "pos_sale_void",
+        referenceId: SALE_ID,
+        createdById: "user-1",
+        notes: "customer return",
+      }),
+    });
+    expect(mockDb.stockMovement.create).toHaveBeenNthCalledWith(2, {
+      data: expect.objectContaining({
+        productId: PRODUCT_B,
+        type: "in",
+        quantity: 1,
+        toWarehouseId: WAREHOUSE_ID,
+      }),
+    });
+  });
+
+  it("omits toWarehouseId on reversal when original fromWarehouseId is null", async () => {
+    setupCompletedSale([
+      { productId: PRODUCT_A, quantity: 1, fromWarehouseId: null },
+    ]);
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.pos.sale.void({ id: SALE_ID, reason: "x" });
+
+    const call = mockDb.stockMovement.create.mock.calls[0][0];
+    expect(call.data).not.toHaveProperty("toWarehouseId");
+    expect(call.data.type).toBe("in");
   });
 
   it("rejects when sale is already voided", async () => {
@@ -758,6 +830,8 @@ describe("pos.sale.void", () => {
     await expect(
       caller.pos.sale.void({ id: SALE_ID, reason: "x" }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockDb.stockMovement.findMany).not.toHaveBeenCalled();
+    expect(mockDb.$transaction).not.toHaveBeenCalled();
   });
 
   it("rejects when sale is refunded", async () => {
