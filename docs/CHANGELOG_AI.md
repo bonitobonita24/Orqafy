@@ -1256,3 +1256,64 @@
 - Errors resolved:     none
 - Summary:             Batch 5 deliverables (3 items, single Opus 4.7 session): Support Phase 1 (5c1e674), HR/Payroll Phase 1 (126db37), Job Order Phase 1 (3f8f330). Pattern that worked: Opus direct executor for all three items — no Sonnet dispatch, no thrash, no retry. Average per-item: ~50K tokens, 5-6 files, clean single-session completion. Item 1 was unique in that it completed a pre-existing untracked draft router (4 schema-drift fixes); Items 2 + 3 were greenfield tests + UI on top of stable routers.
 - Lessons:             🟢 `strict-boolean-expressions` flags `nullable ?? nullable` in ternary conditions — must rewrite as explicit `!== null` checks even when nullish coalescing "works" at runtime. 🟢 Opus-direct executor pattern is now validated across 3 consecutive Items at ~5-6 files each (Items 1+2+3). Batches 6+ should default to Opus-direct when item scope is in 4-10 file range; reserve Sonnet dispatch for genuinely parallel work or single-file tasks under 30K.
+
+## 2026-05-16 — Phase 8 Batch 6 BACKFILL (Items 1+2 + CLOSE — squash commits be4e5ae / 40e7247 / 7a77f49)
+- Agent:               CLAUDE_CODE (Opus 4.7) — backfill written 2026-05-16 by Batch 7 session per Rule 4 STATE-vs-governance reconciliation (STATE.md said Batch 6 closed but CHANGELOG_AI.md was missing the entries; git log + STATE.md FILES_TOUCHED block confirm contents)
+- Why:                 Reports module test coverage gap closed + POS Phase 1 backend/UI shipped.
+- Files added:
+  - apps/web/src/__tests__/report.test.ts (474 lines, 26 tests across 6 report procedures)
+  - apps/web/src/server/trpc/routers/pos.ts (386 lines: session sub-router + sale sub-router with atomic db.$transaction sale.create)
+  - apps/web/src/__tests__/pos.test.ts (795 lines, 36 tests across 2 sub-routers)
+  - apps/web/src/app/(tenant)/[slug]/(app)/pos/page.tsx (191 lines — open/closed session tabs)
+  - apps/web/src/app/(tenant)/[slug]/(app)/pos/[id]/page.tsx (304 lines — session detail with cash drawer reconciliation)
+  - apps/web/src/app/(tenant)/[slug]/(app)/pos/new-sale/page.tsx (191 lines — open-session picker + product preview; interactive cart deferred to Phase 2)
+- Files modified:
+  - apps/web/src/app/(tenant)/[slug]/(app)/reports/page.tsx (stub 14 lines → 444 lines: 4 KPI cards + 6 report sections + server-side data fetching)
+  - apps/web/src/server/trpc/routers/_app.ts (registered posRouter)
+- Files deleted:       none
+- Schema/migrations:   none (POSSession/POSSale/POSSaleItem schemas already in place from Phase 4)
+- Errors encountered:  Customer.displayName field reference in reports/page.tsx getTopClients (Customer has companyName, not displayName — User-only field); 3 POS test fixture failures from product.findMany mock returning fixed payload instead of echoing requested IDs; userId="user-1" CUID validation failure in session.list filter
+- Errors resolved:     replaced displayName reference with companyName; switched mock to dynamic mockImplementation echoing where.id.in IDs; pre-set CUID-format constants (SESSION_ID = "ck1234567890123456789012a" etc) at top of test file
+- Summary:             Item 1 = Reports test + UI buildout (be4e5ae). Item 2 = POS Phase 1 backend + 3 UI pages (40e7247). Both squash-merged single-session by Opus-direct pattern. 489/489 GREEN at close (was 427 → +62: 26 reports + 36 POS).
+- Lessons:             🟣 Opus-direct pattern proven 4× consecutive (Batch 5 ×3 + Batch 6 ×2). 🔴 User select shape lock held — no User.name drift in Batch 6 (4 recurrences avoided across batches). Customer model is different: { id, firstName, lastName, companyName } NO displayName — schema read before UI fixed first compile attempt. 🟢 Dynamic mockImplementation pattern ({where}) => ids.map(id => ({id})) works for both single-item and multi-item validation tests from one helper. 🟡 z.string().cuid() validation requires CUID-format constants in test fixtures (e.g. "ck1234567890123456789012a"), not short IDs like "user-2".
+
+## 2026-05-16 — Phase 8 Batch 7 Item 1 — POS Phase 2 sale.void inventory reversal (squash merge b4928b1)
+- Agent:               CLAUDE_CODE (Opus 4.7)
+- Why:                 Phase 1 sale.void only flipped status, leaving inventory permanently decremented. Phase 2 closes the data-integrity gap with atomic stockMovement reversal.
+- Files added:         none
+- Files modified:
+  - apps/web/src/server/trpc/routers/pos.ts (sale.void: 22 lines → 50 lines; queries original out-movements by referenceType=pos_sale + type=out, wraps in db.$transaction, creates type=in reversal stockMovements with toWarehouseId = original fromWarehouseId, tags as referenceType=pos_sale_void with reason as notes, then flips sale.status. Pre-Phase-1 sales with no movements still flip status cleanly.)
+  - apps/web/src/__tests__/pos.test.ts (sale.void describe expanded 6 → 8 tests: replaced "flips status from completed to voided" to handle transaction wrapper + added "reverses each original out-movement (out → in) inside the transaction" + "omits toWarehouseId on reversal when original fromWarehouseId is null"; added stockMovement.findMany to mock setup + mockDb type)
+  - apps/web/src/app/(tenant)/[slug]/(app)/pos/new-sale/page.tsx (interactive-cart placeholder note bumped from "Phase 2" → "Phase 3" — defers to tRPC React client infrastructure batch)
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  none
+- Errors resolved:     none
+- Summary:             38/38 pos.test.ts GREEN (+2 net). Web typecheck + lint clean.
+
+## 2026-05-16 — Phase 8 Batch 7 Item 2 — Banking Phase 2b summary + refund + adjustment + dashboard (squash merge 33f8402)
+- Agent:               CLAUDE_CODE (Opus 4.7)
+- Why:                 Banking Phase 2a shipped credit-card / loan workflows but had no dashboard, no refund procedure, and no manual-adjustment audit trail. Phase 2b closes those three gaps in a single Item.
+- Files added:
+  - apps/web/src/app/(tenant)/[slug]/(app)/banking/page.tsx (412 lines — 4 KPI cards [Total Real Cash / CC Outstanding / Loan Balance / Net Position color-coded] + This Month Activity row [income/expense/net] + Active Fund Sources table with per-source transactions deep links + Recent Transactions table with directional sign coloring; Server Component + force-dynamic + direct prisma pattern matching reports/page.tsx)
+- Files modified:
+  - apps/web/src/server/trpc/routers/banking.ts (3 new procedures in transactionRouter: summary [aggregates active sources by type, this-month income/expense, recent 10 transactions], recordRefund [credits balance + writes type=refund FundTransaction with optional originalTransactionId link via referenceId], recordAdjustment [real-cash sources only, ±delta with required reason, category=adjustment_credit|adjustment_debit, rejects zero delta + rejects negative resulting balance])
+  - apps/web/src/__tests__/banking.test.ts (14 new tests: 41 → 55. summary: 3 cases. recordRefund: 3 cases. recordAdjustment: 8 cases. File-level eslint-disable expanded to match pos.test.ts convention enabling mockImplementation(async fn) callback-invoking pattern.)
+- Files deleted:       none
+- Schema/migrations:   none (verified `refund` and `adjustment` are valid FundTransaction.type enum values per existing schema.prisma comment)
+- Errors encountered:  TS strict-mode error on `mock.calls[0][0]` indexing (Object possibly undefined) + mock.calls leak across tests within new describe blocks (no per-describe beforeEach in original convention) + lint errors on `mockImplementation(async (fn: any) => fn(mockDb))` pattern (no-explicit-any, require-await, no-unsafe-return/call)
+- Errors resolved:     Switched assertions to toHaveBeenCalledWith(expect.objectContaining(...)) pattern (cleaner + survives mock-leak); added beforeEach(vi.clearAllMocks) to each new describe block matching existing per-describe convention; expanded file-level eslint-disable to include 4 additional rules matching pos.test.ts header convention
+- Summary:             55/55 banking.test.ts GREEN (+14 from 41); 505/505 full web suite GREEN; web typecheck + lint clean.
+- Lessons:             🔴 Pre-flight code-pattern check is non-optional — discovered NO tRPC React client exists in codebase BEFORE writing any cart UI; saved entire half-batch worth of effort that would have produced infrastructure-coupled code with nowhere to land. 🟡 Test mock leak across describe blocks: when extending a file whose convention puts beforeEach(vi.clearAllMocks) per-describe (not top-level), new describe blocks WILL leak mock.calls across tests; symptom is `mock.calls[0][0]` returning the first call from a PRIOR describe's tests. 🟢 mockImplementation(async fn) callback-invoking is a stronger transaction-test pattern than mockResolvedValue — proves inner tx.fundTransaction.create + tx.fundSource.update calls happened, not just that $transaction was wrapped. Worth the per-file eslint-disable expansion. 🟢 Schema enum comments in schema.prisma are authoritative — `refund` and `adjustment` were already valid FundTransaction.type values; check the existing enum comment BEFORE proposing migrations.
+
+## 2026-05-16 — Phase 8 Batch 7 CLOSE
+- Agent:               CLAUDE_CODE (Opus 4.7)
+- Why:                 Batch 7 complete: 2/2 Items merged, 505/505 tests GREEN, web typecheck + lint clean.
+- Files added:         none (close entry only)
+- Files modified:      docs/CHANGELOG_AI.md (this entry + Batch 6 backfill + Batch 7 Items 1+2 entries above), .cline/STATE.md (PHASE → Batch 7 COMPLETE, BATCH_7_PLAN closed, BATCH_8_CANDIDATES added, LESSONS CAPTURED BATCH 7 added, pre-existing apps/worker typecheck error documented as carry-forward)
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  none
+- Errors resolved:     none
+- Summary:             Batch 7 deliverables (2 items, single Opus 4.7 session, ~70K combined tokens): POS Phase 2 sale.void atomic inventory reversal (b4928b1) + Banking Phase 2b summary/refund/adjustment + dashboard (33f8402). Opus-direct pattern proven 5× consecutive (Batch 5 ×3, Batch 6 ×2, Batch 7 ×2). Test count grew 489 → 505 (+16). Cart UI item from original plan was deferred after pre-flight discovered no tRPC React client exists in codebase — recommended Batch 8 = tRPC React client infrastructure batch to unblock all future interactive UI work.
+- Lessons:             ⚖️ Opus-direct pattern now load-bearing default for Phase 8 T2 work. ⚖️ Honest scope adjustment mid-batch (defer cart UI when infrastructure missing) is preferable to forcing a deliverable on missing scaffolding. 🔴 NEW PROTOCOL added to pre-flight: grep for tRPC React client / useMutation / useQuery patterns BEFORE scoping any item involving "interactive UI" or "client component talking to mutations" — if absent, the item is actually two items (infra batch + consumer batch). 🟢 Pre-existing apps/worker typecheck error (tenant-provisioning.test.ts:77) flagged as Batch 8 T1 cleanup candidate; predates Batch 7 (existed at Batch 6 close) and was not caught by web-only typecheck.
