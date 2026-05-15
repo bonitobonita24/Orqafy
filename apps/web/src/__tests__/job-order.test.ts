@@ -1,0 +1,439 @@
+/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/require-await */
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { jobOrderRouter } from "@/server/trpc/routers/job-order";
+import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
+import { TRPCError } from "@trpc/server";
+
+vi.mock("@orqafy/db", () => ({
+  prisma: {
+    jobOrder: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      count: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+    customer: {
+      findUnique: vi.fn(),
+    },
+    user: {
+      findUnique: vi.fn(),
+    },
+  },
+}));
+
+vi.mock("@/server/lib/rate-limit", () => ({
+  rateLimiters: {
+    api: { check: vi.fn() },
+    public_invoice: { check: vi.fn() },
+  },
+}));
+
+vi.mock("@/server/lib/sanitize", () => ({
+  sanitizePlainText: (s: string): string => s.trim(),
+}));
+
+import type { NextRequest } from "next/server";
+function makeReq(): NextRequest {
+  return {
+    headers: { get: (_h: string): string | null => null },
+  } as unknown as NextRequest;
+}
+function authenticatedCtx(roles: string[] = ["Administrator"], isDemoTenant = false) {
+  return {
+    req: makeReq(),
+    userId: "user-1",
+    roles,
+    tenantSlug: "acme",
+    tenantId: "acme-tenant-id",
+    securityVersion: 1,
+    isDemoTenant,
+    session: null,
+  };
+}
+function unauthenticatedCtx() {
+  return {
+    req: makeReq(),
+    userId: null,
+    roles: [] as string[],
+    tenantSlug: null,
+    tenantId: null,
+    securityVersion: 0,
+    isDemoTenant: false,
+    session: null,
+  };
+}
+
+const testRouter = createTRPCRouter({ jobOrder: jobOrderRouter });
+const createCaller = createCallerFactory(testRouter);
+
+import { prisma as db } from "@orqafy/db";
+const mockDb = db as unknown as {
+  jobOrder: { findMany: any; findUnique: any; count: any; create: any; update: any };
+  customer: { findUnique: any };
+  user: { findUnique: any };
+};
+
+const JO_CUID = "ck1234567890123456789012a";
+const CUST_CUID = "ck1234567890123456789012b";
+const TECH_CUID = "ck1234567890123456789012c";
+
+describe("jobOrder router", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe("list", () => {
+    it("returns paginated job orders ordered by createdAt desc", async () => {
+      mockDb.jobOrder.findMany.mockResolvedValue([
+        { id: JO_CUID, jobOrderNumber: "JO-1", status: "received", priority: "medium" },
+      ]);
+      mockDb.jobOrder.count.mockResolvedValue(1);
+      const caller = createCaller(authenticatedCtx());
+      const result = await caller.jobOrder.list({});
+      expect(result.total).toBe(1);
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(50);
+      expect(mockDb.jobOrder.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ orderBy: { createdAt: "desc" } })
+      );
+    });
+
+    it("filters by status", async () => {
+      mockDb.jobOrder.findMany.mockResolvedValue([]);
+      mockDb.jobOrder.count.mockResolvedValue(0);
+      const caller = createCaller(authenticatedCtx());
+      await caller.jobOrder.list({ status: "in_progress" });
+      expect(mockDb.jobOrder.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ status: "in_progress" }) })
+      );
+    });
+
+    it("filters by priority", async () => {
+      mockDb.jobOrder.findMany.mockResolvedValue([]);
+      mockDb.jobOrder.count.mockResolvedValue(0);
+      const caller = createCaller(authenticatedCtx());
+      await caller.jobOrder.list({ priority: "urgent" });
+      expect(mockDb.jobOrder.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ priority: "urgent" }) })
+      );
+    });
+
+    it("filters by technicianId", async () => {
+      mockDb.jobOrder.findMany.mockResolvedValue([]);
+      mockDb.jobOrder.count.mockResolvedValue(0);
+      const caller = createCaller(authenticatedCtx());
+      await caller.jobOrder.list({ technicianId: TECH_CUID });
+      expect(mockDb.jobOrder.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ technicianId: TECH_CUID }) })
+      );
+    });
+
+    it("searches across title and jobOrderNumber", async () => {
+      mockDb.jobOrder.findMany.mockResolvedValue([]);
+      mockDb.jobOrder.count.mockResolvedValue(0);
+      const caller = createCaller(authenticatedCtx());
+      await caller.jobOrder.list({ search: "laptop" });
+      const callArgs = mockDb.jobOrder.findMany.mock.calls[0][0];
+      expect(callArgs.where.OR).toEqual([
+        { title: { contains: "laptop", mode: "insensitive" } },
+        { jobOrderNumber: { contains: "laptop", mode: "insensitive" } },
+      ]);
+    });
+
+    it("respects pagination", async () => {
+      mockDb.jobOrder.findMany.mockResolvedValue([]);
+      mockDb.jobOrder.count.mockResolvedValue(0);
+      const caller = createCaller(authenticatedCtx());
+      await caller.jobOrder.list({ page: 4, limit: 20 });
+      expect(mockDb.jobOrder.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 60, take: 20 })
+      );
+    });
+
+    it("rejects unauthenticated callers", async () => {
+      const caller = createCaller(unauthenticatedCtx());
+      await expect(caller.jobOrder.list({})).rejects.toThrow(TRPCError);
+    });
+  });
+
+  describe("byId", () => {
+    it("returns job order with relations", async () => {
+      const jo = {
+        id: JO_CUID,
+        jobOrderNumber: "JO-1",
+        customer: { id: CUST_CUID, firstName: "Alice", lastName: "Cruz" },
+        createdBy: { firstName: "Bob", lastName: "Reyes" },
+        technician: null,
+        parts: [],
+      };
+      mockDb.jobOrder.findUnique.mockResolvedValue(jo);
+      const caller = createCaller(authenticatedCtx());
+      const result = await caller.jobOrder.byId({ id: JO_CUID });
+      expect(result).toEqual(jo);
+    });
+
+    it("throws NOT_FOUND when job order is missing", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue(null);
+      const caller = createCaller(authenticatedCtx());
+      await expect(caller.jobOrder.byId({ id: JO_CUID })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+  });
+
+  describe("publicView", () => {
+    it("returns a minimal projection for token-gated public access", async () => {
+      const publicProjection = {
+        id: JO_CUID,
+        jobOrderNumber: "JO-1",
+        title: "Battery replacement",
+        status: "completed",
+        priority: "medium",
+        reportedIssue: "Battery dies in 1h",
+        diagnosis: "Battery cell failure",
+        estimatedCost: 1500,
+        actualCost: 1450,
+        warranty: "30 days",
+        completedAt: new Date(),
+        createdAt: new Date(),
+        customer: { firstName: "Alice", lastName: "Cruz", companyName: null },
+        technician: { firstName: "Bob", lastName: "Reyes", displayName: null },
+      };
+      mockDb.jobOrder.findUnique.mockResolvedValue(publicProjection);
+      const caller = createCaller(authenticatedCtx());
+      const result = await caller.jobOrder.publicView({ id: JO_CUID, token: "abc123" });
+      expect(result).toEqual(publicProjection);
+      const findArgs = mockDb.jobOrder.findUnique.mock.calls[0][0];
+      // publicView MUST NOT leak internal fields such as createdById or createdBy details
+      expect(findArgs.select).not.toHaveProperty("createdById");
+      expect(findArgs.select).not.toHaveProperty("createdBy");
+      expect(findArgs.select).not.toHaveProperty("parts");
+    });
+
+    it("requires a non-empty token", async () => {
+      const caller = createCaller(authenticatedCtx());
+      await expect(caller.jobOrder.publicView({ id: JO_CUID, token: "" })).rejects.toThrow();
+    });
+
+    it("throws NOT_FOUND when job order is missing", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue(null);
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.jobOrder.publicView({ id: JO_CUID, token: "abc123" })
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+  });
+
+  describe("create", () => {
+    it("creates a new job order with status=received and auto jobOrderNumber", async () => {
+      mockDb.customer.findUnique.mockResolvedValue({ id: CUST_CUID });
+      mockDb.jobOrder.create.mockResolvedValue({ id: JO_CUID, status: "received" });
+      const caller = createCaller(authenticatedCtx());
+      await caller.jobOrder.create({
+        customerId: CUST_CUID,
+        title: "Battery replacement",
+        description: "Laptop needs new battery",
+        reportedIssue: "Battery drains in 1 hour",
+        priority: "medium",
+      });
+      const callArgs = mockDb.jobOrder.create.mock.calls[0][0];
+      expect(callArgs.data.status).toBe("received");
+      expect(callArgs.data.customerId).toBe(CUST_CUID);
+      expect(callArgs.data.createdById).toBe("user-1");
+      expect(callArgs.data.jobOrderNumber).toMatch(/^JO-\d+$/);
+    });
+
+    it("throws BAD_REQUEST when customer does not exist", async () => {
+      mockDb.customer.findUnique.mockResolvedValue(null);
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.jobOrder.create({
+          customerId: CUST_CUID,
+          title: "T",
+          description: "D",
+          reportedIssue: "I",
+        })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    });
+
+    it("rejects empty title via Zod", async () => {
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.jobOrder.create({
+          customerId: CUST_CUID,
+          title: "",
+          description: "D",
+          reportedIssue: "I",
+        })
+      ).rejects.toThrow();
+    });
+
+    it("rejects invalid priority enum", async () => {
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.jobOrder.create({
+          customerId: CUST_CUID,
+          title: "T",
+          description: "D",
+          reportedIssue: "I",
+          // @ts-expect-error — testing runtime rejection
+          priority: "INVALID",
+        })
+      ).rejects.toThrow();
+    });
+
+    it("rejects negative estimatedCost via Zod", async () => {
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.jobOrder.create({
+          customerId: CUST_CUID,
+          title: "T",
+          description: "D",
+          reportedIssue: "I",
+          estimatedCost: -50,
+        })
+      ).rejects.toThrow();
+    });
+
+    it("blocks creation in a demo tenant", async () => {
+      const caller = createCaller(authenticatedCtx(["Administrator"], true));
+      await expect(
+        caller.jobOrder.create({
+          customerId: CUST_CUID,
+          title: "T",
+          description: "D",
+          reportedIssue: "I",
+        })
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    });
+  });
+
+  describe("updateStatus state machine", () => {
+    it("updates status from received → diagnosing", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "received" });
+      mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID, status: "diagnosing" });
+      const caller = createCaller(authenticatedCtx());
+      await caller.jobOrder.updateStatus({ id: JO_CUID, status: "diagnosing" });
+      const callArgs = mockDb.jobOrder.update.mock.calls[0][0];
+      expect(callArgs.data.status).toBe("diagnosing");
+    });
+
+    it("attaches diagnosis when moving to diagnosed/quoted", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "diagnosing" });
+      mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID, status: "quoted" });
+      const caller = createCaller(authenticatedCtx());
+      await caller.jobOrder.updateStatus({
+        id: JO_CUID,
+        status: "quoted",
+        diagnosis: "Battery cell failure",
+      });
+      const callArgs = mockDb.jobOrder.update.mock.calls[0][0];
+      expect(callArgs.data.diagnosis).toBe("Battery cell failure");
+    });
+
+    it("sets completedAt when status=completed", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "testing" });
+      mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID, status: "completed" });
+      const caller = createCaller(authenticatedCtx());
+      await caller.jobOrder.updateStatus({
+        id: JO_CUID,
+        status: "completed",
+        actualCost: 1500,
+        laborCost: 500,
+      });
+      const callArgs = mockDb.jobOrder.update.mock.calls[0][0];
+      expect(callArgs.data.completedAt).toBeInstanceOf(Date);
+      expect(callArgs.data.actualCost).toBe(1500);
+      expect(callArgs.data.laborCost).toBe(500);
+    });
+
+    it("sets releasedAt when status=released", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "completed" });
+      mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID, status: "released" });
+      const caller = createCaller(authenticatedCtx());
+      await caller.jobOrder.updateStatus({ id: JO_CUID, status: "released" });
+      expect(mockDb.jobOrder.update.mock.calls[0][0].data.releasedAt).toBeInstanceOf(Date);
+    });
+
+    it("does NOT set completedAt for non-terminal status", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "received" });
+      mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID });
+      const caller = createCaller(authenticatedCtx());
+      await caller.jobOrder.updateStatus({ id: JO_CUID, status: "in_progress" });
+      const callArgs = mockDb.jobOrder.update.mock.calls[0][0];
+      expect(callArgs.data.completedAt).toBeUndefined();
+      expect(callArgs.data.releasedAt).toBeUndefined();
+    });
+
+    it("supports cancellation from any state", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "approved" });
+      mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID, status: "cancelled" });
+      const caller = createCaller(authenticatedCtx());
+      await caller.jobOrder.updateStatus({ id: JO_CUID, status: "cancelled" });
+      expect(mockDb.jobOrder.update.mock.calls[0][0].data.status).toBe("cancelled");
+    });
+
+    it("rejects invalid status values", async () => {
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.jobOrder.updateStatus({
+          id: JO_CUID,
+          // @ts-expect-error — testing runtime rejection
+          status: "invented_status",
+        })
+      ).rejects.toThrow();
+    });
+
+    it("throws NOT_FOUND when job order missing", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue(null);
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.jobOrder.updateStatus({ id: JO_CUID, status: "in_progress" })
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+
+    it("blocks status update in a demo tenant", async () => {
+      const caller = createCaller(authenticatedCtx(["Administrator"], true));
+      await expect(
+        caller.jobOrder.updateStatus({ id: JO_CUID, status: "in_progress" })
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    });
+  });
+
+  describe("assignTechnician", () => {
+    it("assigns a technician when both job order and user exist", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID });
+      mockDb.user.findUnique.mockResolvedValue({ id: TECH_CUID });
+      mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID, technicianId: TECH_CUID });
+      const caller = createCaller(authenticatedCtx());
+      await caller.jobOrder.assignTechnician({ id: JO_CUID, technicianId: TECH_CUID });
+      expect(mockDb.jobOrder.update).toHaveBeenCalledWith({
+        where: { id: JO_CUID },
+        data: { technicianId: TECH_CUID },
+      });
+    });
+
+    it("throws NOT_FOUND when job order missing", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue(null);
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.jobOrder.assignTechnician({ id: JO_CUID, technicianId: TECH_CUID })
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+
+    it("throws BAD_REQUEST when technician user missing", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID });
+      mockDb.user.findUnique.mockResolvedValue(null);
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.jobOrder.assignTechnician({ id: JO_CUID, technicianId: TECH_CUID })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    });
+
+    it("blocks assignment in a demo tenant", async () => {
+      const caller = createCaller(authenticatedCtx(["Administrator"], true));
+      await expect(
+        caller.jobOrder.assignTechnician({ id: JO_CUID, technicianId: TECH_CUID })
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    });
+  });
+});
