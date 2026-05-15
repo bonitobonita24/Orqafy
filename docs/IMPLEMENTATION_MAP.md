@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-11 by CLAUDE_CODE Opus 4.7 (Phase 8 Batch 4 ✅ COMPLETE 3/3 — Module 4 Purchasing Phase 1 merged 306229e)
+# Last updated: 2026-05-15 by CLAUDE_CODE Opus 4.7 (Phase 8 Batch 5 ✅ Item 1 — Module 13 Support Phase 1 merged 5c1e674)
 # ---
 
 ## Phase Status
@@ -18,7 +18,7 @@
 | Phase 5 — Validation | ✅ Complete | All 9 commands pass. 15 ESLint fixes (mobile), React 19 forwardRef fix (web), turbo env passthrough, serverExternalPackages, next 15.3.2→15.5.15, 11 Expo HIGH CVEs mitigated (audit-level=critical). |
 | Phase 6 — Docker + Visual QA | ✅ Complete | All 7 dev services healthy, migrations in sync, seed populated (13 roles, 5 plans, demo tenant, webmaster, 9 depts, 9 expense cats, VAT 12%, warehouse, FY 2026, 31 CoA). Visual QA per Rule 16 passed: /api/health 200, /login 200 ("Sign In \| Orqafy"), / 307→/login (after AUTH_TRUST_HOST autofix), 6 security headers active. Browser-interactive auth flow QA deferred — needs system Chrome. |
 | Phase 7 — Feature Updates | ⬜ Pending | The daily loop. Triggered per item by Phase 8 batch execution. |
-| Phase 8 — Iterative Buildout | 🔵 In Progress — Batches 1-4 ✅ COMPLETE | Batch 1 ✅, Batch 2 ✅, Batch 3 ✅, Batch 4 ✅ ALL 3 ITEMS MERGED. Item 1 ✅ Module 9 Banking Phase 2a (`6650c61`). Item 2 ✅ Module 6 Projects Phase 1 Expansion (`0604f47`). Item 3 ✅ Module 4 Purchasing Phase 1 (`306229e`) — Vendor + PO + GoodsReceipt with atomic stock/project_expense allocation routing, 16 procedures, 33 GREEN tests, 3 UI pages, cumulative 319/319. **Next: Phase 8 adaptive replan for Batch 5 in fresh Claude Code session.** |
+| Phase 8 — Iterative Buildout | 🔵 In Progress — Batches 1-4 ✅ COMPLETE, Batch 5 1+/3 | Batch 1 ✅, Batch 2 ✅, Batch 3 ✅, Batch 4 ✅ ALL 3 ITEMS MERGED. **Batch 5 Item 1 ✅ Module 13 Support Phase 1 (`5c1e674`)** — Ticket + Comment + Attachment, 10 procedures across 3 nested sub-routers, 39 GREEN tests, 2 read-only UI pages (list + detail), cumulative 358/358. Opus 4.7 direct executor (no Sonnet dispatch per Item 3 lesson on multi-file scope). 4 schema-drift fixes applied to pre-existing untracked router from May 11 session (tenantId filters / fake @prisma/client enums / missing assignedTo relation / User.name → firstName+lastName+displayName). **Next: Batch 5 Item 2 + Item 3 — candidates: HR/Payroll Phase 1, POS Phase 1, Job Order Phase 1 expansion, E-commerce Phase 1, Reports, Mobile.** |
 
 ## Spec Files (Phase 3 outputs)
 
@@ -578,13 +578,17 @@ Schema-vs-spec drift remained the biggest source of post-write fixes despite exp
 
 ## Next Action
 
-**CURRENT STATE: Phase 8 Batch 4 ✅ COMPLETE (3/3). Next: Phase 8 adaptive replan for Batch 5.**
+**CURRENT STATE: Phase 8 Batch 5 — Item 1 ✅ Support Phase 1 merged. Next: Batch 5 Item 2 + Item 3.**
 
-1. **Phase 8 Batch 4 ✅ COMPLETE (3/3):**
+1. **Phase 8 Batch 5 — In Progress (1/3+):**
+   - Item 1 ✅ Module 13 Support Phase 1 — merged `5c1e674` (Opus 4.7 direct executor; pre-existing untracked router from May 11 session was completed in this session — 4 schema-drift fixes: tenantId filters removed, fake @prisma/client enums replaced with z.enum, missing assignedTo relation removed, User.name → firstName+lastName+displayName. 10 procedures + 39 GREEN tests + 2 read-only UI pages. Cumulative 358/358 tests across 11 files).
+   - Item 2 ⬜ TBD — candidates per Item 3 task file (see Batch 4 close): HR/Payroll Phase 1 (test coverage gap on existing employee.ts/payroll.ts), POS Phase 1 (POS session + cart + FundTransaction payment), Job Order Phase 1 expansion (188-line stub), E-commerce Phase 1 (Customer ✅ + Order + EcommerceOrder), Reports module. Also: Mobile app Phase 1 (apps/mobile WatermelonDB) — DTR clock-in offline sync meaningful with full backend in place.
+   - Item 3 ⬜ TBD — same candidate list as Item 2.
+
+2. **Phase 8 Batch 4 ✅ COMPLETE (3/3):**
    - Item 1 ✅ Module 9 Banking Phase 2a — merged `6650c61` (Sonnet thrashed at 44 tool uses → Opus escalation)
    - Item 2 ✅ Module 6 Projects Phase 1 Expansion — merged `0604f47` (Both Sonnet passes thrashed at 11 tool uses on verification → Opus in-session escalation; 15 surgical fixes)
    - Item 3 ✅ Module 4 Purchasing Phase 1 — merged `306229e` (Sonnet thrashed at 24 tool uses with WRITES-ONLY dispatch but all 5 large files persisted; Opus completed wiring + 70+ verification fixes including 33-test rewrite + 3 missing router validations). Cumulative 319/319 tests across 10 files.
-   - **Next: Phase 8 adaptive replan for Batch 5 in fresh Claude Code session.** Candidates per Item 3 task file: HR/Payroll Phase 1 (test coverage gap on existing employee.ts/payroll.ts), POS Phase 1 (POS session + cart + FundTransaction payment), Job Order Phase 1 expansion (188-line stub), E-commerce Phase 1 (Customer ✅ + Order + EcommerceOrder), Support Phase 1 (Ticket + SupportComment + link to Project ✅ + Customer ✅), Reports module. Also: Mobile app Phase 1 (apps/mobile WatermelonDB) — DTR clock-in offline sync meaningful with full backend in place.
 
 2. **Phase 8 Batch 3 summary** (all complete):
    - Item 1 ✅ Module 12 Accounting Phase 1 — 16 procedures + 37 tests GREEN — merged `69d1c6a`

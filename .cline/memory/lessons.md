@@ -673,3 +673,104 @@
   these to the test file's top-level eslint-disable comment alongside the existing 5
   (unbound-method, no-unsafe-assignment, no-unsafe-member-access, no-unsafe-argument,
   no-explicit-any). 8 rules total — apply to all future router tests using $transaction.
+
+## 2026-05-15 — 🟤 Schema-per-tenant isolation is canonical — NEVER add tenantId filters to tenant-scoped routers
+- Type:      🟤 decision
+- Phase:     Phase 8 Batch 5 Item 1 (Support Phase 1)
+- Files:     apps/web/src/server/trpc/routers/support.ts (15 tenantId filters removed),
+             apps/web/src/server/trpc/routers/demo.ts:26 (canonical comment)
+- Concepts:  multi-tenant, schema-per-tenant, tenantGuard, search_path, prisma
+- Narrative: May 11 untracked support.ts draft had 15 `where: { tenantId: ctx.tenantId }`
+  clauses across 10 procedures. None of the tenant-scoped tables (SupportTicket,
+  TicketComment, TicketAttachment) have a `tenantId` column — typecheck failed on all 15.
+  Confirmed by demo.ts:26 comment: "Schema-per-tenant: SET search_path handles isolation
+  — no tenantId filters needed". Verified across purchasing.ts: zero tenantId filters in
+  any where clause. LOCKED RULE: tenant-scoped routers MUST NOT include tenantId in any
+  where clause. tenantGuard middleware sets `search_path` to the tenant's PostgreSQL
+  schema before each query — isolation is per-schema, not per-column. Anti-pattern grep
+  for future routers: `where:.*tenantId: ctx.tenantId`.
+
+## 2026-05-15 — 🟤 User select shape locked + userDisplayName helper canonical
+- Type:      🟤 decision
+- Phase:     Phase 8 Batch 5 Item 1 — 3rd recurrence across Batch 4+5
+- Files:     all future routers with User selects + all UI rendering user names
+- Concepts:  user, displayName, firstName, lastName, prisma select, ui helper
+- Narrative: User model has NO `name` field. Real fields: `email`, `firstName`,
+  `lastName`, `displayName?` (nullable). This drift has happened 3 times now: Batch 4
+  Item 1, Batch 4 Item 3, Batch 5 Item 1 (4 spots in support draft). LOCKED CANONICAL
+  PATTERN — all future router User selects MUST use exactly:
+    { id: true, firstName: true, lastName: true, displayName: true }
+  All UI components rendering User must use:
+    function userDisplayName(u: { displayName: string | null; firstName: string; lastName: string } | null): string {
+      if (u === null) return "—";
+      return u.displayName ?? `${u.firstName} ${u.lastName}`.trim();
+    }
+  Pre-flight checklist for next batch must include explicit `name: true` grep against
+  any router selecting User fields — block dispatch until clean.
+
+## 2026-05-15 — 🟤 String-typed status/priority fields need local z.enum schemas, NOT @prisma/client imports
+- Type:      🟤 decision
+- Phase:     Phase 8 Batch 5 Item 1 (Support Phase 1)
+- Files:     packages/db/prisma/schema.prisma (many models use this String+comment pattern),
+             apps/web/src/server/trpc/routers/support.ts (TICKET_STATUS, TICKET_PRIORITY)
+- Concepts:  zod, prisma, status enum, schema comment, z.nativeEnum, z.enum
+- Narrative: Schema declares status/priority as String with comment-style allowed values:
+  `status String @default("open") // open | in_progress | waiting | resolved | closed`.
+  These are NOT real Prisma enums — Prisma client does NOT generate type exports for them.
+  The May 11 draft had `import { TicketStatus, TicketPriority } from "@prisma/client"`
+  — module resolves but those names don't exist. LOCKED PATTERN for any field declared
+  as `String` with comment enum: define locally in the router:
+    const TICKET_STATUS = ["open", "in_progress", "waiting", "resolved", "closed"] as const;
+    type TicketStatus = (typeof TICKET_STATUS)[number];
+    const ticketStatusSchema = z.enum(TICKET_STATUS);
+  Then use `ticketStatusSchema` in zod input shapes. For `Record<TicketStatus, X>`
+  indexing, add `as TicketStatus` cast on the Prisma-returned string field (Prisma types
+  it as `string` since the schema field is not a real enum). Schema-fix alternative
+  (declaring `enum TicketStatus { ... }` blocks + migration) is OUT OF SCOPE in Phase 1
+  per Item 2/3 precedent.
+
+## 2026-05-15 — 🔴 Untracked router files from prior sessions require typecheck-FIRST protocol
+- Type:      🔴 gotcha
+- Phase:     Phase 8 Batch 5 Item 1 — discovered while resuming May 11 work
+- Files:     any apps/web/src/server/trpc/routers/*.ts with `??` git status (untracked)
+- Concepts:  resume session, untracked files, schema drift, typecheck
+- Narrative: The May 11 Support session created a 377-line `support.ts` router but never
+  committed and never ran typecheck. On resume (May 15), the file had 4 distinct
+  schema-drift bugs (tenantId filters / fake @prisma/client enums / missing assignedTo
+  relation / fake User.name field) that all failed typecheck. None surfaced until I ran
+  `pnpm typecheck` AFTER writing tests + UI on top of the bad foundation, requiring a
+  second edit round on those new files. NEW PROTOCOL — when resuming a session and
+  finding an untracked router file: (1) Run `pnpm typecheck` on JUST that module FIRST.
+  (2) Treat the file as Sonnet-quality draft requiring full Opus verification. (3) Fix
+  all typecheck errors before adding any new code on top. This saves at least one round
+  of cascading edits.
+
+## 2026-05-15 — 🟢 Read-only Phase 1 UI is the locked precedent — no client components / server actions
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 5 Item 1 — confirmed against full apps/web/src grep
+- Files:     all apps/web/src/app/(tenant)/[slug]/(app)/*/page.tsx
+- Concepts:  phase 1, server components, client components, server actions, create UI
+- Narrative: Discovered while planning Support Phase 1 UI: `grep -rln "use client"
+  apps/web/src` returns ZERO matches. Same for `"use server"` and any `new/` or
+  `create/` route directories. All 4 prior Phase 1 modules (Banking, Projects,
+  Purchasing) shipped strictly read-only UI — list + detail pages only; mutations
+  exercised only by router tests. LOCKED PRECEDENT for future Phase 1 items: no create
+  forms, no client components, no server actions. Phase 2 (per-module) introduces
+  client-side interactivity and create UIs. Initial Support list page had a "+ New
+  Ticket" button — removed to match precedent. Tickets are created via API only in
+  Phase 1 (exercised by 5 create-related tests).
+
+## 2026-05-15 — 🟢 Phase 8 Batch 5 Item 1 validates Opus-direct-executor rule
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 5 Item 1 close
+- Files:     n/a (process validation)
+- Concepts:  memory-governance §1 Step 2.5b, opus executor, sonnet thrash, 5-file rule
+- Narrative: Batch 4 Item 3 lesson said: "for 5+ file Tier 2-edge items, escalate to
+  Opus executor up front per §1 Step 2.5b — this preserves Architect/Executor
+  separation while sidestepping the thrash threshold entirely." Batch 5 Item 1 was
+  exactly that case (5 files: 1 router edit + 1 wiring + 1 test + 2 UI). Followed the
+  rule: Opus 4.7 executed directly, no Sonnet dispatch. Result: zero thrash, zero
+  retry, single-session completion, 39 tests GREEN on first run, all schema drifts
+  fixed in-context. Rule VALIDATED. Apply to Batch 5 Items 2 + 3 — if scope >4 files,
+  skip Sonnet ceremony entirely. The architect/executor separation is preserved by
+  Opus reviewing its own output against the spec before merging.
