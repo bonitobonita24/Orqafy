@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-15 by CLAUDE_CODE Opus 4.7 (Phase 8 Batch 5 ✅ Item 1 — Module 13 Support Phase 1 merged 5c1e674)
+# Last updated: 2026-05-15 by CLAUDE_CODE Opus 4.7 (Phase 8 Batch 5 ✅ Item 2 — Module 10 HR/Payroll Phase 1 merged 126db37)
 # ---
 
 ## Phase Status
@@ -18,7 +18,7 @@
 | Phase 5 — Validation | ✅ Complete | All 9 commands pass. 15 ESLint fixes (mobile), React 19 forwardRef fix (web), turbo env passthrough, serverExternalPackages, next 15.3.2→15.5.15, 11 Expo HIGH CVEs mitigated (audit-level=critical). |
 | Phase 6 — Docker + Visual QA | ✅ Complete | All 7 dev services healthy, migrations in sync, seed populated (13 roles, 5 plans, demo tenant, webmaster, 9 depts, 9 expense cats, VAT 12%, warehouse, FY 2026, 31 CoA). Visual QA per Rule 16 passed: /api/health 200, /login 200 ("Sign In \| Orqafy"), / 307→/login (after AUTH_TRUST_HOST autofix), 6 security headers active. Browser-interactive auth flow QA deferred — needs system Chrome. |
 | Phase 7 — Feature Updates | ⬜ Pending | The daily loop. Triggered per item by Phase 8 batch execution. |
-| Phase 8 — Iterative Buildout | 🔵 In Progress — Batches 1-4 ✅ COMPLETE, Batch 5 1+/3 | Batch 1 ✅, Batch 2 ✅, Batch 3 ✅, Batch 4 ✅ ALL 3 ITEMS MERGED. **Batch 5 Item 1 ✅ Module 13 Support Phase 1 (`5c1e674`)** — Ticket + Comment + Attachment, 10 procedures across 3 nested sub-routers, 39 GREEN tests, 2 read-only UI pages (list + detail), cumulative 358/358. Opus 4.7 direct executor (no Sonnet dispatch per Item 3 lesson on multi-file scope). 4 schema-drift fixes applied to pre-existing untracked router from May 11 session (tenantId filters / fake @prisma/client enums / missing assignedTo relation / User.name → firstName+lastName+displayName). **Next: Batch 5 Item 2 + Item 3 — candidates: HR/Payroll Phase 1, POS Phase 1, Job Order Phase 1 expansion, E-commerce Phase 1, Reports, Mobile.** |
+| Phase 8 — Iterative Buildout | 🔵 In Progress — Batches 1-4 ✅ COMPLETE, Batch 5 2+/3 | Batch 1 ✅, Batch 2 ✅, Batch 3 ✅, Batch 4 ✅. **Batch 5 Item 1 ✅ Module 13 Support Phase 1 (`5c1e674`)** — 10 procedures + 39 tests + 2 UI pages. **Batch 5 Item 2 ✅ Module 10 HR/Payroll Phase 1 (`126db37`)** — pre-existing employee.ts (157 lines, 6 procedures) + payroll.ts (117 lines, 6 procedures with state machine draft→processing→approved→paid) + 38 tests across 2 files + 4 production UI pages (employees list + detail with Employment/Compensation/Government IDs/Contact sections; payroll list + run detail with payslip breakdown). Cumulative 396/396 GREEN. Opus 4.7 direct executor — clean single-session, no thrash, validates Item 1's §1 Step 2.5b escalation pattern. **Next: Batch 5 Item 3 — Job Order Phase 1 expansion.** |
 
 ## Spec Files (Phase 3 outputs)
 
@@ -578,12 +578,12 @@ Schema-vs-spec drift remained the biggest source of post-write fixes despite exp
 
 ## Next Action
 
-**CURRENT STATE: Phase 8 Batch 5 — Item 1 ✅ Support Phase 1 merged. Next: Batch 5 Item 2 + Item 3.**
+**CURRENT STATE: Phase 8 Batch 5 — Items 1 + 2 ✅ merged. Next: Batch 5 Item 3 — Job Order Phase 1 expansion.**
 
-1. **Phase 8 Batch 5 — In Progress (1/3+):**
-   - Item 1 ✅ Module 13 Support Phase 1 — merged `5c1e674` (Opus 4.7 direct executor; pre-existing untracked router from May 11 session was completed in this session — 4 schema-drift fixes: tenantId filters removed, fake @prisma/client enums replaced with z.enum, missing assignedTo relation removed, User.name → firstName+lastName+displayName. 10 procedures + 39 GREEN tests + 2 read-only UI pages. Cumulative 358/358 tests across 11 files).
-   - Item 2 ⬜ TBD — candidates per Item 3 task file (see Batch 4 close): HR/Payroll Phase 1 (test coverage gap on existing employee.ts/payroll.ts), POS Phase 1 (POS session + cart + FundTransaction payment), Job Order Phase 1 expansion (188-line stub), E-commerce Phase 1 (Customer ✅ + Order + EcommerceOrder), Reports module. Also: Mobile app Phase 1 (apps/mobile WatermelonDB) — DTR clock-in offline sync meaningful with full backend in place.
-   - Item 3 ⬜ TBD — same candidate list as Item 2.
+1. **Phase 8 Batch 5 — In Progress (2/3):**
+   - Item 1 ✅ Module 13 Support Phase 1 — merged `5c1e674` (10 procedures + 39 tests + 2 UI pages)
+   - Item 2 ✅ Module 10 HR/Payroll Phase 1 — merged `126db37` (Opus 4.7 direct executor, 6 files, clean single-session). Backend `employee.ts` (6 procedures: list/byId/create/update/terminate/departments) + `payroll.ts` (6 procedures including 3-step state machine process→approve→markPaid) existed without tests. Added 19 employee tests + 19 payroll tests covering state-machine transitions, forbidden state skips/reverses, demo-tenant write blocking, currency/Zod validation. 4 production UI pages: employees list (All/Active/Terminated tabs) + employees detail (Employment/Compensation/Government IDs/Contact sections) + payroll list (status filter tabs with gross/deductions/net columns) + payroll run detail (status badge + period/processed/paid timestamps + payslip breakdown table). Cumulative 396/396 tests across 13 files. Lessons captured: `writeProcedure` gates `isDemoTenant` only, not Viewer role — test-file lint pragma must include `no-unsafe-call` + `no-unsafe-return` + `require-await` to match support.test.ts.
+   - Item 3 ⬜ Job Order Phase 1 expansion — job-order.ts (188 lines) currently untested. Plan: tests + 2 UI pages mirroring Items 1-2.
 
 2. **Phase 8 Batch 4 ✅ COMPLETE (3/3):**
    - Item 1 ✅ Module 9 Banking Phase 2a — merged `6650c61` (Sonnet thrashed at 44 tool uses → Opus escalation)

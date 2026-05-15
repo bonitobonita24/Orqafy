@@ -774,3 +774,24 @@
   fixed in-context. Rule VALIDATED. Apply to Batch 5 Items 2 + 3 — if scope >4 files,
   skip Sonnet ceremony entirely. The architect/executor separation is preserved by
   Opus reviewing its own output against the spec before merging.
+
+## 2026-05-15 — 🟤 writeProcedure gates demo tenant only, not roles
+- Type:      🟤 decision
+- Phase:     Phase 8 Batch 5 Item 2 (HR/Payroll Phase 1 tests)
+- Files:     apps/web/src/server/trpc/trpc.ts:52, apps/web/src/__tests__/employee.test.ts, apps/web/src/__tests__/payroll.test.ts
+- Concepts:  trpc, middleware, authorization, demo-mode, testing, write-procedure
+- Narrative: In this codebase, `writeProcedure = protectedProcedure.use(...)` performs ONLY `if (ctx.isDemoTenant === true) throw FORBIDDEN`. It does NOT check Viewer/Administrator/role membership. Initial Item 2 tests assumed Viewer role would be rejected on `.create()` — both employee and payroll tests failed with "promise resolved instead of rejecting" because Viewer ctx is functionally identical to Administrator ctx for write procedures. The correct authorization-failure assertion is `isDemoTenant=true → FORBIDDEN`, not `role=Viewer → FORBIDDEN`. If you need to test role-based denial, you'd need a different middleware (e.g. an explicit RBAC guard not currently in this stack). LOCKED PATTERN for all future router tests: assert demo-tenant blocking on writeProcedure; do not assume role-based gates exist unless you've grepped the router and seen `requireRole()` or equivalent.
+
+## 2026-05-15 — 🟢 Test-file lint pragma must include 7 disables, not 5
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 5 Item 2
+- Files:     apps/web/src/__tests__/*.test.ts (all)
+- Concepts:  eslint, typescript-eslint, vitest, lint-pragma, test-mocking
+- Narrative: When you mock Prisma with `vi.fn()` and cast `db as unknown as { ... }`, the resulting mock calls trigger `no-unsafe-call` and `no-unsafe-return` errors in addition to the usual `no-unsafe-assignment/member-access/argument/explicit-any/unbound-method`. The full required pragma matches support.test.ts:16 — single-line, 7 disables, plus `require-await` for `async () => {}` mock returns: `/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/require-await */`. Older test files (tasks, banking, crm, etc.) use a 5-disable subset because their mock surfaces don't hit `no-unsafe-call` directly — but newer files with chained mock arg inspection (`mockDb.x.create.mock.calls[0][0]`) hit it immediately. Copy the support.test.ts header verbatim for every new test file. Phase 7 step 11a TEST sub-step pre-flight check.
+
+## 2026-05-15 — 🟢 Validates Opus-direct executor pattern for 6-file scope
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 5 Item 2
+- Files:     (procedural — applies to memory-governance.md §4 Architect-Execute Model)
+- Concepts:  architect-execute, opus-executor, sonnet-dispatch, context-budget, step-2-5b
+- Narrative: Item 1 (5 files) and now Item 2 (6 files) both completed in a single Opus 4.7 session with no Sonnet dispatch, no thrash, no retry. Both fall within `.claude/rules/memory-governance.md` §1 Step 2.5b "Opus escalation last resort" but in practice are well under the Opus 100K safe execution ceiling (Item 1 ~80K, Item 2 ~50K). PATTERN CONFIRMED: for Phase 8 items where scope is 5-10 files of similar shape (router + test + 1-2 UI pages, no new schema), skip Sonnet dispatch ceremony entirely and execute directly with Opus. Sonnet dispatch is correct when (a) scope is genuinely single-file/single-purpose AND ≤30K tokens, OR (b) the work is parallelizable across truly independent modules. For mixed-shape bundled work where Opus needs to review test failures and patch in-flight (as happened with the writeProcedure assumption error in Item 2), Opus-direct saves the verification round-trip and one cache miss. Lock for Item 3 + future similar batches.
