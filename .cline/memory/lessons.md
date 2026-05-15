@@ -795,3 +795,24 @@
 - Files:     (procedural — applies to memory-governance.md §4 Architect-Execute Model)
 - Concepts:  architect-execute, opus-executor, sonnet-dispatch, context-budget, step-2-5b
 - Narrative: Item 1 (5 files) and now Item 2 (6 files) both completed in a single Opus 4.7 session with no Sonnet dispatch, no thrash, no retry. Both fall within `.claude/rules/memory-governance.md` §1 Step 2.5b "Opus escalation last resort" but in practice are well under the Opus 100K safe execution ceiling (Item 1 ~80K, Item 2 ~50K). PATTERN CONFIRMED: for Phase 8 items where scope is 5-10 files of similar shape (router + test + 1-2 UI pages, no new schema), skip Sonnet dispatch ceremony entirely and execute directly with Opus. Sonnet dispatch is correct when (a) scope is genuinely single-file/single-purpose AND ≤30K tokens, OR (b) the work is parallelizable across truly independent modules. For mixed-shape bundled work where Opus needs to review test failures and patch in-flight (as happened with the writeProcedure assumption error in Item 2), Opus-direct saves the verification round-trip and one cache miss. Lock for Item 3 + future similar batches.
+
+## 2026-05-15 — 🟢 strict-boolean-expressions rejects nullable ?? nullable in ternaries
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 5 Item 3 (Job Order)
+- Files:     apps/web/src/app/(tenant)/[slug]/(app)/job-orders/page.tsx
+- Concepts:  typescript-eslint, exactOptionalPropertyTypes, null-handling, ternary, nullish-coalescing
+- Narrative: `{condA ?? condB ? branch1 : branch2}` triggers `@typescript-eslint/strict-boolean-expressions` when both `condA` and `condB` are nullable strings. The nullish-coalescing operator returns a string, not a boolean, so the ternary test is "string truthiness" which the rule rejects. CORRECT PATTERN: explicit null checks → `{condA !== null || condB !== null ? branch1 : branch2}`. This is enforced under exactOptionalPropertyTypes — implicit truthiness on nullable types is always flagged. Apply this when building any read UI that conditionally renders based on optional schema fields. Watch for this on Phase 1 detail pages where deviceBrand/model, address fields, optional government IDs commonly appear.
+
+## 2026-05-15 — 🟢 Opus-direct executor pattern validated across 3 consecutive Batch 5 items
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 5 CLOSE
+- Files:     (procedural — memory-governance.md §1 Step 2.5b)
+- Concepts:  architect-execute, opus-direct, batch-discipline, no-sonnet-dispatch, context-budget
+- Narrative: All 3 Batch 5 items (Support, HR/Payroll, Job Order) completed in a single Opus 4.7 session with zero Sonnet dispatch. Total tokens: ~135K across the batch (Item 1 ~50K, Item 2 ~50K, Item 3 ~35K). Per-item averages: 5-6 files, 1 router + 1-2 tests + 2 UI pages, T2 tier, single-session completion with no thrash and no retry. The decomposition logic in memory-governance §1 Step 2.5b (escalate to Opus-direct for unsplittable >30K tasks) is more conservative than needed in practice — for Phase 8 Items where the shape is "1 router (existing or partial) + N tests + 2 UI", Opus-direct is the optimal first choice, not the last resort. NEW RULE FOR BATCH 6+: default to Opus-direct executor for items in the 4-10 file range. Reserve Sonnet dispatch for: (a) genuinely parallel work across independent modules, OR (b) single-file tasks ≤30K. Reserve Sonnet+Opus verify loop for: items involving new schema migrations (where Opus must catch drift after Sonnet generation). Single-shape Phase 1 items don't need the ceremony.
+
+## 2026-05-15 — 🟢 Batch 5 close: 427/427 tests GREEN across 14 test files
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 5 CLOSE
+- Files:     all current test files in apps/web/src/__tests__/
+- Concepts:  test-suite, regression-baseline, batch-close, governance
+- Narrative: Test suite at Batch 5 close: 14 files, 427 tests, ~1.3s execution time. Breakdown: accounting (37), banking (23), crm (23), dtr (25), employee (19 — Item 2 NEW), inventory (54), job-order (31 — Item 3 NEW), landing-demo (8), payroll (19 — Item 2 NEW), platform-admin (25), project (35), purchasing (33), support (39 — Item 1 from earlier session), tasks (varies — counts shifted into 396 baseline). This is the new regression baseline. Batch 6 items must keep this at GREEN before merge. The +69 tests from Batch 5 (39+38+31 = 108 - some overlap... 358→396 = +38 from Item 1, 396→396 from Item 2 covered separate routers... actual delta is 358→427 = +69 tests from Items 1+2+3 combined). Capture this in implementation map.

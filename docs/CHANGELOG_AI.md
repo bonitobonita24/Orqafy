@@ -1231,3 +1231,28 @@
 - Verification:        pnpm typecheck (clean before AND after — Item 1 lesson applied: typecheck preempts schema drift) · pnpm vitest run (396/396) · pnpm lint (clean after adding `no-unsafe-call` + `no-unsafe-return` to test-file lint disables to match support.test.ts pattern)
 - Token usage:         ~50K (Opus direct executor, 6 files, no Sonnet dispatch) — well below 80K SAFE zone
 - Lessons captured:    🟤 `writeProcedure` in this codebase gates ONLY `isDemoTenant`, not Viewer/role permissions. Future tests targeting role-based authorization must mock a different middleware. Lock this in lessons.md so Item 3+ writers don't repeat the assumption. 🟤 The test-file lint disable pragma must include `no-unsafe-call` + `no-unsafe-return` + `require-await` (matching support.test.ts:16), not just the 5-rule subset from earlier test files — those older files pass lint by accident, not by design. Pre-flight checklist update: copy the support.test.ts lint header verbatim into every new test file.
+
+## 2026-05-15 — Phase 8 Batch 5 Item 3 — Module 11 Job Order Phase 1 (squash merge 3f8f330)
+- Agent:               CLAUDE_CODE (Opus 4.7 direct executor — same single-session pattern as Items 1+2)
+- Why:                 Backend router `job-order.ts` (188 lines, 6 procedures: list/byId/publicView/create/updateStatus/assignTechnician) existed without test coverage. publicView is a token-gated minimal projection for customer-facing access — important to test field leakage explicitly.
+- Files added:         apps/web/src/__tests__/job-order.test.ts (439 lines, 31 tests), apps/web/src/app/(tenant)/[slug]/(app)/job-orders/[id]/page.tsx (359 lines)
+- Files modified:      apps/web/src/app/(tenant)/[slug]/(app)/job-orders/page.tsx (stub 14 lines → 193-line list with 7 status tabs + device brand/model + customer + technician + priority badges), docs/CHANGELOG_AI.md (this entry), docs/IMPLEMENTATION_MAP.md, .cline/STATE.md
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  1 lint error on first pass — `jo.deviceBrand ?? jo.deviceModel` ternary triggered `strict-boolean-expressions` because both sides are nullable strings. Tests + typecheck were clean — lint catches a subtle correctness bug here (the `??` returns a string but the ternary needs a boolean).
+- Errors resolved:     Rewrote conditional as `jo.deviceBrand !== null || jo.deviceModel !== null` with empty-string fallback to "—". This is the correct null-handling pattern under exactOptionalPropertyTypes. Locked as 🟢 in lessons.md.
+- Verification:        pnpm typecheck (clean) · pnpm vitest run (427/427) · pnpm lint (clean after the null-check fix)
+- Token usage:         ~35K (Opus direct executor — most efficient Item yet because rate-limit + sanitize modules were mocked inline so no schema reads needed beyond JobOrder + JobOrderPart)
+- Tests breakdown:     list (7 tests: pagination/4 filters/search/auth-guard), byId (2 tests), publicView (3 tests: minimal-projection-no-leakage / token-required / not-found), create (6 tests: Zod-empty-title / Zod-invalid-priority / Zod-negative-cost / BAD_REQUEST-no-customer / status-receives / demo-tenant-blocked), updateStatus (9 tests: state-machine 8 statuses + completedAt/releasedAt side effects + cancel-from-any + invalid-enum + NOT_FOUND + demo-blocked), assignTechnician (4 tests: success / NOT_FOUND-jo / BAD_REQUEST-no-user / demo-blocked).
+
+## 2026-05-15 — Phase 8 Batch 5 CLOSE
+- Agent:               CLAUDE_CODE (Opus 4.7)
+- Why:                 Batch 5 complete: 3/3 Items merged, 427/427 tests GREEN, typecheck + lint clean across entire suite.
+- Files added:         none (close entry only)
+- Files modified:      docs/CHANGELOG_AI.md (this entry), docs/IMPLEMENTATION_MAP.md (Phase 8 row → Batch 5 ✅), .cline/STATE.md (PAUSED_AT updated, Batch 5 closed, next = Batch 6 planning)
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  none
+- Errors resolved:     none
+- Summary:             Batch 5 deliverables (3 items, single Opus 4.7 session): Support Phase 1 (5c1e674), HR/Payroll Phase 1 (126db37), Job Order Phase 1 (3f8f330). Pattern that worked: Opus direct executor for all three items — no Sonnet dispatch, no thrash, no retry. Average per-item: ~50K tokens, 5-6 files, clean single-session completion. Item 1 was unique in that it completed a pre-existing untracked draft router (4 schema-drift fixes); Items 2 + 3 were greenfield tests + UI on top of stable routers.
+- Lessons:             🟢 `strict-boolean-expressions` flags `nullable ?? nullable` in ternary conditions — must rewrite as explicit `!== null` checks even when nullish coalescing "works" at runtime. 🟢 Opus-direct executor pattern is now validated across 3 consecutive Items at ~5-6 files each (Items 1+2+3). Batches 6+ should default to Opus-direct when item scope is in 4-10 file range; reserve Sonnet dispatch for genuinely parallel work or single-file tasks under 30K.
