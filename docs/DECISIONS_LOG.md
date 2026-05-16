@@ -466,3 +466,30 @@ useful for both directions.
 **Rationale:** Option A (server-side layout) was chosen over Option B (middleware fast-path) because it keeps the auth logic co-located with the admin route tree, avoids adding another conditional branch to `middleware.ts` (already complex), and Next.js App Router layout components are guaranteed to run server-side before any child page renders. Middleware Option B would be marginally faster but adds cognitive overhead to an already-critical security file.
 **Locked:** Yes — do not move the platform-admin guard into middleware without a security review and DECISIONS_LOG.md update.
 **Phase:** Phase 8 Batch 1 Item 3
+
+---
+
+## Quotation Totals Computation Rule (CRM Phase 2)
+**Decision:** Quotation totals are computed and stored according to a fixed rule at create time:
+- `subtotal` = Σ over all line items of `quantity × baseCost`
+- `taxAmount` = caller-supplied (e.g. PH VAT = subtotal × 0.12 computed client-side)
+- `totalAmount` = `subtotal + taxAmount`
+
+`QuotationMarkupColumn.percentage` values are PRESENTATION TIERS shown to the customer
+(tier1/tier2/tier3 with different markup-and-markedUpPrice tables) — they do NOT affect
+the stored subtotal/totalAmount. The accepted price is implicit at `status=accepted`
+and is locked at conversion-to-invoice (Phase 3 — `convertedToInvoiceId` field).
+
+**Rationale:** Quotation has a complex multi-tier markup display (different prices shown
+to customers depending on which tier they purchase under), but the accounting truth at
+storage time is the baseCost. Storing marked-up totals would couple "what we show" with
+"what we owe" and create ambiguity when the customer accepts a different tier than what
+was sent first. Locking the accepted price at invoice-conversion time keeps the data
+model honest: a quotation is a snapshot of base costs + markup options; an invoice is a
+signed-off amount.
+
+**Locked:** Yes — do not store marked-up totals in Quotation.totalAmount. Use the
+`QuotationLineItemMarkup.markedUpPrice` table for per-tier display. Invoice conversion
+(Phase 3) will read the chosen markup column and lock the final amount on the Invoice.
+
+**Phase:** Phase 8 Batch 9 Item 2

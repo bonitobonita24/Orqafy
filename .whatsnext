@@ -1,50 +1,52 @@
-# Next Session — Phase 8 Batch 9 (recommended)
+# Next Session — Phase 8 Batch 10 (recommended)
 
-Last close: Batch 8 (47989af + b02ac0b) — tRPC React client infra + worker test fixture fix.
-Test baseline: 509/509 GREEN. Web typecheck + worker typecheck + lint all clean.
+Last close: Batch 9 (6144f0c POS Phase 3 cart UI + fb21e69 CRM Phase 2 Quotation router).
+Test baseline: 554/554 GREEN. Web + worker typecheck + lint all clean.
 
-## Recommended Batch 9 (Opus-direct, 2 items, ~60-75K combined)
+## Recommended Batch 10 (Opus-direct, 2 items, ~70-75K combined)
 
-### Item 1: POS Phase 3 — interactive new-sale cart UI (T2, ~30-40K)
-First real consumer of the new tRPC React client. Validates the infra in a flow
-with obvious user-visible feedback.
-
-Files to touch:
-- apps/web/src/app/(tenant)/[slug]/(app)/pos/new-sale/page.tsx — convert from
-  Server Component preview note → real interactive cart. Currently a Phase 3
-  placeholder note (set by b4928b1 in Batch 7).
-- New: apps/web/src/app/(tenant)/[slug]/(app)/pos/new-sale/cart-client.tsx
-  ("use client") — product search + add-to-cart + quantity stepper + payment
-  method picker + checkout button.
-- Use: trpc.pos.session.list.useQuery({ status: 'open' }) for the active session,
-  trpc.inventory.product.list.useQuery for catalog (already exists), and
-  trpc.pos.sale.create.useMutation for checkout. All already implemented server-side.
-- Cart state: local React useState (no need for global store yet).
-- 5-8 new tests in pos.test.ts covering create-from-cart happy path + edge cases
-  (no open session, insufficient stock, empty cart).
-
-### Item 2: CRM Phase 2 — contact log + quotation workflows (T2, ~30-35K)
-Server-only expansion. Pairs well with Item 1 (no UI conflict, different domain).
+### Item 1: Quotation UI (T2-T3, ~45-55K)
+Second consumer of the tRPC React client. The quotation lifecycle has rich
+interactive behavior (line item editing, markup column add/edit, send/accept/reject
+buttons, revision history) — perfect fit for the new React client.
 
 Files to touch:
-- apps/web/src/server/trpc/routers/crm.ts — add contactLog sub-router (create/list
-  with type=call|email|meeting|note + linked customerId) + quotation sub-router
-  (CRUD + send-to-customer flag).
-- packages/db/prisma/schema.prisma — verify ContactLog + Quotation models exist;
-  add if missing (check before scoping — pre-flight grep).
-- apps/web/src/__tests__/crm.test.ts — extend from 23 tests with ~12 new cases.
-- (UI deferred to Batch 10 — keep this item server-only for tight token budget.)
+- apps/web/src/app/(tenant)/[slug]/(app)/crm/quotations/page.tsx — NEW: list
+  with status filter chips + search + paginated table. Server Component fetches
+  initial data, embeds a small <QuotationListFilters /> Client Component for
+  filter state (no full Client Component needed for the list table itself).
+- apps/web/src/app/(tenant)/[slug]/(app)/crm/quotations/[id]/page.tsx — NEW:
+  detail page with sections + markup-column table + line items + revisions
+  sidebar. Use a <QuotationActions /> Client Component for the
+  Send / Accept / Reject / Create Revision buttons (trpc useMutation hooks).
+- apps/web/src/app/(tenant)/[slug]/(app)/crm/quotations/new/page.tsx — NEW:
+  build flow with sections + markup columns + line items. Heavy interactivity
+  — extract math to apps/web/src/lib/quotation-build.ts (pure helpers
+  mirroring server-side computation), unit-test directly. Pattern is the same
+  as pos-cart.ts from Batch 9 Item 1.
+- (Optional) PDF preview — defer to Batch 11 if scope balloons.
 
-## Pre-flight checks before starting Batch 9
-1. `grep -rn "ContactLog\|Quotation" packages/db/prisma/schema.prisma` — confirm
-   models exist or scope a migration into the item.
-2. `cat apps/web/src/app/(tenant)/\[slug\]/(app)/pos/new-sale/page.tsx` — re-read
-   the current Phase 3 placeholder note to anchor the rewrite.
-3. Verify TRPCProvider is wired (it is, since Batch 8 b02ac0b on main).
-4. Verify trpc.pos.sale.create router signature accepts what cart-client.tsx
-   will send (items array shape).
+### Item 2: CRM ContactLog router (T2, ~25K)
+Server-only — the original Batch 9 .whatsnext recommendation that was deferred
+because the model doesn't exist yet.
 
-## Alternative Batch 9 scopes (if not POS+CRM)
+Files to touch:
+- packages/db/prisma/schema.prisma — NEW model ContactLog { id, customerId,
+  type (call|email|meeting|note), subject, body, occurredAt, createdById,
+  createdAt, updatedAt }. Migration: pnpm db:migrate (creates table).
+- apps/web/src/server/trpc/routers/crm.ts — add contactLog* procedures
+  (~6: list, byId, create, update, delete, listForCustomer).
+- apps/web/src/__tests__/crm.test.ts — extend with ~10 new tests.
+
+## Pre-flight checks before starting Batch 10
+1. `pnpm typecheck` && `pnpm vitest run` — confirm 554/554 GREEN baseline.
+2. Re-read .claude/rules/memory-governance.md §1 — Tiered Decomposition Engine.
+   Item 1 may score Tier 3 if sections + markup-column editor + line-item editor
+   all land in one session — pre-flight the file count + estimate.
+3. Verify trpc.crm.quotation* procedures are reachable via the tRPC client —
+   apps/web/src/lib/trpc.ts has AppRouter generic threaded; should be plug-and-play.
+
+## Alternative Batch 10 scopes (if not Quotation UI + ContactLog)
 - Job Order Phase 2 (parts/service workflows + technician signature gating using
   react-signature-canvas which is already installed) — T2, ~35K.
 - E-commerce Phase 1 (Order + EcommerceOrder + PO link + storefront router) — T3,
@@ -53,8 +55,9 @@ Files to touch:
 
 ## Carry-forward T1 cleanups (do alongside a T2 item if room)
 - Reverse JE accounting hardening — wrap accounting.reverse procedure in
-  db.$transaction to match accounting.post pattern. Tracked in PENDING_FRAMEWORK_LIFTS.
+  db.$transaction to match accounting.post pattern.
 
 ## Trigger
-Open Claude Code in this folder. Say "start Phase 8 Batch 9" — I will read STATE.md
-first, run pre-flight grep checks, then propose the exact scope per Phase 8 protocol.
+Open Claude Code in this folder. Say "start Phase 8 Batch 10" — I will read STATE.md
+first, run pre-flight schema grep for any model named in this file, then propose
+the exact scope per Phase 8 protocol.
