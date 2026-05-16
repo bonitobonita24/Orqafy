@@ -80,7 +80,11 @@ describe('processTenantProvisioning', () => {
       traceId: 'trace-001',
       tenantSlug: TEST_SLUG,
       tenantName: 'Integration Test Worker Co',
+      schemaName: TEST_SCHEMA,
       plan: 'starter',
+      ownerEmail: 'owner@inttest-worker-co.local',
+      ownerName: 'Integration Test Owner',
+      ownerPassword: 'PlaceholderTestPassword123!',
     };
 
     // RED: processTenantProvisioning does not exist yet → import fails → test fails

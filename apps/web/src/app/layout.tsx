@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { TRPCProvider } from "@/lib/trpc-provider";
 import "./globals.css";
 
 const inter = Inter({
@@ -25,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://challenges.cloudflare.com" />
       </head>
       <body className="min-h-screen bg-background font-sans antialiased">
-        {children}
+        <TRPCProvider>{children}</TRPCProvider>
       </body>
     </html>
   );
