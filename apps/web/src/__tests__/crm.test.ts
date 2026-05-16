@@ -43,6 +43,20 @@ vi.mock("@orqafy/db", () => ({
       upsert: vi.fn(),
       update: vi.fn(),
     },
+    quotation: {
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      count: vi.fn(),
+    },
+    quotationSection: { create: vi.fn() },
+    quotationMarkupColumn: { create: vi.fn() },
+    quotationLineItem: { create: vi.fn() },
+    quotationLineItemMarkup: { create: vi.fn() },
+    quotationRevision: { create: vi.fn() },
+    $transaction: vi.fn(),
   },
 }));
 
@@ -102,6 +116,20 @@ const mockDb = db as unknown as {
     upsert: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
   };
+  quotation: {
+    findFirst: ReturnType<typeof vi.fn>;
+    findUnique: ReturnType<typeof vi.fn>;
+    findMany: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    count: ReturnType<typeof vi.fn>;
+  };
+  quotationSection: { create: ReturnType<typeof vi.fn> };
+  quotationMarkupColumn: { create: ReturnType<typeof vi.fn> };
+  quotationLineItem: { create: ReturnType<typeof vi.fn> };
+  quotationLineItemMarkup: { create: ReturnType<typeof vi.fn> };
+  quotationRevision: { create: ReturnType<typeof vi.fn> };
+  $transaction: ReturnType<typeof vi.fn>;
 };
 
 const sampleCustomer = {
@@ -477,5 +505,551 @@ describe("crm.credit.toggleActive", () => {
     await expect(
       caller.crm.creditToggleActive({ customerId: "cust-1" })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+// ===========================================================================
+// PHASE 8 BATCH 9 — Quotation procedures (CRM Phase 2)
+// ===========================================================================
+
+const QUOTATION_ID = "ck1234567890123456789012q";
+const CUSTOMER_ID = "ck1234567890123456789012c";
+
+const sampleQuotation = {
+  id: QUOTATION_ID,
+  quotationNumber: "QT-2605-0001",
+  customerId: CUSTOMER_ID,
+  createdById: "user-1",
+  title: "Q1 Marine Equipment Quote",
+  status: "draft",
+  validUntil: new Date("2026-06-30"),
+  subtotal: "1500.00",
+  taxAmount: "180.00",
+  totalAmount: "1680.00",
+  currency: "PHP",
+  notes: null,
+  termsAndConditions: null,
+  convertedToInvoiceId: null,
+  sentAt: null,
+  acceptedAt: null,
+  metadata: null,
+  createdAt: new Date("2026-05-16"),
+  updatedAt: new Date("2026-05-16"),
+};
+
+// ---------------------------------------------------------------------------
+// 13. crm.quotationList
+// ---------------------------------------------------------------------------
+describe("crm.quotationList", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns paginated quotations for authenticated user", async () => {
+    mockDb.quotation.findMany.mockResolvedValue([sampleQuotation]);
+    mockDb.quotation.count.mockResolvedValue(1);
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.crm.quotationList({ page: 1, limit: 50 });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.total).toBe(1);
+  });
+
+  it("filters by status when provided", async () => {
+    mockDb.quotation.findMany.mockResolvedValue([sampleQuotation]);
+    mockDb.quotation.count.mockResolvedValue(1);
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.crm.quotationList({ page: 1, limit: 50, status: "sent" });
+
+    const call = mockDb.quotation.findMany.mock.calls[0] as [{ where: unknown }];
+    expect(call[0].where).toMatchObject({ status: "sent" });
+  });
+
+  it("filters by customerId when provided", async () => {
+    mockDb.quotation.findMany.mockResolvedValue([sampleQuotation]);
+    mockDb.quotation.count.mockResolvedValue(1);
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.crm.quotationList({ page: 1, limit: 50, customerId: CUSTOMER_ID });
+
+    const call = mockDb.quotation.findMany.mock.calls[0] as [{ where: unknown }];
+    expect(call[0].where).toMatchObject({ customerId: CUSTOMER_ID });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 14. crm.quotationById
+// ---------------------------------------------------------------------------
+describe("crm.quotationById", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a quotation with nested sections + markups + revisions", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue({
+      ...sampleQuotation,
+      customer: sampleCustomer,
+      createdBy: { id: "user-1", firstName: "Bo", lastName: "N", displayName: null },
+      markupColumns: [],
+      sections: [],
+      revisions: [{ id: "rev-1", revisionNumber: 1, createdAt: new Date() }],
+    });
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.crm.quotationById({ id: QUOTATION_ID });
+
+    expect(result.id).toBe(QUOTATION_ID);
+    expect(result.revisions).toHaveLength(1);
+  });
+
+  it("throws NOT_FOUND when quotation does not exist", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue(null);
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.quotationById({ id: QUOTATION_ID }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 15. crm.quotationCreate
+// ---------------------------------------------------------------------------
+describe("crm.quotationCreate", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  function setupHappyPath() {
+    mockDb.customer.findUnique.mockResolvedValue({ id: CUSTOMER_ID });
+    mockDb.quotation.findFirst.mockResolvedValue(null); // generateQuotationNumber
+    mockDb.$transaction.mockImplementation(async (fn: (tx: typeof mockDb) => Promise<unknown>) =>
+      fn(mockDb),
+    );
+    mockDb.quotation.create.mockResolvedValue({ ...sampleQuotation });
+    mockDb.quotationMarkupColumn.create.mockImplementation(({ data }: { data: unknown }) =>
+      Promise.resolve({ id: `mc-${Math.random()}`, ...(data as object) }),
+    );
+    mockDb.quotationSection.create.mockImplementation(({ data }: { data: unknown }) =>
+      Promise.resolve({ id: `sec-${Math.random()}`, ...(data as object) }),
+    );
+    mockDb.quotationLineItem.create.mockImplementation(({ data }: { data: unknown }) =>
+      Promise.resolve({ id: `li-${Math.random()}`, ...(data as object) }),
+    );
+    mockDb.quotationLineItemMarkup.create.mockResolvedValue({ id: "lim-1" });
+    mockDb.quotationRevision.create.mockResolvedValue({ id: "rev-1" });
+  }
+
+  it("creates quotation + sections + line items atomically with correct totals", async () => {
+    setupHappyPath();
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.crm.quotationCreate({
+      customerId: CUSTOMER_ID,
+      title: "Test Quote",
+      taxAmount: 180,
+      markupColumns: [
+        { name: "Tier 1", tier: "tier1", percentage: 20, useCeiling: false, sortOrder: 0 },
+        { name: "Tier 2", tier: "tier2", percentage: 35, useCeiling: false, sortOrder: 1 },
+      ],
+      sections: [
+        {
+          name: "Section A",
+          sortOrder: 0,
+          lineItems: [
+            {
+              description: "Widget",
+              unit: "pcs",
+              quantity: 2,
+              baseCost: 500,
+              sortOrder: 0,
+              markups: [
+                { markupColumnIndex: 0, markedUpPrice: 600 },
+                { markupColumnIndex: 1, markedUpPrice: 675 },
+              ],
+            },
+            {
+              description: "Gizmo",
+              unit: "pcs",
+              quantity: 1,
+              baseCost: 500,
+              sortOrder: 1,
+              markups: [],
+            },
+          ],
+        },
+      ],
+    });
+
+    // Transaction wrapper called once.
+    expect(mockDb.$transaction).toHaveBeenCalledTimes(1);
+    // Quotation row: subtotal = 2*500 + 1*500 = 1500; total = 1500 + 180 = 1680.
+    expect(mockDb.quotation.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        customerId: CUSTOMER_ID,
+        title: "Test Quote",
+        status: "draft",
+        subtotal: 1500,
+        taxAmount: 180,
+        totalAmount: 1680,
+        createdById: "user-1",
+      }),
+    });
+    // 2 markup columns.
+    expect(mockDb.quotationMarkupColumn.create).toHaveBeenCalledTimes(2);
+    // 1 section.
+    expect(mockDb.quotationSection.create).toHaveBeenCalledTimes(1);
+    // 2 line items.
+    expect(mockDb.quotationLineItem.create).toHaveBeenCalledTimes(2);
+    // 2 markups on line item 1, 0 on line item 2 → 2 total.
+    expect(mockDb.quotationLineItemMarkup.create).toHaveBeenCalledTimes(2);
+    // Initial revision snapshot.
+    expect(mockDb.quotationRevision.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        revisionNumber: 1,
+        snapshot: expect.objectContaining({ status: "draft" }),
+      }),
+    });
+  });
+
+  it("auto-generates quotation number in QT-YYMM-NNNN format", async () => {
+    setupHappyPath();
+    // No prior quotations → seq starts at 1.
+    mockDb.quotation.findFirst.mockResolvedValue(null);
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.crm.quotationCreate({
+      customerId: CUSTOMER_ID,
+      title: "Q",
+      taxAmount: 0,
+      markupColumns: [],
+      sections: [
+        {
+          name: "S",
+          sortOrder: 0,
+          lineItems: [
+            { description: "X", unit: "pcs", quantity: 1, baseCost: 100, sortOrder: 0, markups: [] },
+          ],
+        },
+      ],
+    });
+
+    const created = mockDb.quotation.create.mock.calls[0] as [{ data: { quotationNumber: string } }];
+    expect(created[0].data.quotationNumber).toMatch(/^QT-\d{4}-0001$/);
+  });
+
+  it("increments sequence number when prior quotations exist this month", async () => {
+    setupHappyPath();
+    mockDb.quotation.findFirst.mockResolvedValue({ quotationNumber: "QT-2605-0042" });
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.crm.quotationCreate({
+      customerId: CUSTOMER_ID,
+      title: "Q",
+      taxAmount: 0,
+      markupColumns: [],
+      sections: [
+        {
+          name: "S",
+          sortOrder: 0,
+          lineItems: [
+            { description: "X", unit: "pcs", quantity: 1, baseCost: 100, sortOrder: 0, markups: [] },
+          ],
+        },
+      ],
+    });
+
+    const created = mockDb.quotation.create.mock.calls[0] as [{ data: { quotationNumber: string } }];
+    expect(created[0].data.quotationNumber).toBe("QT-2605-0043");
+  });
+
+  it("throws NOT_FOUND when customer does not exist", async () => {
+    mockDb.customer.findUnique.mockResolvedValue(null);
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.quotationCreate({
+        customerId: CUSTOMER_ID,
+        title: "Q",
+        taxAmount: 0,
+        markupColumns: [],
+        sections: [
+          {
+            name: "S",
+            sortOrder: 0,
+            lineItems: [
+              { description: "X", unit: "pcs", quantity: 1, baseCost: 100, sortOrder: 0, markups: [] },
+            ],
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockDb.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects when markupColumnIndex is out of range", async () => {
+    setupHappyPath();
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.quotationCreate({
+        customerId: CUSTOMER_ID,
+        title: "Q",
+        taxAmount: 0,
+        markupColumns: [
+          { name: "Tier 1", tier: "tier1", percentage: 20, useCeiling: false, sortOrder: 0 },
+        ],
+        sections: [
+          {
+            name: "S",
+            sortOrder: 0,
+            lineItems: [
+              {
+                description: "X",
+                unit: "pcs",
+                quantity: 1,
+                baseCost: 100,
+                sortOrder: 0,
+                markups: [{ markupColumnIndex: 5, markedUpPrice: 120 }], // index 5 doesn't exist
+              },
+            ],
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 16. crm.quotationUpdate
+// ---------------------------------------------------------------------------
+describe("crm.quotationUpdate", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("updates a draft quotation", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "draft" });
+    mockDb.quotation.update.mockResolvedValue({ ...sampleQuotation, title: "Updated Title" });
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.crm.quotationUpdate({
+      id: QUOTATION_ID,
+      title: "Updated Title",
+    });
+
+    expect(result.title).toBe("Updated Title");
+    const call = mockDb.quotation.update.mock.calls[0] as [{ data: { title?: string } }];
+    expect(call[0].data.title).toBe("Updated Title");
+  });
+
+  it("rejects edits on non-draft quotations", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "sent" });
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.quotationUpdate({ id: QUOTATION_ID, title: "X" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockDb.quotation.update).not.toHaveBeenCalled();
+  });
+
+  it("throws NOT_FOUND when quotation does not exist", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue(null);
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.quotationUpdate({ id: QUOTATION_ID, title: "X" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 17. crm.quotationSend
+// ---------------------------------------------------------------------------
+describe("crm.quotationSend", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("flips status draft → sent and sets sentAt", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "draft" });
+    mockDb.quotation.update.mockResolvedValue({
+      ...sampleQuotation,
+      status: "sent",
+      sentAt: new Date(),
+    });
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.crm.quotationSend({ id: QUOTATION_ID });
+
+    expect(result.status).toBe("sent");
+    const call = mockDb.quotation.update.mock.calls[0] as [{ data: { status: string; sentAt: Date } }];
+    expect(call[0].data.status).toBe("sent");
+    expect(call[0].data.sentAt).toBeInstanceOf(Date);
+  });
+
+  it("rejects non-draft quotations", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "sent" });
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.quotationSend({ id: QUOTATION_ID }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 18. crm.quotationAccept / quotationReject
+// ---------------------------------------------------------------------------
+describe("crm.quotationAccept", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("flips status sent → accepted and sets acceptedAt", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "sent" });
+    mockDb.quotation.update.mockResolvedValue({
+      ...sampleQuotation,
+      status: "accepted",
+      acceptedAt: new Date(),
+    });
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.crm.quotationAccept({ id: QUOTATION_ID });
+
+    expect(result.status).toBe("accepted");
+    const call = mockDb.quotation.update.mock.calls[0] as [{ data: { status: string; acceptedAt: Date } }];
+    expect(call[0].data.status).toBe("accepted");
+    expect(call[0].data.acceptedAt).toBeInstanceOf(Date);
+  });
+
+  it("rejects accept on non-sent quotations", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "draft" });
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.quotationAccept({ id: QUOTATION_ID }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+
+describe("crm.quotationReject", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("flips status sent → rejected", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "sent" });
+    mockDb.quotation.update.mockResolvedValue({ ...sampleQuotation, status: "rejected" });
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.crm.quotationReject({ id: QUOTATION_ID });
+
+    expect(result.status).toBe("rejected");
+  });
+
+  it("rejects reject on non-sent quotations", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "draft" });
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.quotationReject({ id: QUOTATION_ID }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 19. crm.quotationCreateRevision
+// ---------------------------------------------------------------------------
+describe("crm.quotationCreateRevision", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("snapshots current state, increments revisionNumber, and resets to draft", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue({
+      id: QUOTATION_ID,
+      status: "sent",
+      subtotal: { toString: () => "1500.00" },
+      taxAmount: { toString: () => "180.00" },
+      totalAmount: { toString: () => "1680.00" },
+      markupColumns: [],
+      sections: [],
+      revisions: [{ revisionNumber: 1 }],
+    });
+    mockDb.$transaction.mockImplementation(async (fn: (tx: typeof mockDb) => Promise<unknown>) =>
+      fn(mockDb),
+    );
+    mockDb.quotationRevision.create.mockResolvedValue({ id: "rev-2" });
+    mockDb.quotation.update.mockResolvedValue({ ...sampleQuotation, status: "draft" });
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.crm.quotationCreateRevision({ id: QUOTATION_ID });
+
+    expect(result.status).toBe("draft");
+    expect(mockDb.$transaction).toHaveBeenCalledTimes(1);
+    expect(mockDb.quotationRevision.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        revisionNumber: 2,
+        snapshot: expect.objectContaining({ status: "sent" }),
+      }),
+    });
+    expect(mockDb.quotation.update).toHaveBeenCalledWith({
+      where: { id: QUOTATION_ID },
+      data: { status: "draft" },
+    });
+  });
+
+  it("rejects revision on converted quotations", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue({
+      id: QUOTATION_ID,
+      status: "converted",
+      subtotal: { toString: () => "0" },
+      taxAmount: { toString: () => "0" },
+      totalAmount: { toString: () => "0" },
+      markupColumns: [],
+      sections: [],
+      revisions: [{ revisionNumber: 3 }],
+    });
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.quotationCreateRevision({ id: QUOTATION_ID }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockDb.$transaction).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 20. Demo tenant blocking on quotation writes
+// ---------------------------------------------------------------------------
+describe("crm.quotation* demo tenant blocking", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  function demoCtx() {
+    return {
+      req: makeReq(),
+      userId: "user-1",
+      roles: ["Administrator"],
+      tenantSlug: "demo",
+      tenantId: "demo-tenant-id",
+      securityVersion: 1,
+      isDemoTenant: true,
+      session: null,
+    };
+  }
+
+  it("blocks quotationCreate on demo tenant", async () => {
+    const caller = createCaller(demoCtx());
+    await expect(
+      caller.crm.quotationCreate({
+        customerId: CUSTOMER_ID,
+        title: "Q",
+        taxAmount: 0,
+        markupColumns: [],
+        sections: [
+          {
+            name: "S",
+            sortOrder: 0,
+            lineItems: [
+              { description: "X", unit: "pcs", quantity: 1, baseCost: 100, sortOrder: 0, markups: [] },
+            ],
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("blocks quotationSend on demo tenant", async () => {
+    const caller = createCaller(demoCtx());
+    await expect(
+      caller.crm.quotationSend({ id: QUOTATION_ID }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });
