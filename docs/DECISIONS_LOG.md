@@ -493,3 +493,44 @@ signed-off amount.
 (Phase 3) will read the chosen markup column and lock the final amount on the Invoice.
 
 **Phase:** Phase 8 Batch 9 Item 2
+
+## 2026-05-16 — Quotation marked-up price ceiling-rounding convention (Phase 8 Batch 10 Item 1)
+
+`QuotationMarkupColumn.useCeiling` is a presentation-only rounding rule applied
+**client-side** when computing per-line marked-up prices for display + storage.
+
+Formula in `apps/web/src/lib/quotation-build.ts` → `computeMarkedUpPrice`:
+
+- `raw = baseCost * (1 + percentage / 100)`
+- `markedUpPrice = useCeiling ? Math.ceil(raw) : round2(raw)`
+
+**Rationale:** Ceiling-rounding to the next whole peso is a common request for
+customer-facing quote sheets (avoid fractional pesos in printed quotations). The
+choice is per-column so a single quotation can mix exact-cent tiers with
+ceiling-rounded tiers. Server stores whatever the client computed; server does not
+re-validate or recompute `markedUpPrice`. The pure helper in `quotation-build.ts`
+is the single source of truth.
+
+**Locked:** Yes — `useCeiling=true` → `Math.ceil` to whole peso. `useCeiling=false`
+→ round to 2 decimals. Do not introduce alternative rounding rules (banker's
+rounding, round-up-to-nearest-5-peso, etc.) without a new column.
+
+**Phase:** Phase 8 Batch 10 Item 1
+
+## 2026-05-16 — ContactLog type enum (Phase 8 Batch 10 Item 2)
+
+`ContactLog.type` is constrained to one of: `call | email | meeting | note`.
+
+**Rationale:** These 4 cover the common touchpoint categories for a customer
+relationship system. Validated as a zod enum on every write procedure
+(`crm.contactLogCreate`, `crm.contactLogUpdate`, `crm.contactLogList`,
+`crm.contactLogListForCustomer`). The Prisma column is `String` (not enum) for
+forward compatibility — adding a new type requires only updating
+`CONTACT_LOG_TYPES` in `apps/web/src/server/trpc/routers/crm.ts` (and any new
+tests) without a schema migration.
+
+**Locked:** Yes — these 4 values are the canonical set as of Batch 10. Add new
+types by appending to `CONTACT_LOG_TYPES`; do NOT remove an existing type without
+a data migration to remap rows.
+
+**Phase:** Phase 8 Batch 10 Item 2

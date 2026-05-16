@@ -1,63 +1,79 @@
-# Next Session — Phase 8 Batch 10 (recommended)
+# Next Session — Phase 8 Batch 11 (recommended)
 
-Last close: Batch 9 (6144f0c POS Phase 3 cart UI + fb21e69 CRM Phase 2 Quotation router).
-Test baseline: 554/554 GREEN. Web + worker typecheck + lint all clean.
+Last close: Batch 10 (1c2beb0 Quotation UI + c399092 CRM ContactLog migration + router).
+Test baseline: 595/595 GREEN. Web + worker typecheck + lint all clean.
 
-## Recommended Batch 10 (Opus-direct, 2 items, ~70-75K combined)
+⚠ PRE-FLIGHT REQUIRED before any code: confirm the user has applied Migration #2
+(`20260516184900_add_contact_log`) against their dev DB via `pnpm db:migrate`. The
+migration file is committed but unapplied state would surface as a runtime error,
+not a typecheck error — fail fast at session start.
 
-### Item 1: Quotation UI (T2-T3, ~45-55K)
-Second consumer of the tRPC React client. The quotation lifecycle has rich
-interactive behavior (line item editing, markup column add/edit, send/accept/reject
-buttons, revision history) — perfect fit for the new React client.
+## Recommended Batch 11 (Opus-direct, 2 items, ~50-60K combined)
 
-Files to touch:
-- apps/web/src/app/(tenant)/[slug]/(app)/crm/quotations/page.tsx — NEW: list
-  with status filter chips + search + paginated table. Server Component fetches
-  initial data, embeds a small <QuotationListFilters /> Client Component for
-  filter state (no full Client Component needed for the list table itself).
-- apps/web/src/app/(tenant)/[slug]/(app)/crm/quotations/[id]/page.tsx — NEW:
-  detail page with sections + markup-column table + line items + revisions
-  sidebar. Use a <QuotationActions /> Client Component for the
-  Send / Accept / Reject / Create Revision buttons (trpc useMutation hooks).
-- apps/web/src/app/(tenant)/[slug]/(app)/crm/quotations/new/page.tsx — NEW:
-  build flow with sections + markup columns + line items. Heavy interactivity
-  — extract math to apps/web/src/lib/quotation-build.ts (pure helpers
-  mirroring server-side computation), unit-test directly. Pattern is the same
-  as pos-cart.ts from Batch 9 Item 1.
-- (Optional) PDF preview — defer to Batch 11 if scope balloons.
-
-### Item 2: CRM ContactLog router (T2, ~25K)
-Server-only — the original Batch 9 .whatsnext recommendation that was deferred
-because the model doesn't exist yet.
+### Item 1: ContactLog UI (T2, ~25-30K)
+First consumer of the contactLogListForCustomer + contactLogCreate procedures
+from Batch 10. Goes onto the existing customer-detail page.
 
 Files to touch:
-- packages/db/prisma/schema.prisma — NEW model ContactLog { id, customerId,
-  type (call|email|meeting|note), subject, body, occurredAt, createdById,
-  createdAt, updatedAt }. Migration: pnpm db:migrate (creates table).
-- apps/web/src/server/trpc/routers/crm.ts — add contactLog* procedures
-  (~6: list, byId, create, update, delete, listForCustomer).
-- apps/web/src/__tests__/crm.test.ts — extend with ~10 new tests.
+- apps/web/src/app/(tenant)/[slug]/(app)/crm/customers/[id]/page.tsx — add
+  a "Touchpoints" section below the existing customer summary. Server Component
+  fetches the latest 20 contact logs via prisma directly (mirrors existing
+  data-fetch pattern). Embed a <ContactLogTimeline /> Client Component for the
+  list rendering + filter chips by type. Embed a <QuickAddContactLog /> Client
+  Component for the inline create modal.
+- apps/web/src/app/(tenant)/[slug]/(app)/crm/customers/[id]/contact-log-timeline.tsx
+  — NEW Client Component, type filter chips, optimistic delete via trpc
+  contactLogDelete useMutation, type-icon legend.
+- apps/web/src/app/(tenant)/[slug]/(app)/crm/customers/[id]/quick-add-contact-log.tsx
+  — NEW Client Component, dialog (shadcn/ui dialog already imported elsewhere),
+  type picker + subject + body + occurredAt date input, calls trpc
+  contactLogCreate useMutation, optimistic insert into timeline + sonner toast.
 
-## Pre-flight checks before starting Batch 10
-1. `pnpm typecheck` && `pnpm vitest run` — confirm 554/554 GREEN baseline.
-2. Re-read .claude/rules/memory-governance.md §1 — Tiered Decomposition Engine.
-   Item 1 may score Tier 3 if sections + markup-column editor + line-item editor
-   all land in one session — pre-flight the file count + estimate.
-3. Verify trpc.crm.quotation* procedures are reachable via the tRPC client —
-   apps/web/src/lib/trpc.ts has AppRouter generic threaded; should be plug-and-play.
+Optional small additions (defer to Batch 12 if scope balloons):
+- crm/contact-logs/page.tsx — global list across all customers with customerId
+  filter + type filter (mirror of crm/quotations/page.tsx layout).
 
-## Alternative Batch 10 scopes (if not Quotation UI + ContactLog)
+### Item 2: Quotation UI Phase 2 (T2, ~25-30K)
+Completes the quotation lifecycle. Two small additive features:
+
+Files to touch:
+- apps/web/src/app/(tenant)/[slug]/(app)/crm/quotations/[id]/page.tsx — add a
+  "Convert to invoice" button when status=accepted. Routes to a new endpoint
+  on crm router (quotationConvertToInvoice) which atomically creates Invoice +
+  InvoiceLineItems from QuotationLineItems and flips status to "converted".
+  OR defer this and just add a PDF preview link.
+- apps/web/src/server/trpc/routers/crm.ts — add quotationConvertToInvoice
+  procedure (writeProcedure, accepted-only, atomic creation, sets
+  Quotation.convertedToInvoiceId).
+- apps/web/src/__tests__/crm.test.ts — extend with ~5 tests for the conversion.
+- apps/web/src/app/(tenant)/[slug]/(app)/crm/quotations/[id]/pdf/page.tsx — NEW
+  PDF preview page using react-pdf (add @react-pdf/renderer dep). Renders a
+  printable quotation document with header + customer + sections + markup
+  columns + line items + totals + terms.
+
+## Pre-flight checks before starting Batch 11
+1. `pnpm typecheck` && `pnpm vitest run` — confirm 595/595 GREEN baseline.
+2. `pnpm db:migrate` confirmation — Migration #2 contact_logs must be applied.
+3. Re-read .claude/rules/memory-governance.md §1 — Tiered Decomposition Engine.
+4. Verify @react-pdf/renderer is installable before scoping the PDF preview;
+   it has known issues on Next 15 server bundle — may need dynamic import.
+
+## Alternative Batch 11 scopes (if not ContactLog UI + Quotation Phase 2)
 - Job Order Phase 2 (parts/service workflows + technician signature gating using
   react-signature-canvas which is already installed) — T2, ~35K.
 - E-commerce Phase 1 (Order + EcommerceOrder + PO link + storefront router) — T3,
   ~50-60K — own dedicated batch.
 - Mobile app Phase 1 (apps/mobile WatermelonDB DTR offline sync) — T3+, own batch.
+- Quotation UI inline edit for drafts (extend builder.tsx to load an existing
+  draft via trpc.crm.quotationById.useQuery and submit via quotationUpdate /
+  delete-and-recreate pattern depending on what changed) — T2, ~25K.
 
 ## Carry-forward T1 cleanups (do alongside a T2 item if room)
 - Reverse JE accounting hardening — wrap accounting.reverse procedure in
   db.$transaction to match accounting.post pattern.
+- AUTH_TRUST_HOST=true default in .env.staging/.env.prod templates.
 
 ## Trigger
-Open Claude Code in this folder. Say "start Phase 8 Batch 10" — I will read STATE.md
-first, run pre-flight schema grep for any model named in this file, then propose
-the exact scope per Phase 8 protocol.
+Open Claude Code in this folder. Say "start Phase 8 Batch 11" — agent will read
+STATE.md first, confirm Migration #2 is applied, then run pre-flight schema
+grep for any additional models named here before proposing exact scope.
