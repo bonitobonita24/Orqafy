@@ -16,6 +16,8 @@ const QUOTATION_STATUSES = [
 
 const MARKUP_TIERS = ["tier1", "tier2", "tier3"] as const;
 
+const CONTACT_LOG_TYPES = ["call", "email", "meeting", "note"] as const;
+
 async function generateQuotationNumber(): Promise<string> {
   const now = new Date();
   const yy = String(now.getFullYear()).slice(-2);
@@ -711,5 +713,176 @@ export const crmRouter = createTRPCRouter({
           data: { status: "draft" },
         });
       });
+    }),
+
+  // ── ContactLog ────────────────────────────────────────────────────────────
+
+  contactLogList: protectedProcedure
+    .input(
+      z.object({
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(200).default(50),
+        customerId: z.string().min(1).optional(),
+        type: z.enum(CONTACT_LOG_TYPES).optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const where = {
+        ...(input.customerId !== undefined ? { customerId: input.customerId } : {}),
+        ...(input.type !== undefined ? { type: input.type } : {}),
+      };
+      const [items, total] = await Promise.all([
+        db.contactLog.findMany({
+          where,
+          skip: (input.page - 1) * input.limit,
+          take: input.limit,
+          orderBy: { occurredAt: "desc" },
+          include: {
+            customer: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                companyName: true,
+              },
+            },
+            createdBy: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                displayName: true,
+              },
+            },
+          },
+        }),
+        db.contactLog.count({ where }),
+      ]);
+      return { items, total, page: input.page, limit: input.limit };
+    }),
+
+  contactLogById: protectedProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const log = await db.contactLog.findUnique({
+        where: { id: input.id },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              companyName: true,
+            },
+          },
+          createdBy: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              displayName: true,
+            },
+          },
+        },
+      });
+      if (!log) throw new TRPCError({ code: "NOT_FOUND" });
+      return log;
+    }),
+
+  contactLogListForCustomer: protectedProcedure
+    .input(
+      z.object({
+        customerId: z.string().min(1),
+        limit: z.number().int().min(1).max(200).default(50),
+      }),
+    )
+    .query(async ({ input }) => {
+      return db.contactLog.findMany({
+        where: { customerId: input.customerId },
+        take: input.limit,
+        orderBy: { occurredAt: "desc" },
+        include: {
+          createdBy: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              displayName: true,
+            },
+          },
+        },
+      });
+    }),
+
+  contactLogCreate: writeProcedure
+    .input(
+      z.object({
+        customerId: z.string().min(1),
+        type: z.enum(CONTACT_LOG_TYPES),
+        subject: z.string().min(1).max(255),
+        body: z.string().max(5000).optional(),
+        occurredAt: z.date().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.userId === null) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
+      const customer = await db.customer.findUnique({
+        where: { id: input.customerId },
+        select: { id: true },
+      });
+      if (!customer) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Customer not found." });
+      }
+      return db.contactLog.create({
+        data: {
+          customerId: input.customerId,
+          createdById: ctx.userId,
+          type: input.type,
+          subject: input.subject,
+          occurredAt: input.occurredAt ?? new Date(),
+          ...(input.body !== undefined && { body: input.body }),
+        },
+      });
+    }),
+
+  contactLogUpdate: writeProcedure
+    .input(
+      z.object({
+        id: z.string().min(1),
+        type: z.enum(CONTACT_LOG_TYPES).optional(),
+        subject: z.string().min(1).max(255).optional(),
+        body: z.string().max(5000).nullable().optional(),
+        occurredAt: z.date().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const existing = await db.contactLog.findUnique({
+        where: { id: input.id },
+        select: { id: true },
+      });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      return db.contactLog.update({
+        where: { id: input.id },
+        data: {
+          ...(input.type !== undefined && { type: input.type }),
+          ...(input.subject !== undefined && { subject: input.subject }),
+          ...(input.body !== undefined && { body: input.body }),
+          ...(input.occurredAt !== undefined && { occurredAt: input.occurredAt }),
+        },
+      });
+    }),
+
+  contactLogDelete: writeProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const existing = await db.contactLog.findUnique({
+        where: { id: input.id },
+        select: { id: true },
+      });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await db.contactLog.delete({ where: { id: input.id } });
+      return { id: input.id };
     }),
 });

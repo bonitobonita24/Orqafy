@@ -56,6 +56,14 @@ vi.mock("@orqafy/db", () => ({
     quotationLineItem: { create: vi.fn() },
     quotationLineItemMarkup: { create: vi.fn() },
     quotationRevision: { create: vi.fn() },
+    contactLog: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      count: vi.fn(),
+    },
     $transaction: vi.fn(),
   },
 }));
@@ -129,6 +137,14 @@ const mockDb = db as unknown as {
   quotationLineItem: { create: ReturnType<typeof vi.fn> };
   quotationLineItemMarkup: { create: ReturnType<typeof vi.fn> };
   quotationRevision: { create: ReturnType<typeof vi.fn> };
+  contactLog: {
+    findMany: ReturnType<typeof vi.fn>;
+    findUnique: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    delete: ReturnType<typeof vi.fn>;
+    count: ReturnType<typeof vi.fn>;
+  };
   $transaction: ReturnType<typeof vi.fn>;
 };
 
@@ -1050,6 +1066,273 @@ describe("crm.quotation* demo tenant blocking", () => {
     const caller = createCaller(demoCtx());
     await expect(
       caller.crm.quotationSend({ id: QUOTATION_ID }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// crm.contactLog.* — touchpoint log per customer
+// ---------------------------------------------------------------------------
+
+const CONTACT_LOG_ID = "log-1";
+const sampleContactLog = {
+  id: CONTACT_LOG_ID,
+  customerId: "cust-1",
+  createdById: "user-1",
+  type: "call",
+  subject: "Discovery call",
+  body: "Discussed Q1 hardware refresh.",
+  occurredAt: new Date("2026-05-15"),
+  createdAt: new Date("2026-05-15"),
+  updatedAt: new Date("2026-05-15"),
+};
+
+describe("crm.contactLog.list", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns paginated logs ordered by occurredAt desc", async () => {
+    mockDb.contactLog.findMany.mockResolvedValue([sampleContactLog]);
+    mockDb.contactLog.count.mockResolvedValue(1);
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.crm.contactLogList({ page: 1, limit: 50 });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.total).toBe(1);
+    const call = mockDb.contactLog.findMany.mock.calls[0] as [{ orderBy: unknown }];
+    expect(call[0].orderBy).toMatchObject({ occurredAt: "desc" });
+  });
+
+  it("filters by customerId when provided", async () => {
+    mockDb.contactLog.findMany.mockResolvedValue([]);
+    mockDb.contactLog.count.mockResolvedValue(0);
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.crm.contactLogList({ page: 1, limit: 50, customerId: "cust-1" });
+
+    const call = mockDb.contactLog.findMany.mock.calls[0] as [{ where: unknown }];
+    expect(call[0].where).toMatchObject({ customerId: "cust-1" });
+  });
+
+  it("filters by type when provided", async () => {
+    mockDb.contactLog.findMany.mockResolvedValue([]);
+    mockDb.contactLog.count.mockResolvedValue(0);
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.crm.contactLogList({ page: 1, limit: 50, type: "email" });
+
+    const call = mockDb.contactLog.findMany.mock.calls[0] as [{ where: unknown }];
+    expect(call[0].where).toMatchObject({ type: "email" });
+  });
+
+  it("rejects unauthenticated requests", async () => {
+    const caller = createCaller(unauthenticatedCtx());
+    await expect(
+      caller.crm.contactLogList({ page: 1, limit: 50 }),
+    ).rejects.toThrow();
+  });
+});
+
+describe("crm.contactLog.byId", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns the log when found", async () => {
+    mockDb.contactLog.findUnique.mockResolvedValue(sampleContactLog);
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.crm.contactLogById({ id: CONTACT_LOG_ID });
+
+    expect(result.id).toBe(CONTACT_LOG_ID);
+    expect(result.subject).toBe("Discovery call");
+  });
+
+  it("throws NOT_FOUND when log does not exist", async () => {
+    mockDb.contactLog.findUnique.mockResolvedValue(null);
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.contactLogById({ id: "missing" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+describe("crm.contactLog.listForCustomer", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("scopes findMany to the given customer", async () => {
+    mockDb.contactLog.findMany.mockResolvedValue([sampleContactLog]);
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.crm.contactLogListForCustomer({
+      customerId: "cust-1",
+      limit: 25,
+    });
+
+    expect(result).toHaveLength(1);
+    const call = mockDb.contactLog.findMany.mock.calls[0] as [
+      { where: unknown; take: unknown },
+    ];
+    expect(call[0].where).toMatchObject({ customerId: "cust-1" });
+    expect(call[0].take).toBe(25);
+  });
+});
+
+describe("crm.contactLog.create", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("creates a log with default occurredAt when not provided", async () => {
+    mockDb.customer.findUnique.mockResolvedValue({ id: "cust-1" });
+    mockDb.contactLog.create.mockResolvedValue(sampleContactLog);
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.crm.contactLogCreate({
+      customerId: "cust-1",
+      type: "call",
+      subject: "Follow-up",
+    });
+
+    expect(result.id).toBe(CONTACT_LOG_ID);
+    const call = mockDb.contactLog.create.mock.calls[0] as [
+      { data: { occurredAt: Date; createdById: string } },
+    ];
+    expect(call[0].data.createdById).toBe("user-1");
+    expect(call[0].data.occurredAt).toBeInstanceOf(Date);
+  });
+
+  it("uses the provided occurredAt when supplied", async () => {
+    mockDb.customer.findUnique.mockResolvedValue({ id: "cust-1" });
+    mockDb.contactLog.create.mockResolvedValue(sampleContactLog);
+
+    const specific = new Date("2026-04-01T10:00:00Z");
+    const caller = createCaller(authenticatedCtx());
+    await caller.crm.contactLogCreate({
+      customerId: "cust-1",
+      type: "meeting",
+      subject: "Quarterly review",
+      occurredAt: specific,
+    });
+
+    const call = mockDb.contactLog.create.mock.calls[0] as [
+      { data: { occurredAt: Date } },
+    ];
+    expect(call[0].data.occurredAt).toEqual(specific);
+  });
+
+  it("throws NOT_FOUND when customer is missing", async () => {
+    mockDb.customer.findUnique.mockResolvedValue(null);
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.contactLogCreate({
+        customerId: "missing",
+        type: "call",
+        subject: "X",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+describe("crm.contactLog.update", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("updates only provided fields", async () => {
+    mockDb.contactLog.findUnique.mockResolvedValue({ id: CONTACT_LOG_ID });
+    mockDb.contactLog.update.mockResolvedValue({
+      ...sampleContactLog,
+      subject: "Updated subject",
+    });
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.crm.contactLogUpdate({
+      id: CONTACT_LOG_ID,
+      subject: "Updated subject",
+    });
+
+    const call = mockDb.contactLog.update.mock.calls[0] as [
+      { data: Record<string, unknown> },
+    ];
+    expect(call[0].data).toMatchObject({ subject: "Updated subject" });
+    expect(call[0].data).not.toHaveProperty("type");
+    expect(call[0].data).not.toHaveProperty("body");
+  });
+
+  it("throws NOT_FOUND when log does not exist", async () => {
+    mockDb.contactLog.findUnique.mockResolvedValue(null);
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.contactLogUpdate({ id: "missing", subject: "X" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+describe("crm.contactLog.delete", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("deletes the log and returns its id", async () => {
+    mockDb.contactLog.findUnique.mockResolvedValue({ id: CONTACT_LOG_ID });
+    mockDb.contactLog.delete.mockResolvedValue(sampleContactLog);
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.crm.contactLogDelete({ id: CONTACT_LOG_ID });
+
+    expect(result).toEqual({ id: CONTACT_LOG_ID });
+    expect(mockDb.contactLog.delete).toHaveBeenCalledWith({
+      where: { id: CONTACT_LOG_ID },
+    });
+  });
+
+  it("throws NOT_FOUND when log does not exist", async () => {
+    mockDb.contactLog.findUnique.mockResolvedValue(null);
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.contactLogDelete({ id: "missing" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+describe("crm.contactLog demo tenant blocking", () => {
+  function demoCtx() {
+    return {
+      req: makeReq(),
+      userId: "user-1",
+      roles: ["Administrator"],
+      tenantSlug: "demo",
+      tenantId: "demo-tenant-id",
+      securityVersion: 1,
+      isDemoTenant: true,
+      session: null,
+    };
+  }
+
+  it("blocks contactLogCreate on demo tenant", async () => {
+    const caller = createCaller(demoCtx());
+    await expect(
+      caller.crm.contactLogCreate({
+        customerId: "cust-1",
+        type: "call",
+        subject: "Demo",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("blocks contactLogDelete on demo tenant", async () => {
+    const caller = createCaller(demoCtx());
+    await expect(
+      caller.crm.contactLogDelete({ id: CONTACT_LOG_ID }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

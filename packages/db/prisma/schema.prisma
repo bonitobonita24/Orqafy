@@ -256,6 +256,7 @@ model User {
   fundTransfers     FundTransfer[]     @relation("FundTransferCreatedBy")
   stockMovements    StockMovement[]    @relation("StockMovementCreatedBy")
   projectNotes      ProjectNote[]
+  contactLogs       ContactLog[]       @relation("ContactLogCreatedBy")
 
   @@map("users")
   @@schema("public")
@@ -353,6 +354,7 @@ model Customer {
   ecommerceOrders EcommerceOrder[]
   jobOrders       JobOrder[]
   documents       CustomerDocument[]
+  contactLogs     ContactLog[]
 
   @@map("customers")
   @@schema("public")
@@ -596,6 +598,26 @@ model QuotationRevision {
 
   @@index([quotationId])
   @@map("quotation_revisions")
+  @@schema("public")
+}
+
+model ContactLog {
+  id          String   @id @default(cuid())
+  customerId  String   @map("customer_id")
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdById String   @map("created_by_id")
+  createdBy   User     @relation("ContactLogCreatedBy", fields: [createdById], references: [id])
+  type        String   // call | email | meeting | note
+  subject     String
+  body        String?
+  occurredAt  DateTime @map("occurred_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([customerId])
+  @@index([createdById])
+  @@index([occurredAt])
+  @@map("contact_logs")
   @@schema("public")
 }
 
