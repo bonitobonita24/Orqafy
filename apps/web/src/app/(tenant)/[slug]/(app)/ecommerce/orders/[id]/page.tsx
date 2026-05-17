@@ -5,6 +5,7 @@ import { prisma } from "@orqafy/db";
 import { formatCurrency } from "@/lib/quotation-build";
 import { OrderStatusActions } from "./order-status-actions";
 import { FulfillmentForm } from "./fulfillment-form";
+import { PayWithXendit } from "./pay-with-xendit";
 
 export const metadata: Metadata = { title: "Order detail" };
 
@@ -189,6 +190,11 @@ export default async function EcommerceOrderDetailPage({ params }: PageProps) {
               <span className="text-muted-foreground">Method:</span> {order.paymentMethod}
             </p>
           ) : null}
+          <PayWithXendit
+            orderId={order.id}
+            paymentStatus={order.paymentStatus}
+            xenditPaymentId={order.xenditPaymentId}
+          />
           {billing.length > 0 ? (
             <div className="mt-3">
               <p className="text-xs text-muted-foreground">Billing address</p>
