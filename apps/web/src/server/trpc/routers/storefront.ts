@@ -1,0 +1,365 @@
+import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import type { Prisma } from "@prisma/client";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  writeProcedure,
+} from "../trpc";
+import { prisma as db } from "@orqafy/db";
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const ADMIN_ROLES = new Set(["Administrator", "Platform Owner"]);
+
+const STATUS_VALUES = [
+  "pending",
+  "confirmed",
+  "processing",
+  "shipped",
+  "delivered",
+  "cancelled",
+  "refunded",
+] as const;
+type OrderStatus = (typeof STATUS_VALUES)[number];
+
+const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  pending: ["confirmed", "cancelled"],
+  confirmed: ["processing", "cancelled"],
+  processing: ["shipped", "cancelled"],
+  shipped: ["delivered"],
+  delivered: ["refunded"],
+  cancelled: [],
+  refunded: [],
+};
+
+// ── Sequence helper ───────────────────────────────────────────────────────────
+
+async function generateOrderNumber(): Promise<string> {
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(-2);
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const prefix = `EC-${yy}${mm}-`;
+  const last = await db.ecommerceOrder.findFirst({
+    where: { orderNumber: { startsWith: prefix } },
+    orderBy: { orderNumber: "desc" },
+    select: { orderNumber: true },
+  });
+  const seq = last
+    ? parseInt(last.orderNumber.slice(prefix.length), 10) + 1
+    : 1;
+  return `${prefix}${String(seq).padStart(4, "0")}`;
+}
+
+// ── Zod schemas ───────────────────────────────────────────────────────────────
+
+const cuid = z.string().cuid();
+
+const orderItemInputSchema = z.object({
+  productId: cuid,
+  quantity: z.number().positive(),
+  unitPrice: z.number().nonnegative(),
+});
+
+const addressSchema = z
+  .object({
+    line1: z.string().optional(),
+    line2: z.string().optional(),
+    city: z.string().optional(),
+    province: z.string().optional(),
+    postalCode: z.string().optional(),
+    country: z.string().optional(),
+  })
+  .passthrough()
+  .optional();
+
+const placeOrderInputSchema = z.object({
+  customerId: cuid,
+  warehouseId: cuid,
+  items: z.array(orderItemInputSchema).min(1),
+  shippingAddress: addressSchema,
+  billingAddress: addressSchema,
+  paymentMethod: z.string().optional(),
+  notes: z.string().optional(),
+  taxAmount: z.number().nonnegative().default(0),
+  shippingAmount: z.number().nonnegative().default(0),
+  discountAmount: z.number().nonnegative().default(0),
+});
+
+function requireAdmin(roles: readonly string[]): void {
+  if (!roles.some((r) => ADMIN_ROLES.has(r))) {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+}
+
+// ── Router ────────────────────────────────────────────────────────────────────
+
+export const storefrontRouter = createTRPCRouter({
+  browseProducts: protectedProcedure
+    .input(
+      z
+        .object({
+          categoryId: cuid.optional(),
+          search: z.string().trim().min(1).optional(),
+          isActive: z.boolean().default(true),
+          skip: z.number().int().min(0).default(0),
+          take: z.number().int().min(1).max(100).default(20),
+        })
+        .default({}),
+    )
+    .query(async ({ input }) => {
+      const where: Record<string, unknown> = { isActive: input.isActive };
+      if (input.categoryId !== undefined) where.categoryId = input.categoryId;
+      if (input.search !== undefined) {
+        where.OR = [
+          { name: { contains: input.search, mode: "insensitive" } },
+          { sku: { contains: input.search, mode: "insensitive" } },
+        ];
+      }
+      const [items, total] = await Promise.all([
+        db.product.findMany({
+          where,
+          orderBy: { name: "asc" },
+          skip: input.skip,
+          take: input.take,
+        }),
+        db.product.count({ where }),
+      ]);
+      return { items, total };
+    }),
+
+  getProductById: protectedProcedure
+    .input(z.object({ id: cuid }))
+    .query(async ({ input }) => {
+      const product = await db.product.findUnique({ where: { id: input.id } });
+      if (product === null) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
+      }
+      return product;
+    }),
+
+  placeOrder: writeProcedure
+    .input(placeOrderInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const customer = await db.customer.findUnique({
+        where: { id: input.customerId },
+      });
+      if (customer === null || customer.isActive === false) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Customer not found or inactive",
+        });
+      }
+
+      const productIds = input.items.map((i) => i.productId);
+      const products = await db.product.findMany({
+        where: { id: { in: productIds }, isActive: true },
+        select: { id: true, name: true },
+      });
+      if (products.length !== productIds.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "One or more products not found or inactive",
+        });
+      }
+
+      const stocks = await db.warehouseStock.findMany({
+        where: {
+          warehouseId: input.warehouseId,
+          productId: { in: productIds },
+        },
+      });
+      const stockByProduct = new Map(
+        stocks.map((s) => [s.productId, Number(s.quantity) - Number(s.reservedQuantity ?? 0)]),
+      );
+      for (const item of input.items) {
+        const available = stockByProduct.get(item.productId) ?? 0;
+        if (available < item.quantity) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Insufficient stock for product ${item.productId}`,
+          });
+        }
+      }
+
+      const subtotal = input.items.reduce(
+        (sum, i) => sum + i.quantity * i.unitPrice,
+        0,
+      );
+      const totalAmount =
+        subtotal + input.taxAmount + input.shippingAmount - input.discountAmount;
+
+      const productNameById = new Map(products.map((p) => [p.id, p.name]));
+      const orderNumber = await generateOrderNumber();
+
+      const order = await db.$transaction(async (tx) => {
+        const created = await tx.ecommerceOrder.create({
+          data: {
+            orderNumber,
+            customerId: input.customerId,
+            status: "pending",
+            subtotal,
+            taxAmount: input.taxAmount,
+            shippingAmount: input.shippingAmount,
+            discountAmount: input.discountAmount,
+            totalAmount,
+            paymentMethod: input.paymentMethod ?? null,
+            paymentStatus: "pending",
+            ...(input.shippingAddress !== undefined && {
+              shippingAddress: input.shippingAddress as Prisma.InputJsonValue,
+            }),
+            ...(input.billingAddress !== undefined && {
+              billingAddress: input.billingAddress as Prisma.InputJsonValue,
+            }),
+            notes: input.notes ?? null,
+          },
+        });
+
+        for (const item of input.items) {
+          await tx.ecommerceOrderItem.create({
+            data: {
+              orderId: created.id,
+              productId: item.productId,
+              description: productNameById.get(item.productId) ?? "",
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              totalPrice: item.quantity * item.unitPrice,
+            },
+          });
+
+          await tx.warehouseStock.update({
+            where: {
+              warehouseId_productId: {
+                warehouseId: input.warehouseId,
+                productId: item.productId,
+              },
+            },
+            data: {
+              quantity: { decrement: item.quantity },
+            },
+          });
+
+          await tx.stockMovement.create({
+            data: {
+              productId: item.productId,
+              type: "out",
+              quantity: item.quantity,
+              fromWarehouseId: input.warehouseId,
+              referenceType: "EcommerceOrder",
+              referenceId: created.id,
+              notes: `Order ${orderNumber}`,
+              createdById: ctx.userId,
+            },
+          });
+        }
+
+        return created;
+      });
+
+      return order;
+    }),
+
+  getOrderById: protectedProcedure
+    .input(z.object({ id: cuid }))
+    .query(async ({ input }) => {
+      const order = await db.ecommerceOrder.findUnique({
+        where: { id: input.id },
+        include: {
+          items: { include: { product: { select: { id: true, name: true, sku: true } } } },
+          customer: { select: { id: true, firstName: true, lastName: true, email: true } },
+        },
+      });
+      if (order === null) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+      }
+      return order;
+    }),
+
+  listMyOrders: protectedProcedure
+    .input(
+      z.object({
+        customerId: cuid,
+        status: z.enum(STATUS_VALUES).optional(),
+        skip: z.number().int().min(0).default(0),
+        take: z.number().int().min(1).max(100).default(20),
+      }),
+    )
+    .query(async ({ input }) => {
+      const where: Record<string, unknown> = { customerId: input.customerId };
+      if (input.status !== undefined) where.status = input.status;
+      const [items, total] = await Promise.all([
+        db.ecommerceOrder.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip: input.skip,
+          take: input.take,
+        }),
+        db.ecommerceOrder.count({ where }),
+      ]);
+      return { items, total };
+    }),
+
+  listAllOrders: protectedProcedure
+    .input(
+      z
+        .object({
+          status: z.enum(STATUS_VALUES).optional(),
+          customerId: cuid.optional(),
+          skip: z.number().int().min(0).default(0),
+          take: z.number().int().min(1).max(100).default(20),
+        })
+        .default({}),
+    )
+    .query(async ({ ctx, input }) => {
+      requireAdmin(ctx.roles);
+      const where: Record<string, unknown> = {};
+      if (input.status !== undefined) where.status = input.status;
+      if (input.customerId !== undefined) where.customerId = input.customerId;
+      const [items, total] = await Promise.all([
+        db.ecommerceOrder.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip: input.skip,
+          take: input.take,
+          include: {
+            customer: { select: { id: true, firstName: true, lastName: true } },
+          },
+        }),
+        db.ecommerceOrder.count({ where }),
+      ]);
+      return { items, total };
+    }),
+
+  updateOrderStatus: writeProcedure
+    .input(
+      z.object({
+        id: cuid,
+        status: z.enum(STATUS_VALUES),
+        notes: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireAdmin(ctx.roles);
+      const current = await db.ecommerceOrder.findUnique({
+        where: { id: input.id },
+        select: { status: true },
+      });
+      if (current === null) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+      }
+      const allowed = STATUS_TRANSITIONS[current.status as OrderStatus] ?? [];
+      if (!allowed.includes(input.status)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Invalid transition: ${current.status} → ${input.status}`,
+        });
+      }
+      return db.ecommerceOrder.update({
+        where: { id: input.id },
+        data: {
+          status: input.status,
+          ...(input.notes !== undefined && { notes: input.notes }),
+        },
+      });
+    }),
+});
