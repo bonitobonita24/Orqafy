@@ -1,44 +1,47 @@
-# Next Session — Phase 8 Batch 15 (recommended)
+# Next Session — Phase 8 Batch 16 (recommended)
 
-Last close: Batch 14 (Direction A — E-commerce Phase 1). Both items shipped via proper
-feat/batch-14-item-K → squash-merge flow (233779c + dc6b480). Rule 23 maintained.
-Opus-direct executor pattern continues 13× consecutive.
+Last close: Batch 15 (Direction A — E-commerce Phase 2). All 3 items shipped via
+proper feat/batch-15-item-K → squash-merge flow (da79a88 + ed5c719 + e91931e).
+Rule 23 maintained. Opus-direct executor pattern continues 14× consecutive.
 
-Test baseline: 648/648 GREEN (was 622, +26 in storefront router). Web typecheck + lint
-clean. No new migrations (EcommerceOrder schema was already present from init migration —
-caught at pre-flight item 5).
+Test baseline: 651/651 GREEN (was 648, +3 cancel-release tests in storefront.test.ts).
+Web typecheck + lint clean. No new migrations.
 
-⚠ PRE-FLIGHT REQUIRED before any code (8-point — same as Batch 14):
+⚠ PRE-FLIGHT REQUIRED before any code (9-point — extended from Batch 15 lesson):
 1. Run `git status` + `git log -1` to confirm working tree state matches expectations.
-2. Confirm `pnpm vitest run` → 648/648 GREEN baseline (or document deviation if no source
-   drift since last GREEN, like Batch 14 did).
+2. Confirm `pnpm vitest run` → 651/651 GREEN baseline (or document deviation if no source
+   drift since last GREEN, like Batches 13/14/15 did).
 3. Read the input Zod schema of any router procedure that .whatsnext claims will be reused —
    this catches scope mismatches BEFORE the BUILD BATCH PROPOSAL stage (Batch 12 lesson).
 4. If a router change in scope newly READS a field from the existing record (e.g. a gate or
    conditional), verify all tests hitting that code path mock that field (Batch 13 lesson).
 5. Grep schema.prisma for any model referenced in the proposed scope; verify presence and
-   field types before scoping migrations. (Batch 14 paid for itself here — proposed
-   "new EcommerceOrder entity" was already in init migration.)
+   field types before scoping migrations. (Batch 14 paid for itself here — proposed "new
+   EcommerceOrder entity" was already in init migration.)
 6. Confirm package.json contains any third-party library called out in the proposed scope.
 7. Re-read .claude/rules/memory-governance.md §1 (Tiered Decomposition) for this batch's tier.
 8. ⚠ Emit explicit branch-creation line item in the BUILD BATCH PROPOSAL so user can catch
    silent direct-to-main slips at confirm time. Example:
-   "Branch feat/batch-15-item-1-{slug} will be created before any file write."
+   "Branch feat/batch-16-item-1-{slug} will be created before any file write."
+9. ⚠ NEW from Batch 15 — when proposal text says "Server Component consuming X.Y procedure"
+   for a PUBLIC route, grep the router for `X.Y: publicProcedure` vs `protectedProcedure`.
+   Mismatch means either (a) pivot to direct Prisma in the page, or (b) split the procedure
+   into public + protected variants. Item 3 of Batch 15 was caught at scope-pivot time;
+   adding this check moves the catch upstream to pre-flight.
 
-## Recommended Batch 15 — pick ONE primary direction:
+## Recommended Batch 16 — pick ONE primary direction:
 
-### Direction A — E-commerce Phase 2 (T2-T3 batch, ~30-50K)
-Builds on Batch 14 foundation. Strongest candidates (any 2-3 form a coherent batch):
-- Status-transition action buttons on order detail page (Client Component invoking
-  storefront.updateOrderStatus; permission check; toast on success/error).
-- Hold-release on cancellation (router: when updateOrderStatus transitions
-  pending|confirmed|processing → cancelled, write reversing StockMovement type="in"
-  to release reserved stock; +tests for the new branch).
-- Public storefront product browse page (`/[slug]/store/products` — Server Component
-  consuming storefront.browseProducts).
+### Direction A — E-commerce Phase 3 (T2-T3 batch, ~30-50K)
+Continues E-commerce buildout. Strongest candidates (any 2-3 form a coherent batch):
 - Xendit checkout integration (writeProcedure on storefront router that creates Xendit
-  invoice + webhook handler at /api/webhooks/xendit; defer if Xendit creds not in
-  CREDENTIALS.md).
+  invoice + webhook handler at /api/webhooks/xendit). PREREQ: fill the remaining ⏳ Xendit
+  row in CREDENTIALS.md and verify 4 XENDIT_* keys in .env.dev are real test keys.
+- Product detail page (`/[slug]/store/products/[id]` — Server Component with image gallery,
+  description, "place order" button — partial; full cart is later).
+- Fulfillment UI on admin order detail (Client Component to set trackingNumber +
+  paymentMethod; reuses storefront.updateOrderStatus for "shipped" transition).
+- Category filter facets on public storefront browse page (Server Component, additional
+  ?category= search param; query Category model for tabs).
 
 ### Direction B — Mobile WatermelonDB DTR Phase 1 (single-item T3+ batch, ~60-80K)
 Same as previous .whatsnext. Offline DTR sync for technicians; pair with backend sync
@@ -53,22 +56,36 @@ memory-governance.md).
 - Item 3 (optional): Quotation builder Phase 3 — column reordering UI + save/load named
   markup-column templates. T2 ~15-20K.
 
-## New recurring-pattern lessons surfaced during Batch 14 (apply at Batch 15 PRE-FLIGHT):
+## New recurring-pattern lessons surfaced during Batch 15 (apply at Batch 16 PRE-FLIGHT):
 
-- Prisma `Json?` field + `exactOptionalPropertyTypes: true`: literal `null` and `?? null`
-  are both rejected by `Prisma.InputJsonValue`. Pattern: conditional spread +
-  `import type { Prisma } from "@prisma/client"` + `as Prisma.InputJsonValue` cast.
-- Prisma nullable string fields (`string?`) in JSX conditionals trip
-  `@typescript-eslint/strict-boolean-expressions`. Pattern: explicit `field !== null`
-  (or `field !== null && field.length > 0` for empty-as-falsy semantics) — NOT truthy
-  shortcut `{field ? ... : null}`.
-- vercel-plugin skill hooks (next-forge, vercel-storage, nextjs, next-cache-components)
-  auto-fire on path/import patterns. Per Rule 28 priority order these never override
+- Public route + protected tRPC procedure = mismatch. New pre-flight item 9 (above)
+  catches this. When in doubt: direct Prisma in the Server Component with an explicit
+  visibility filter (e.g. `isActive=true AND ecommerceVisible=true` for products).
+
+- RED → GREEN with explicit vitest run between steps. Cost: one extra vitest run per
+  batch (~2s). Benefit: provable assertion-mismatch errors before implementation;
+  catches accidentally-already-passing tests (regression-guard role). Continue this
+  pattern in every batch with new tests.
+
+- Squash-merge requires `git branch -D`, not `-d`. The squash workflow doesn't update
+  the merge graph from the source branch's tip, so `-d` rejects the delete as "not
+  fully merged". Always use `-D` post-squash-merge — this is by design, not a force-
+  delete of unmerged work.
+
+- `Array.isArray` narrows to `any[]` under strict TS. Cast to `unknown[]` after the
+  guard before accessing elements: `if (Array.isArray(x)) { const arr = x as unknown[]; ... }`.
+
+- Native `<img>` is acceptable in a Server Component when next/image isn't already
+  configured for the route. Don't add bogus eslint-disable comments for rules not in
+  the project's lint config. Defer next/image migration until there's a perf reason.
+
+- vercel-plugin skill hooks (next-forge, next-cache-components, nextjs, react-best-practices)
+  auto-fire on file path / import patterns. Per Rule 28 priority order these never override
   CLAUDE.md conventions. Acknowledge once + continue — project locks self-hosted Postgres
   via Docker Compose + `dynamic = "force-dynamic"` Server Components across 10+ pages.
 
 ## Trigger
-Open Claude Code in this folder. Say "start Phase 8 Batch 15" — agent will read STATE.md
-first, run the 8-point pre-flight, then emit BUILD BATCH PROPOSAL with explicit
+Open Claude Code in this folder. Say "start Phase 8 Batch 16" — agent will read STATE.md
+first, run the 9-point pre-flight, then emit BUILD BATCH PROPOSAL with explicit
 branch-creation line items per Rule 23. Pick Direction A, B, or C at the proposal
 confirmation stage.
