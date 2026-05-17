@@ -30,6 +30,7 @@ vi.mock("@orqafy/db", () => ({
     },
     stockMovement: {
       create: vi.fn(),
+      findMany: vi.fn(),
     },
     customer: {
       findUnique: vi.fn(),
@@ -91,7 +92,7 @@ const mockDb = db as unknown as {
   };
   ecommerceOrderItem: { create: any };
   warehouseStock: { findFirst: any; findUnique: any; findMany: any; update: any };
-  stockMovement: { create: any };
+  stockMovement: { create: any; findMany: any };
   customer: { findUnique: any };
   $transaction: any;
 };
@@ -536,6 +537,113 @@ describe("storefront router", () => {
           status: "confirmed",
         }),
       ).rejects.toThrow(TRPCError);
+    });
+
+    // ─── Batch 15 Item 1: hold-release on cancellation ─────────────────────
+    it("releases held stock on pending → cancelled (reversing StockMovement + WarehouseStock increment per item)", async () => {
+      mockDb.ecommerceOrder.findUnique.mockResolvedValue({
+        id: ORDER_ID,
+        status: "pending",
+      });
+      mockDb.stockMovement.findMany.mockResolvedValue([
+        { productId: PRODUCT_A, fromWarehouseId: WAREHOUSE_ID, quantity: 2 },
+        { productId: PRODUCT_B, fromWarehouseId: WAREHOUSE_ID, quantity: 1 },
+      ]);
+      const stockUpdates: any[] = [];
+      const movementCreates: any[] = [];
+      mockDb.$transaction.mockImplementation(async (fn: any) => {
+        const tx = {
+          warehouseStock: {
+            update: vi.fn((args: any) => {
+              stockUpdates.push(args);
+              return Promise.resolve({});
+            }),
+          },
+          stockMovement: {
+            create: vi.fn((args: any) => {
+              movementCreates.push(args.data);
+              return Promise.resolve({});
+            }),
+          },
+          ecommerceOrder: {
+            update: vi.fn().mockResolvedValue({ id: ORDER_ID, status: "cancelled" }),
+          },
+        };
+        return fn(tx);
+      });
+
+      const caller = createCaller(authenticatedCtx());
+      const res = await caller.storefront.updateOrderStatus({
+        id: ORDER_ID,
+        status: "cancelled",
+      });
+
+      expect(res.status).toBe("cancelled");
+      expect(stockUpdates).toHaveLength(2);
+      const increments = stockUpdates.map((u) => u.data.quantity.increment);
+      expect(increments).toEqual(expect.arrayContaining([2, 1]));
+      expect(movementCreates).toHaveLength(2);
+      expect(movementCreates[0].type).toBe("in");
+      expect(movementCreates[0].referenceType).toBe("EcommerceOrder");
+      expect(movementCreates[0].referenceId).toBe(ORDER_ID);
+      expect(movementCreates[0].notes).toMatch(/released on cancellation/i);
+    });
+
+    it("does NOT release stock on pending → confirmed (non-cancel transition stays simple update)", async () => {
+      mockDb.ecommerceOrder.findUnique.mockResolvedValue({
+        id: ORDER_ID,
+        status: "pending",
+      });
+      mockDb.ecommerceOrder.update.mockResolvedValue({
+        id: ORDER_ID,
+        status: "confirmed",
+      });
+
+      const caller = createCaller(authenticatedCtx());
+      await caller.storefront.updateOrderStatus({
+        id: ORDER_ID,
+        status: "confirmed",
+      });
+
+      expect(mockDb.stockMovement.findMany).not.toHaveBeenCalled();
+      expect(mockDb.$transaction).not.toHaveBeenCalled();
+    });
+
+    it("releases held stock on confirmed → cancelled (proves disjunction in release gate)", async () => {
+      mockDb.ecommerceOrder.findUnique.mockResolvedValue({
+        id: ORDER_ID,
+        status: "confirmed",
+      });
+      mockDb.stockMovement.findMany.mockResolvedValue([
+        { productId: PRODUCT_A, fromWarehouseId: WAREHOUSE_ID, quantity: 5 },
+      ]);
+      const movementCreates: any[] = [];
+      mockDb.$transaction.mockImplementation(async (fn: any) => {
+        const tx = {
+          warehouseStock: { update: vi.fn().mockResolvedValue({}) },
+          stockMovement: {
+            create: vi.fn((args: any) => {
+              movementCreates.push(args.data);
+              return Promise.resolve({});
+            }),
+          },
+          ecommerceOrder: {
+            update: vi.fn().mockResolvedValue({ id: ORDER_ID, status: "cancelled" }),
+          },
+        };
+        return fn(tx);
+      });
+
+      const caller = createCaller(authenticatedCtx());
+      const res = await caller.storefront.updateOrderStatus({
+        id: ORDER_ID,
+        status: "cancelled",
+      });
+
+      expect(res.status).toBe("cancelled");
+      expect(movementCreates).toHaveLength(1);
+      expect(movementCreates[0].type).toBe("in");
+      expect(movementCreates[0].quantity).toBe(5);
     });
   });
 });

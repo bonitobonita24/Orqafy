@@ -354,12 +354,64 @@ export const storefrontRouter = createTRPCRouter({
           message: `Invalid transition: ${current.status} → ${input.status}`,
         });
       }
-      return db.ecommerceOrder.update({
-        where: { id: input.id },
-        data: {
-          status: input.status,
-          ...(input.notes !== undefined && { notes: input.notes }),
+
+      const isReleasingHold =
+        input.status === "cancelled" &&
+        (current.status === "pending" ||
+          current.status === "confirmed" ||
+          current.status === "processing");
+
+      if (!isReleasingHold) {
+        return db.ecommerceOrder.update({
+          where: { id: input.id },
+          data: {
+            status: input.status,
+            ...(input.notes !== undefined && { notes: input.notes }),
+          },
+        });
+      }
+
+      const outMovements = await db.stockMovement.findMany({
+        where: {
+          referenceType: "EcommerceOrder",
+          referenceId: input.id,
+          type: "out",
         },
+        select: { productId: true, fromWarehouseId: true, quantity: true },
+      });
+
+      return db.$transaction(async (tx) => {
+        for (const m of outMovements) {
+          if (m.fromWarehouseId === null) continue;
+          await tx.warehouseStock.update({
+            where: {
+              warehouseId_productId: {
+                warehouseId: m.fromWarehouseId,
+                productId: m.productId,
+              },
+            },
+            data: { quantity: { increment: m.quantity } },
+          });
+          await tx.stockMovement.create({
+            data: {
+              productId: m.productId,
+              type: "in",
+              quantity: m.quantity,
+              toWarehouseId: m.fromWarehouseId,
+              referenceType: "EcommerceOrder",
+              referenceId: input.id,
+              notes: "Stock released on cancellation",
+              createdById: ctx.userId,
+            },
+          });
+        }
+        return tx.ecommerceOrder.update({
+          where: { id: input.id },
+          data: {
+            status: input.status,
+            ...(input.notes !== undefined && { notes: input.notes }),
+          },
+        });
       });
     }),
 });
