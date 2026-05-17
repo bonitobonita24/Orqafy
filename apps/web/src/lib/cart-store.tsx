@@ -25,6 +25,7 @@ interface CartContextValue {
   itemCount: number;
   subtotal: number;
   hydrated: boolean;
+  tenantSlug: string;
   addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => void;
   removeItem: (productId: string) => void;
   setQuantity: (productId: string, quantity: number) => void;
@@ -120,12 +121,13 @@ export function CartProvider({
       itemCount: selectItemCount(state),
       subtotal: selectSubtotal(state),
       hydrated,
+      tenantSlug,
       addItem,
       removeItem,
       setQuantity,
       clear,
     }),
-    [state, hydrated, addItem, removeItem, setQuantity, clear],
+    [state, hydrated, tenantSlug, addItem, removeItem, setQuantity, clear],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

@@ -34,6 +34,17 @@ vi.mock("@orqafy/db", () => ({
     },
     customer: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      create: vi.fn(),
+    },
+    tenant: {
+      findUnique: vi.fn(),
+    },
+    warehouse: {
+      findFirst: vi.fn(),
+    },
+    user: {
+      findFirst: vi.fn(),
     },
     $transaction: vi.fn(),
   },
@@ -42,6 +53,7 @@ vi.mock("@orqafy/db", () => ({
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: {
     api: { check: vi.fn() },
+    public: { check: vi.fn() },
   },
 }));
 
@@ -103,7 +115,10 @@ const mockDb = db as unknown as {
   ecommerceOrderItem: { create: any };
   warehouseStock: { findFirst: any; findUnique: any; findMany: any; update: any };
   stockMovement: { create: any; findMany: any };
-  customer: { findUnique: any };
+  customer: { findUnique: any; findFirst: any; create: any };
+  tenant: { findUnique: any };
+  warehouse: { findFirst: any };
+  user: { findFirst: any };
   $transaction: any;
 };
 
@@ -443,6 +458,216 @@ describe("storefront router", () => {
       await expect(caller.storefront.placeOrder(validInput)).rejects.toThrow(
         TRPCError,
       );
+    });
+  });
+
+  // ─── placeOrderAsCustomer (guest publicProcedure) ────────────────────────
+  describe("placeOrderAsCustomer", () => {
+    const TENANT_ID = "ck1234567890123456789012b";
+    const NEW_CUSTOMER_ID = "ck1234567890123456789012h";
+    const TENANT_SLUG = "test-tenant";
+
+    const validGuestInput = {
+      tenantSlug: TENANT_SLUG,
+      items: [
+        { productId: PRODUCT_A, quantity: 2, unitPrice: 100 },
+        { productId: PRODUCT_B, quantity: 1, unitPrice: 50 },
+      ],
+      customer: {
+        firstName: "Bob",
+        lastName: "Smith",
+        email: "bob@example.com",
+        phone: "+639170000000",
+      },
+      shippingAddress: {
+        line1: "123 Main St",
+        city: "Manila",
+        province: "Metro Manila",
+        postalCode: "1000",
+        country: "PH",
+      },
+      paymentMethod: "cod" as const,
+    };
+
+    function mockGuestHappyPath() {
+      mockDb.tenant.findUnique.mockResolvedValue({
+        id: TENANT_ID,
+        slug: TENANT_SLUG,
+        isActive: true,
+      });
+      mockDb.warehouse.findFirst.mockResolvedValue({
+        id: WAREHOUSE_ID,
+        isDefault: true,
+        isActive: true,
+      });
+      mockDb.user.findFirst.mockResolvedValue({ id: "ck1234567890123456789012a" });
+      mockDb.customer.findFirst.mockResolvedValue(null);
+      mockDb.product.findMany.mockResolvedValue([
+        { id: PRODUCT_A, name: "A", isActive: true },
+        { id: PRODUCT_B, name: "B", isActive: true },
+      ]);
+      mockDb.warehouseStock.findMany.mockResolvedValue([
+        { productId: PRODUCT_A, warehouseId: WAREHOUSE_ID, quantity: 10, reservedQuantity: 0 },
+        { productId: PRODUCT_B, warehouseId: WAREHOUSE_ID, quantity: 10, reservedQuantity: 0 },
+      ]);
+      mockDb.ecommerceOrder.findFirst.mockResolvedValue(null);
+      mockDb.$transaction.mockImplementation(async (fn: any) => {
+        const tx = {
+          customer: {
+            create: vi.fn().mockResolvedValue({
+              id: NEW_CUSTOMER_ID,
+              firstName: "Bob",
+              lastName: "Smith",
+              email: "bob@example.com",
+            }),
+          },
+          ecommerceOrder: {
+            create: vi.fn().mockResolvedValue({
+              id: ORDER_ID,
+              orderNumber: "EC-2605-0001",
+              customerId: NEW_CUSTOMER_ID,
+              status: "pending",
+              subtotal: 250,
+              totalAmount: 250,
+            }),
+          },
+          ecommerceOrderItem: { create: vi.fn() },
+          warehouseStock: { update: vi.fn() },
+          stockMovement: { create: vi.fn() },
+        };
+        return fn(tx);
+      });
+    }
+
+    it("guest happy path: creates new customer + order, returns orderId+orderNumber", async () => {
+      mockGuestHappyPath();
+
+      const caller = createCaller(unauthenticatedCtx());
+      const res = await caller.storefront.placeOrderAsCustomer(validGuestInput);
+
+      expect(res.orderId).toBe(ORDER_ID);
+      expect(res.orderNumber).toBe("EC-2605-0001");
+    });
+
+    it("reuses existing customer when email match found", async () => {
+      mockGuestHappyPath();
+      const existingId = "ck1234567890123456789012i";
+      mockDb.customer.findFirst.mockResolvedValue({
+        id: existingId,
+        email: "bob@example.com",
+        isActive: true,
+      });
+      let createdOrderData: any = null;
+      let customerCreateCalls = 0;
+      mockDb.$transaction.mockImplementation(async (fn: any) => {
+        const tx = {
+          customer: {
+            create: vi.fn(() => {
+              customerCreateCalls += 1;
+              return Promise.resolve({ id: existingId });
+            }),
+          },
+          ecommerceOrder: {
+            create: vi.fn((args: any) => {
+              createdOrderData = args.data;
+              return Promise.resolve({
+                id: ORDER_ID,
+                orderNumber: "EC-2605-0001",
+                ...args.data,
+              });
+            }),
+          },
+          ecommerceOrderItem: { create: vi.fn() },
+          warehouseStock: { update: vi.fn() },
+          stockMovement: { create: vi.fn() },
+        };
+        return fn(tx);
+      });
+
+      const caller = createCaller(unauthenticatedCtx());
+      await caller.storefront.placeOrderAsCustomer(validGuestInput);
+
+      expect(customerCreateCalls).toBe(0);
+      expect(createdOrderData.customerId).toBe(existingId);
+    });
+
+    it("rejects empty items array", async () => {
+      mockGuestHappyPath();
+      const caller = createCaller(unauthenticatedCtx());
+      await expect(
+        caller.storefront.placeOrderAsCustomer({ ...validGuestInput, items: [] }),
+      ).rejects.toThrow();
+    });
+
+    it("rejects when productId not found", async () => {
+      mockGuestHappyPath();
+      mockDb.product.findMany.mockResolvedValue([
+        { id: PRODUCT_A, name: "A", isActive: true },
+        // PRODUCT_B missing
+      ]);
+
+      const caller = createCaller(unauthenticatedCtx());
+      await expect(
+        caller.storefront.placeOrderAsCustomer(validGuestInput),
+      ).rejects.toThrow(/not found/i);
+    });
+
+    it("rejects when stock insufficient", async () => {
+      mockGuestHappyPath();
+      mockDb.warehouseStock.findMany.mockResolvedValue([
+        { productId: PRODUCT_A, warehouseId: WAREHOUSE_ID, quantity: 1, reservedQuantity: 0 },
+        { productId: PRODUCT_B, warehouseId: WAREHOUSE_ID, quantity: 10, reservedQuantity: 0 },
+      ]);
+
+      const caller = createCaller(unauthenticatedCtx());
+      await expect(
+        caller.storefront.placeOrderAsCustomer(validGuestInput),
+      ).rejects.toThrow(/insufficient stock/i);
+    });
+
+    it("sanitizes script tags from customer firstName before storing", async () => {
+      mockGuestHappyPath();
+      let createdCustomerData: any = null;
+      mockDb.$transaction.mockImplementation(async (fn: any) => {
+        const tx = {
+          customer: {
+            create: vi.fn((args: any) => {
+              createdCustomerData = args.data;
+              return Promise.resolve({ id: NEW_CUSTOMER_ID });
+            }),
+          },
+          ecommerceOrder: {
+            create: vi.fn().mockResolvedValue({
+              id: ORDER_ID,
+              orderNumber: "EC-2605-0001",
+            }),
+          },
+          ecommerceOrderItem: { create: vi.fn() },
+          warehouseStock: { update: vi.fn() },
+          stockMovement: { create: vi.fn() },
+        };
+        return fn(tx);
+      });
+
+      const caller = createCaller(unauthenticatedCtx());
+      await caller.storefront.placeOrderAsCustomer({
+        ...validGuestInput,
+        customer: {
+          ...validGuestInput.customer,
+          firstName: '<script>alert("xss")</script>Bob',
+        },
+      });
+
+      expect(createdCustomerData.firstName).not.toContain("<script>");
+    });
+
+    it("rejects when tenantSlug does not resolve to an active tenant", async () => {
+      mockDb.tenant.findUnique.mockResolvedValue(null);
+
+      const caller = createCaller(unauthenticatedCtx());
+      await expect(
+        caller.storefront.placeOrderAsCustomer(validGuestInput),
+      ).rejects.toThrow(/tenant/i);
     });
   });
 

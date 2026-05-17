@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { ShoppingCart, Trash2 } from "lucide-react";
 
 import {
@@ -16,7 +17,7 @@ import { useCart } from "@/lib/cart-store";
 import { formatCurrency } from "@/lib/quotation-build";
 
 export function CartDrawer(): React.ReactNode {
-  const { state, itemCount, subtotal, removeItem, setQuantity, hydrated } =
+  const { state, itemCount, subtotal, removeItem, setQuantity, hydrated, tenantSlug } =
     useCart();
   const [open, setOpen] = useState(false);
 
@@ -121,14 +122,20 @@ export function CartDrawer(): React.ReactNode {
             <span className="text-muted-foreground">Subtotal</span>
             <span className="font-semibold">{formatCurrency(subtotal)}</span>
           </div>
-          <button
-            type="button"
-            disabled
-            title="Checkout ships in the next batch"
-            className="w-full cursor-not-allowed rounded-md border border-[#00d992]/40 bg-[#00d992]/5 px-4 py-3 text-sm font-medium text-[#00d992]/60"
+          <Link
+            href={`/${tenantSlug}/store/checkout`}
+            onClick={() => {
+              setOpen(false);
+            }}
+            aria-disabled={!hydrated || state.items.length === 0}
+            className={`w-full rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-4 py-3 text-center text-sm font-medium text-[#00d992] transition hover:bg-[#00d992]/20 ${
+              !hydrated || state.items.length === 0
+                ? "pointer-events-none opacity-50"
+                : ""
+            }`}
           >
-            Checkout (coming soon)
-          </button>
+            Checkout
+          </Link>
         </SheetFooter>
       </SheetContent>
     </Sheet>

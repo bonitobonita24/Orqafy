@@ -4,10 +4,13 @@ import type { Prisma } from "@prisma/client";
 import {
   createTRPCRouter,
   protectedProcedure,
+  publicProcedure,
   writeProcedure,
 } from "../trpc";
 import { prisma as db } from "@orqafy/db";
 import { getXenditClient } from "@/lib/xendit";
+import { sanitizePlainText } from "@/server/lib/sanitize";
+import { rateLimiters } from "@/server/lib/rate-limit";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -85,6 +88,23 @@ const placeOrderInputSchema = z.object({
   taxAmount: z.number().nonnegative().default(0),
   shippingAmount: z.number().nonnegative().default(0),
   discountAmount: z.number().nonnegative().default(0),
+});
+
+const guestCustomerSchema = z.object({
+  firstName: z.string().trim().min(1).max(100),
+  lastName: z.string().trim().min(1).max(100),
+  email: z.string().trim().email().max(200).optional(),
+  phone: z.string().trim().max(50).optional(),
+});
+
+const placeOrderAsCustomerInputSchema = z.object({
+  tenantSlug: z.string().trim().min(1).max(100),
+  items: z.array(orderItemInputSchema).min(1),
+  customer: guestCustomerSchema,
+  shippingAddress: addressSchema,
+  billingAddress: addressSchema,
+  paymentMethod: z.enum(["cod", "bank_transfer"]),
+  notes: z.string().max(2000).optional(),
 });
 
 function requireAdmin(roles: readonly string[]): void {
@@ -258,6 +278,185 @@ export const storefrontRouter = createTRPCRouter({
       });
 
       return order;
+    }),
+
+  // Guest checkout — first publicProcedure on storefront router (Batch 18 Item 2).
+  // Customers without accounts can place orders. Rate-limited via rateLimiters.public.
+  // No Xendit invoice creation in this batch — paymentStatus stays "pending" for manual settlement.
+  placeOrderAsCustomer: publicProcedure
+    .input(placeOrderAsCustomerInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const ipHeader = ctx.req.headers.get("x-forwarded-for") ?? ctx.req.headers.get("x-real-ip");
+      const ip = ipHeader ?? "unknown";
+      rateLimiters.public.check(ip);
+
+      const tenant = await db.tenant.findUnique({
+        where: { slug: input.tenantSlug },
+      });
+      if (tenant === null || tenant.isActive === false) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Tenant not found or inactive",
+        });
+      }
+
+      const warehouse = await db.warehouse.findFirst({
+        where: { isDefault: true, isActive: true },
+      });
+      if (warehouse === null) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "No default warehouse configured",
+        });
+      }
+
+      const productIds = input.items.map((i) => i.productId);
+      const products = await db.product.findMany({
+        where: { id: { in: productIds }, isActive: true },
+        select: { id: true, name: true },
+      });
+      if (products.length !== productIds.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "One or more products not found or inactive",
+        });
+      }
+
+      const stocks = await db.warehouseStock.findMany({
+        where: {
+          warehouseId: warehouse.id,
+          productId: { in: productIds },
+        },
+      });
+      const stockByProduct = new Map(
+        stocks.map((s) => [s.productId, Number(s.quantity) - Number(s.reservedQuantity ?? 0)]),
+      );
+      for (const item of input.items) {
+        const available = stockByProduct.get(item.productId) ?? 0;
+        if (available < item.quantity) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Insufficient stock for product ${item.productId}`,
+          });
+        }
+      }
+
+      // Resolve a system actor for StockMovement.createdById (required, non-nullable).
+      // Guest checkout has no ctx.userId — attribute stock movements to the first active user.
+      const systemActor = await db.user.findFirst({
+        where: { isActive: true },
+        select: { id: true },
+        orderBy: { createdAt: "asc" },
+      });
+      if (systemActor === null) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "No system actor available to record stock movement",
+        });
+      }
+
+      const subtotal = input.items.reduce(
+        (sum, i) => sum + i.quantity * i.unitPrice,
+        0,
+      );
+      const totalAmount = subtotal;
+
+      const firstName = sanitizePlainText(input.customer.firstName);
+      const lastName = sanitizePlainText(input.customer.lastName);
+      const sanitizedNotes =
+        input.notes !== undefined ? sanitizePlainText(input.notes) : null;
+
+      const existingCustomer =
+        input.customer.email !== undefined
+          ? await db.customer.findFirst({
+              where: { email: input.customer.email },
+            })
+          : null;
+
+      const productNameById = new Map(products.map((p) => [p.id, p.name]));
+      const orderNumber = await generateOrderNumber();
+
+      const result = await db.$transaction(async (tx) => {
+        let customerId: string;
+        if (existingCustomer !== null) {
+          customerId = existingCustomer.id;
+        } else {
+          const newCustomer = await tx.customer.create({
+            data: {
+              firstName,
+              lastName,
+              email: input.customer.email ?? null,
+              phone: input.customer.phone ?? null,
+              country: "PH",
+            },
+          });
+          customerId = newCustomer.id;
+        }
+
+        const created = await tx.ecommerceOrder.create({
+          data: {
+            orderNumber,
+            customerId,
+            status: "pending",
+            subtotal,
+            taxAmount: 0,
+            shippingAmount: 0,
+            discountAmount: 0,
+            totalAmount,
+            paymentMethod: input.paymentMethod,
+            paymentStatus: "pending",
+            ...(input.shippingAddress !== undefined && {
+              shippingAddress: input.shippingAddress as Prisma.InputJsonValue,
+            }),
+            ...(input.billingAddress !== undefined && {
+              billingAddress: input.billingAddress as Prisma.InputJsonValue,
+            }),
+            notes: sanitizedNotes,
+          },
+        });
+
+        for (const item of input.items) {
+          await tx.ecommerceOrderItem.create({
+            data: {
+              orderId: created.id,
+              productId: item.productId,
+              description: productNameById.get(item.productId) ?? "",
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              totalPrice: item.quantity * item.unitPrice,
+            },
+          });
+
+          await tx.warehouseStock.update({
+            where: {
+              warehouseId_productId: {
+                warehouseId: warehouse.id,
+                productId: item.productId,
+              },
+            },
+            data: {
+              quantity: { decrement: item.quantity },
+            },
+          });
+
+          await tx.stockMovement.create({
+            data: {
+              productId: item.productId,
+              type: "out",
+              quantity: item.quantity,
+              fromWarehouseId: warehouse.id,
+              referenceType: "EcommerceOrder",
+              referenceId: created.id,
+              notes: `Guest order ${orderNumber}`,
+              createdById: systemActor.id,
+            },
+          });
+        }
+
+        return created;
+      });
+
+      return { orderId: result.id, orderNumber: result.orderNumber };
     }),
 
   getOrderById: protectedProcedure
