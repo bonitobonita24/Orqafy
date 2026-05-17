@@ -7,6 +7,7 @@ import {
   writeProcedure,
 } from "../trpc";
 import { prisma as db } from "@orqafy/db";
+import { getXenditClient } from "@/lib/xendit";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -328,6 +329,53 @@ export const storefrontRouter = createTRPCRouter({
         db.ecommerceOrder.count({ where }),
       ]);
       return { items, total };
+    }),
+
+  createXenditInvoice: writeProcedure
+    .input(z.object({ orderId: cuid }))
+    .mutation(async ({ input }) => {
+      const order = await db.ecommerceOrder.findUnique({
+        where: { id: input.orderId },
+        include: {
+          customer: { select: { email: true } },
+        },
+      });
+      if (order === null) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+      }
+      if (order.paymentStatus !== "pending") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Order payment status is ${order.paymentStatus} — cannot create invoice`,
+        });
+      }
+      if (order.xenditPaymentId !== null) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invoice already exists for this order",
+        });
+      }
+
+      const xendit = getXenditClient();
+      const customerEmail = order.customer.email;
+      const invoice = await xendit.Invoice.createInvoice({
+        data: {
+          externalId: order.id,
+          amount: Number(order.totalAmount),
+          description: `Order ${order.orderNumber}`,
+          currency: "PHP",
+          ...(customerEmail !== null &&
+            customerEmail !== "" && { payerEmail: customerEmail }),
+        },
+      });
+
+      const invoiceId = invoice.id ?? null;
+      await db.ecommerceOrder.update({
+        where: { id: input.orderId },
+        data: { xenditPaymentId: invoiceId },
+      });
+
+      return { invoiceUrl: invoice.invoiceUrl, invoiceId };
     }),
 
   updateFulfillment: writeProcedure

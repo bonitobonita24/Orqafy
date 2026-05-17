@@ -45,6 +45,16 @@ vi.mock("@/server/lib/rate-limit", () => ({
   },
 }));
 
+const { mockCreateInvoice } = vi.hoisted(() => ({
+  mockCreateInvoice: vi.fn(),
+}));
+vi.mock("@/lib/xendit", () => ({
+  getXenditClient: (): unknown => ({
+    Invoice: { createInvoice: mockCreateInvoice },
+  }),
+  getXenditWebhookToken: (): string => "test-webhook-token",
+}));
+
 import type { NextRequest } from "next/server";
 function makeReq(): NextRequest {
   return {
@@ -644,6 +654,108 @@ describe("storefront router", () => {
       expect(movementCreates).toHaveLength(1);
       expect(movementCreates[0].type).toBe("in");
       expect(movementCreates[0].quantity).toBe(5);
+    });
+  });
+
+  // ─── createXenditInvoice (Batch 17 Item 1) ───────────────────────────────
+  describe("createXenditInvoice", () => {
+    it("creates Xendit invoice and persists invoice id on pending order", async () => {
+      mockDb.ecommerceOrder.findUnique.mockResolvedValue({
+        id: ORDER_ID,
+        orderNumber: "EC-2605-0001",
+        totalAmount: 1500,
+        paymentStatus: "pending",
+        xenditPaymentId: null,
+        customer: { email: "buyer@example.com" },
+      });
+      mockDb.ecommerceOrder.update.mockResolvedValue({});
+      mockCreateInvoice.mockResolvedValue({
+        id: "xendit-inv-001",
+        invoiceUrl: "https://checkout.xendit.co/web/xendit-inv-001",
+      });
+
+      const caller = createCaller(authenticatedCtx());
+      const res = await caller.storefront.createXenditInvoice({
+        orderId: ORDER_ID,
+      });
+
+      expect(res.invoiceUrl).toBe(
+        "https://checkout.xendit.co/web/xendit-inv-001",
+      );
+      expect(res.invoiceId).toBe("xendit-inv-001");
+
+      const createCall = (mockCreateInvoice.mock.calls[0] as any[])[0];
+      expect(createCall.data.externalId).toBe(ORDER_ID);
+      expect(createCall.data.amount).toBe(1500);
+      expect(createCall.data.currency).toBe("PHP");
+      expect(createCall.data.payerEmail).toBe("buyer@example.com");
+      expect(createCall.data.description).toBe("Order EC-2605-0001");
+
+      const updateCall = mockDb.ecommerceOrder.update.mock.calls[0][0];
+      expect(updateCall.where.id).toBe(ORDER_ID);
+      expect(updateCall.data.xenditPaymentId).toBe("xendit-inv-001");
+    });
+
+    it("omits payerEmail when customer has no email", async () => {
+      mockDb.ecommerceOrder.findUnique.mockResolvedValue({
+        id: ORDER_ID,
+        orderNumber: "EC-2605-0002",
+        totalAmount: 500,
+        paymentStatus: "pending",
+        xenditPaymentId: null,
+        customer: { email: null },
+      });
+      mockDb.ecommerceOrder.update.mockResolvedValue({});
+      mockCreateInvoice.mockResolvedValue({
+        id: "xendit-inv-002",
+        invoiceUrl: "https://checkout.xendit.co/web/xendit-inv-002",
+      });
+
+      const caller = createCaller(authenticatedCtx());
+      await caller.storefront.createXenditInvoice({ orderId: ORDER_ID });
+
+      const createCall = (mockCreateInvoice.mock.calls[0] as any[])[0];
+      expect(createCall.data.payerEmail).toBeUndefined();
+    });
+
+    it("rejects when order paymentStatus is not pending", async () => {
+      mockDb.ecommerceOrder.findUnique.mockResolvedValue({
+        id: ORDER_ID,
+        paymentStatus: "paid",
+        xenditPaymentId: null,
+        customer: { email: "buyer@example.com" },
+      });
+
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.storefront.createXenditInvoice({ orderId: ORDER_ID }),
+      ).rejects.toThrow(/cannot create invoice/i);
+      expect(mockCreateInvoice).not.toHaveBeenCalled();
+    });
+
+    it("rejects when order already has a Xendit invoice", async () => {
+      mockDb.ecommerceOrder.findUnique.mockResolvedValue({
+        id: ORDER_ID,
+        paymentStatus: "pending",
+        xenditPaymentId: "xendit-existing-001",
+        customer: { email: "buyer@example.com" },
+      });
+
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.storefront.createXenditInvoice({ orderId: ORDER_ID }),
+      ).rejects.toThrow(/already exists/i);
+      expect(mockCreateInvoice).not.toHaveBeenCalled();
+    });
+
+    it("throws NOT_FOUND when order does not exist", async () => {
+      mockDb.ecommerceOrder.findUnique.mockResolvedValue(null);
+
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.storefront.createXenditInvoice({ orderId: ORDER_ID }),
+      ).rejects.toThrow(/not found/i);
+      expect(mockCreateInvoice).not.toHaveBeenCalled();
     });
   });
 
