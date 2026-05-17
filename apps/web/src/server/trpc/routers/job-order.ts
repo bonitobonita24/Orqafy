@@ -17,6 +17,18 @@ const jobOrderStatuses = [
   "cancelled",
 ] as const;
 
+const lineItemEditableStatuses = new Set([
+  "received",
+  "diagnosing",
+  "in_progress",
+  "testing",
+]);
+
+const signatureCapturableStatuses = new Set(["testing", "completed"]);
+
+const SIGNATURE_DATA_URL_PREFIX = "data:image/png;base64,";
+const MAX_SIGNATURE_DATA_URL_LENGTH = 200_000;
+
 const jobOrderInput = z.object({
   customerId: z.string().cuid(),
   title: z.string().min(1).max(500),
@@ -84,7 +96,8 @@ export const jobOrderRouter = createTRPCRouter({
           customer: true,
           createdBy: { select: { firstName: true, lastName: true } },
           technician: { select: { firstName: true, lastName: true, displayName: true } },
-          parts: true,
+          parts: { orderBy: { createdAt: "asc" } },
+          serviceLines: { orderBy: { sortOrder: "asc" } },
         },
       });
       if (!item) throw new TRPCError({ code: "NOT_FOUND" });
@@ -183,6 +196,149 @@ export const jobOrderRouter = createTRPCRouter({
       return db.jobOrder.update({
         where: { id: input.id },
         data: { technicianId: input.technicianId },
+      });
+    }),
+
+  addPart: writeProcedure
+    .input(
+      z.object({
+        jobOrderId: z.string().cuid(),
+        productId: z.string().cuid().optional(),
+        description: z.string().min(1).max(500),
+        quantity: z.number().positive(),
+        unitPrice: z.number().min(0),
+        isFromInventory: z.boolean().default(false),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const jobOrder = await db.jobOrder.findUnique({ where: { id: input.jobOrderId } });
+      if (!jobOrder) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!lineItemEditableStatuses.has(jobOrder.status)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Cannot add parts when job order status is "${jobOrder.status}".`,
+        });
+      }
+      if (input.productId !== undefined) {
+        const product = await db.product.findUnique({ where: { id: input.productId } });
+        if (!product) throw new TRPCError({ code: "BAD_REQUEST", message: "Product not found." });
+      }
+      const totalPrice = input.quantity * input.unitPrice;
+      return db.jobOrderPart.create({
+        data: {
+          jobOrderId: input.jobOrderId,
+          description: sanitizePlainText(input.description),
+          quantity: input.quantity,
+          unitPrice: input.unitPrice,
+          totalPrice,
+          isFromInventory: input.isFromInventory,
+          ...(input.productId !== undefined ? { productId: input.productId } : {}),
+        },
+      });
+    }),
+
+  removePart: writeProcedure
+    .input(z.object({ id: z.string().cuid() }))
+    .mutation(async ({ input }) => {
+      const part = await db.jobOrderPart.findUnique({
+        where: { id: input.id },
+        include: { jobOrder: { select: { status: true } } },
+      });
+      if (!part) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!lineItemEditableStatuses.has(part.jobOrder.status)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Cannot remove parts when job order status is "${part.jobOrder.status}".`,
+        });
+      }
+      await db.jobOrderPart.delete({ where: { id: input.id } });
+      return { id: input.id };
+    }),
+
+  addServiceLine: writeProcedure
+    .input(
+      z.object({
+        jobOrderId: z.string().cuid(),
+        description: z.string().min(1).max(500),
+        hours: z.number().min(0).optional(),
+        rate: z.number().min(0).optional(),
+        amount: z.number().min(0),
+        sortOrder: z.number().int().min(0).default(0),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const jobOrder = await db.jobOrder.findUnique({ where: { id: input.jobOrderId } });
+      if (!jobOrder) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!lineItemEditableStatuses.has(jobOrder.status)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Cannot add service lines when job order status is "${jobOrder.status}".`,
+        });
+      }
+      return db.jobOrderServiceLine.create({
+        data: {
+          jobOrderId: input.jobOrderId,
+          description: sanitizePlainText(input.description),
+          amount: input.amount,
+          sortOrder: input.sortOrder,
+          ...(input.hours !== undefined ? { hours: input.hours } : {}),
+          ...(input.rate !== undefined ? { rate: input.rate } : {}),
+        },
+      });
+    }),
+
+  removeServiceLine: writeProcedure
+    .input(z.object({ id: z.string().cuid() }))
+    .mutation(async ({ input }) => {
+      const line = await db.jobOrderServiceLine.findUnique({
+        where: { id: input.id },
+        include: { jobOrder: { select: { status: true } } },
+      });
+      if (!line) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!lineItemEditableStatuses.has(line.jobOrder.status)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Cannot remove service lines when job order status is "${line.jobOrder.status}".`,
+        });
+      }
+      await db.jobOrderServiceLine.delete({ where: { id: input.id } });
+      return { id: input.id };
+    }),
+
+  recordSignature: writeProcedure
+    .input(
+      z.object({
+        id: z.string().cuid(),
+        role: z.enum(["customer", "technician"]),
+        dataUrl: z.string().min(1).max(MAX_SIGNATURE_DATA_URL_LENGTH),
+      })
+    )
+    .mutation(async ({ input }) => {
+      if (!input.dataUrl.startsWith(SIGNATURE_DATA_URL_PREFIX)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Signature must be a PNG data URL.",
+        });
+      }
+      const existing = await db.jobOrder.findUnique({ where: { id: input.id } });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!signatureCapturableStatuses.has(existing.status)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Cannot capture signature when job order status is "${existing.status}".`,
+        });
+      }
+      const field =
+        input.role === "customer" ? "customerSignatureUrl" : "technicianSignatureUrl";
+      const otherSignature =
+        input.role === "customer" ? existing.technicianSignatureUrl : existing.customerSignatureUrl;
+      const bothPresent = otherSignature !== null && otherSignature !== undefined;
+      return db.jobOrder.update({
+        where: { id: input.id },
+        data: {
+          [field]: input.dataUrl,
+          ...(bothPresent && existing.signedAt === null ? { signedAt: new Date() } : {}),
+        },
       });
     }),
 });

@@ -2060,6 +2060,7 @@ model JobOrder {
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   parts           JobOrderPart[]
+  serviceLines    JobOrderServiceLine[]
 
   @@map("job_orders")
   @@schema("public")
@@ -2081,6 +2082,23 @@ model JobOrderPart {
 
   @@index([jobOrderId])
   @@map("job_order_parts")
+  @@schema("public")
+}
+
+model JobOrderServiceLine {
+  id          String   @id @default(cuid())
+  jobOrderId  String   @map("job_order_id")
+  jobOrder    JobOrder @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
+  description String
+  hours       Decimal? @db.Decimal(8, 2)
+  rate        Decimal? @db.Decimal(12, 2)
+  amount      Decimal  @db.Decimal(12, 2)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([jobOrderId])
+  @@map("job_order_service_lines")
   @@schema("public")
 }
 

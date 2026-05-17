@@ -13,10 +13,23 @@ vi.mock("@orqafy/db", () => ({
       create: vi.fn(),
       update: vi.fn(),
     },
+    jobOrderPart: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      delete: vi.fn(),
+    },
+    jobOrderServiceLine: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      delete: vi.fn(),
+    },
     customer: {
       findUnique: vi.fn(),
     },
     user: {
+      findUnique: vi.fn(),
+    },
+    product: {
       findUnique: vi.fn(),
     },
   },
@@ -70,8 +83,11 @@ const createCaller = createCallerFactory(testRouter);
 import { prisma as db } from "@orqafy/db";
 const mockDb = db as unknown as {
   jobOrder: { findMany: any; findUnique: any; count: any; create: any; update: any };
+  jobOrderPart: { create: any; findUnique: any; delete: any };
+  jobOrderServiceLine: { create: any; findUnique: any; delete: any };
   customer: { findUnique: any };
   user: { findUnique: any };
+  product: { findUnique: any };
 };
 
 const JO_CUID = "ck1234567890123456789012a";
@@ -434,6 +450,217 @@ describe("jobOrder router", () => {
       await expect(
         caller.jobOrder.assignTechnician({ id: JO_CUID, technicianId: TECH_CUID })
       ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    });
+  });
+
+  describe("addPart", () => {
+    const PART_INPUT = {
+      jobOrderId: JO_CUID,
+      description: "  HDD replacement  ",
+      quantity: 2,
+      unitPrice: 1500,
+      isFromInventory: false,
+    };
+
+    it("creates a part with server-computed totalPrice", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "diagnosing" });
+      mockDb.jobOrderPart.create.mockResolvedValue({ id: "part-1" });
+      const caller = createCaller(authenticatedCtx());
+      const result = await caller.jobOrder.addPart(PART_INPUT);
+      expect(result).toEqual({ id: "part-1" });
+      expect(mockDb.jobOrderPart.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          jobOrderId: JO_CUID,
+          description: "HDD replacement",
+          quantity: 2,
+          unitPrice: 1500,
+          totalPrice: 3000,
+          isFromInventory: false,
+        }),
+      });
+    });
+
+    it("throws BAD_REQUEST when job order status disallows line-item edits", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "released" });
+      const caller = createCaller(authenticatedCtx());
+      await expect(caller.jobOrder.addPart(PART_INPUT)).rejects.toMatchObject({
+        code: "BAD_REQUEST",
+      });
+      expect(mockDb.jobOrderPart.create).not.toHaveBeenCalled();
+    });
+
+    it("throws NOT_FOUND when job order missing", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue(null);
+      const caller = createCaller(authenticatedCtx());
+      await expect(caller.jobOrder.addPart(PART_INPUT)).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
+    });
+
+    it("blocks part creation in a demo tenant", async () => {
+      const caller = createCaller(authenticatedCtx(["Administrator"], true));
+      await expect(caller.jobOrder.addPart(PART_INPUT)).rejects.toMatchObject({
+        code: "FORBIDDEN",
+      });
+    });
+  });
+
+  describe("removePart", () => {
+    const PART_ID = "ck1234567890123456789012d";
+
+    it("deletes a part when parent job order status allows", async () => {
+      mockDb.jobOrderPart.findUnique.mockResolvedValue({
+        id: PART_ID,
+        jobOrder: { status: "in_progress" },
+      });
+      mockDb.jobOrderPart.delete.mockResolvedValue({ id: PART_ID });
+      const caller = createCaller(authenticatedCtx());
+      const result = await caller.jobOrder.removePart({ id: PART_ID });
+      expect(result).toEqual({ id: PART_ID });
+      expect(mockDb.jobOrderPart.delete).toHaveBeenCalledWith({ where: { id: PART_ID } });
+    });
+
+    it("throws BAD_REQUEST when parent status disallows line-item edits", async () => {
+      mockDb.jobOrderPart.findUnique.mockResolvedValue({
+        id: PART_ID,
+        jobOrder: { status: "completed" },
+      });
+      const caller = createCaller(authenticatedCtx());
+      await expect(caller.jobOrder.removePart({ id: PART_ID })).rejects.toMatchObject({
+        code: "BAD_REQUEST",
+      });
+      expect(mockDb.jobOrderPart.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("addServiceLine", () => {
+    const SERVICE_INPUT = {
+      jobOrderId: JO_CUID,
+      description: "  Diagnostic labor  ",
+      hours: 1.5,
+      rate: 400,
+      amount: 600,
+      sortOrder: 0,
+    };
+
+    it("creates a service line with hours and rate", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "diagnosing" });
+      mockDb.jobOrderServiceLine.create.mockResolvedValue({ id: "svc-1" });
+      const caller = createCaller(authenticatedCtx());
+      const result = await caller.jobOrder.addServiceLine(SERVICE_INPUT);
+      expect(result).toEqual({ id: "svc-1" });
+      expect(mockDb.jobOrderServiceLine.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          jobOrderId: JO_CUID,
+          description: "Diagnostic labor",
+          hours: 1.5,
+          rate: 400,
+          amount: 600,
+          sortOrder: 0,
+        }),
+      });
+    });
+
+    it("throws BAD_REQUEST when status disallows line-item edits", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "cancelled" });
+      const caller = createCaller(authenticatedCtx());
+      await expect(caller.jobOrder.addServiceLine(SERVICE_INPUT)).rejects.toMatchObject({
+        code: "BAD_REQUEST",
+      });
+      expect(mockDb.jobOrderServiceLine.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("removeServiceLine", () => {
+    const SVC_ID = "ck1234567890123456789012e";
+
+    it("deletes a service line when parent status allows and returns the id", async () => {
+      mockDb.jobOrderServiceLine.findUnique.mockResolvedValue({
+        id: SVC_ID,
+        jobOrder: { status: "testing" },
+      });
+      mockDb.jobOrderServiceLine.delete.mockResolvedValue({ id: SVC_ID });
+      const caller = createCaller(authenticatedCtx());
+      const result = await caller.jobOrder.removeServiceLine({ id: SVC_ID });
+      expect(result).toEqual({ id: SVC_ID });
+      expect(mockDb.jobOrderServiceLine.delete).toHaveBeenCalledWith({
+        where: { id: SVC_ID },
+      });
+    });
+  });
+
+  describe("recordSignature", () => {
+    const PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==";
+
+    it("records a customer signature and leaves signedAt unset when technician signature missing", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({
+        id: JO_CUID,
+        status: "testing",
+        customerSignatureUrl: null,
+        technicianSignatureUrl: null,
+        signedAt: null,
+      });
+      mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID });
+      const caller = createCaller(authenticatedCtx());
+      await caller.jobOrder.recordSignature({
+        id: JO_CUID,
+        role: "customer",
+        dataUrl: PNG_DATA_URL,
+      });
+      const updateCall = mockDb.jobOrder.update.mock.calls[0][0];
+      expect(updateCall.data.customerSignatureUrl).toBe(PNG_DATA_URL);
+      expect(updateCall.data.signedAt).toBeUndefined();
+    });
+
+    it("sets signedAt to a Date when the other signature is already present", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({
+        id: JO_CUID,
+        status: "completed",
+        customerSignatureUrl: PNG_DATA_URL,
+        technicianSignatureUrl: null,
+        signedAt: null,
+      });
+      mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID });
+      const caller = createCaller(authenticatedCtx());
+      await caller.jobOrder.recordSignature({
+        id: JO_CUID,
+        role: "technician",
+        dataUrl: PNG_DATA_URL,
+      });
+      const updateCall = mockDb.jobOrder.update.mock.calls[0][0];
+      expect(updateCall.data.technicianSignatureUrl).toBe(PNG_DATA_URL);
+      expect(updateCall.data.signedAt).toBeInstanceOf(Date);
+    });
+
+    it("throws BAD_REQUEST when dataUrl is not a PNG data URL", async () => {
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.jobOrder.recordSignature({
+          id: JO_CUID,
+          role: "customer",
+          dataUrl: "data:image/jpeg;base64,xxx",
+        })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(mockDb.jobOrder.update).not.toHaveBeenCalled();
+    });
+
+    it("throws BAD_REQUEST when status is not testing or completed", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({
+        id: JO_CUID,
+        status: "diagnosing",
+        customerSignatureUrl: null,
+        technicianSignatureUrl: null,
+        signedAt: null,
+      });
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.jobOrder.recordSignature({
+          id: JO_CUID,
+          role: "technician",
+          dataUrl: PNG_DATA_URL,
+        })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(mockDb.jobOrder.update).not.toHaveBeenCalled();
     });
   });
 });
