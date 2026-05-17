@@ -1,91 +1,107 @@
-# Next Session — Phase 8 Batch 16 (recommended)
+# Next Session — Phase 8 Batch 17 (recommended)
 
-Last close: Batch 15 (Direction A — E-commerce Phase 2). All 3 items shipped via
-proper feat/batch-15-item-K → squash-merge flow (da79a88 + ed5c719 + e91931e).
-Rule 23 maintained. Opus-direct executor pattern continues 14× consecutive.
+Last close: Batch 16 (Direction A-light — E-commerce Phase 3-light). All 3 items shipped via
+proper feat/batch-16-item-K → squash-merge flow (9f5dda9 + a80c9e8 + b1a74ae).
+Rule 23 maintained. Opus-direct executor pattern continues 15× consecutive.
 
-Test baseline: 651/651 GREEN (was 648, +3 cancel-release tests in storefront.test.ts).
+Test baseline: 656/656 GREEN (was 651, +5 updateFulfillment tests in storefront.test.ts).
 Web typecheck + lint clean. No new migrations.
 
-⚠ PRE-FLIGHT REQUIRED before any code (9-point — extended from Batch 15 lesson):
+⚠ PRE-FLIGHT REQUIRED before any code (9-point — extended Batch 15→16 lesson preserved):
 1. Run `git status` + `git log -1` to confirm working tree state matches expectations.
-2. Confirm `pnpm vitest run` → 651/651 GREEN baseline (or document deviation if no source
-   drift since last GREEN, like Batches 13/14/15 did).
+2. Confirm `pnpm vitest run` → 656/656 GREEN baseline (or document deviation if no source
+   drift since last GREEN, like Batches 13/14/15/16 did).
 3. Read the input Zod schema of any router procedure that .whatsnext claims will be reused —
    this catches scope mismatches BEFORE the BUILD BATCH PROPOSAL stage (Batch 12 lesson).
 4. If a router change in scope newly READS a field from the existing record (e.g. a gate or
    conditional), verify all tests hitting that code path mock that field (Batch 13 lesson).
 5. Grep schema.prisma for any model referenced in the proposed scope; verify presence and
-   field types before scoping migrations. (Batch 14 paid for itself here — proposed "new
-   EcommerceOrder entity" was already in init migration.)
+   field types before scoping migrations. (Batch 14+15+16 each paid for itself here — every
+   "new entity" turned out to already be in the init migration.)
 6. Confirm package.json contains any third-party library called out in the proposed scope.
+   ⚠ Specifically for Xendit: `grep -E "xendit|stripe" apps/web/package.json` — NOT present
+   as of Batch 16 close. Any checkout work must install `xendit-node` as Item 0.
 7. Re-read .claude/rules/memory-governance.md §1 (Tiered Decomposition) for this batch's tier.
 8. ⚠ Emit explicit branch-creation line item in the BUILD BATCH PROPOSAL so user can catch
    silent direct-to-main slips at confirm time. Example:
-   "Branch feat/batch-16-item-1-{slug} will be created before any file write."
-9. ⚠ NEW from Batch 15 — when proposal text says "Server Component consuming X.Y procedure"
-   for a PUBLIC route, grep the router for `X.Y: publicProcedure` vs `protectedProcedure`.
-   Mismatch means either (a) pivot to direct Prisma in the page, or (b) split the procedure
-   into public + protected variants. Item 3 of Batch 15 was caught at scope-pivot time;
-   adding this check moves the catch upstream to pre-flight.
+   "Branch feat/batch-17-item-1-{slug} will be created before any file write."
+9. ⚠ When proposal text says "Server Component consuming X.Y procedure" for a PUBLIC route,
+   grep the router for `X.Y: publicProcedure` vs `protectedProcedure`. Mismatch means either
+   (a) pivot to direct Prisma in the page, or (b) split the procedure into public + protected
+   variants. Pre-flight item 9 paid off in Batch 16 — zero pivots during execution because
+   the check ran at scope time.
 
-## Recommended Batch 16 — pick ONE primary direction:
+⚠ PATH CORRECTIONS (apply when grepping for storefront router state):
+- Storefront router lives at `apps/web/src/server/trpc/routers/storefront.ts` (NOT `routers/`).
+- Storefront router tests live at `apps/web/src/__tests__/storefront.test.ts`.
+- Accounting router lives at `apps/web/src/server/trpc/routers/accounting.ts`.
 
-### Direction A — E-commerce Phase 3 (T2-T3 batch, ~30-50K)
-Continues E-commerce buildout. Strongest candidates (any 2-3 form a coherent batch):
-- Xendit checkout integration (writeProcedure on storefront router that creates Xendit
-  invoice + webhook handler at /api/webhooks/xendit). PREREQ: fill the remaining ⏳ Xendit
-  row in CREDENTIALS.md and verify 4 XENDIT_* keys in .env.dev are real test keys.
-- Product detail page (`/[slug]/store/products/[id]` — Server Component with image gallery,
-  description, "place order" button — partial; full cart is later).
-- Fulfillment UI on admin order detail (Client Component to set trackingNumber +
-  paymentMethod; reuses storefront.updateOrderStatus for "shipped" transition).
-- Category filter facets on public storefront browse page (Server Component, additional
-  ?category= search param; query Category model for tabs).
+## Recommended Batch 17 — pick ONE primary direction:
 
-### Direction B — Mobile WatermelonDB DTR Phase 1 (single-item T3+ batch, ~60-80K)
-Same as previous .whatsnext. Offline DTR sync for technicians; pair with backend sync
-endpoints. May overflow single session — consider Architect-Execute split (§4
-memory-governance.md).
+### Direction A — E-commerce Phase 3-heavy (Xendit checkout, T3 batch, ~50-70K)
+The remaining major E-commerce gap. Requires Architect-Execute split (§4 memory-governance.md)
+since a single Opus session would hit context pressure. Recommended task decomposition:
+- Item 0 (Opus, ~5K): Add `xendit-node` to apps/web/package.json + `pnpm install --frozen-lockfile=false`.
+  Create `apps/web/src/lib/xendit.ts` thin client wrapper reading XENDIT_SECRET_KEY from env.
+- Item 1 (Sonnet ~20K): `storefront.createXenditInvoice` protected writeProcedure — input
+  orderId; verify order is pending, create Xendit invoice, persist invoiceId to
+  `EcommerceOrder.xenditPaymentId`, return invoice_url for redirect. Tests for happy path +
+  duplicate-invoice-rejection + invalid order status.
+- Item 2 (Sonnet ~25K): Webhook handler at `apps/web/src/app/api/webhooks/xendit/route.ts` —
+  x-callback-token verification (constant-time compare per security.md), idempotency via
+  `xenditPaymentId` lookup, update `paymentStatus` from webhook event type, return 200 even
+  on duplicate (idempotency contract). Tests for token mismatch (401), missing token (401),
+  invalid payload (400), duplicate webhook (200 idempotent), happy path (200 + DB updated).
+- Item 3 (Opus ~10K): "Pay with Xendit" Client Component button on order detail page that
+  calls createXenditInvoice mutation + window.location to returned invoice_url.
 
-### Direction C — Small carry-forward bundle (2-3 items, ~20-30K combined)
-- Item 1: Reverse JE accounting hardening — wrap accounting.reverse in db.$transaction;
-  add 3-4 tests for partial-failure rollback. T1 ~5-10K.
-- Item 2: AUTH_TRUST_HOST=true defaults in .env.staging / .env.prod templates +
-  scripts/sync-credentials-to-env.sh update. T1 ~5K, config-only.
-- Item 3 (optional): Quotation builder Phase 3 — column reordering UI + save/load named
-  markup-column templates. T2 ~15-20K.
+### Direction B — Storefront cart + checkout flow (no payment yet, T2-T3, ~30-50K)
+Layer cart state on top of public storefront before adding payment. Two items:
+- Item 1 (T2): Cart Client Component with localStorage persistence on product detail page
+  "Add to cart" button. Cart drawer triggered from store layout. No tRPC yet — pure client state.
+- Item 2 (T2): Checkout page `/store/checkout` Server Component shell + Client Component form
+  reading cart from localStorage, posting to `storefront.placeOrder` (already shipped in Batch 14).
+  Customer self-resolution via session OR guest checkout via emailed login.
 
-## New recurring-pattern lessons surfaced during Batch 15 (apply at Batch 16 PRE-FLIGHT):
+### Direction C — Mobile WatermelonDB DTR Phase 1a (Expo scaffold only, T2-T3, ~40-60K)
+Pre-work for Direction B mobile. Single batch goal: minimal Expo app that boots, has nav
++ auth + theme + connects to existing tRPC. WatermelonDB defers to Phase 1b in Batch 18+.
+- Item 1: `apps/mobile/` Expo scaffold + app.json + tsconfig + minimal Login screen calling
+  `/api/trpc/auth.signIn`. Drawer/tab nav stub. Theme matching shadcn/ui dark variant.
 
-- Public route + protected tRPC procedure = mismatch. New pre-flight item 9 (above)
-  catches this. When in doubt: direct Prisma in the Server Component with an explicit
-  visibility filter (e.g. `isActive=true AND ecommerceVisible=true` for products).
+### Direction D — Small carry-forward bundle (Tier 1-2, ~15-25K combined, SAFE)
+- Item 1: Wrap `accounting.reverse` in `db.$transaction` + 3-4 partial-failure rollback tests.
+  Branch: `fix/batch-17-item-1-accounting-reverse-tx`. Pre-flight: confirm procedure name +
+  path — grep returned no match in Batch 16 pre-flight, so re-verify in apps/web/src/server/trpc/routers/accounting.ts.
+- Item 2: Add `AUTH_TRUST_HOST=true` to `.env.staging`, `.env.prod`, `scripts/sync-credentials-to-env.sh`.
+  Branch: `chore/batch-17-item-2-auth-trust-host`. Pre-flight: confirmed missing in Batch 16.
+- Item 3 (optional): Quotation builder Phase 3 column reorder + named template save/load.
+  T2 ~15-20K solo. Branch: `feat/batch-17-item-3-quotation-column-templates`.
 
-- RED → GREEN with explicit vitest run between steps. Cost: one extra vitest run per
-  batch (~2s). Benefit: provable assertion-mismatch errors before implementation;
-  catches accidentally-already-passing tests (regression-guard role). Continue this
-  pattern in every batch with new tests.
+## New recurring-pattern lessons surfaced during Batch 16 (apply at Batch 17 PRE-FLIGHT):
 
-- Squash-merge requires `git branch -D`, not `-d`. The squash workflow doesn't update
-  the merge graph from the source branch's tip, so `-d` rejects the delete as "not
-  fully merged". Always use `-D` post-squash-merge — this is by design, not a force-
-  delete of unmerged work.
+- Partial-update Zod procedure pattern works cleanly: conditional spread in `.data` only
+  writes fields the client explicitly set. Pair with Client Component dirty tracking that
+  only sends changed fields. Applies to any "small admin edit form on existing record"
+  (e.g. Direction D Item 3 quotation column templates if picked).
 
-- `Array.isArray` narrows to `any[]` under strict TS. Cast to `unknown[]` after the
-  guard before accessing elements: `if (Array.isArray(x)) { const arr = x as unknown[]; ... }`.
+- Nested-relation Prisma filter when no back-relation anchor: `where: { products: { some: { ... } } }`
+  is cleaner than fetching all parents + filtering client-side. Avoids N+1 count queries.
+  Also `where: { category: { slug: input } }` skips a slug→id→categoryId roundtrip.
 
-- Native `<img>` is acceptable in a Server Component when next/image isn't already
-  configured for the route. Don't add bogus eslint-disable comments for rules not in
-  the project's lint config. Defer next/image migration until there's a perf reason.
+- Pre-flight item 9 (public-route × procedure-auth) is a KEEPER. Paid off again in Batch 16
+  with zero execution pivots. Make it permanent in pre-flight going forward.
 
-- vercel-plugin skill hooks (next-forge, next-cache-components, nextjs, react-best-practices)
-  auto-fire on file path / import patterns. Per Rule 28 priority order these never override
-  CLAUDE.md conventions. Acknowledge once + continue — project locks self-hosted Postgres
-  via Docker Compose + `dynamic = "force-dynamic"` Server Components across 10+ pages.
+- 656 tests in 20 files still run in <3s total. No need to scope to single-file vitest during
+  item development — full-suite regression after each item is fast and catches cross-router
+  fallout (none this batch, but cheap insurance).
+
+- Path drift hazard: .whatsnext occasionally references stale paths (e.g.
+  `apps/web/src/server/routers/` instead of `apps/web/src/server/trpc/routers/`). Always
+  verify path exists via `ls` or `find` before quoting in pre-flight grep commands.
 
 ## Trigger
-Open Claude Code in this folder. Say "start Phase 8 Batch 16" — agent will read STATE.md
+Open Claude Code in this folder. Say "start Phase 8 Batch 17" — agent will read STATE.md
 first, run the 9-point pre-flight, then emit BUILD BATCH PROPOSAL with explicit
-branch-creation line items per Rule 23. Pick Direction A, B, or C at the proposal
+branch-creation line items per Rule 23. Pick Direction A, B, C, or D at the proposal
 confirmation stage.
