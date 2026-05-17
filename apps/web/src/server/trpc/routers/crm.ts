@@ -715,6 +715,133 @@ export const crmRouter = createTRPCRouter({
       });
     }),
 
+  quotationConvertToInvoice: writeProcedure
+    .input(
+      z.object({
+        id: z.string().min(1),
+        markupColumnId: z.string().min(1).optional(),
+        dueDate: z.date().optional(),
+        notes: z.string().max(1000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.userId === null) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
+      const existing = await db.quotation.findUnique({
+        where: { id: input.id },
+        include: {
+          markupColumns: { orderBy: { sortOrder: "asc" } },
+          sections: {
+            orderBy: { sortOrder: "asc" },
+            include: {
+              lineItems: {
+                orderBy: { sortOrder: "asc" },
+                include: { markups: true },
+              },
+            },
+          },
+        },
+      });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      if (existing.status !== "accepted") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Only accepted quotations can be converted (current status: ${existing.status}).`,
+        });
+      }
+      if (existing.convertedToInvoiceId !== null) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This quotation has already been converted to an invoice.",
+        });
+      }
+      if (existing.markupColumns.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Quotation has no markup columns to derive prices from.",
+        });
+      }
+
+      const selectedColumn =
+        input.markupColumnId !== undefined
+          ? existing.markupColumns.find((c) => c.id === input.markupColumnId)
+          : existing.markupColumns[0];
+      if (!selectedColumn) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Selected markup column not found on quotation.",
+        });
+      }
+
+      const invoiceLineItems: Array<{
+        description: string;
+        quantity: number;
+        unitPrice: number;
+      }> = [];
+      let subtotal = 0;
+      for (const section of existing.sections) {
+        for (const li of section.lineItems) {
+          const markup = li.markups.find(
+            (m) => m.markupColumnId === selectedColumn.id,
+          );
+          const unitPrice =
+            markup !== undefined ? Number(markup.markedUpPrice) : 0;
+          const qty = Number(li.quantity);
+          subtotal += qty * unitPrice;
+          invoiceLineItems.push({
+            description: li.description,
+            quantity: qty,
+            unitPrice,
+          });
+        }
+      }
+
+      const origSubtotal = Number(existing.subtotal);
+      const origTax = Number(existing.taxAmount);
+      const taxRate = origSubtotal > 0 ? origTax / origSubtotal : 0;
+      const taxAmount = subtotal * taxRate;
+      const totalAmount = subtotal + taxAmount;
+
+      const invoiceNumber = `INV-${Date.now()}`;
+      const dueDate =
+        input.dueDate ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      const userId = ctx.userId;
+
+      return db.$transaction(async (tx) => {
+        const invoice = await tx.invoice.create({
+          data: {
+            invoiceNumber,
+            customerId: existing.customerId,
+            createdById: userId,
+            quotationId: existing.id,
+            status: "draft",
+            subtotal,
+            taxAmount,
+            totalAmount,
+            balance: totalAmount,
+            amountPaid: 0,
+            currency: existing.currency,
+            dueDate,
+            lineItems: invoiceLineItems,
+            ...(input.notes !== undefined && { notes: input.notes }),
+            ...(existing.termsAndConditions !== null && {
+              termsAndConditions: existing.termsAndConditions,
+            }),
+          },
+          select: { id: true, invoiceNumber: true },
+        });
+        await tx.quotation.update({
+          where: { id: existing.id },
+          data: {
+            status: "converted",
+            convertedToInvoiceId: invoice.id,
+          },
+        });
+        return invoice;
+      });
+    }),
+
   // ── ContactLog ────────────────────────────────────────────────────────────
 
   contactLogList: protectedProcedure

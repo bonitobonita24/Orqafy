@@ -64,6 +64,9 @@ vi.mock("@orqafy/db", () => ({
       delete: vi.fn(),
       count: vi.fn(),
     },
+    invoice: {
+      create: vi.fn(),
+    },
     $transaction: vi.fn(),
   },
 }));
@@ -144,6 +147,9 @@ const mockDb = db as unknown as {
     update: ReturnType<typeof vi.fn>;
     delete: ReturnType<typeof vi.fn>;
     count: ReturnType<typeof vi.fn>;
+  };
+  invoice: {
+    create: ReturnType<typeof vi.fn>;
   };
   $transaction: ReturnType<typeof vi.fn>;
 };
@@ -1333,6 +1339,228 @@ describe("crm.contactLog demo tenant blocking", () => {
     const caller = createCaller(demoCtx());
     await expect(
       caller.crm.contactLogDelete({ id: CONTACT_LOG_ID }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 20. crm.quotationConvertToInvoice
+// ---------------------------------------------------------------------------
+describe("crm.quotationConvertToInvoice", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  function acceptedQuotationFixture(overrides: Record<string, unknown> = {}) {
+    return {
+      id: QUOTATION_ID,
+      status: "accepted",
+      convertedToInvoiceId: null,
+      customerId: "cust-1",
+      currency: "PHP",
+      subtotal: 1000,
+      taxAmount: 120,
+      totalAmount: 1120,
+      termsAndConditions: "Net 30",
+      markupColumns: [
+        { id: "col-1", sortOrder: 0, name: "Tier 1", tier: "tier1" },
+      ],
+      sections: [
+        {
+          id: "sec-1",
+          sortOrder: 0,
+          lineItems: [
+            {
+              id: "li-1",
+              description: "Widget A",
+              quantity: 2,
+              baseCost: 100,
+              sortOrder: 0,
+              markups: [
+                { markupColumnId: "col-1", markedUpPrice: 150 },
+              ],
+            },
+            {
+              id: "li-2",
+              description: "Widget B",
+              quantity: 1,
+              baseCost: 200,
+              sortOrder: 1,
+              markups: [
+                { markupColumnId: "col-1", markedUpPrice: 300 },
+              ],
+            },
+          ],
+        },
+      ],
+      ...overrides,
+    };
+  }
+
+  it("creates invoice from accepted quotation and flips status to converted", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue(acceptedQuotationFixture());
+    mockDb.$transaction.mockImplementation(
+      async (fn: (tx: typeof mockDb) => Promise<unknown>) => fn(mockDb),
+    );
+    mockDb.invoice.create.mockResolvedValue({
+      id: "inv-new",
+      invoiceNumber: "INV-1700000000000",
+    });
+    mockDb.quotation.update.mockResolvedValue({});
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.crm.quotationConvertToInvoice({
+      id: QUOTATION_ID,
+    });
+
+    expect(result).toMatchObject({ id: "inv-new" });
+
+    // subtotal = 2*150 + 1*300 = 600
+    // taxRate = 120/1000 = 0.12 → taxAmount = 600*0.12 = 72
+    // total = 672
+    const invoiceCall = mockDb.invoice.create.mock.calls[0] as [
+      {
+        data: {
+          customerId: string;
+          quotationId: string;
+          subtotal: number;
+          taxAmount: number;
+          totalAmount: number;
+          balance: number;
+          currency: string;
+          lineItems: Array<{
+            description: string;
+            quantity: number;
+            unitPrice: number;
+          }>;
+          termsAndConditions?: string;
+        };
+        select: unknown;
+      },
+    ];
+    const data = invoiceCall[0].data;
+    expect(data.customerId).toBe("cust-1");
+    expect(data.quotationId).toBe(QUOTATION_ID);
+    expect(data.subtotal).toBeCloseTo(600);
+    expect(data.taxAmount).toBeCloseTo(72);
+    expect(data.totalAmount).toBeCloseTo(672);
+    expect(data.balance).toBeCloseTo(672);
+    expect(data.currency).toBe("PHP");
+    expect(data.lineItems).toHaveLength(2);
+    expect(data.lineItems[0]).toMatchObject({
+      description: "Widget A",
+      quantity: 2,
+      unitPrice: 150,
+    });
+    expect(data.termsAndConditions).toBe("Net 30");
+
+    // Quotation flipped to converted with invoice FK
+    const updateCall = mockDb.quotation.update.mock.calls[0] as [
+      { data: { status: string; convertedToInvoiceId: string } },
+    ];
+    expect(updateCall[0].data.status).toBe("converted");
+    expect(updateCall[0].data.convertedToInvoiceId).toBe("inv-new");
+  });
+
+  it("uses explicit markupColumnId when provided", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue(
+      acceptedQuotationFixture({
+        markupColumns: [
+          { id: "col-1", sortOrder: 0, name: "Tier 1", tier: "tier1" },
+          { id: "col-2", sortOrder: 1, name: "Tier 2", tier: "tier2" },
+        ],
+        sections: [
+          {
+            id: "sec-1",
+            sortOrder: 0,
+            lineItems: [
+              {
+                id: "li-1",
+                description: "Widget A",
+                quantity: 2,
+                baseCost: 100,
+                sortOrder: 0,
+                markups: [
+                  { markupColumnId: "col-1", markedUpPrice: 150 },
+                  { markupColumnId: "col-2", markedUpPrice: 200 },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    mockDb.$transaction.mockImplementation(
+      async (fn: (tx: typeof mockDb) => Promise<unknown>) => fn(mockDb),
+    );
+    mockDb.invoice.create.mockResolvedValue({
+      id: "inv-new",
+      invoiceNumber: "INV-X",
+    });
+    mockDb.quotation.update.mockResolvedValue({});
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.crm.quotationConvertToInvoice({
+      id: QUOTATION_ID,
+      markupColumnId: "col-2",
+    });
+
+    const invoiceCall = mockDb.invoice.create.mock.calls[0] as [
+      {
+        data: {
+          subtotal: number;
+          lineItems: Array<{ unitPrice: number }>;
+        };
+      },
+    ];
+    // Used col-2: 2 * 200 = 400
+    expect(invoiceCall[0].data.subtotal).toBeCloseTo(400);
+    expect(invoiceCall[0].data.lineItems[0]?.unitPrice).toBe(200);
+  });
+
+  it("blocks conversion when quotation is not accepted", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue(
+      acceptedQuotationFixture({ status: "draft" }),
+    );
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.quotationConvertToInvoice({ id: QUOTATION_ID }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("blocks conversion when quotation is already converted", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue(
+      acceptedQuotationFixture({ convertedToInvoiceId: "inv-existing" }),
+    );
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.quotationConvertToInvoice({ id: QUOTATION_ID }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("throws NOT_FOUND when quotation does not exist", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue(null);
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.quotationConvertToInvoice({ id: "missing" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("blocks conversion on demo tenant", async () => {
+    const demoCtx = {
+      req: makeReq(),
+      userId: "user-1",
+      roles: ["Administrator"],
+      tenantSlug: "demo",
+      tenantId: "demo-tenant-id",
+      securityVersion: 1,
+      isDemoTenant: true,
+      session: null,
+    };
+    const caller = createCaller(demoCtx);
+    await expect(
+      caller.crm.quotationConvertToInvoice({ id: QUOTATION_ID }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

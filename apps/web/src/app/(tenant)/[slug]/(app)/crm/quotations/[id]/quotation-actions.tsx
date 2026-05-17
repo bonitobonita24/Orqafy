@@ -8,9 +8,14 @@ import { trpc } from "@/lib/trpc";
 interface QuotationActionsProps {
   quotationId: string;
   status: string;
+  convertedToInvoiceId: string | null;
 }
 
-export function QuotationActions({ quotationId, status }: QuotationActionsProps) {
+export function QuotationActions({
+  quotationId,
+  status,
+  convertedToInvoiceId,
+}: QuotationActionsProps) {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
 
@@ -50,10 +55,20 @@ export function QuotationActions({ quotationId, status }: QuotationActionsProps)
     onSettled: () => setPending(null),
   });
 
+  const convertToInvoice = trpc.crm.quotationConvertToInvoice.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Invoice ${data.invoiceNumber} created.`);
+      router.refresh();
+    },
+    onError: (err) => toast.error(err.message),
+    onSettled: () => setPending(null),
+  });
+
   const isPending = pending !== null;
   const canSend = status === "draft";
   const canAcceptReject = status === "sent";
   const canRevise = status !== "converted";
+  const canConvert = status === "accepted" && convertedToInvoiceId === null;
 
   return (
     <div className="flex flex-wrap gap-2">
@@ -100,6 +115,17 @@ export function QuotationActions({ quotationId, status }: QuotationActionsProps)
         className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
       >
         {pending === "revise" ? "Creating…" : "Create revision"}
+      </button>
+      <button
+        type="button"
+        disabled={!canConvert || isPending}
+        onClick={() => {
+          setPending("convert");
+          convertToInvoice.mutate({ id: quotationId });
+        }}
+        className="rounded-md border border-amber-400 bg-amber-400/10 px-3 py-1.5 text-xs font-medium text-amber-400 hover:bg-amber-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {pending === "convert" ? "Converting…" : "Convert to invoice"}
       </button>
     </div>
   );

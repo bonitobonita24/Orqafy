@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import {
+  ContactLogTimeline,
+  type ContactLogEntry,
+} from "./contact-log-timeline";
+import { QuickAddContactLog } from "./quick-add-contact-log";
 
 export const metadata: Metadata = { title: "Customer Detail" };
 
@@ -12,6 +17,24 @@ async function getCustomer(id: string) {
     include: {
       contacts: { orderBy: { isPrimary: "desc" } },
       creditAccount: true,
+    },
+  });
+}
+
+async function getContactLogs(customerId: string): Promise<ContactLogEntry[]> {
+  return prisma.contactLog.findMany({
+    where: { customerId },
+    orderBy: { occurredAt: "desc" },
+    take: 20,
+    include: {
+      createdBy: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          displayName: true,
+        },
+      },
     },
   });
 }
@@ -37,6 +60,8 @@ export default async function CustomerDetailPage({ params }: Props) {
   const customer = await getCustomer(id);
 
   if (customer === null) notFound();
+
+  const contactLogs = await getContactLogs(customer.id);
 
   const tierClass =
     TIER_COLORS[customer.tier] ??
@@ -235,6 +260,22 @@ export default async function CustomerDetailPage({ params }: Props) {
             </div>
           </dl>
         )}
+      </div>
+
+      {/* Touchpoints */}
+      <div className="rounded-lg border border-border bg-card">
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+          <h2 className="text-sm font-semibold">
+            Touchpoints
+            <span className="ml-2 text-xs font-normal text-muted-foreground">
+              {contactLogs.length}
+            </span>
+          </h2>
+          <QuickAddContactLog customerId={customer.id} />
+        </div>
+        <div className="px-6 py-4">
+          <ContactLogTimeline initialLogs={contactLogs} />
+        </div>
       </div>
     </div>
   );

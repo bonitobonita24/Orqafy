@@ -110,7 +110,19 @@ export default async function QuotationDetailPage({ params }: PageProps) {
               : ""}
           </p>
         </div>
-        <QuotationActions quotationId={quotation.id} status={quotation.status} />
+        <div className="flex flex-col items-end gap-2">
+          <Link
+            href={`/${slug}/crm/quotations/${quotation.id}/pdf`}
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+          >
+            View PDF
+          </Link>
+          <QuotationActions
+            quotationId={quotation.id}
+            status={quotation.status}
+            convertedToInvoiceId={quotation.convertedToInvoiceId}
+          />
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
