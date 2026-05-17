@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { formatCurrency } from "@/lib/quotation-build";
 
 export const metadata: Metadata = { title: "Product" };
@@ -158,16 +159,14 @@ export default async function PublicStorefrontProductDetailPage({
             ) : null}
           </dl>
 
-          <button
-            type="button"
-            disabled
-            className="w-full cursor-not-allowed rounded-md border border-[#00d992]/40 bg-[#00d992]/5 px-4 py-3 text-sm font-medium text-[#00d992]/60"
-            title="Cart and checkout coming in the next phase"
-          >
-            Place order (coming soon)
-          </button>
+          <AddToCartButton
+            productId={product.id}
+            name={product.name}
+            price={price}
+            imageUrl={heroImage}
+          />
           <p className="text-center text-xs text-muted-foreground">
-            Checkout will be enabled in a future release.
+            Checkout ships in the next batch.
           </p>
         </div>
       </div>
