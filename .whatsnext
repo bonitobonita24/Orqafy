@@ -1,73 +1,58 @@
-# Next Session — Phase 8 Batch 13 (recommended)
+# Next Session — Phase 8 Batch 14 (recommended)
 
-Last close: Batch 12. Both items shipped via proper feat/batch-12-item-K → squash-merge flow
-(5edd8e4 + 4cfb25c). Rule 23 convention restored after Batch 11's deviation. Branch-creation
-line item in the BUILD BATCH PROPOSAL functioned as designed — no silent skips.
+Last close: Batch 13. Both items shipped via proper feat/batch-13-item-K → squash-merge flow
+(9959ad9 + 0f2a717). Rule 23 convention maintained. Branch-creation line items in the
+BUILD BATCH PROPOSAL functioned as designed.
 
-Test baseline: 616/616 GREEN. Web typecheck + lint clean. Migration #3
-(20260517100500_add_job_order_service_lines) APPLIED to dev DB.
+Test baseline: 622/622 GREEN. Web typecheck + lint clean. No new migrations in Batch 13.
 
-⚠ PRE-FLIGHT REQUIRED before any code (7-point — adds router-signature check from Batch 12):
+⚠ PRE-FLIGHT REQUIRED before any code (8-point — adds mock-payload-completeness check from Batch 13):
 1. Run `git status` + `git log -1` to confirm working tree state matches expectations.
-2. Confirm `pnpm vitest run` → 616/616 GREEN baseline.
+2. Confirm `pnpm vitest run` → 622/622 GREEN baseline.
 3. Read the input Zod schema of any router procedure that .whatsnext claims will be reused —
    this catches scope mismatches BEFORE the BUILD BATCH PROPOSAL stage (Batch 12 lesson).
-4. Grep schema.prisma for any model referenced in the proposed scope; verify presence and
+4. If a router change in scope newly READS a field from the existing record (e.g. a gate or
+   conditional), verify all tests hitting that code path mock that field (Batch 13 lesson).
+5. Grep schema.prisma for any model referenced in the proposed scope; verify presence and
    field types before scoping migrations.
-5. Confirm package.json contains any third-party library called out in the proposed scope
-   (e.g. react-signature-canvas, @react-pdf/renderer).
-6. Re-read .claude/rules/memory-governance.md §1 (Tiered Decomposition) for this batch's tier.
-7. ⚠ Emit explicit branch-creation line item in the BUILD BATCH PROPOSAL so user can catch
+6. Confirm package.json contains any third-party library called out in the proposed scope.
+7. Re-read .claude/rules/memory-governance.md §1 (Tiered Decomposition) for this batch's tier.
+8. ⚠ Emit explicit branch-creation line item in the BUILD BATCH PROPOSAL so user can catch
    silent direct-to-main slips at confirm time. Example:
-   "Branch feat/batch-13-item-1-{slug} will be created before any file write."
+   "Branch feat/batch-14-item-1-{slug} will be created before any file write."
 
-## Recommended Batch 13 (Opus-direct, 2 items, ~30-35K combined)
+## Recommended Batch 14 — pick ONE primary direction:
 
-### Item 1: Job Order Phase 3 — status UI + warranty release gating (T2, ~20-25K)
-Closes the job order lifecycle by adding the status-transition UI that consumes the
-parts/services/signatures from Batch 12 Item 1.
+### Direction A — E-commerce Phase 1 (single-item T3 batch, ~50-60K)
+Establishes the storefront order pipeline. New Order + EcommerceOrder entities, storefront
+router (browse → cart → checkout), inventory hold on order placement, link to Purchase Order
+when stock falls below reorder point.
 
 Files to touch (proposed — re-verify at pre-flight):
-- apps/web/src/app/(tenant)/[slug]/(app)/service/job-orders/[id]/job-order-status-actions.tsx —
-  NEW Client Component, buttons for the documented JobOrder status transitions:
-  received→diagnosing, diagnosing→quoted/in_progress, quoted→approved/cancelled, approved→in_progress,
-  in_progress→testing, testing→completed (gated on both signatures present), completed→released.
-- apps/web/src/app/(tenant)/[slug]/(app)/service/job-orders/[id]/page.tsx — wire the new
-  status-actions component into the header.
-- apps/web/src/server/trpc/routers/job-order.ts — extend `updateStatus` to enforce the
-  testing→completed transition only when customerSignatureUrl + technicianSignatureUrl + signedAt
-  are all present. Add explicit allowed-transitions table; reject invalid transitions with BAD_REQUEST.
-- apps/web/src/__tests__/job-order.test.ts — extend with ~6 tests for the new gates.
+- packages/db/prisma/schema.prisma — Order, EcommerceOrder, OrderItem models + indexes.
+- packages/db/prisma/migrations/{TS}_add_ecommerce_orders/migration.sql — manual SQL.
+- apps/web/src/server/trpc/routers/storefront.ts — NEW router (browse/cart/checkout/orderById).
+- apps/web/src/server/trpc/root.ts — register storefront router.
+- apps/web/src/__tests__/storefront.test.ts — NEW comprehensive test suite (~25+ tests).
+- apps/web/src/app/(tenant)/[slug]/(app)/ecommerce/orders/page.tsx — admin list.
+- apps/web/src/app/(tenant)/[slug]/(app)/ecommerce/orders/[id]/page.tsx — admin detail.
+- (Storefront-facing public pages can defer to Batch 15.)
 
-### Item 2: ContactLog global list page (T1, ~10-15K)
-Carry-forward from Batch 10/11 candidates. Mirror layout of crm/quotations/page.tsx.
+### Direction B — Mobile WatermelonDB DTR Phase 1 (single-item T3+ batch, ~60-80K)
+Offline DTR (Daily Time Record) sync for technicians on field calls. Establishes the mobile
+sync foundation. Pair with backend sync endpoints. May overflow single Opus 4.7 session
+— consider Architect-Execute split (§4 memory-governance.md).
 
-Files to touch:
-- apps/web/src/app/(tenant)/[slug]/(app)/crm/contact-logs/page.tsx — NEW Server Component,
-  paginated list with customerId + type filter chips via searchParams + Link, table columns
-  [date, type, customer, subject, by]. Uses existing trpc contactLog.list procedure.
-- apps/web/src/server/trpc/routers/crm.ts — verify contactLog.list accepts customerId + type filters;
-  no changes expected, but re-verify input shape at pre-flight per Batch 12 lesson.
-
-## Pre-flight checks specifically for Batch 13
-1. `pnpm typecheck` && `pnpm vitest run` — confirm 616/616 GREEN.
-2. `pnpm db:migrate deploy` — should show "No pending migrations to apply".
-3. Read `jobOrderRouter.updateStatus` input schema to confirm it can accept the warranty-release
-   precondition signature (current shape: { id, status, diagnosis?, actualCost?, laborCost? }).
-4. Grep contactLogList input schema in crm.ts to confirm filters supported.
-5. Verify .gitignore continues to exclude CREDENTIALS.md.
-6. Emit BUILD BATCH PROPOSAL with explicit branch-creation lines:
-   "Branch feat/batch-13-item-1-job-order-phase-3 will be created before any file write."
-   "Branch feat/batch-13-item-2-contact-log-global-list will be created before any file write."
-
-## Alternative Batch 13 scopes (if not Job Order Phase 3 + ContactLog list)
-- E-commerce Phase 1 (Order + EcommerceOrder + PO link + storefront router) — T3,
-  ~50-60K — own dedicated batch. Recommended next when scope ambition is up.
-- Mobile app Phase 1 (apps/mobile WatermelonDB DTR offline sync) — T3+, own batch.
-- Reverse JE accounting hardening (wrap accounting.reverse in db.$transaction) — T1 ~5-10K.
-- AUTH_TRUST_HOST=true defaults in .env.staging/.env.prod templates — T1 ~5K (config-only).
+### Direction C — Small carry-forward bundle (2 items, ~20-30K combined)
+- Item 1: Reverse JE accounting hardening — wrap accounting.reverse in db.$transaction;
+  add 3-4 tests for partial-failure rollback. T1 ~5-10K.
+- Item 2: AUTH_TRUST_HOST=true defaults in .env.staging / .env.prod templates +
+  scripts/sync-credentials-to-env.sh update. T1 ~5K, config-only.
+- Item 3 (optional): Quotation builder Phase 3 — column reordering UI + save/load named
+  markup-column templates. T2 ~15-20K.
 
 ## Trigger
-Open Claude Code in this folder. Say "start Phase 8 Batch 13" — agent will read STATE.md first,
-run the 7-point pre-flight (including the new router-signature verification step), then emit
-BUILD BATCH PROPOSAL with explicit branch-creation line items per Rule 23.
+Open Claude Code in this folder. Say "start Phase 8 Batch 14" — agent will read STATE.md
+first, run the 8-point pre-flight (now including mock-payload-completeness check from
+Batch 13), then emit BUILD BATCH PROPOSAL with explicit branch-creation line items per
+Rule 23. Pick Direction A, B, or C at the proposal confirmation stage.
