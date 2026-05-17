@@ -23,9 +23,22 @@ interface CustomerOption {
   companyName: string | null;
 }
 
+export interface InitialQuotation {
+  id: string;
+  customerId: string;
+  title: string;
+  validUntil: Date | null;
+  taxAmount: number;
+  notes: string | null;
+  termsAndConditions: string | null;
+  markupColumns: DraftMarkupColumn[];
+  sections: DraftSection[];
+}
+
 interface QuotationBuilderProps {
   slug: string;
   customers: CustomerOption[];
+  initialQuotation?: InitialQuotation;
 }
 
 function newLineItem(): DraftLineItem {
@@ -63,20 +76,36 @@ function customerLabel(c: CustomerOption): string {
   return `${c.firstName} ${c.lastName}`;
 }
 
-export function QuotationBuilder({ slug, customers }: QuotationBuilderProps) {
+function dateInputValue(d: Date | null): string {
+  if (d === null) return "";
+  return d.toISOString().slice(0, 10);
+}
+
+export function QuotationBuilder({ slug, customers, initialQuotation }: QuotationBuilderProps) {
   const router = useRouter();
+  const isEditMode = initialQuotation !== undefined;
 
-  const [title, setTitle] = useState("");
-  const [customerId, setCustomerId] = useState(customers[0]?.id ?? "");
-  const [validUntilStr, setValidUntilStr] = useState("");
-  const [taxAmount, setTaxAmount] = useState(0);
-  const [notes, setNotes] = useState("");
-  const [terms, setTerms] = useState("");
+  const [title, setTitle] = useState(initialQuotation?.title ?? "");
+  const [customerId, setCustomerId] = useState(
+    initialQuotation?.customerId ?? customers[0]?.id ?? "",
+  );
+  const [validUntilStr, setValidUntilStr] = useState(
+    initialQuotation === undefined ? "" : dateInputValue(initialQuotation.validUntil),
+  );
+  const [taxAmount, setTaxAmount] = useState(initialQuotation?.taxAmount ?? 0);
+  const [notes, setNotes] = useState(initialQuotation?.notes ?? "");
+  const [terms, setTerms] = useState(initialQuotation?.termsAndConditions ?? "");
 
-  const [markupColumns, setMarkupColumns] = useState<DraftMarkupColumn[]>(() => [
-    newMarkupColumn(0),
-  ]);
-  const [sections, setSections] = useState<DraftSection[]>(() => [newSection(0)]);
+  const [markupColumns, setMarkupColumns] = useState<DraftMarkupColumn[]>(() =>
+    initialQuotation !== undefined && initialQuotation.markupColumns.length > 0
+      ? initialQuotation.markupColumns
+      : [newMarkupColumn(0)],
+  );
+  const [sections, setSections] = useState<DraftSection[]>(() =>
+    initialQuotation !== undefined && initialQuotation.sections.length > 0
+      ? initialQuotation.sections
+      : [newSection(0)],
+  );
 
   const totals = useMemo(
     () => computeQuotationTotals({ sections, taxAmount }),
@@ -92,6 +121,15 @@ export function QuotationBuilder({ slug, customers }: QuotationBuilderProps) {
     onSuccess: (q) => {
       toast.success(`Quotation ${q.quotationNumber} created.`);
       router.push(`/${slug}/crm/quotations/${q.id}`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const update = trpc.crm.quotationUpdate.useMutation({
+    onSuccess: (q) => {
+      toast.success(`Quotation ${q.quotationNumber} updated.`);
+      router.push(`/${slug}/crm/quotations/${q.id}`);
+      router.refresh();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -199,6 +237,28 @@ export function QuotationBuilder({ slug, customers }: QuotationBuilderProps) {
       })),
     }));
 
+    const payloadMarkupColumns = markupColumns.map((c, i) => ({
+      name: c.name,
+      tier: c.tier,
+      percentage: c.percentage,
+      useCeiling: c.useCeiling,
+      sortOrder: i,
+    }));
+
+    if (isEditMode && initialQuotation !== undefined) {
+      update.mutate({
+        id: initialQuotation.id,
+        title,
+        taxAmount,
+        validUntil: validUntilStr.length > 0 ? new Date(validUntilStr) : null,
+        notes,
+        termsAndConditions: terms,
+        markupColumns: payloadMarkupColumns,
+        sections: payloadSections,
+      });
+      return;
+    }
+
     create.mutate({
       customerId,
       title,
@@ -207,13 +267,7 @@ export function QuotationBuilder({ slug, customers }: QuotationBuilderProps) {
       ...(validUntilStr.length > 0 && { validUntil: new Date(validUntilStr) }),
       ...(notes.length > 0 && { notes }),
       ...(terms.length > 0 && { termsAndConditions: terms }),
-      markupColumns: markupColumns.map((c, i) => ({
-        name: c.name,
-        tier: c.tier,
-        percentage: c.percentage,
-        useCeiling: c.useCeiling,
-        sortOrder: i,
-      })),
+      markupColumns: payloadMarkupColumns,
       sections: payloadSections,
     });
   };
@@ -237,7 +291,8 @@ export function QuotationBuilder({ slug, customers }: QuotationBuilderProps) {
           <select
             value={customerId}
             onChange={(e) => setCustomerId(e.target.value)}
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            disabled={isEditMode}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
           >
             <option value="">Select customer…</option>
             {customers.map((c) => (
@@ -246,6 +301,11 @@ export function QuotationBuilder({ slug, customers }: QuotationBuilderProps) {
               </option>
             ))}
           </select>
+          {isEditMode ? (
+            <p className="text-xs text-muted-foreground">
+              Customer cannot be changed after creation.
+            </p>
+          ) : null}
         </div>
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">Valid until</label>
@@ -508,10 +568,16 @@ export function QuotationBuilder({ slug, customers }: QuotationBuilderProps) {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={!validation.ok || create.isPending}
+            disabled={!validation.ok || create.isPending || update.isPending}
             className="mt-2 inline-flex w-full justify-center rounded-md bg-[#00d992] px-4 py-2 text-sm font-medium text-black hover:bg-[#00d992]/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {create.isPending ? "Creating…" : "Create quotation"}
+            {isEditMode
+              ? update.isPending
+                ? "Saving…"
+                : "Save changes"
+              : create.isPending
+                ? "Creating…"
+                : "Create quotation"}
           </button>
         </div>
       </div>

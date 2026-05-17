@@ -51,8 +51,8 @@ vi.mock("@orqafy/db", () => ({
       update: vi.fn(),
       count: vi.fn(),
     },
-    quotationSection: { create: vi.fn() },
-    quotationMarkupColumn: { create: vi.fn() },
+    quotationSection: { create: vi.fn(), deleteMany: vi.fn() },
+    quotationMarkupColumn: { create: vi.fn(), deleteMany: vi.fn() },
     quotationLineItem: { create: vi.fn() },
     quotationLineItemMarkup: { create: vi.fn() },
     quotationRevision: { create: vi.fn() },
@@ -135,8 +135,8 @@ const mockDb = db as unknown as {
     update: ReturnType<typeof vi.fn>;
     count: ReturnType<typeof vi.fn>;
   };
-  quotationSection: { create: ReturnType<typeof vi.fn> };
-  quotationMarkupColumn: { create: ReturnType<typeof vi.fn> };
+  quotationSection: { create: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
+  quotationMarkupColumn: { create: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   quotationLineItem: { create: ReturnType<typeof vi.fn> };
   quotationLineItemMarkup: { create: ReturnType<typeof vi.fn> };
   quotationRevision: { create: ReturnType<typeof vi.fn> };
@@ -876,6 +876,92 @@ describe("crm.quotationUpdate", () => {
     await expect(
       caller.crm.quotationUpdate({ id: QUOTATION_ID, title: "X" }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("replaces sections + markupColumns and recomputes totals on full-payload edit", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "draft" });
+    mockDb.$transaction.mockImplementation(
+      async (fn: (tx: typeof mockDb) => Promise<unknown>) => fn(mockDb),
+    );
+    mockDb.quotationSection.deleteMany.mockResolvedValue({ count: 2 });
+    mockDb.quotationMarkupColumn.deleteMany.mockResolvedValue({ count: 1 });
+    mockDb.quotationMarkupColumn.create.mockImplementation(({ data }: { data: unknown }) =>
+      Promise.resolve({ id: "col-new-1", ...(data as object) }),
+    );
+    mockDb.quotationSection.create.mockImplementation(({ data }: { data: unknown }) =>
+      Promise.resolve({ id: "sec-new-1", ...(data as object) }),
+    );
+    mockDb.quotationLineItem.create.mockImplementation(({ data }: { data: unknown }) =>
+      Promise.resolve({ id: "li-new-1", ...(data as object) }),
+    );
+    mockDb.quotationLineItemMarkup.create.mockResolvedValue({ id: "lim-new-1" });
+    mockDb.quotation.update.mockResolvedValue({
+      ...sampleQuotation,
+      title: "Replaced",
+      subtotal: 250,
+      taxAmount: 25,
+      totalAmount: 275,
+    });
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.crm.quotationUpdate({
+      id: QUOTATION_ID,
+      title: "Replaced",
+      taxAmount: 25,
+      markupColumns: [
+        { name: "Tier 1", tier: "tier1", percentage: 20, useCeiling: false, sortOrder: 0 },
+      ],
+      sections: [
+        {
+          name: "S1",
+          sortOrder: 0,
+          lineItems: [
+            {
+              description: "Widget",
+              unit: "pcs",
+              quantity: 5,
+              baseCost: 50,
+              sortOrder: 0,
+              markups: [{ markupColumnIndex: 0, markedUpPrice: 60 }],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result.title).toBe("Replaced");
+    expect(mockDb.$transaction).toHaveBeenCalledTimes(1);
+    expect(mockDb.quotationSection.deleteMany).toHaveBeenCalledWith({
+      where: { quotationId: QUOTATION_ID },
+    });
+    expect(mockDb.quotationMarkupColumn.deleteMany).toHaveBeenCalledWith({
+      where: { quotationId: QUOTATION_ID },
+    });
+    expect(mockDb.quotationMarkupColumn.create).toHaveBeenCalledTimes(1);
+    expect(mockDb.quotationSection.create).toHaveBeenCalledTimes(1);
+    expect(mockDb.quotationLineItem.create).toHaveBeenCalledTimes(1);
+    expect(mockDb.quotationLineItemMarkup.create).toHaveBeenCalledTimes(1);
+
+    const updateCall = mockDb.quotation.update.mock.calls.at(-1) as [
+      { data: { subtotal: number; taxAmount: number; totalAmount: number } },
+    ];
+    expect(updateCall[0].data.subtotal).toBe(250);
+    expect(updateCall[0].data.taxAmount).toBe(25);
+    expect(updateCall[0].data.totalAmount).toBe(275);
+  });
+
+  it("rejects partial full-payload (sections without markupColumns)", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "draft" });
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.quotationUpdate({
+        id: QUOTATION_ID,
+        sections: [
+          { name: "S1", sortOrder: 0, lineItems: [] },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockDb.$transaction).not.toHaveBeenCalled();
   });
 });
 

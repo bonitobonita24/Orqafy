@@ -556,6 +556,45 @@ export const crmRouter = createTRPCRouter({
         validUntil: z.date().nullable().optional(),
         notes: z.string().optional(),
         termsAndConditions: z.string().optional(),
+        taxAmount: z.number().nonnegative().optional(),
+        markupColumns: z
+          .array(
+            z.object({
+              name: z.string().min(1).max(100),
+              tier: z.enum(MARKUP_TIERS),
+              percentage: z.number().nonnegative(),
+              useCeiling: z.boolean().default(false),
+              sortOrder: z.number().int().nonnegative().default(0),
+            }),
+          )
+          .optional(),
+        sections: z
+          .array(
+            z.object({
+              name: z.string().min(1).max(255),
+              description: z.string().optional(),
+              sortOrder: z.number().int().nonnegative().default(0),
+              lineItems: z.array(
+                z.object({
+                  productId: z.string().min(1).optional(),
+                  description: z.string().min(1).max(500),
+                  unit: z.string().min(1).max(50).default("pcs"),
+                  quantity: z.number().positive(),
+                  baseCost: z.number().nonnegative(),
+                  sortOrder: z.number().int().nonnegative().default(0),
+                  markups: z
+                    .array(
+                      z.object({
+                        markupColumnIndex: z.number().int().nonnegative(),
+                        markedUpPrice: z.number().nonnegative(),
+                      }),
+                    )
+                    .default([]),
+                }),
+              ),
+            }),
+          )
+          .optional(),
       }),
     )
     .mutation(async ({ input }) => {
@@ -570,16 +609,123 @@ export const crmRouter = createTRPCRouter({
           message: `Cannot edit a quotation with status "${existing.status}". Create a revision first.`,
         });
       }
-      return db.quotation.update({
-        where: { id: input.id },
-        data: {
-          ...(input.title !== undefined && { title: input.title }),
-          ...(input.validUntil !== undefined && { validUntil: input.validUntil }),
-          ...(input.notes !== undefined && { notes: input.notes }),
-          ...(input.termsAndConditions !== undefined && {
-            termsAndConditions: input.termsAndConditions,
-          }),
-        },
+
+      // Header-only update path — when sections/markupColumns not provided.
+      if (input.sections === undefined && input.markupColumns === undefined) {
+        return db.quotation.update({
+          where: { id: input.id },
+          data: {
+            ...(input.title !== undefined && { title: input.title }),
+            ...(input.validUntil !== undefined && { validUntil: input.validUntil }),
+            ...(input.notes !== undefined && { notes: input.notes }),
+            ...(input.termsAndConditions !== undefined && {
+              termsAndConditions: input.termsAndConditions,
+            }),
+            ...(input.taxAmount !== undefined && { taxAmount: input.taxAmount }),
+          },
+        });
+      }
+
+      // Full-payload edit — replace children atomically and recompute totals.
+      // Cascade deletion: removing sections cascades to lineItems and their markups;
+      // removing markupColumns cascades to any remaining lineItemMarkups.
+      if (input.sections === undefined || input.markupColumns === undefined) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Full-payload edit requires both sections and markupColumns.",
+        });
+      }
+      const sectionsInput = input.sections;
+      const markupColumnsInput = input.markupColumns;
+      const taxAmount = input.taxAmount ?? 0;
+      const subtotal = sectionsInput.reduce((acc, section) => {
+        return (
+          acc +
+          section.lineItems.reduce(
+            (lineAcc, item) => lineAcc + item.quantity * item.baseCost,
+            0,
+          )
+        );
+      }, 0);
+      const totalAmount = subtotal + taxAmount;
+
+      return db.$transaction(async (tx) => {
+        await tx.quotationSection.deleteMany({ where: { quotationId: input.id } });
+        await tx.quotationMarkupColumn.deleteMany({ where: { quotationId: input.id } });
+
+        const markupColumnIds: string[] = [];
+        for (const col of markupColumnsInput) {
+          const created = await tx.quotationMarkupColumn.create({
+            data: {
+              quotationId: input.id,
+              name: col.name,
+              tier: col.tier,
+              percentage: col.percentage,
+              useCeiling: col.useCeiling,
+              sortOrder: col.sortOrder,
+            },
+          });
+          markupColumnIds.push(created.id);
+        }
+
+        for (const section of sectionsInput) {
+          const createdSection = await tx.quotationSection.create({
+            data: {
+              quotationId: input.id,
+              name: section.name,
+              sortOrder: section.sortOrder,
+              ...(section.description !== undefined && {
+                description: section.description,
+              }),
+            },
+          });
+          for (const lineItem of section.lineItems) {
+            const createdItem = await tx.quotationLineItem.create({
+              data: {
+                sectionId: createdSection.id,
+                description: lineItem.description,
+                unit: lineItem.unit,
+                quantity: lineItem.quantity,
+                baseCost: lineItem.baseCost,
+                sortOrder: lineItem.sortOrder,
+                ...(lineItem.productId !== undefined && {
+                  productId: lineItem.productId,
+                }),
+              },
+            });
+            for (const markup of lineItem.markups) {
+              const colId = markupColumnIds[markup.markupColumnIndex];
+              if (colId === undefined) {
+                throw new TRPCError({
+                  code: "BAD_REQUEST",
+                  message: `Line item references unknown markup column index ${markup.markupColumnIndex}.`,
+                });
+              }
+              await tx.quotationLineItemMarkup.create({
+                data: {
+                  lineItemId: createdItem.id,
+                  markupColumnId: colId,
+                  markedUpPrice: markup.markedUpPrice,
+                },
+              });
+            }
+          }
+        }
+
+        return tx.quotation.update({
+          where: { id: input.id },
+          data: {
+            subtotal,
+            taxAmount,
+            totalAmount,
+            ...(input.title !== undefined && { title: input.title }),
+            ...(input.validUntil !== undefined && { validUntil: input.validUntil }),
+            ...(input.notes !== undefined && { notes: input.notes }),
+            ...(input.termsAndConditions !== undefined && {
+              termsAndConditions: input.termsAndConditions,
+            }),
+          },
+        });
       });
     }),
 

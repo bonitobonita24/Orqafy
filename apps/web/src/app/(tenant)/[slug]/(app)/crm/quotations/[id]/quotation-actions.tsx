@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -9,12 +10,14 @@ interface QuotationActionsProps {
   quotationId: string;
   status: string;
   convertedToInvoiceId: string | null;
+  slug: string;
 }
 
 export function QuotationActions({
   quotationId,
   status,
   convertedToInvoiceId,
+  slug,
 }: QuotationActionsProps) {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
@@ -65,6 +68,7 @@ export function QuotationActions({
   });
 
   const isPending = pending !== null;
+  const canEditDraft = status === "draft";
   const canSend = status === "draft";
   const canAcceptReject = status === "sent";
   const canRevise = status !== "converted";
@@ -72,6 +76,14 @@ export function QuotationActions({
 
   return (
     <div className="flex flex-wrap gap-2">
+      {canEditDraft ? (
+        <Link
+          href={`/${slug}/crm/quotations/${quotationId}/edit`}
+          className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+        >
+          Edit draft
+        </Link>
+      ) : null}
       <button
         type="button"
         disabled={!canSend || isPending}

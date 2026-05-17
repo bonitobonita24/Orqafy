@@ -121,6 +121,7 @@ export default async function QuotationDetailPage({ params }: PageProps) {
             quotationId={quotation.id}
             status={quotation.status}
             convertedToInvoiceId={quotation.convertedToInvoiceId}
+            slug={slug}
           />
         </div>
       </div>
