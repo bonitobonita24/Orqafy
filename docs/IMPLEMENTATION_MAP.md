@@ -1,6 +1,7 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-16 by CLAUDE_CODE Opus 4.7 (Phase 8 Batch 8 ✅ COMPLETE — Items 1+2 merged: tRPC React client infrastructure + worker test fixture fix, 47989af)
+# Last updated: 2026-05-17 by CLAUDE_CODE Opus 4.7 (Phase 8 Batch 18 Item 2 / Batch 19 ✅ COMPLETE — guest checkout + first storefront publicProcedure shipped, 4d7de45. 692/692 GREEN.)
+# Note: Batch 6+ batch detail lives in docs/CHANGELOG_AI.md and .cline/STATE.md — see those files for per-batch records since this file's structured snapshot section was last refreshed at Batch 5.
 # ---
 
 ## Phase Status

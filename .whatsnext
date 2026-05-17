@@ -1,50 +1,57 @@
-# Next Session — Phase 8 Batch 18 Item 2 (recommended) — OR pick a fresh direction
+# Next Session — Phase 8 Batch 20 — pick from menu below
 
-Last close: Batch 18 Item 1 (Direction A — E-commerce customer self-service Phase 1 / Cart).
-Single item shipped via proper feat branch → squash-merge flow (03f389e).
-Rule 23 maintained. Opus-direct executor pattern continues 17× consecutive.
+Last close: Batch 18 Item 2 (aka Batch 19) — Direction A (E-commerce customer self-service Phase 1)
+FULLY SHIPPED. storefront.placeOrderAsCustomer publicProcedure (first publicProcedure on
+storefront router) + /[slug]/store/checkout page (Server shell + Client form) + active
+cart drawer Checkout link. Squash-merged as 4d7de45. Rule 23 maintained. Opus-direct
+executor pattern continues 18× consecutive.
 
-Test baseline: 685/685 GREEN (was 669, +16 cart-reducer unit tests).
-Web typecheck + lint clean. No new migrations. Pure client state addition.
+Test baseline: 692/692 GREEN (was 685, +7 placeOrderAsCustomer unit tests).
+Web typecheck + lint clean. No new migrations.
 
-Cart foundation now in place:
+Direction A is now COMPLETE end-to-end for cash-on-delivery / bank-transfer:
   Customer browses /[slug]/store/products → opens product detail →
   AddToCartButton with qty input + Add to cart → toast confirmation →
   CartDrawer in store header (sticky, shadcn Sheet) shows live count badge →
   Open drawer → line items with qty edit + remove + subtotal →
-  Disabled "Checkout (coming soon)" placeholder at bottom.
-Cart state persists per-tenant in localStorage (key: `orqafy-cart-${slug}`).
-Hydration-safe (no SSR mismatch, no pre-mount click loss).
+  Active Checkout button → /[slug]/store/checkout page loads →
+  Form (Contact / Shipping / Payment method radio / Notes / Sticky order summary) →
+  Submit calls placeOrderAsCustomer publicProcedure (rate-limited 30/min/IP) →
+  Server: tenant resolved by slug, default warehouse resolved server-side,
+    products + stock validated, customer find-or-created by email, sanitized,
+    EcommerceOrder + EcommerceOrderItem + WarehouseStock decrement +
+    StockMovement (system-actor attribution) in single transaction →
+  Returns {orderId, orderNumber} → toast success + cart cleared + redirect to /products.
 
-NEXT LOGICAL ITEM: Batch 18 Item 2 (Direction A completion — checkout page +
-publicProcedure). This was intentionally deferred from this batch to focus the
-publicProcedure addition on its own session.
+What's MISSING from Direction A (deferred):
+  - Xendit payment integration for guest orders (Direction E candidate, see below)
+  - Guest order tracking / status page (publicProcedure getOrderByNumber+email)
+  - Email confirmation send (TenantSmtpConfig already declared in schema)
+  - Tenant-default-warehouse auto-seed for tenants without one
+  - Customer.email unique constraint (currently tolerates duplicates by design)
 
-⚠ PRE-FLIGHT REQUIRED before any code (9-point — all 5 items pay off historically):
+⚠ PRE-FLIGHT REQUIRED before any code (9-point — all 5+ items still pay off historically):
 1. Run `git status` + `git log -1` to confirm working tree state matches expectations.
-2. Confirm `pnpm vitest run` → 685/685 GREEN baseline (or document deviation).
+2. Confirm `pnpm vitest run` → 692/692 GREEN baseline (or document deviation).
 3. Read the input Zod schema of any router procedure that .whatsnext claims will be
-   reused — this catches scope mismatches BEFORE the BUILD BATCH PROPOSAL stage (Batch 12 lesson).
+   reused — catches scope mismatches BEFORE the BUILD BATCH PROPOSAL stage (Batch 12 lesson).
 4. If a router change in scope newly READS a field from the existing record (e.g. a gate or
    conditional), verify all tests hitting that code path mock that field (Batch 13 lesson).
 5. Grep schema.prisma for any model referenced in the proposed scope; verify presence and
-   field types before scoping migrations. (Batches 14+15+16+17+18-Item-1 = 5 consecutive
-   batches where "needed schema field" already existed in init migration — pattern likely
-   to hold for Item 2 too since EcommerceOrder + EcommerceOrderItem are already populated.)
+   field types before scoping migrations. (Batches 14+15+16+17+18-Item-1+18-Item-2 = 6
+   consecutive batches where "needed schema field" already existed in init migration.)
 6. Confirm package.json contains any third-party library called out in the proposed scope.
-   ⚠ xendit-node@^7.0.0 + shadcn Sheet are now installed. No further installs needed for
-   Item 2 unless using BullMQ async webhook (Direction C alternative) or pino logging.
+   ⚠ xendit-node@^7.0.0 + shadcn Sheet are installed. BullMQ + pino + Expo deps declared
+   in their respective packages — verify at proposal time before assuming.
 7. Re-read .claude/rules/memory-governance.md §1 (Tiered Decomposition) for this batch's tier.
 8. ⚠ Emit explicit branch-creation line item in the BUILD BATCH PROPOSAL so user can catch
    silent direct-to-main slips at confirm time.
 9. ⚠ When proposal text says "Server Component consuming X.Y procedure" for a PUBLIC route,
    grep the router for `X.Y: publicProcedure` vs `protectedProcedure`. Mismatch means either
    (a) pivot to direct Prisma in the page, or (b) split the procedure into public + protected
-   variants. Pre-flight item 9 paid off in Batches 15+16+17 — zero pivots during execution.
-   ⚠ FOR ITEM 2 SPECIFICALLY: this batch will INTENTIONALLY ADD the first publicProcedure
-   on the storefront router. Item 9 reverses for Item 2 — verify NO existing publicProcedure
-   exists yet (already confirmed in Batch 18 pre-flight) and confirm rate-limit tier
-   (rateLimiters.public is 30 req/min, defined in apps/web/src/server/lib/rate-limit.ts).
+   variants. Pre-flight item 9 paid off in Batches 15+16+17+18-Item-1+18-Item-2 — zero
+   pivots during execution. For Direction E (Xendit-for-guests): item 9 reverses again —
+   the batch will INTENTIONALLY refactor createXenditInvoice into a public-callable form.
 
 ⚠ PATH CORRECTIONS (apply when grepping for router state):
 - Storefront router lives at `apps/web/src/server/trpc/routers/storefront.ts`.
@@ -54,107 +61,104 @@ publicProcedure addition on its own session.
 - Xendit server-only client wrapper lives at `apps/web/src/lib/xendit.ts`.
 - Accounting router lives at `apps/web/src/server/trpc/routers/accounting.ts`.
 - Cart pure reducer + tests: `apps/web/src/lib/cart-reducer.ts` + `apps/web/src/__tests__/cart-reducer.test.ts`.
-- Cart Provider/hook: `apps/web/src/lib/cart-store.tsx`.
+- Cart Provider/hook: `apps/web/src/lib/cart-store.tsx` (now exposes tenantSlug on context).
 - Cart UI components: `apps/web/src/components/cart/{add-to-cart-button,cart-drawer}.tsx`.
-- Store shared layout (NEW Batch 18 Item 1): `apps/web/src/app/(tenant)/[slug]/store/layout.tsx`.
-- Public product browse + detail pages: `apps/web/src/app/(tenant)/[slug]/store/products/{page,[id]/page}.tsx`.
+- Store shared layout: `apps/web/src/app/(tenant)/[slug]/store/layout.tsx`.
+- Public product browse + detail: `apps/web/src/app/(tenant)/[slug]/store/products/{page,[id]/page}.tsx`.
+- ⭐ NEW: Public checkout page: `apps/web/src/app/(tenant)/[slug]/store/checkout/{page,checkout-form}.tsx`.
 
-## Recommended Batch 18 Item 2 — checkout page + customer publicProcedure (T2-T3, ~25K)
+## Recommended Batch 20 candidates — pick one (or propose your own)
 
-Customer takes the populated cart → visits /[slug]/store/checkout → fills shipping +
-billing + email → submits → backend creates an EcommerceOrder (pending status) +
-optionally creates Xendit invoice immediately → redirect to Xendit payment URL.
-
-- Item 2 (T2-T3 ~25K): Checkout page + placeOrderAsCustomer publicProcedure
-  • New: `apps/web/src/app/(tenant)/[slug]/store/checkout/page.tsx` (Server shell —
-    look up tenant default warehouse, redirect to /products if empty cart impossible to
-    detect server-side, render the Client form).
-  • New: `apps/web/src/app/(tenant)/[slug]/store/checkout/checkout-form.tsx` (Client —
-    reads cart from useCart hook, fields for name+email+shippingAddress+billingAddress
-    + sameAsShipping toggle, submit calls placeOrderAsCustomer.useMutation, onSuccess
-    optionally invokes createXenditInvoice and redirects; onError shows sonner toast).
-  • Modified: `apps/web/src/server/trpc/routers/storefront.ts` (+placeOrderAsCustomer
-    publicProcedure — input schema includes tenantSlug to resolve tenant from URL, items
-    + addresses + customer-email; resolves OR creates a Customer record by email match,
-    creates EcommerceOrder pending paymentStatus, applies same inventory hold logic as
-    existing placeOrder writeProcedure).
-  • Modified: `apps/web/src/__tests__/storefront.test.ts` (+5-8 tests for
-    placeOrderAsCustomer: guest happy path, existing-customer-by-email match,
-    empty-items rejection, invalid-product rejection, stock-insufficient rejection,
-    XSS sanitization on customer name field).
-  • Modified: `apps/web/src/components/cart/cart-drawer.tsx` (replace disabled
-    "Checkout (coming soon)" placeholder with active Link to /[slug]/store/checkout).
-  • Branch: feat/batch-18-item-2-checkout-public-procedure
-  • ⚠ Pre-flight risk to verify at proposal time:
-    (a) rate-limit tier confirmation (rateLimiters.public 30/min vs checkout
-        submission rate — 30/min is generous; consider whether burst protection
-        helps or not for legitimate checkouts).
-    (b) Customer model fields — confirm what's required vs optional (email, name,
-        phone, shippingAddress, billingAddress); existing placeOrder requires
-        customerId so it never creates one, but customer self-checkout needs
-        find-or-create-by-email.
-    (c) Xendit integration: option (i) Server-side immediately call
-        createXenditInvoice inside placeOrderAsCustomer transaction (one round-trip,
-        cleaner UX); option (ii) Return orderId, let client call createXenditInvoice
-        separately (two round-trips, simpler error recovery). Pick at proposal time.
-    (d) Guest checkout vs require-login: spec at proposal time. If guest: no auth
-        gate on placeOrderAsCustomer. If require-login: convert to protectedProcedure
-        and skip this batch's first-publicProcedure framing.
-
-## Alternative Batch 18 directions (if Item 2 isn't right)
+### Direction E — Xendit-for-guests refactor (T2 ~18-25K, RECOMMENDED next)
+Logical continuation of Direction A. Customer chooses "Pay with Xendit" on checkout →
+order created + Xendit invoice created in same transaction → client redirects to Xendit
+payment URL. Currently impossible because createXenditInvoice is writeProcedure (protected).
+- Approach: extract Xendit invoice-creation logic from createXenditInvoice writeProcedure
+  into a shared server-side helper `apps/web/src/lib/xendit-invoice.ts` (createXenditInvoiceForOrder).
+- Both createXenditInvoice (admin path) AND placeOrderAsCustomer (guest path) call the helper.
+- placeOrderAsCustomer adds optional `paymentMethod: "xendit"` to its enum; when chosen,
+  the procedure creates the order then immediately creates the Xendit invoice in the same
+  $transaction, returns {orderId, orderNumber, invoiceUrl}.
+- Checkout form: 3rd radio option "Pay online via Xendit"; on success with invoiceUrl,
+  redirect to invoiceUrl instead of /products.
+- Tests: add 3-4 tests covering xendit path (success creates invoice + persists xenditPaymentId,
+  failure on Xendit side rolls back order via transaction, paymentMethod="xendit" + missing
+  Xendit config rejects gracefully).
+- Branch: feat/batch-20-xendit-for-guests
+- ⚠ Pre-flight: verify TenantXenditConfig table has the test-key fallback path so dev
+  works without real keys. Confirm rateLimiters.public is the right tier for the
+  Xendit-creating path (it currently is — same 30/min/IP for the whole procedure).
 
 ### Direction B — Mobile Expo scaffold Phase 1a (T2-T3, ~40-60K)
-Same as previous .whatsnext. Worth inspecting apps/mobile/src/ first to determine
-true starting state (package.json has deps but src/ tree may already be partially
-scaffolded — Batch 18 Item 1 pre-flight saw expo + expo-router + watermelondb +
-async-storage + netinfo + expo-camera + expo-local-authentication + expo-location +
-expo-notifications declared in deps, suggesting this isn't a from-zero scaffold).
+Inspect apps/mobile/src/ first to determine true starting state. package.json has deps
+(expo + expo-router + watermelondb + async-storage + netinfo + expo-camera + expo-local-
+authentication + expo-location + expo-notifications) but the src/ tree may already be
+partially scaffolded. If genuinely from-zero, this batch deserves explicit sub-batch plan
+in the BUILD BATCH PROPOSAL.
 
 ### Direction C — Production-readiness bundle for Xendit (T2, ~20-35K)
-Item 1: Async webhook via BullMQ (packages/jobs has bullmq@^5.34.5 confirmed).
-Item 2: pino structured logging stack.
-Item 3: Admin Settings → Integrations page for Xendit config visibility.
+Item 1: Async webhook via BullMQ (packages/jobs has bullmq@^5.34.5 confirmed). Webhook
+  enqueues a job, returns 200 immediately; worker processes the payment update.
+Item 2: pino structured logging stack across server-side routes and webhook handler.
+Item 3: Admin Settings → Integrations page for Xendit config visibility (read-only display
+  of test/live key presence, last successful webhook timestamp, recent failure log).
 Becomes urgent when first real test-key transaction happens in staging.
 
 ### Direction D — Small carry-forward bundle (T1-T2, ~15-25K combined)
 Item 1: accounting.reverse $transaction wrap (CONFIRMED EXISTS at
-apps/web/src/server/trpc/routers/accounting.ts:213).
+  apps/web/src/server/trpc/routers/accounting.ts:213).
 Item 2: AUTH_TRUST_HOST env propagation across env files + sync script.
 Item 3 (optional): Quotation column reorder + template save/load.
 
-## New recurring-pattern lessons surfaced during Batch 18 Item 1 (apply at next batch PRE-FLIGHT):
+### Direction F — Guest order tracking (T1-T2, ~12-18K)
+Pairs with Direction A completion. Adds publicProcedure getOrderByNumber+email so guests
+can check status without an account. New page /[slug]/store/orders/lookup. Useful before
+Direction E ships because customers will want to confirm their order exists even on the
+cash-on-delivery path.
 
-- 🟢 PURE-REDUCER-FROM-PROVIDER PATTERN: extract pure reducer to its own non-"use client"
-  module so vitest in node environment can fully test it. Provider becomes a thin "use client"
-  wrapper around useReducer. Reusable for ALL future client-state features (e.g. multi-step
-  form wizard state, draft autosave state, undo/redo stack).
+## New recurring-pattern lessons surfaced during Batch 18 Item 2 (apply at next batch PRE-FLIGHT):
 
-- 🟢 PER-TENANT LOCALSTORAGE KEY PATTERN: `orqafy-${feature}-${tenantSlug}` prevents cross-
-  tenant data bleed on shared devices. CartProvider takes tenantSlug as prop from the layout's
-  params Promise. Same pattern applies to any future tenant-scoped client state.
+- 🟢 PUBLICPROCEDURE TENANT RESOLUTION — publicProcedure has no ctx.tenantId or ctx.tenantSlug.
+  Input MUST carry tenantSlug; procedure resolves via db.tenant.findUnique({where:{slug}}).
+  Default warehouse resolves server-side via db.warehouse.findFirst({where:{isDefault,isActive}}).
+  NEVER let the client supply warehouseId on a public path — that's an authorization boundary.
 
-- 🟢 SSR HYDRATION SAFETY VIA HYDRATED FLAG: useState(false) → useEffect reads storage →
-  setHydrated(true). UI shows empty state until hydrated; writes suppressed until hydrated.
-  Click handlers disabled until hydrated. Prevents both classic Next.js hydration mismatch
-  AND the lost-click bug from interacting before mount completes.
+- 🟢 SYSTEM-ACTOR LOOKUP FOR GUEST WRITES — any required FK to User on a public write path
+  (StockMovement.createdById, AuditLog.userId, etc.) resolves via db.user.findFirst
+  ({where:{isActive:true},orderBy:{createdAt:"asc"},select:{id:true}}) which returns the
+  seeded webmaster. Reusable pattern for all future guest-attributed writes.
 
-- 🔴 GOTCHA REPEAT: `@next/next/no-img-element` disable comment is a foot-gun in this project
-  (no @next/next ESLint plugin loaded). 2nd occurrence (Batch 15 Item 3 was first).
-  NEVER add this disable comment — native <img alt=...> is sufficient and lint-clean.
+- 🟢 RATE-LIMIT TIER FOR PUBLIC ENDPOINTS — rateLimiters.public.check(ip) at 30/min/IP is
+  the right tier for guest-facing mutations. IP extracted from
+  ctx.req.headers.get("x-forwarded-for") ?? ctx.req.headers.get("x-real-ip") ?? "unknown".
 
-- 🟢 STRUCTURAL NARROWING REMINDER: after `"X" in obj && typeof obj === "object"`,
-  TypeScript narrows `obj` to `{ X: unknown } & object` automatically. Explicit
-  `(obj as { X: unknown })` casts are redundant and tripped by @typescript-eslint/no-unnecessary-type-assertion.
+- 🟢 SANITIZEPLAINTEXT FOR PUBLIC TEXT FIELDS — apply to firstName/lastName/notes (any user-
+  facing text that may be rendered in admin views). Email passes through Zod email() validator
+  which already strips HTML. Address fields go to Json columns (revisit if ever rendered as
+  innerHTML somewhere).
 
-- 🟢 INTENTIONAL SCOPE-TRIM PRECEDENT: Batch 18 Item 1 deliberately shipped only half of the
-  proposed Direction A bundle (cart only, not cart+checkout). First time the batch series
-  has intentionally trimmed scope below the proposed Plan. Rationale was: Item 2 introduces
-  new attack surface (first publicProcedure on storefront) deserving its own focused review.
-  Pattern: when a Direction bundles N items and one item introduces a NEW security/auth
-  surface, prefer to ship that item in its own batch even if total token count fits in one
-  session. Optimizes for review focus, not throughput.
+- ⚖️ DUPLICATED ORDER-CREATION LOGIC — placeOrderAsCustomer duplicates ~80% of placeOrder body.
+  NOT extracted to a shared helper because the divergences are real (no tax/shipping/discount
+  fields, sanitization step, find-or-create customer, system-actor attribution, auto-resolved
+  warehouse). Extraction premature until a 3rd variant emerges (e.g. POS sale checkout).
+
+- 🔴 USECART() API SHAPE GOTCHA — the cart Provider exposes specific named actions; always
+  grep the useMemo value before destructuring in a new consumer. This batch hit two typecheck
+  errors before first test run: destructured `clearCart` (wrong, action is `clear`) and
+  `tenantSlug` (wrong, not on context until this batch added it). Both fixed in follow-up
+  edits. Lesson: BEFORE writing a new useCart consumer, run
+  `grep -A20 "const value = useMemo" apps/web/src/lib/cart-store.tsx` to see the actual shape.
+
+- 🟢 INTENTIONAL SCOPE-TRIM CONTINUES — Batch 18 Item 2 deliberately shipped without Xendit
+  integration for guests (Option α chosen over Option β at proposal time). Reason: Xendit
+  integration would require either extracting the Xendit-call logic from createXenditInvoice
+  into a shared helper OR adding a 2nd publicProcedure with its own pattern — either adds 8-12K
+  tokens and deserves a focused batch (Direction E). 2nd consecutive intentional scope-trim
+  (Item 1 was 1st). Pattern: when a Direction bundles N items and one item touches a NEW
+  security/integration/auth surface, prefer to ship that item in its own batch. Optimizes for
+  review focus, not throughput.
 
 ## Trigger
-Open Claude Code in this folder. Say "start Phase 8 Batch 19" (or "continue Batch 18
-Item 2") — agent will read STATE.md first, run the 9-point pre-flight, then emit
-BUILD BATCH PROPOSAL with explicit branch-creation line items per Rule 23.
+Open Claude Code in this folder. Say "start Phase 8 Batch 20" (or "start Direction E" /
+"start Direction B" etc.) — agent will read STATE.md first, run the 9-point pre-flight,
+then emit BUILD BATCH PROPOSAL with explicit branch-creation line items per Rule 23.
