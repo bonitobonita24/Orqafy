@@ -12,7 +12,7 @@ const MAX_TAKE = 96;
 
 interface PageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; category?: string }>;
 }
 
 function firstImageUrl(images: unknown): string | null {
@@ -38,6 +38,7 @@ export default async function PublicStorefrontProductsPage({
   const { slug } = await params;
   const sp = await searchParams;
   const search = sp.q?.trim();
+  const categorySlug = sp.category?.trim();
   const pageNum = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
   const take = DEFAULT_TAKE;
   const skip = (pageNum - 1) * take;
@@ -52,8 +53,11 @@ export default async function PublicStorefrontProductsPage({
       { sku: { contains: search, mode: "insensitive" } },
     ];
   }
+  if (categorySlug !== undefined && categorySlug.length > 0) {
+    where.category = { slug: categorySlug };
+  }
 
-  const [items, total] = await Promise.all([
+  const [items, total, categories] = await Promise.all([
     prisma.product.findMany({
       where,
       orderBy: { name: "asc" },
@@ -61,7 +65,27 @@ export default async function PublicStorefrontProductsPage({
       take: Math.min(take, MAX_TAKE),
     }),
     prisma.product.count({ where }),
+    prisma.category.findMany({
+      where: {
+        isActive: true,
+        products: {
+          some: { isActive: true, ecommerceVisible: true },
+        },
+      },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, slug: true, name: true },
+    }),
   ]);
+
+  function buildCategoryHref(target: string | null): {
+    pathname: string;
+    query: Record<string, string>;
+  } {
+    const query: Record<string, string> = {};
+    if (search !== undefined && search.length > 0) query.q = search;
+    if (target !== null) query.category = target;
+    return { pathname: `/${slug}/store/products`, query };
+  }
 
   const totalPages = Math.max(1, Math.ceil(total / take));
 
@@ -78,6 +102,9 @@ export default async function PublicStorefrontProductsPage({
           action={`/${slug}/store/products`}
           className="flex gap-2"
         >
+          {categorySlug !== undefined && categorySlug.length > 0 ? (
+            <input type="hidden" name="category" value={categorySlug} />
+          ) : null}
           <input
             type="search"
             name="q"
@@ -93,6 +120,40 @@ export default async function PublicStorefrontProductsPage({
           </button>
         </form>
       </header>
+
+      {categories.length > 0 ? (
+        <nav
+          aria-label="Categories"
+          className="flex flex-wrap gap-2 border-b border-border pb-3"
+        >
+          <Link
+            href={buildCategoryHref(null)}
+            className={
+              categorySlug === undefined || categorySlug.length === 0
+                ? "rounded-md border border-[#00d992] bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992]"
+                : "rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+            }
+          >
+            All
+          </Link>
+          {categories.map((c) => {
+            const active = categorySlug === c.slug;
+            return (
+              <Link
+                key={c.id}
+                href={buildCategoryHref(c.slug)}
+                className={
+                  active
+                    ? "rounded-md border border-[#00d992] bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992]"
+                    : "rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+                }
+              >
+                {c.name}
+              </Link>
+            );
+          })}
+        </nav>
+      ) : null}
 
       {items.length === 0 ? (
         <div className="rounded-lg border border-border bg-card p-12 text-center">
@@ -163,6 +224,9 @@ export default async function PublicStorefrontProductsPage({
                   ...(search !== undefined && search.length > 0
                     ? { q: search }
                     : {}),
+                  ...(categorySlug !== undefined && categorySlug.length > 0
+                    ? { category: categorySlug }
+                    : {}),
                   page: pageNum - 1,
                 },
               }}
@@ -181,6 +245,9 @@ export default async function PublicStorefrontProductsPage({
                 query: {
                   ...(search !== undefined && search.length > 0
                     ? { q: search }
+                    : {}),
+                  ...(categorySlug !== undefined && categorySlug.length > 0
+                    ? { category: categorySlug }
                     : {}),
                   page: pageNum + 1,
                 },
