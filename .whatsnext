@@ -1,42 +1,50 @@
-# Next Session — Phase 8 Batch 18 (recommended)
+# Next Session — Phase 8 Batch 18 Item 2 (recommended) — OR pick a fresh direction
 
-Last close: Batch 17 (Direction A — E-commerce Phase 3-heavy / Xendit checkout). All 4 items
-shipped via proper feat/chore branch → squash-merge flow (56473fc + 158f55a + 0f919cb + 3471cce).
-Rule 23 maintained. Opus-direct executor pattern continues 16× consecutive.
+Last close: Batch 18 Item 1 (Direction A — E-commerce customer self-service Phase 1 / Cart).
+Single item shipped via proper feat branch → squash-merge flow (03f389e).
+Rule 23 maintained. Opus-direct executor pattern continues 17× consecutive.
 
-Test baseline: 669/669 GREEN (was 656, +5 createXenditInvoice + +8 xendit-webhook).
-Web typecheck + lint clean. No new migrations. xendit-node@^7.0.0 now in apps/web deps.
+Test baseline: 685/685 GREEN (was 669, +16 cart-reducer unit tests).
+Web typecheck + lint clean. No new migrations. Pure client state addition.
 
-End-to-end Xendit checkout flow now complete at unit level:
-  Admin order detail → "Pay with Xendit" button → createXenditInvoice procedure →
-  Xendit invoice URL → user redirects to Xendit checkout → Xendit POSTs webhook →
-  /api/webhooks/xendit verifies x-callback-token + matches stored invoice id + verifies amount →
-  Order.paymentStatus updated to "paid" or "failed" idempotently.
-Production validation deferred to staging integration test (real Xendit test key + first
-test transaction). XENDIT_SECRET_KEY + XENDIT_WEBHOOK_TOKEN must be populated in .env.staging
-before deploying — both already declared as optional in apps/web/src/env.ts.
+Cart foundation now in place:
+  Customer browses /[slug]/store/products → opens product detail →
+  AddToCartButton with qty input + Add to cart → toast confirmation →
+  CartDrawer in store header (sticky, shadcn Sheet) shows live count badge →
+  Open drawer → line items with qty edit + remove + subtotal →
+  Disabled "Checkout (coming soon)" placeholder at bottom.
+Cart state persists per-tenant in localStorage (key: `orqafy-cart-${slug}`).
+Hydration-safe (no SSR mismatch, no pre-mount click loss).
 
-⚠ PRE-FLIGHT REQUIRED before any code (9-point — keep all current items, all 4 batches running confirm they pay off):
+NEXT LOGICAL ITEM: Batch 18 Item 2 (Direction A completion — checkout page +
+publicProcedure). This was intentionally deferred from this batch to focus the
+publicProcedure addition on its own session.
+
+⚠ PRE-FLIGHT REQUIRED before any code (9-point — all 5 items pay off historically):
 1. Run `git status` + `git log -1` to confirm working tree state matches expectations.
-2. Confirm `pnpm vitest run` → 669/669 GREEN baseline (or document deviation if no source
-   drift since last GREEN, like Batches 13/14/15/16/17 did).
-3. Read the input Zod schema of any router procedure that .whatsnext claims will be reused —
-   this catches scope mismatches BEFORE the BUILD BATCH PROPOSAL stage (Batch 12 lesson).
+2. Confirm `pnpm vitest run` → 685/685 GREEN baseline (or document deviation).
+3. Read the input Zod schema of any router procedure that .whatsnext claims will be
+   reused — this catches scope mismatches BEFORE the BUILD BATCH PROPOSAL stage (Batch 12 lesson).
 4. If a router change in scope newly READS a field from the existing record (e.g. a gate or
    conditional), verify all tests hitting that code path mock that field (Batch 13 lesson).
 5. Grep schema.prisma for any model referenced in the proposed scope; verify presence and
-   field types before scoping migrations. (Batches 14+15+16+17 each paid for itself here —
-   FOUR consecutive batches where "new entity" turned out to already be in the init migration.)
+   field types before scoping migrations. (Batches 14+15+16+17+18-Item-1 = 5 consecutive
+   batches where "needed schema field" already existed in init migration — pattern likely
+   to hold for Item 2 too since EcommerceOrder + EcommerceOrderItem are already populated.)
 6. Confirm package.json contains any third-party library called out in the proposed scope.
-   ⚠ xendit-node@^7.0.0 IS now installed as of Batch 17. No further xendit-* installs needed
-   unless using subscriptions or refunds APIs.
+   ⚠ xendit-node@^7.0.0 + shadcn Sheet are now installed. No further installs needed for
+   Item 2 unless using BullMQ async webhook (Direction C alternative) or pino logging.
 7. Re-read .claude/rules/memory-governance.md §1 (Tiered Decomposition) for this batch's tier.
 8. ⚠ Emit explicit branch-creation line item in the BUILD BATCH PROPOSAL so user can catch
    silent direct-to-main slips at confirm time.
 9. ⚠ When proposal text says "Server Component consuming X.Y procedure" for a PUBLIC route,
    grep the router for `X.Y: publicProcedure` vs `protectedProcedure`. Mismatch means either
    (a) pivot to direct Prisma in the page, or (b) split the procedure into public + protected
-   variants. Pre-flight item 9 paid off in Batches 15+16 — zero pivots during execution.
+   variants. Pre-flight item 9 paid off in Batches 15+16+17 — zero pivots during execution.
+   ⚠ FOR ITEM 2 SPECIFICALLY: this batch will INTENTIONALLY ADD the first publicProcedure
+   on the storefront router. Item 9 reverses for Item 2 — verify NO existing publicProcedure
+   exists yet (already confirmed in Batch 18 pre-flight) and confirm rate-limit tier
+   (rateLimiters.public is 30 req/min, defined in apps/web/src/server/lib/rate-limit.ts).
 
 ⚠ PATH CORRECTIONS (apply when grepping for router state):
 - Storefront router lives at `apps/web/src/server/trpc/routers/storefront.ts`.
@@ -45,91 +53,108 @@ before deploying — both already declared as optional in apps/web/src/env.ts.
 - Xendit webhook tests live at `apps/web/src/__tests__/xendit-webhook.test.ts`.
 - Xendit server-only client wrapper lives at `apps/web/src/lib/xendit.ts`.
 - Accounting router lives at `apps/web/src/server/trpc/routers/accounting.ts`.
+- Cart pure reducer + tests: `apps/web/src/lib/cart-reducer.ts` + `apps/web/src/__tests__/cart-reducer.test.ts`.
+- Cart Provider/hook: `apps/web/src/lib/cart-store.tsx`.
+- Cart UI components: `apps/web/src/components/cart/{add-to-cart-button,cart-drawer}.tsx`.
+- Store shared layout (NEW Batch 18 Item 1): `apps/web/src/app/(tenant)/[slug]/store/layout.tsx`.
+- Public product browse + detail pages: `apps/web/src/app/(tenant)/[slug]/store/products/{page,[id]/page}.tsx`.
 
-## Recommended Batch 18 — pick ONE primary direction:
+## Recommended Batch 18 Item 2 — checkout page + customer publicProcedure (T2-T3, ~25K)
 
-### Direction A — E-commerce customer self-service surfaces (T2-T3, ~30-50K)
-Now that Xendit checkout works end-to-end for admin-created orders, build the customer-facing
-side so visitors can place + pay for their own orders without admin intervention.
-- Item 1 (T2 ~15K): Cart Client Component with localStorage persistence + "Add to cart" button
-  on product detail page + cart drawer (header link). No tRPC — pure client state. Branch:
-  `feat/batch-18-item-1-cart-state`.
-- Item 2 (T2-T3 ~25K): Checkout page `/[slug]/store/checkout` Server Component shell + Client
-  Component form reading cart from localStorage. Posts to a NEW `storefront.placeOrderAsCustomer`
-  publicProcedure (since current `placeOrder` is writeProcedure / admin-context). Customer
-  self-resolution via session (if logged in) OR guest checkout with emailed magic-link login
-  before payment. Branch: `feat/batch-18-item-2-checkout-page`.
-- Pre-flight item 9: scope claims a NEW publicProcedure on storefront router. Confirm at
-  proposal time that publicProcedure is OK at this rate-limit tier (rateLimiters.public is
-  30 req/min — adequate for checkout but worth verifying no IP-burst path).
+Customer takes the populated cart → visits /[slug]/store/checkout → fills shipping +
+billing + email → submits → backend creates an EcommerceOrder (pending status) +
+optionally creates Xendit invoice immediately → redirect to Xendit payment URL.
+
+- Item 2 (T2-T3 ~25K): Checkout page + placeOrderAsCustomer publicProcedure
+  • New: `apps/web/src/app/(tenant)/[slug]/store/checkout/page.tsx` (Server shell —
+    look up tenant default warehouse, redirect to /products if empty cart impossible to
+    detect server-side, render the Client form).
+  • New: `apps/web/src/app/(tenant)/[slug]/store/checkout/checkout-form.tsx` (Client —
+    reads cart from useCart hook, fields for name+email+shippingAddress+billingAddress
+    + sameAsShipping toggle, submit calls placeOrderAsCustomer.useMutation, onSuccess
+    optionally invokes createXenditInvoice and redirects; onError shows sonner toast).
+  • Modified: `apps/web/src/server/trpc/routers/storefront.ts` (+placeOrderAsCustomer
+    publicProcedure — input schema includes tenantSlug to resolve tenant from URL, items
+    + addresses + customer-email; resolves OR creates a Customer record by email match,
+    creates EcommerceOrder pending paymentStatus, applies same inventory hold logic as
+    existing placeOrder writeProcedure).
+  • Modified: `apps/web/src/__tests__/storefront.test.ts` (+5-8 tests for
+    placeOrderAsCustomer: guest happy path, existing-customer-by-email match,
+    empty-items rejection, invalid-product rejection, stock-insufficient rejection,
+    XSS sanitization on customer name field).
+  • Modified: `apps/web/src/components/cart/cart-drawer.tsx` (replace disabled
+    "Checkout (coming soon)" placeholder with active Link to /[slug]/store/checkout).
+  • Branch: feat/batch-18-item-2-checkout-public-procedure
+  • ⚠ Pre-flight risk to verify at proposal time:
+    (a) rate-limit tier confirmation (rateLimiters.public 30/min vs checkout
+        submission rate — 30/min is generous; consider whether burst protection
+        helps or not for legitimate checkouts).
+    (b) Customer model fields — confirm what's required vs optional (email, name,
+        phone, shippingAddress, billingAddress); existing placeOrder requires
+        customerId so it never creates one, but customer self-checkout needs
+        find-or-create-by-email.
+    (c) Xendit integration: option (i) Server-side immediately call
+        createXenditInvoice inside placeOrderAsCustomer transaction (one round-trip,
+        cleaner UX); option (ii) Return orderId, let client call createXenditInvoice
+        separately (two round-trips, simpler error recovery). Pick at proposal time.
+    (d) Guest checkout vs require-login: spec at proposal time. If guest: no auth
+        gate on placeOrderAsCustomer. If require-login: convert to protectedProcedure
+        and skip this batch's first-publicProcedure framing.
+
+## Alternative Batch 18 directions (if Item 2 isn't right)
 
 ### Direction B — Mobile Expo scaffold Phase 1a (T2-T3, ~40-60K)
-Pre-work for Direction C (Mobile WatermelonDB). Single batch goal: minimal Expo app boots,
-nav + auth + theme + connects to existing tRPC. WatermelonDB deferred to Phase 1b in Batch 19+.
-- Item 1: `apps/mobile/` Expo scaffold + app.json + tsconfig + minimal Login screen calling
-  `/api/trpc/auth.signIn`. Drawer/tab nav stub. Theme matching shadcn/ui dark variant.
-  Branch: `feat/batch-18-item-1-mobile-scaffold`.
-- Pre-flight risk: `apps/mobile/` is currently essentially empty + has unmet peer deps warning
-  (react-dom 19.2.5 vs found react 18.3.1 in expo-router 4.0.22). Verify both before scaffold.
+Same as previous .whatsnext. Worth inspecting apps/mobile/src/ first to determine
+true starting state (package.json has deps but src/ tree may already be partially
+scaffolded — Batch 18 Item 1 pre-flight saw expo + expo-router + watermelondb +
+async-storage + netinfo + expo-camera + expo-local-authentication + expo-location +
+expo-notifications declared in deps, suggesting this isn't a from-zero scaffold).
 
-### Direction C — Production-readiness bundle for Xendit (Tier 2, ~20-35K)
-Operationalize the Xendit flow shipped in Batch 17 before going live.
-- Item 1 (T2 ~15K): Async webhook processing via BullMQ — receive webhook → verify token →
-  enqueue → return 200 immediately → worker validates + updates DB. Matches Xendit's own
-  recommendation for high-volume merchants. Branch: `feat/batch-18-item-1-webhook-async-bullmq`.
-  Pre-flight: confirm packages/jobs is wired (it's in workspace deps but check if BullMQ Queue
-  is exported and Valkey is healthy in dev compose).
-- Item 2 (T2 ~10K): Centralized logging stack — add pino + a Route Handler error boundary that
-  logs full payload + stack + tenant context on every non-2xx webhook response. Addresses the
-  vercel-functions hook flag from Batch 17 ("no observability instrumentation").
-  Branch: `feat/batch-18-item-2-pino-logging`.
-- Item 3 (T1 ~5K): Add Xendit + webhook URLs + signed dashboard link as Admin → Settings page
-  entries (or env-var-driven display in a tenant admin panel). Branch: `feat/batch-18-item-3-xendit-admin-settings`.
+### Direction C — Production-readiness bundle for Xendit (T2, ~20-35K)
+Item 1: Async webhook via BullMQ (packages/jobs has bullmq@^5.34.5 confirmed).
+Item 2: pino structured logging stack.
+Item 3: Admin Settings → Integrations page for Xendit config visibility.
+Becomes urgent when first real test-key transaction happens in staging.
 
-### Direction D — Small carry-forward bundle (Tier 1-2, ~15-25K combined, SAFE)
-Three small unrelated items from prior batch deferrals. Safest direction for one-session ship.
-- Item 1 (T1 ~8K): Wrap `accounting.reverse` in `db.$transaction` + 3-4 partial-failure
-  rollback tests. Branch: `fix/batch-18-item-1-accounting-reverse-tx`. Pre-flight: confirm
-  procedure name + path — grep returned no match in Batch 16+17 pre-flight, so verify in
-  apps/web/src/server/trpc/routers/accounting.ts.
-- Item 2 (T1 ~3K): Add `AUTH_TRUST_HOST=true` to `.env.staging`, `.env.prod`,
-  `scripts/sync-credentials-to-env.sh`. Branch: `chore/batch-18-item-2-auth-trust-host`.
-- Item 3 (T2 ~15K, optional): Quotation builder Phase 3 column reorder + named template
-  save/load. Branch: `feat/batch-18-item-3-quotation-column-templates`.
+### Direction D — Small carry-forward bundle (T1-T2, ~15-25K combined)
+Item 1: accounting.reverse $transaction wrap (CONFIRMED EXISTS at
+apps/web/src/server/trpc/routers/accounting.ts:213).
+Item 2: AUTH_TRUST_HOST env propagation across env files + sync script.
+Item 3 (optional): Quotation column reorder + template save/load.
 
-## New recurring-pattern lessons surfaced during Batch 17 (apply at Batch 18 PRE-FLIGHT):
+## New recurring-pattern lessons surfaced during Batch 18 Item 1 (apply at next batch PRE-FLIGHT):
 
-- vi.hoisted mock pattern for external SDKs:
-    const { mockX } = vi.hoisted(() => ({ mockX: vi.fn() }));
-    vi.mock("@/lib/your-wrapper", () => ({ yourFn: () => ({ X: { method: mockX } }) }));
-  Use whenever a router imports a server-only wrapper around an external SDK. Applies to
-  any future Stripe / Twilio / OpenAI mocks.
+- 🟢 PURE-REDUCER-FROM-PROVIDER PATTERN: extract pure reducer to its own non-"use client"
+  module so vitest in node environment can fully test it. Provider becomes a thin "use client"
+  wrapper around useReducer. Reusable for ALL future client-state features (e.g. multi-step
+  form wizard state, draft autosave state, undo/redo stack).
 
-- Route Handler tests need their OWN test file (not co-located with router tests) because
-  @/env zod-validates at module load and tests need `vi.mock("@/env", () => ({ env: {...} }))`.
-  Pattern documented in apps/web/src/__tests__/xendit-webhook.test.ts header. Copy that
-  scaffold for any future Route Handler with secrets.
+- 🟢 PER-TENANT LOCALSTORAGE KEY PATTERN: `orqafy-${feature}-${tenantSlug}` prevents cross-
+  tenant data bleed on shared devices. CartProvider takes tenantSlug as prop from the layout's
+  params Promise. Same pattern applies to any future tenant-scoped client state.
 
-- vercel-plugin pattern-match hooks are NOISE on this project — they auto-fire on routine
-  edits of package.json, schema.prisma, app/**, api/** — but never apply to actual scope
-  unless the user explicitly opts into Vercel migration/deployment work. Skip per Rule 28
-  priority order + SessionStart instruction. Acknowledge in commit message if hook flagged
-  an actual concern that's out of scope (e.g. Batch 17 webhook + observability flag).
+- 🟢 SSR HYDRATION SAFETY VIA HYDRATED FLAG: useState(false) → useEffect reads storage →
+  setHydrated(true). UI shows empty state until hydrated; writes suppressed until hydrated.
+  Click handlers disabled until hydrated. Prevents both classic Next.js hydration mismatch
+  AND the lost-click bug from interacting before mount completes.
 
-- Strict-boolean-expressions on env var checks: ALWAYS use explicit
-  `if (envVar === undefined || envVar === "")` — never `if (!envVar)`. Now appeared 3 times.
+- 🔴 GOTCHA REPEAT: `@next/next/no-img-element` disable comment is a foot-gun in this project
+  (no @next/next ESLint plugin loaded). 2nd occurrence (Batch 15 Item 3 was first).
+  NEVER add this disable comment — native <img alt=...> is sufficient and lint-clean.
 
-- `mockCreateInvoice.mock.calls[0][0]` triggers noUncheckedIndexedAccess on typed vi.fn()
-  mocks (where existing mockDb pattern uses any-cast at declaration). Two fix options:
-  (a) cast at access — `(mock.calls[0] as any[])[0]` — keeps mock typed elsewhere,
-  (b) cast at declaration — `const mockX = vi.fn() as any` — loses inference everywhere.
-  Prefer (a) for one-or-two-access tests; prefer (b) for fixture-heavy mocks.
+- 🟢 STRUCTURAL NARROWING REMINDER: after `"X" in obj && typeof obj === "object"`,
+  TypeScript narrows `obj` to `{ X: unknown } & object` automatically. Explicit
+  `(obj as { X: unknown })` casts are redundant and tripped by @typescript-eslint/no-unnecessary-type-assertion.
 
-- 4× consecutive batches (14, 15, 16, 17) found "needed schema field already exists in init
-  migration." Keep schema pre-flight (item 5) at top of every batch's checklist permanently.
+- 🟢 INTENTIONAL SCOPE-TRIM PRECEDENT: Batch 18 Item 1 deliberately shipped only half of the
+  proposed Direction A bundle (cart only, not cart+checkout). First time the batch series
+  has intentionally trimmed scope below the proposed Plan. Rationale was: Item 2 introduces
+  new attack surface (first publicProcedure on storefront) deserving its own focused review.
+  Pattern: when a Direction bundles N items and one item introduces a NEW security/auth
+  surface, prefer to ship that item in its own batch even if total token count fits in one
+  session. Optimizes for review focus, not throughput.
 
 ## Trigger
-Open Claude Code in this folder. Say "start Phase 8 Batch 18" — agent will read STATE.md
-first, run the 9-point pre-flight, then emit BUILD BATCH PROPOSAL with explicit
-branch-creation line items per Rule 23. Pick Direction A, B, C, or D at the proposal
-confirmation stage.
+Open Claude Code in this folder. Say "start Phase 8 Batch 19" (or "continue Batch 18
+Item 2") — agent will read STATE.md first, run the 9-point pre-flight, then emit
+BUILD BATCH PROPOSAL with explicit branch-creation line items per Rule 23.
