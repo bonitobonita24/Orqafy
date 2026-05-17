@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 import { formatCurrency } from "@/lib/quotation-build";
+import { OrderStatusActions } from "./order-status-actions";
 
 export const metadata: Metadata = { title: "Order detail" };
 
@@ -124,11 +125,14 @@ export default async function EcommerceOrderDetailPage({ params }: PageProps) {
             {customerLabel(order.customer)} · created {order.createdAt.toLocaleString()}
           </p>
         </div>
-        <span
-          className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${STATUS_COLORS[statusKey]}`}
-        >
-          {STATUS_LABELS[statusKey]}
-        </span>
+        <div className="flex flex-col items-end gap-3">
+          <span
+            className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${STATUS_COLORS[statusKey]}`}
+          >
+            {STATUS_LABELS[statusKey]}
+          </span>
+          <OrderStatusActions orderId={order.id} status={order.status} />
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
