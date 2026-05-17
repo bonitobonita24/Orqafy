@@ -173,8 +173,9 @@ export default async function PublicStorefrontProductsPage({
                 ? product.ecommerceDescription
                 : product.description;
             return (
-              <div
+              <Link
                 key={product.id}
+                href={`/${slug}/store/products/${product.id}`}
                 className="flex flex-col overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-[#00d992]/40"
               >
                 <div className="aspect-square bg-muted">
@@ -208,7 +209,7 @@ export default async function PublicStorefrontProductsPage({
                     {formatCurrency(displayPrice(product), "PHP")}
                   </p>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
