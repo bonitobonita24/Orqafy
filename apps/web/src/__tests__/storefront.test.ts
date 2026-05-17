@@ -646,4 +646,99 @@ describe("storefront router", () => {
       expect(movementCreates[0].quantity).toBe(5);
     });
   });
+
+  // ─── updateFulfillment (Batch 16 Item 2) ─────────────────────────────────
+  describe("updateFulfillment", () => {
+    it("updates trackingNumber when provided", async () => {
+      mockDb.ecommerceOrder.findUnique.mockResolvedValue({
+        id: ORDER_ID,
+        status: "processing",
+      });
+      mockDb.ecommerceOrder.update.mockResolvedValue({
+        id: ORDER_ID,
+        trackingNumber: "TRK-12345",
+        paymentMethod: null,
+      });
+
+      const caller = createCaller(authenticatedCtx());
+      const res = await caller.storefront.updateFulfillment({
+        id: ORDER_ID,
+        trackingNumber: "TRK-12345",
+      });
+
+      expect(res.trackingNumber).toBe("TRK-12345");
+      const call = mockDb.ecommerceOrder.update.mock.calls[0][0];
+      expect(call.where.id).toBe(ORDER_ID);
+      expect(call.data.trackingNumber).toBe("TRK-12345");
+      expect(call.data.paymentMethod).toBeUndefined();
+    });
+
+    it("updates paymentMethod when provided", async () => {
+      mockDb.ecommerceOrder.findUnique.mockResolvedValue({
+        id: ORDER_ID,
+        status: "confirmed",
+      });
+      mockDb.ecommerceOrder.update.mockResolvedValue({
+        id: ORDER_ID,
+        trackingNumber: null,
+        paymentMethod: "bank_transfer",
+      });
+
+      const caller = createCaller(authenticatedCtx());
+      const res = await caller.storefront.updateFulfillment({
+        id: ORDER_ID,
+        paymentMethod: "bank_transfer",
+      });
+
+      expect(res.paymentMethod).toBe("bank_transfer");
+      const call = mockDb.ecommerceOrder.update.mock.calls[0][0];
+      expect(call.data.paymentMethod).toBe("bank_transfer");
+      expect(call.data.trackingNumber).toBeUndefined();
+    });
+
+    it("updates both trackingNumber and paymentMethod when both provided", async () => {
+      mockDb.ecommerceOrder.findUnique.mockResolvedValue({
+        id: ORDER_ID,
+        status: "processing",
+      });
+      mockDb.ecommerceOrder.update.mockResolvedValue({
+        id: ORDER_ID,
+        trackingNumber: "TRK-99",
+        paymentMethod: "credit_card",
+      });
+
+      const caller = createCaller(authenticatedCtx());
+      await caller.storefront.updateFulfillment({
+        id: ORDER_ID,
+        trackingNumber: "TRK-99",
+        paymentMethod: "credit_card",
+      });
+
+      const call = mockDb.ecommerceOrder.update.mock.calls[0][0];
+      expect(call.data.trackingNumber).toBe("TRK-99");
+      expect(call.data.paymentMethod).toBe("credit_card");
+    });
+
+    it("requires admin role (FORBIDDEN for non-admin)", async () => {
+      const caller = createCaller(authenticatedCtx(["Staff"]));
+      await expect(
+        caller.storefront.updateFulfillment({
+          id: ORDER_ID,
+          trackingNumber: "TRK-1",
+        }),
+      ).rejects.toThrow(TRPCError);
+    });
+
+    it("throws NOT_FOUND when order does not exist", async () => {
+      mockDb.ecommerceOrder.findUnique.mockResolvedValue(null);
+
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.storefront.updateFulfillment({
+          id: ORDER_ID,
+          trackingNumber: "TRK-1",
+        }),
+      ).rejects.toThrow(/not found/i);
+    });
+  });
 });

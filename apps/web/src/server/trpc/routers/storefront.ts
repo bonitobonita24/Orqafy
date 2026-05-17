@@ -330,6 +330,36 @@ export const storefrontRouter = createTRPCRouter({
       return { items, total };
     }),
 
+  updateFulfillment: writeProcedure
+    .input(
+      z.object({
+        id: cuid,
+        trackingNumber: z.string().trim().min(1).max(200).optional(),
+        paymentMethod: z.string().trim().min(1).max(100).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireAdmin(ctx.roles);
+      const current = await db.ecommerceOrder.findUnique({
+        where: { id: input.id },
+        select: { id: true },
+      });
+      if (current === null) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+      }
+      return db.ecommerceOrder.update({
+        where: { id: input.id },
+        data: {
+          ...(input.trackingNumber !== undefined && {
+            trackingNumber: input.trackingNumber,
+          }),
+          ...(input.paymentMethod !== undefined && {
+            paymentMethod: input.paymentMethod,
+          }),
+        },
+      });
+    }),
+
   updateOrderStatus: writeProcedure
     .input(
       z.object({

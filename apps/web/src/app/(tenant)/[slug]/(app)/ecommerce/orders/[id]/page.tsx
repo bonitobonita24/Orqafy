@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 import { formatCurrency } from "@/lib/quotation-build";
 import { OrderStatusActions } from "./order-status-actions";
+import { FulfillmentForm } from "./fulfillment-form";
 
 export const metadata: Metadata = { title: "Order detail" };
 
@@ -200,6 +201,12 @@ export default async function EcommerceOrderDetailPage({ params }: PageProps) {
           ) : null}
         </div>
       </div>
+
+      <FulfillmentForm
+        orderId={order.id}
+        initialTrackingNumber={order.trackingNumber}
+        initialPaymentMethod={order.paymentMethod}
+      />
 
       <div className="rounded-lg border border-border bg-card">
         <div className="border-b border-border px-4 py-3">
