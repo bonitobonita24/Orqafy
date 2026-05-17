@@ -1,79 +1,84 @@
-# Next Session — Phase 8 Batch 11 (recommended)
+# Next Session — Phase 8 Batch 12 (recommended)
 
-Last close: Batch 10 (1c2beb0 Quotation UI + c399092 CRM ContactLog migration + router).
-Test baseline: 595/595 GREEN. Web + worker typecheck + lint all clean.
+Last close: Batch 11 (986a95c — single direct-to-main commit containing both ContactLog UI
+and Quotation→Invoice + PDF Preview). ⚠ Convention deviation noted in CHANGELOG_AI.md
+and STATE.md as 🔴 gotcha; user-confirmed Accept-reality path.
 
-⚠ PRE-FLIGHT REQUIRED before any code: confirm the user has applied Migration #2
-(`20260516184900_add_contact_log`) against their dev DB via `pnpm db:migrate`. The
-migration file is committed but unapplied state would surface as a runtime error,
-not a typecheck error — fail fast at session start.
+Test baseline: 601/601 GREEN. Web typecheck + lint clean. Migration #2
+(20260516184900_add_contact_log) APPLIED to dev DB.
 
-## Recommended Batch 11 (Opus-direct, 2 items, ~50-60K combined)
+⚠ PRE-FLIGHT REQUIRED before any code:
+1. Run `git status` + `git log -1` to confirm working tree state matches expectations
+   (the prelude snapshot can be minutes stale — Batch 11 landed this way).
+2. CREATE feat/batch-12-item-1-{slug} branch BEFORE first file write. Per Rule 23 +
+   the 🔴 gotcha lesson from Batch 11, this step is non-skippable.
+3. Confirm `pnpm typecheck && pnpm vitest run` → 601/601 GREEN baseline.
 
-### Item 1: ContactLog UI (T2, ~25-30K)
-First consumer of the contactLogListForCustomer + contactLogCreate procedures
-from Batch 10. Goes onto the existing customer-detail page.
+## Recommended Batch 12 (Opus-direct, 2 items, ~55-60K combined)
+
+### Item 1: Job Order Phase 2 (T2, ~35K)
+Operationalizes the existing JobOrder router with field-service workflow primitives.
+react-signature-canvas is already in package.json.
+
+Files to touch (proposed scope — re-verify at pre-flight):
+- apps/web/src/server/trpc/routers/job-order.ts — extend with addPart, addServiceLine,
+  recordSignature procedures. Parts and service lines are line-items on a JobOrder;
+  signature is a base64 PNG stored on the JobOrder row.
+- apps/web/src/app/(tenant)/[slug]/(app)/service/job-orders/[id]/page.tsx — add Parts
+  + Services + Signature sections. Signature section shows captured signature image OR
+  a "Capture signature" button when status=in_progress AND no signature yet.
+- apps/web/src/app/(tenant)/[slug]/(app)/service/job-orders/[id]/signature-pad.tsx —
+  NEW Client Component wrapping react-signature-canvas. On save: serializes to PNG
+  base64 → calls trpc job-order recordSignature mutation → optimistic UI update.
+- apps/web/src/__tests__/job-order.test.ts — extend with ~10 tests for the new
+  procedures (parts/services CRUD + signature recording + status-gated mutations).
+- packages/db/prisma/schema.prisma — add JobOrderPart + JobOrderServiceLine models if
+  not already present; add signatureDataUrl text field to JobOrder if not present.
+  Re-verify schema state at pre-flight grep before scoping migration.
+
+### Item 2: Quotation UI inline edit for drafts (T2, ~25K)
+Closes the last quotation builder UX gap. Currently editing a draft requires delete +
+recreate; this adds in-place edit via existing quotationUpdate procedure.
 
 Files to touch:
-- apps/web/src/app/(tenant)/[slug]/(app)/crm/customers/[id]/page.tsx — add
-  a "Touchpoints" section below the existing customer summary. Server Component
-  fetches the latest 20 contact logs via prisma directly (mirrors existing
-  data-fetch pattern). Embed a <ContactLogTimeline /> Client Component for the
-  list rendering + filter chips by type. Embed a <QuickAddContactLog /> Client
-  Component for the inline create modal.
-- apps/web/src/app/(tenant)/[slug]/(app)/crm/customers/[id]/contact-log-timeline.tsx
-  — NEW Client Component, type filter chips, optimistic delete via trpc
-  contactLogDelete useMutation, type-icon legend.
-- apps/web/src/app/(tenant)/[slug]/(app)/crm/customers/[id]/quick-add-contact-log.tsx
-  — NEW Client Component, dialog (shadcn/ui dialog already imported elsewhere),
-  type picker + subject + body + occurredAt date input, calls trpc
-  contactLogCreate useMutation, optimistic insert into timeline + sonner toast.
+- apps/web/src/app/(tenant)/[slug]/(app)/crm/quotations/[id]/edit/page.tsx — NEW
+  Server Component, fetches quotation by id (only renders for status=draft), embeds
+  <QuotationBuilder /> in edit mode with pre-loaded values.
+- apps/web/src/app/(tenant)/[slug]/(app)/crm/quotations/new/quotation-builder.tsx —
+  accept an optional `initialQuotation` prop. When present: pre-fill all form state +
+  switch submit handler to call quotationUpdate instead of quotationCreate. Routes back
+  to detail page on success.
+- apps/web/src/app/(tenant)/[slug]/(app)/crm/quotations/[id]/quotation-actions.tsx —
+  add "Edit draft" button gated on status=draft.
+- apps/web/src/__tests__/crm.test.ts — extend with ~5 tests for quotationUpdate
+  scenarios already covered at router level; UI integration is verified via typecheck.
 
-Optional small additions (defer to Batch 12 if scope balloons):
-- crm/contact-logs/page.tsx — global list across all customers with customerId
-  filter + type filter (mirror of crm/quotations/page.tsx layout).
+## Pre-flight checks before starting Batch 12
+1. `pnpm typecheck` && `pnpm vitest run` — confirm 601/601 GREEN baseline.
+2. `pnpm db:migrate` — should show "Already in sync" (Migration #2 was applied in Batch 11
+   close session).
+3. Grep schema.prisma for JobOrderPart, JobOrderServiceLine, signatureDataUrl — these
+   may already exist (Phase 4 scaffold). Migration only needed if absent.
+4. Re-read .claude/rules/memory-governance.md §1 — Tiered Decomposition Engine.
+5. Confirm react-signature-canvas in apps/web/package.json — should already be installed.
+6. ⚠ NEW (post-Batch 11): output an explicit branch-creation line item in the BUILD BATCH
+   PROPOSAL so the user can catch silent direct-to-main slips at confirm time. Example:
+   "Branch feat/batch-12-item-1-job-order-phase-2 will be created before any file write."
 
-### Item 2: Quotation UI Phase 2 (T2, ~25-30K)
-Completes the quotation lifecycle. Two small additive features:
-
-Files to touch:
-- apps/web/src/app/(tenant)/[slug]/(app)/crm/quotations/[id]/page.tsx — add a
-  "Convert to invoice" button when status=accepted. Routes to a new endpoint
-  on crm router (quotationConvertToInvoice) which atomically creates Invoice +
-  InvoiceLineItems from QuotationLineItems and flips status to "converted".
-  OR defer this and just add a PDF preview link.
-- apps/web/src/server/trpc/routers/crm.ts — add quotationConvertToInvoice
-  procedure (writeProcedure, accepted-only, atomic creation, sets
-  Quotation.convertedToInvoiceId).
-- apps/web/src/__tests__/crm.test.ts — extend with ~5 tests for the conversion.
-- apps/web/src/app/(tenant)/[slug]/(app)/crm/quotations/[id]/pdf/page.tsx — NEW
-  PDF preview page using react-pdf (add @react-pdf/renderer dep). Renders a
-  printable quotation document with header + customer + sections + markup
-  columns + line items + totals + terms.
-
-## Pre-flight checks before starting Batch 11
-1. `pnpm typecheck` && `pnpm vitest run` — confirm 595/595 GREEN baseline.
-2. `pnpm db:migrate` confirmation — Migration #2 contact_logs must be applied.
-3. Re-read .claude/rules/memory-governance.md §1 — Tiered Decomposition Engine.
-4. Verify @react-pdf/renderer is installable before scoping the PDF preview;
-   it has known issues on Next 15 server bundle — may need dynamic import.
-
-## Alternative Batch 11 scopes (if not ContactLog UI + Quotation Phase 2)
-- Job Order Phase 2 (parts/service workflows + technician signature gating using
-  react-signature-canvas which is already installed) — T2, ~35K.
+## Alternative Batch 12 scopes (if not Job Order + Quotation Edit)
 - E-commerce Phase 1 (Order + EcommerceOrder + PO link + storefront router) — T3,
   ~50-60K — own dedicated batch.
 - Mobile app Phase 1 (apps/mobile WatermelonDB DTR offline sync) — T3+, own batch.
-- Quotation UI inline edit for drafts (extend builder.tsx to load an existing
-  draft via trpc.crm.quotationById.useQuery and submit via quotationUpdate /
-  delete-and-recreate pattern depending on what changed) — T2, ~25K.
+- ContactLog global list page (crm/contact-logs/page.tsx mirroring crm/quotations/page.tsx
+  with customerId + type filters) — T1, ~10-15K (could pair with one of the above).
 
 ## Carry-forward T1 cleanups (do alongside a T2 item if room)
 - Reverse JE accounting hardening — wrap accounting.reverse procedure in
   db.$transaction to match accounting.post pattern.
 - AUTH_TRUST_HOST=true default in .env.staging/.env.prod templates.
+- ContactLog global list page (see above — fits as a 3rd small item if budget allows).
 
 ## Trigger
-Open Claude Code in this folder. Say "start Phase 8 Batch 11" — agent will read
-STATE.md first, confirm Migration #2 is applied, then run pre-flight schema
-grep for any additional models named here before proposing exact scope.
+Open Claude Code in this folder. Say "start Phase 8 Batch 12" — agent will read STATE.md
+first, run the 6-point pre-flight, then emit BUILD BATCH PROPOSAL with explicit branch-
+creation line items per the Batch 11 lesson.
