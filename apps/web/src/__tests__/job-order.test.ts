@@ -347,7 +347,12 @@ describe("jobOrder router", () => {
     });
 
     it("sets completedAt when status=completed", async () => {
-      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "testing" });
+      mockDb.jobOrder.findUnique.mockResolvedValue({
+        id: JO_CUID,
+        status: "testing",
+        customerSignatureUrl: "data:image/png;base64,AAA",
+        technicianSignatureUrl: "data:image/png;base64,BBB",
+      });
       mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID, status: "completed" });
       const caller = createCaller(authenticatedCtx());
       await caller.jobOrder.updateStatus({
@@ -371,7 +376,7 @@ describe("jobOrder router", () => {
     });
 
     it("does NOT set completedAt for non-terminal status", async () => {
-      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "received" });
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "diagnosing" });
       mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID });
       const caller = createCaller(authenticatedCtx());
       await caller.jobOrder.updateStatus({ id: JO_CUID, status: "in_progress" });
@@ -412,6 +417,80 @@ describe("jobOrder router", () => {
       await expect(
         caller.jobOrder.updateStatus({ id: JO_CUID, status: "in_progress" })
       ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    });
+
+    it("rejects invalid transition (received → released directly)", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "received" });
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.jobOrder.updateStatus({ id: JO_CUID, status: "released" })
+      ).rejects.toMatchObject({
+        code: "BAD_REQUEST",
+        message: expect.stringContaining("Invalid status transition"),
+      });
+      expect(mockDb.jobOrder.update).not.toHaveBeenCalled();
+    });
+
+    it("rejects invalid transition (approved → testing skipping in_progress)", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "approved" });
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.jobOrder.updateStatus({ id: JO_CUID, status: "testing" })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(mockDb.jobOrder.update).not.toHaveBeenCalled();
+    });
+
+    it("blocks testing → completed when customer signature missing", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({
+        id: JO_CUID,
+        status: "testing",
+        customerSignatureUrl: null,
+        technicianSignatureUrl: "data:image/png;base64,XXX",
+      });
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.jobOrder.updateStatus({ id: JO_CUID, status: "completed" })
+      ).rejects.toMatchObject({
+        code: "BAD_REQUEST",
+        message: expect.stringContaining("signatures"),
+      });
+      expect(mockDb.jobOrder.update).not.toHaveBeenCalled();
+    });
+
+    it("blocks testing → completed when technician signature missing", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({
+        id: JO_CUID,
+        status: "testing",
+        customerSignatureUrl: "data:image/png;base64,YYY",
+        technicianSignatureUrl: null,
+      });
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.jobOrder.updateStatus({ id: JO_CUID, status: "completed" })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(mockDb.jobOrder.update).not.toHaveBeenCalled();
+    });
+
+    it("allows cancellation from quoted state", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "quoted" });
+      mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID, status: "cancelled" });
+      const caller = createCaller(authenticatedCtx());
+      await caller.jobOrder.updateStatus({ id: JO_CUID, status: "cancelled" });
+      expect(mockDb.jobOrder.update.mock.calls[0][0].data.status).toBe("cancelled");
+    });
+
+    it("allows no-op transition (same status) for diagnosis-only update", async () => {
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "diagnosing" });
+      mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID, status: "diagnosing" });
+      const caller = createCaller(authenticatedCtx());
+      await caller.jobOrder.updateStatus({
+        id: JO_CUID,
+        status: "diagnosing",
+        diagnosis: "Updated diagnosis text",
+      });
+      const callArgs = mockDb.jobOrder.update.mock.calls[0][0];
+      expect(callArgs.data.diagnosis).toBe("Updated diagnosis text");
+      expect(callArgs.data.completedAt).toBeUndefined();
     });
   });
 

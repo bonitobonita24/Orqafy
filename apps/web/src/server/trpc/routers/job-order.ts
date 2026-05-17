@@ -17,6 +17,22 @@ const jobOrderStatuses = [
   "cancelled",
 ] as const;
 
+type JobOrderStatus = (typeof jobOrderStatuses)[number];
+
+// Allowed transitions per status. Cancellation is permitted from any
+// pre-release state. Released and cancelled are terminal.
+const allowedTransitions: Record<JobOrderStatus, ReadonlySet<JobOrderStatus>> = {
+  received: new Set(["diagnosing", "cancelled"]),
+  diagnosing: new Set(["quoted", "in_progress", "cancelled"]),
+  quoted: new Set(["approved", "cancelled"]),
+  approved: new Set(["in_progress", "cancelled"]),
+  in_progress: new Set(["testing", "cancelled"]),
+  testing: new Set(["completed", "in_progress"]),
+  completed: new Set(["released"]),
+  released: new Set(),
+  cancelled: new Set(),
+};
+
 const lineItemEditableStatuses = new Set([
   "received",
   "diagnosing",
@@ -171,9 +187,37 @@ export const jobOrderRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const existing = await db.jobOrder.findUnique({ where: { id: input.id } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      if (input.status !== existing.status) {
+        const allowed = allowedTransitions[existing.status as JobOrderStatus];
+        if (!allowed.has(input.status)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Invalid status transition: ${existing.status} → ${input.status}.`,
+          });
+        }
+        // Warranty release gate: testing → completed requires both signatures.
+        if (existing.status === "testing" && input.status === "completed") {
+          if (
+            existing.customerSignatureUrl === null ||
+            existing.technicianSignatureUrl === null
+          ) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message:
+                "Both customer and technician signatures are required to mark this job order completed.",
+            });
+          }
+        }
+      }
+
       const extra: Record<string, unknown> = {};
-      if (input.status === "completed") extra.completedAt = new Date();
-      if (input.status === "released") extra.releasedAt = new Date();
+      if (input.status === "completed" && existing.status !== "completed") {
+        extra.completedAt = new Date();
+      }
+      if (input.status === "released" && existing.status !== "released") {
+        extra.releasedAt = new Date();
+      }
       return db.jobOrder.update({
         where: { id: input.id },
         data: {

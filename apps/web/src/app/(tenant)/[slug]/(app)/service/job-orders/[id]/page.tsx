@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 import { JobOrderLineItems } from "./job-order-line-items";
+import { JobOrderStatusActions } from "./job-order-status-actions";
 import { SignaturePad } from "./signature-pad";
 
 export const metadata: Metadata = { title: "Job Order" };
@@ -117,6 +118,12 @@ export default async function JobOrderDetailPage({ params }: PageProps) {
               <span>Technician: {userLabel(jobOrder.technician)}</span>
             </div>
           </div>
+          <JobOrderStatusActions
+            jobOrderId={jobOrder.id}
+            currentStatus={jobOrder.status as Parameters<typeof JobOrderStatusActions>[0]["currentStatus"]}
+            hasCustomerSignature={jobOrder.customerSignatureUrl !== null}
+            hasTechnicianSignature={jobOrder.technicianSignatureUrl !== null}
+          />
         </div>
         {jobOrder.reportedIssue !== "" ? (
           <div className="rounded-md border border-border bg-card/40 p-3 text-sm">
