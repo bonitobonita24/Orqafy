@@ -1,100 +1,74 @@
-# Next Session — Phase 8 Batch 21c — per-tenant Xendit refactor (Direction F split 3 of 3, COMPLETES Direction F)
+# Next Session — Direction F COMPLETE. Pick the next direction.
 
-Last close: Batch 21b — TenantXenditConfig CRUD + admin UI SHIPPED. NEW
-apps/web/src/server/trpc/routers/admin-xendit-config.ts (4 procedures:
-get/upsert/testConnection/delete) + admin UI page + config form. 8 unit tests.
-714/714 GREEN. _app.ts registers `adminXenditConfig`. Squash-merged as ff61bea.
+Last close: Batch 21c — per-tenant Xendit refactor SHIPPED end-to-end.
+NEW EcommerceOrder.tenantId column (migration 20260521194500). NEW
+xendit-per-tenant.test.ts (5 tests). Rewrote lib/xendit.ts, lib/xendit-invoice.ts,
+api/webhooks/xendit/route.ts. Updated storefront.ts (both order.create paths
++ both invoice helper call sites + createXenditInvoice tenantId scoping),
+admin-xendit-config.ts (delete FK count scoped by tenantId — fixes latent
+cross-tenant bug), env.ts (drops dead XENDIT_SECRET_KEY/WEBHOOK_TOKEN).
+719/719 GREEN. Squash-merged as abe57ce.
 
-Test baseline: 714/714 GREEN. Web typecheck + lint clean. No migrations outstanding.
+★ DIRECTION F COMPLETE ★
+  21a ✅ encryption infrastructure (crypto.ts + 9 tests)
+  21b ✅ TenantXenditConfig CRUD + admin UI (4 procedures + 8 tests)
+  21c ✅ per-tenant Xendit consumer refactor (5 new tests)
 
-## Recommended next: Batch 21c — per-tenant Xendit refactor (T2 ~18-22K, COMPLETES Direction F)
+Tenants now own their Xendit credentials end-to-end. Storefront writes
+per-tenant invoices. Webhook resolves+verifies per-tenant tokens. No
+shared process.env Xendit secrets remaining.
 
-Wires up the consumer side. Refactors three call sites to read TenantXenditConfig
-per-tenant instead of using shared process.env-based secrets.
+Test baseline: 719/719 GREEN. Web typecheck + lint clean. 25 test files.
 
-Scope:
-- MOD: `apps/web/src/lib/xendit.ts` — replace `getXenditClient(): Xendit` with
-  `getXenditClient(tenantId: string): Promise<Xendit>`. Looks up
-  TenantXenditConfig by tenantId, decrypts secretKeyEnc via @/lib/crypto, returns
-  `new Xendit({secretKey})`. Throws if no config OR if isVerified=false (force
-  the admin to test before customers can pay). Remove `getXenditWebhookToken()` —
-  webhook token is now per-tenant and resolved by webhook handler directly.
-- MOD: `apps/web/src/app/api/webhooks/xendit/route.ts` — REORDER the webhook
-  handler:
-    1. Read raw body + x-callback-token header
-    2. Extract invoice.id from JSON payload (lightweight parse — does NOT validate sig yet)
-    3. Look up EcommerceOrder.xenditPaymentId === invoice.id → get order.id + (via tenant search_path lookup or direct ctx) tenantId
-    4. NOW look up TenantXenditConfig by tenantId → decrypt webhookTokenEnc
-    5. timingSafeEqual(x-callback-token, decryptedToken)
-    6. If match → proceed with the existing payment-status-update logic
-    7. If no match → 401 (do NOT reveal whether the order exists)
-  CRITICAL: tenant lookup MUST happen BEFORE signature verification because the
-  token IS per-tenant. The xenditPaymentId is unauthenticated input at this
-  point, but it can't be used to escalate — wrong xenditPaymentId means wrong
-  tenant means wrong token means timingSafeEqual fails.
-- MOD: `apps/web/src/lib/xendit-invoice.ts` — change
-  `createXenditInvoiceForOrder` to accept tenantId and use the per-tenant client.
-  Helper signature becomes:
-  `createXenditInvoiceForOrder({tenantId, externalId, amount, description, ...})`
-- MOD: `apps/web/src/server/trpc/routers/storefront.ts` — pass ctx.tenantId
-  through to createXenditInvoiceForOrder in BOTH createXenditInvoice
-  (protected/admin) AND placeOrderAsCustomer (public) call sites.
-- MOD: `apps/web/src/__tests__/xendit-webhook.test.ts` — extend mocks:
-  add tenantXenditConfig.findUnique to the @orqafy/db mock + ecommerceOrder.findFirst.
-  Update existing 8 webhook tests to reflect the new per-tenant resolution order
-  (mocks will need to return a TenantXenditConfig row with encrypted token).
-- MOD: `apps/web/src/__tests__/storefront.test.ts` — extend mocks for the 8
-  existing xendit-related tests (5 createXenditInvoice + 3 placeOrderAsCustomer
-  xendit branch). All must mock tenantXenditConfig.findUnique returning a row
-  with encrypted secretKeyEnc.
-- NEW: `apps/web/src/__tests__/xendit-per-tenant.test.ts` — coverage of the
-  new behaviors NOT already covered by extension of existing tests:
-    - getXenditClient(tenantId) throws when no TenantXenditConfig row exists
-    - getXenditClient(tenantId) throws when isVerified=false (force verify gate)
-    - webhook handler rejects when xenditPaymentId resolves to a different
-      tenant than the one whose webhook token is presented
-    - webhook handler returns 401 (not 404) when xenditPaymentId doesn't
-      resolve to any order (no enumeration leak)
-    - cross-tenant: tenant A's webhook token cannot validate tenant B's webhook
-- NO MIGRATION — TenantXenditConfig + EcommerceOrder.xenditPaymentId already exist.
+## 🔴 BLOCKING — Two deployment gates before 21a/b/c work in staging/prod
 
-Branch: feat/batch-21c-xendit-per-tenant
-RED→GREEN: write 5 new tests first + EXPAND mocks on 8+ existing tests to
-RED (they'll fail because their mocks don't include tenantXenditConfig.findUnique
-which the refactored getXenditClient now requires). Implement refactors. All
-back to GREEN.
+1. **APP_ENCRYPTION_KEY** must be present in .env.staging + .env.prod.
+   Generate per env: `openssl rand -base64 32`. Add to CREDENTIALS.md
+   (gitignored). Komodo Stack restart to pick up new env var. Without
+   this, every checkout AND every webhook throws at decrypt time.
 
-⚠ Pre-flight specifics for this batch:
-- Verify exactly which paths call getXenditClient() — grep `getXenditClient`
-  across apps/web/src and confirm the 3 call sites (helper + 2 router procedures).
-- Verify webhook handler current shape — read api/webhooks/xendit/route.ts in
-  full before refactoring. Note the current sig-verify-first ordering.
-- Verify TenantXenditConfig has isVerified column with default false (it does,
-  per Batch 21b confirmation).
-- Confirm timingSafeEqual is already imported in route.ts (it is, per Batch 17
-  webhook security work).
-- Determine the EcommerceOrder ↔ tenantId resolution path. Since EcommerceOrder
-  is tenant-schema-per-tenant (no tenantId column on the row), the webhook needs
-  to look up via search_path SET-statement. Likely needs a NEW helper:
-  `resolveTenantFromXenditPaymentId(invoiceId)` that iterates active tenants OR
-  uses a public-schema index. Estimate impact at pre-flight time.
-- THIS IS THE BATCH THAT MAKES STAGING/PROD BOOT-FAIL-LOUDLY without
-  APP_ENCRYPTION_KEY. Before merge, verify .env.staging + .env.prod have the
-  key — flag in BUILD BATCH PROPOSAL as a deployment gate.
+2. **EcommerceOrder migration** must run before deploy. Apply via:
+   `pnpm --filter @orqafy/db exec prisma migrate deploy` on each env.
+   Backfill UPDATE sets tenant_id to the oldest tenant — verify in dev
+   that this is acceptable (or run a manual UPDATE first for finer
+   assignment). Dev migration was NOT applied during 21c (Docker
+   postgres was down — P1001 on localhost:42941). Apply before next
+   runtime testing of the checkout flow.
 
-## Alternative directions (pick instead if 21c feels too heavy)
+## Recommended next directions (any can start independently)
 
-- **Direction C** — Xendit prod-readiness bundle (Turnstile activation + webhook
-  replay protection via processedAt timestamp + Komodo Stack config). T2 ~25K.
-  Independent of Direction F chain. Locks in security hardening.
-- **Direction D** — Small carry-forward bundle (guest order tracking page + audit-log
-  for guest checkout + admin filter). T1 ~12K. Quick win between heavier batches.
-- **Direction B** — Mobile Expo scaffold. T3 ~50K multi-session. Different track.
+### Direction C — Xendit prod-readiness bundle (T2 ~25K) ★ recommended
+   - Activate Cloudflare Turnstile on the public guest checkout
+     (TURNSTILE_SITE_KEY/SECRET_KEY env vars + form integration + Zod input)
+   - Add webhook replay protection via processedAt timestamp column on
+     EcommerceOrder (idempotency hardening — currently relies on
+     paymentStatus terminal-state check, which is correct but tighter
+     would be: dedup by xenditPaymentId + event id)
+   - Komodo Stack config doc: APP_ENCRYPTION_KEY + .env.{staging,prod}
+     setup checklist + migration apply sequence + rollback procedure
+   - Independent of any other direction. Locks in Direction F's
+     production posture before any tenant onboards live payment.
+
+### Direction D — Small carry-forward bundle (T1 ~12K)
+   - Guest order tracking page (orderNumber lookup at /[slug]/orders/track)
+   - Audit log for guest checkout (currently no AuditLog write)
+   - Admin order list filter: payment status + xendit-vs-cod dropdown
+   - Quick win between heavier batches.
+
+### Direction B — Mobile Expo scaffold (T3 ~50K, multi-session)
+   - apps/mobile/ doesn't exist yet
+   - Different track entirely; postpone until web feature surface stable.
+
+### Direction G — EcommerceOrderItem.tenantId parity (T1 ~8K) — OPTIONAL
+   - Add tenantId to EcommerceOrderItem for query convenience (currently
+     items reach tenantId via parent EcommerceOrder). Optional defense-in-depth
+     for direct item-level admin queries (none exist today). Defer unless
+     a use case appears.
 
 ## Standing 9-point pre-flight (run before any code on any batch)
 
 1. `git status` + `git log -1` — confirm tree state.
-2. `pnpm --filter @orqafy/web test` — confirm 714/714 GREEN baseline.
+2. `pnpm --filter @orqafy/web test` — confirm 719/719 GREEN baseline.
 3. Read input Zod schema of any router procedure the batch claims to reuse.
 4. If router newly READS a field, verify all existing tests on that path mock the field.
 5. Grep schema.prisma for any model in scope; confirm fields before scoping migrations.
@@ -115,7 +89,7 @@ back to GREEN.
 - ⚖️ Order-creation duplication tolerated — extraction deferred until 3rd variant.
 - 🔴 useCart() shape gotcha — destructure mismatch caught at typecheck.
 - 🟢 Intentional scope-trim — 5× consecutive (cart-only, order-only, Xendit-only,
-  crypto-only, CRUD-only). Direction F NOW split 3 ways, 2/3 shipped.
+  crypto-only, CRUD-only). Direction F COMPLETE 3/3 across 21a/b/c.
 - 🟢 Helper-extract refactor pattern — protected→public dual-caller surfaces extract
   to src/lib/ helper.
 - 🟢 RED-phase Zod-enum tightening — assert specific mock-side error marker + mock
@@ -134,12 +108,6 @@ back to GREEN.
   entire file at load. Still valid RED.
 - 🟢 .env.example does NOT exist in this project. Skip it in future batches. Use
   .env.dev for runtime + CREDENTIALS.md for human-readable documentation.
-- 🟢 TENANT-SCHEMA-PER-TENANT MODELS HAVE NO TENANTID COLUMN — EcommerceOrder,
-  EcommerceOrderItem, and other t_{slug}-resident models do NOT expose tenantId
-  in their Prisma WhereInput. Isolation is via search_path, not WHERE clause.
-  Public-schema models (Tenant, TenantXenditConfig, TenantSmtpConfig, AuditLog)
-  DO have tenantId. Pre-flight check: grep `@@schema("public")` for each model
-  in scope to determine WHERE clause requirements.
 - 🟢 LAYERING ADMIN-GUARD ON WRITEPROCEDURE — compose `writeProcedure.use(...)`
   to inherit demo-tenant block + add role check in one procedure surface. Avoids
   duplicating the demo logic across admin write procedures.
@@ -151,34 +119,29 @@ back to GREEN.
 - 🟢 XENDIT SDK TESTCONNECTION CONTRACT — `new Xendit({secretKey})`, then
   `xendit.Invoice.createInvoice({data:{externalId, amount, description, invoiceDuration}})`
   returns `{id, ...}`. `xendit.Invoice.expireInvoice({invoiceId})` voids it.
-  Test mocks: vi.mock("xendit-node") + vi.hoisted for mock fns + capture ctor args.
 - 🟢 VERCEL-PLUGIN HOOK AS SELF-REVIEW REMINDER — even when skipping the skill
   load per Rule 28, the auto-suggestion fire prompts a useful pause for
   pattern-based self-review. Net positive on otherwise-skipped hooks.
-
-## 🔴 CRITICAL — STAGING/PROD KEY DEPLOYMENT (BLOCKING for 21c production deploy)
-
-This flag remains open from Batch 21a. Now LOAD-BEARING for 21c:
-
-Before 21c ships to staging or production:
-1. Generate fresh APP_ENCRYPTION_KEY on each target server:
-   `openssl rand -base64 32`
-2. Add to .env.staging AND .env.prod (different value per env — never reuse across envs).
-3. Document in CREDENTIALS.md (gitignored — agent writes, never reads back).
-4. Komodo Stack: restart to pick up new env var.
-5. Without these steps:
-   - 21a: env.ts validation fails at boot — app refuses to start.
-   - 21b: app boots but first upsert call throws "APP_ENCRYPTION_KEY is not configured".
-   - 21c: app boots BUT every Xendit call AND every webhook will throw at decrypt time
-     — payment flow completely broken.
-
-Currently APP_ENCRYPTION_KEY exists ONLY in .env.dev. Staging/prod will boot-fail
-the moment a batch using crypto is deployed.
+- 🔴 [NEW from 21c] SCHEMA @@schema("public") IS NOT TENANT-SCHEMA-PER-TENANT —
+  prior banked lesson called EcommerceOrder "tenant-schema-per-tenant" which was
+  wrong. Public-schema entities with no tenantId column have NO TENANT ISOLATION
+  AT ALL. The fix is to add tenantId, not to assume search_path handles it.
+  Pre-flight check: grep `@@schema("public")` AND `tenantId` for each model in
+  scope. If public-schema AND no tenantId AND multi-tenant feature needs tenant
+  resolution → MIGRATION REQUIRED, not search_path trickery.
+- 🟢 [NEW from 21c] WEBHOOK ENUMERATION PREVENTION — return same status code (401)
+  for "unknown order" AND "wrong token" cases. Otherwise attacker can probe
+  status-code differences to discover valid order IDs. Trade-off: legitimate
+  Xendit webhook retries continue indefinitely on bogus IDs, but Xendit never
+  sends bogus IDs in normal operation (it only webhooks for invoices YOU created).
+- 🟢 [NEW from 21c] BUILD BATCH PROPOSAL OPTIONS PATTERN — when pre-flight surfaces
+  a critical architectural gap not in .whatsnext, HALT before any code. Emit
+  numbered options (A/B/C/D) with cost/benefit/tier per option. User picks.
+  Don't ad-hoc-decide architecture mid-implementation. Direct application of
+  Rule 29 (no fuzzy reasoning, ask if not in DECISIONS_LOG/PRODUCT.md/inputs.yml).
 
 ## Trigger
-Say "start Phase 8 Batch 21c" — agent reads STATE.md first, runs the 9-point
-pre-flight (special attention to EcommerceOrder ↔ tenantId resolution path
-discovery and webhook handler current ordering), then emits BUILD BATCH PROPOSAL
-with explicit branch-creation line.
+Say "start Direction C" / "start Direction D" / "start Direction B" / "start Direction G" —
+agent reads STATE.md first, runs 9-point pre-flight, then emits BUILD BATCH PROPOSAL.
 
-Or pick alternative: "start Direction C" / "start Direction D" / "start Direction B".
+Or open-ended: "what's next" — agent surfaces the four options above with current state.

@@ -858,3 +858,114 @@
 - Files:     .env.staging, .env.prod (missing variable), apps/web/src/env.ts (serverSchema validation), apps/web/src/lib/crypto.ts (getKey runtime check)
 - Concepts:  encryption-key, env-var, deployment-gate, boot-fail, decrypt-fail, staging-prod-risk
 - Narrative: APP_ENCRYPTION_KEY is currently in .env.dev ONLY. Risk profile escalates with each Direction F batch: Batch 21a: env.ts validation fails at boot — app refuses to start on staging/prod (caught at boot, loud failure). Batch 21b: app boots successfully (env validation passes BECAUSE the field is required only by zod min(44), which would already fail at boot if missing — so 21b's actual risk is the same as 21a's: boot-fail). HOWEVER — if the operator somehow provides ANY 44-char string at boot just to satisfy env.ts but it's not a valid 32-byte base64 key, getKey() will throw "must decode to 32 bytes" at runtime. Batch 21c: every payment flow (storefront placeOrderAsCustomer xendit branch + admin createXenditInvoice + webhook handler signature verify) goes through decrypt() — payment system is completely broken without a valid key. PRE-DEPLOY CHECKLIST (BEFORE any Direction F batch ships to staging or prod): (1) `openssl rand -base64 32` on each target server. (2) Add `APP_ENCRYPTION_KEY=<generated>` to .env.staging AND .env.prod (DIFFERENT key per env — NEVER reuse across environments). (3) Document in CREDENTIALS.md per environment (CREDENTIALS.md is gitignored — agent writes, never reads back). (4) Komodo Stack restart to pick up the new env var. (5) Verify env.ts validation passes by running a deployment dry-run. THIS FLAG REMAINS OPEN until the keys are deployed on both target environments. Batch 21c MUST flag this in its BUILD BATCH PROPOSAL as a deployment-gate item before merge to main.
+
+## 2026-05-22 — 🔴 @@schema("public") + no tenantId column = NO TENANT ISOLATION (corrects 21b lesson)
+- Type:      🔴 gotcha
+- Phase:     Phase 8 Batch 21c (Direction F split 3 of 3) — pre-flight discovery
+- Files:     packages/db/prisma/schema.prisma (EcommerceOrder, EcommerceOrderItem, Customer)
+- Concepts:  prisma, multi-tenant, schema, tenant-isolation, public-schema, tenant-schema-per-tenant, search_path
+- Narrative: The Batch 21b lesson "TENANT-SCHEMA-PER-TENANT MODELS HAVE NO TENANTID COLUMN — EcommerceOrder + EcommerceOrderItem"
+  was WRONG. Those models declare `@@schema("public")` AND have no tenantId column.
+  In this project, that combination means NO TENANT ISOLATION AT ALL — every tenant
+  reads/writes the SAME ecommerce_orders + customers + ecommerce_order_items tables.
+  Pre-21c, admin-xendit-config.delete()'s FK count was implicitly scanning orders
+  across every tenant. That was a latent bug masked by the misclassification.
+  The actual tenant-schema-per-tenant entities live in t_{slug} schemas WITHOUT any
+  @@schema directive in the Prisma model (the tenant-guard extension switches
+  search_path at query time). EcommerceOrder is NOT one of those — it's a global
+  public-schema model.
+  Pre-flight rule going forward: grep `@@schema("public")` AND `tenantId` for each
+  model in scope. The four-quadrant truth table:
+    public-schema + tenantId column     → tenant-scoped via explicit WHERE (Tenant, TenantXenditConfig)
+    public-schema + NO tenantId column  → NO TENANT ISOLATION (this was the 21b bug)
+    no @@schema  + has tenantId        → unusual, double-protected
+    no @@schema  + NO tenantId          → tenant-schema-per-tenant via search_path (true t_{slug} models)
+  21c fixed the second case for EcommerceOrder by adding tenantId. Same fix may be
+  needed for Customer + EcommerceOrderItem if any future feature needs explicit
+  tenant resolution on them.
+# ---
+
+## 2026-05-22 — 🟢 Webhook enumeration prevention via uniform 401 status codes
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 21c — webhook handler reorder
+- Files:     apps/web/src/app/api/webhooks/xendit/route.ts
+- Concepts:  webhook, enumeration, security, status-code, idempotency, xendit, callback
+- Narrative: When a webhook handler returns DIFFERENT status codes for "unknown
+  order" vs "wrong token", an attacker can probe status-code differences to
+  enumerate valid order IDs (try a guessed external_id with a random token —
+  401 means "wrong token, order exists" and 200 means "unknown order").
+  Fix: return the SAME status (401) in BOTH cases. Then the attacker cannot
+  distinguish whether the order exists.
+  Departure from prior behavior: pre-21c returned 200 for unknown orders
+  (idempotency-first posture, prevents Xendit retries). Post-21c returns 401.
+  Trade-off accepted: Xendit would retry indefinitely on bogus IDs, but in
+  normal operation Xendit only webhooks for invoices it created on YOUR
+  tenant's behalf — bogus IDs are theoretical, not real.
+  Generalizable: any auth-gated lookup endpoint should return the same error
+  for "resource not found" vs "auth failed" to prevent resource enumeration.
+# ---
+
+## 2026-05-22 — 🟢 BUILD BATCH PROPOSAL options pattern for mid-batch architectural surprises
+- Type:      🟢 change
+- Phase:     framework lift — applies to Phase 7 + Phase 8 batches
+- Files:     N/A (process pattern)
+- Concepts:  rule-29, no-fuzzy-reasoning, architecture-decision, batch-proposal, halt-pattern
+- Narrative: When pre-flight surfaces a critical architectural gap NOT covered
+  in .whatsnext or DECISIONS_LOG, HALT before writing any code. Emit a
+  numbered BUILD BATCH PROPOSAL with 3-4 viable paths (A/B/C/D), each with:
+    - Cost (LOC, files, migrations, tier)
+    - Benefit (what gap it closes)
+    - Risk (what could go wrong, edge cases)
+    - Tier classification (T1/T2/T3)
+  Add a recommendation (★ on the recommended option with justification).
+  Wait for user decision. Don't ad-hoc-decide architecture mid-implementation.
+  Direct application of Rule 29 (no fuzzy reasoning, ask if not in declared
+  sources). Used 21c when EcommerceOrder turned out to be public-schema with
+  no tenantId — 4 paths (migration, externalId encoding, index table,
+  brute-force). User picked Path A (migration). Pattern saves rework when
+  the chosen path is mid-scope cheaper than an arbitrarily-picked path.
+# ---
+
+## 2026-05-22 — 🟢 Three-stage backfill migration for NOT NULL column add
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 21c — schema migration for tenantId on EcommerceOrder
+- Files:     packages/db/prisma/migrations/20260521194500_add_tenant_id_to_ecommerce_orders/migration.sql
+- Concepts:  prisma, migration, backfill, not-null, foreign-key, postgres, idempotent
+- Narrative: When adding a NOT NULL column with no default to a table that may
+  have rows, a single-shot ALTER TABLE ADD COLUMN x NOT NULL fails because
+  existing rows can't satisfy NOT NULL. The safe three-stage pattern:
+    1. ALTER TABLE foo ADD COLUMN bar TEXT;                  -- nullable so existing rows survive
+    2. UPDATE foo SET bar = (SELECT ...) WHERE bar IS NULL;  -- backfill (deterministic source)
+    3. ALTER TABLE foo ALTER COLUMN bar SET NOT NULL;        -- enforce going forward
+    4. ALTER TABLE foo ADD CONSTRAINT fk FOREIGN KEY ...;     -- FK (optional)
+    5. CREATE INDEX ON foo(bar);                              -- index (optional)
+  Edge case handling:
+    - Empty table: UPDATE no-ops, NOT NULL succeeds vacuously, FK + index add fine.
+    - Populated, backfill source exists: UPDATE backfills all, NOT NULL succeeds.
+    - Populated, backfill source missing: UPDATE no-ops (NULL stays), NOT NULL
+      FAILS LOUDLY — operator must seed the source row first. This is the
+      desired failure mode (don't silently mis-assign).
+  Use bare table names (no "public.foo" schema qualifier) to match init
+  migration style — Prisma migrate runs with public as the default search_path.
+  Prisma can't auto-generate this — it would emit a single-shot ALTER that fails.
+  Write the migration SQL manually inside the migration folder.
+# ---
+
+## 2026-05-22 — 🟤 testConnection direct SDK instantiation as the verify-gate exception
+- Type:      🟤 decision
+- Phase:     Phase 8 Batch 21c — getXenditClient(tenantId) refactor
+- Files:     apps/web/src/lib/xendit.ts, apps/web/src/server/trpc/routers/admin-xendit-config.ts
+- Concepts:  verify-gate, chicken-and-egg, SDK, xendit, tenantId, isVerified
+- Narrative: getXenditClient(tenantId) throws if !isVerified — this forces every
+  consumer (storefront checkout, webhook handler) to go through a verified
+  configuration. But testConnection is exactly the procedure that FLIPS
+  isVerified=true. If testConnection went through getXenditClient(tenantId),
+  it would throw on the FIRST call (when isVerified is still false from upsert).
+  Solution: testConnection directly instantiates `new Xendit({secretKey: decrypt(row.secretKeyEnc)})`,
+  bypassing the helper. This is the ONLY consumer that does so. Documented
+  inline with a comment explaining the chicken-and-egg.
+  Generalizable: when a helper enforces a state invariant via throw, the
+  procedure that ESTABLISHES that invariant must bypass the helper. Use a
+  direct SDK instantiation (or a separate helper that omits the throw)
+  for verification/initialization paths.
+# ---

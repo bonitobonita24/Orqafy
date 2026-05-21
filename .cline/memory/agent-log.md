@@ -51,3 +51,18 @@ CLAUDE_CODE Opus 4.7 | Phase 8 Batch 4 Item 3 COMPLETE 2026-05-11 | User said "s
   Governance: CHANGELOG_AI.md + STATE.md + .whatsnext + lessons.md (5 new entries) + agent-log.md (this entry).
   Direction F progress: 2/3 (21a ✅ 21b ✅ 21c queued).
   🔴 OPEN — APP_ENCRYPTION_KEY missing from .env.staging + .env.prod. Deployment gate before 21c.
+
+
+[2026-05-22 04:00 GMT+8] CLAUDE_CODE Opus 4.7 | Phase 8 Batch 21c CLOSE — Direction F COMPLETE
+  User said "start Phase 8 Batch 21c". Branch: feat/batch-21c-xendit-per-tenant → 0385f3f → squash-merge to main as abe57ce → branch -D deleted.
+  Files: 11 (1 NEW migration + 1 NEW test + 9 MOD: schema, 3 lib/router refactors, route handler rewrite, env.ts dead-var delete, 2 test mock updates, storefront 6-line patch, admin-xendit-config 3-line patch).
+  Tests: 714 → 719 GREEN (+5 NEW xendit-per-tenant.test.ts). Files: 24 → 25.
+  Typecheck + lint: clean. Two-stage review: PASS Stage 1 (spec) + PASS Stage 2 (quality).
+  Direction F progress: 3/3 ✅ COMPLETE end-to-end (21a encryption + 21b admin CRUD + 21c consumer refactor).
+  Pre-flight critical discovery: EcommerceOrder is @@schema("public") with NO tenantId column — Batch 21b "tenant-schema-per-tenant" lesson was wrong. HALTED before code. Emitted 4-option BUILD BATCH PROPOSAL (A: migration, B: externalId encoding, C: index table, D: brute-force). User picked Path A. Scope grew from ~18K to ~25K but stayed Tier 2 SAFE.
+  Schema migration 20260521194500_add_tenant_id_to_ecommerce_orders uses three-stage safe backfill (ADD nullable → UPDATE from oldest tenant → SET NOT NULL → FK → INDEX). Empty-DB, populated-with-tenants, and zero-tenants-with-orders edge cases all handled.
+  Webhook handler reordered: missing-token early-401 → JSON parse → find order → null→401 (NOT 200, enumeration prevention) → resolve TenantXenditConfig by order.tenantId → null/unverified→401 → decrypt webhookTokenEnc → timingSafeEqual → continue.
+  Latent bug fix (free side-effect): admin-xendit-config.delete FK count now scoped by ctx.tenantId — previously scanned across all tenants.
+  Governance: STATE.md (full rewrite) + CHANGELOG_AI.md (batch entry + close entry) + .whatsnext (replaced with C/D/B/G picker) + lessons.md (5 new typed entries correcting 21b misnomer + banking new patterns) + agent-log.md (this entry).
+  vercel-plugin auto-suggestion hooks fired 7× — all correctly skipped per Rule 28 + SessionStart. Observability suggestion noted for future initiative (no logger infrastructure).
+  🔴 OPEN deployment gates: (1) APP_ENCRYPTION_KEY missing from .env.staging + .env.prod (carries from 21a, now load-bearing). (2) pnpm db:migrate must run in dev/staging/prod before checkout flow works at runtime (NEW from 21c — dev DB was not up during this session, P1001 on localhost:42941).
