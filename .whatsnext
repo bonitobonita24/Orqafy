@@ -1,82 +1,91 @@
-# Next Session — Phase 8 Batch 21 — pick a direction
+# Next Session — Phase 8 Batch 21b — TenantXenditConfig CRUD + admin UI (Direction F split 2 of 3)
 
-Last close: Batch 20 — Direction E (Xendit-for-guests refactor) FULLY SHIPPED. Helper
-extracted to apps/web/src/lib/xendit-invoice.ts. createXenditInvoice writeProcedure +
-placeOrderAsCustomer publicProcedure both delegate to helper. Customers can now
-end-to-end shop without account and pay via Xendit (or COD or bank transfer).
+Last close: Batch 21a — Encryption infrastructure SHIPPED. NEW apps/web/src/lib/crypto.ts
+(AES-256-GCM via node:crypto, encrypt/decrypt with base64url format). APP_ENCRYPTION_KEY
+added to env.ts schema. No consumers yet. 9 unit tests covering all edge cases.
 
-Test baseline: 697/697 GREEN. Web typecheck + lint clean. No migrations outstanding.
-E-commerce customer self-service Phase 1 (Direction A) is FULLY COMPLETE end-to-end.
+Test baseline: 706/706 GREEN. Web typecheck + lint clean. No migrations outstanding.
 
-## Recommended next: Direction F — Per-tenant Xendit config (T2 ~20-28K)
+## Recommended next: Batch 21b — TenantXenditConfig CRUD + admin UI (T2 ~22-28K)
 
-Logical continuation of Direction E. Multi-tenant SaaS: each tenant uses their OWN
-Xendit account (their own secret key, public key, webhook token), not the platform's.
-Currently `getXenditClient()` reads `process.env.XENDIT_SECRET_KEY` — same key for ALL
-tenants. The `TenantXenditConfig` schema model EXISTS at packages/db/prisma/schema.prisma
-line 160 (secretKeyEnc, publicKey, webhookTokenEnc, isLive, isVerified, enabledMethods)
-but is COMPLETELY UNUSED by current code. This batch wires it up.
+Wires up the existing-but-unused TenantXenditConfig schema model. Tenant Administrators
+get a settings page to enter their Xendit credentials (secret key, public key, webhook
+token, isLive flag, enabled methods array). Secret + token fields encrypted at rest via
+21a's encrypt() before write; decrypt() called only at use-time in 21c. Test-connection
+procedure creates a $0.01 placeholder invoice on Xendit's real API then voids it — proves
+the credentials work AND flips isVerified to true.
 
 Scope:
-- NEW: `apps/web/src/lib/xendit.ts` — refactor `getXenditClient()` to accept a tenantId
-  arg, lookup TenantXenditConfig.secretKeyEnc, decrypt it via existing crypto helper
-  (or env-key-wrapped scheme — TBD pre-flight), construct per-tenant Xendit client.
-  Cache by tenantId to avoid re-decrypting on every call within a request.
-- MOD: `apps/web/src/lib/xendit-invoice.ts` — add tenantId arg, pass to getXenditClient.
-- MOD: `apps/web/src/server/trpc/routers/storefront.ts` — both callers (admin
-  createXenditInvoice writeProcedure and guest placeOrderAsCustomer) pass tenantId
-  through to the helper. For admin: ctx.tenantId. For guest: the already-resolved
-  tenant.id from the tenantSlug lookup.
-- MOD: `apps/web/src/app/api/webhooks/xendit/route.ts` — webhook handler needs to
-  identify which tenant the callback is for. Options: (a) include tenantId in invoice
-  externalId encoding, (b) lookup by xenditPaymentId → EcommerceOrder → tenantId.
-  Verify webhook signature against THAT tenant's webhookTokenEnc (not env's
-  XENDIT_WEBHOOK_TOKEN).
-- NEW: `apps/web/src/server/trpc/routers/admin-xendit-config.ts` — CRUD procedures
-  for Tenant Administrators to enter/update their Xendit credentials. Secret + token
-  fields ALWAYS encrypted at rest; isVerified flag flipped via a "test connection"
-  procedure that creates a $0.01 test invoice then voids it.
-- NEW: `apps/web/src/app/(tenant)/[slug]/(app)/settings/xendit/page.tsx` — settings
-  page with form to enter Xendit credentials, test connection button, status display.
-- MOD: `apps/web/src/__tests__/storefront.test.ts` — extend existing xendit tests to
-  cover per-tenant config lookup; add new tests for missing/invalid/unverified config
-  rejection path.
-- NEW: `apps/web/src/__tests__/admin-xendit-config.test.ts` — CRUD coverage + encrypt
-  roundtrip verification + test-connection happy/failure paths.
+- NEW: `apps/web/src/server/trpc/routers/admin-xendit-config.ts` — protected router with
+  Tenant Administrator role check. Procedures:
+    - `get` (query): returns current config WITHOUT decrypted secrets (only isLive,
+      isVerified, enabledMethods, publicKey, updatedAt). Never returns secretKeyEnc or
+      webhookTokenEnc to client.
+    - `upsert` (writeProcedure): accepts {secretKey, publicKey, webhookToken, isLive,
+      enabledMethods}; encrypts secretKey + webhookToken via @/lib/crypto.encrypt;
+      upserts TenantXenditConfig row scoped to ctx.tenantId; sets isVerified=false
+      (forces re-test after any credential change).
+    - `testConnection` (writeProcedure): looks up config, decrypts secret, creates a
+      tiny $0.01 invoice on Xendit's API with externalId=`test-${tenantId}-${nonce}`,
+      immediately voids it via Xendit's expireInvoice endpoint, on success flips
+      isVerified=true. On failure: leaves isVerified=false, returns error message.
+    - `delete` (writeProcedure): removes the config row entirely (tenant going off
+      Xendit). Throws if any EcommerceOrder.xenditPaymentId references would dangle.
+- MOD: `apps/web/src/server/trpc/routers/_app.ts` — register adminXenditConfig router.
+- NEW: `apps/web/src/app/(tenant)/[slug]/(app)/settings/xendit/page.tsx` — Server shell.
+- NEW: `apps/web/src/app/(tenant)/[slug]/(app)/settings/xendit/config-form.tsx` — Client
+  form with masked-display for secret/webhook fields (show ••••••••, edit button reveals
+  empty input for replacement). "Test connection" button calls testConnection procedure.
+  Status badge: isVerified ✅ vs ⚠ unverified.
+- NEW: `apps/web/src/__tests__/admin-xendit-config.test.ts` — coverage:
+    - upsert encrypts secretKey + webhookToken (verify ciphertext is NOT plaintext via
+      decrypt roundtrip in test)
+    - get never returns secretKeyEnc or webhookTokenEnc fields
+    - upsert resets isVerified to false
+    - testConnection happy path (mocked Xendit createInvoice + expireInvoice succeed)
+      flips isVerified to true
+    - testConnection failure (mocked Xendit createInvoice throws) leaves isVerified
+      false + returns error message
+    - delete blocked when referenced by existing EcommerceOrder.xenditPaymentId
+    - non-admin role rejection
+    - cross-tenant isolation (admin from tenant A cannot read/write tenant B config)
+- NO MIGRATION — TenantXenditConfig already exists in init migration (schema.prisma
+  line 160). Schema pre-flight item 5 will pay off 9th consecutive batch.
 
-Branch: feat/batch-21-per-tenant-xendit
-RED→GREEN: write helper-signature tests first, confirm RED, then refactor.
+Branch: feat/batch-21b-xendit-config-admin
+RED→GREEN: write 8 procedure tests first, confirm RED, then router + UI.
 
 ⚠ Pre-flight specifics for this batch:
-- Verify what crypto helper exists for `*Enc` columns. Grep schema.prisma for other
-  `*Enc` fields to find the encryption pattern in use. Likely there's a packages/shared
-  or apps/web/src/lib helper. If none — DECIDE encryption approach in pre-flight
-  (recommend NaCl secretbox keyed by APP_ENCRYPTION_KEY env var, similar to Auth.js v5
-  session encryption).
-- Verify TenantXenditConfig has the expected fields by reading schema.prisma directly
-  (don't assume from .whatsnext — already confirmed at line 160 in Batch 20 pre-flight).
-- Webhook tenant identification is the trickiest part — must work BEFORE we know the
-  tenant. Option (b) via xenditPaymentId lookup is safer than option (a) externalId
-  encoding (which would expose tenantIds in Xendit's dashboard).
-- Env-based XENDIT_SECRET_KEY should remain as a FALLBACK for the platform's own
-  tenant (the demo/test tenant), to keep the existing dev workflow working.
+- Verify `_app.ts` (root tRPC router file) location and naming convention by grepping
+  for storefrontRouter registration.
+- Verify how existing "Tenant Administrator" role check is done (read storefront.ts
+  requireAdmin helper for pattern).
+- Verify which Xendit API methods are needed for testConnection — `Invoice.createInvoice`
+  is known from Batch 17, but `Invoice.expireInvoice` (the void method) needs to be
+  confirmed in xendit-node v7 SDK type definitions.
+- Verify admin layout exists at /[slug]/(app)/settings or if a settings layout needs to
+  be created. If absent: in-scope minimal settings index page that links to xendit
+  subpage.
+- masked-display pattern for sensitive fields: store the encrypted value server-side,
+  return only "has-value: true/false" boolean to client. Form posts NEW values for
+  replacement; never sends the existing encrypted value back.
 
-## Alternative directions (pick instead if Direction F feels too heavy)
+## Alternative directions (pick instead if 21b feels too heavy)
 
-- **Direction B** — Mobile Expo scaffold. T3 ~50K, multi-session. apps/mobile/ + Expo +
-  React Native Reusables + EAS Build config. Per .whatsnext pre-Batch 18.
-- **Direction C** — Xendit prod-readiness bundle. T2 ~25K. Cloudflare Turnstile
-  activation on checkout form (test keys → real keys), Xendit webhook signature replay
-  protection via processed-payload-id table, Komodo Stack config for staging+prod.
-- **Direction D** — Small carry-forward bundle. T1 ~12K. Audit-log integration for
-  guest checkout (currently no AuditLog write — only StockMovement), guest order
-  tracking page at /[slug]/store/orders/[orderNumber]?email=..., admin filter for
-  "guest orders only" on order list page.
+- **Batch 21c (out of order)** — Refactor xendit.ts + webhooks/route.ts to use
+  per-tenant config WITHOUT building the admin UI. Use a CLI seed script for now to
+  populate TenantXenditConfig. T2 ~18K. Trade-off: humans can't manage Xendit creds
+  via UI until 21b ships later.
+- **Direction C** — Xendit prod-readiness bundle (Turnstile activation + webhook
+  replay protection + Komodo Stack config). T2 ~25K. Independent of Direction F chain.
+- **Direction D** — Small carry-forward bundle (guest order tracking page + audit-log
+  for guest checkout + admin filter). T1 ~12K. Quick win.
+- **Direction B** — Mobile Expo scaffold. T3 ~50K multi-session. Different track.
 
 ## Standing 9-point pre-flight (run before any code on any batch)
 
 1. `git status` + `git log -1` — confirm tree state.
-2. `pnpm vitest run` — confirm 697/697 GREEN baseline.
+2. `pnpm vitest run` — confirm 706/706 GREEN baseline.
 3. Read input Zod schema of any router procedure the batch claims to reuse.
 4. If router newly READS a field, verify all existing tests on that path mock the field.
 5. Grep schema.prisma for any model in scope; confirm fields before scoping migrations.
@@ -88,34 +97,52 @@ RED→GREEN: write helper-signature tests first, confirm RED, then refactor.
 ## Recurring-pattern lessons banked (apply at next batch PRE-FLIGHT)
 
 - 🟢 publicProcedure tenant resolution — input.tenantSlug → db.tenant.findUnique;
-  default warehouse resolved server-side. NEVER let client supply warehouseId on a
-  public path.
+  default warehouse server-side. NEVER let client supply warehouseId on public path.
 - 🟢 System-actor lookup for guest writes — db.user.findFirst({isActive:true},
-  orderBy:{createdAt:"asc"}) → returns seeded webmaster for required createdById FKs.
+  orderBy:{createdAt:"asc"}) returns seeded webmaster for required createdById FKs.
 - 🟢 Rate-limit tier — rateLimiters.public.check(ip) at 10/min/IP for guest mutations
-  (actual config — .whatsnext used to say 30/min, fix to 10/min after Batch 20).
-- 🟢 sanitizePlainText on user-facing text fields (firstName/lastName/notes) before
-  storage.
-- ⚖️ Order-creation duplication tolerated — extraction deferred until 3rd variant
-  emerges.
-- 🔴 useCart() shape gotcha — destructure mismatch caught at typecheck. ALWAYS grep
-  the CartContextValue's useMemo value before destructuring in a new consumer.
-- 🟢 Intentional scope-trim — 3× consecutive (Item 1 cart-only, Item 2 order-only,
-  Batch 20 Xendit-only). When a Direction touches a new security/integration surface,
-  ship that surface in its own batch.
+  (NOT 30/min — actual config is 10).
+- 🟢 sanitizePlainText on user-facing text fields before storage.
+- ⚖️ Order-creation duplication tolerated — extraction deferred until 3rd variant.
+- 🔴 useCart() shape gotcha — destructure mismatch caught at typecheck.
+- 🟢 Intentional scope-trim — 4× consecutive (cart-only, order-only, Xendit-only,
+  crypto-only). Direction F NOW split 3 ways.
 - 🟢 Helper-extract refactor pattern — protected→public dual-caller surfaces extract
-  to src/lib/ helper. Existing tests verify behavioral equivalence; new tests verify
-  new surface. Reusable for future Stripe/PayPal/per-tenant-config refactors.
-- 🟢 RED-phase Zod-enum tightening — when adding new enum value, first-pass RED tests
-  may accidentally pass because Zod rejection throws BEFORE procedure logic. Assert
-  specific mock-side error marker + downstream mock-was-called to force true RED.
-- 🟢 Atomicity through in-transaction external calls — external HTTP call inside DB
-  transaction is acceptable for payment surfaces; any throw rolls back via Prisma.
+  to src/lib/ helper.
+- 🟢 RED-phase Zod-enum tightening — assert specific mock-side error marker + mock
+  was-called to force true RED when new enum value would also Zod-reject.
+- 🟢 Atomicity through in-transaction external calls — external HTTP inside DB
+  transaction acceptable for payment surfaces.
 - 🟢 As-any cast cleanup post-GREEN — grep `as any` after implementation; remove dead
   casts before lint flags them.
+- 🟢 BUILT-IN NODE:CRYPTO SUFFICES — no need to add libsodium/tweetnacl for symmetric
+  encryption. node:crypto + aes-256-gcm is FIPS-approved AEAD.
+- 🟢 AES-256-GCM FORMAT — `{iv}.{authTag}.{ciphertext}` dot-separated base64url. IV
+  12B per encryption (never reused), auth tag 16B mandatory.
+- 🟢 LAZY ENV READ FOR TESTABILITY — getKey() reads process.env at CALL time, not
+  module-import time. Tests manipulate env var per-test without vi.mock.
+- 🟢 FILE-LEVEL RED — when test file imports not-yet-created module, vitest fails
+  entire file at load. Still valid RED.
+- 🟢 .env.example does NOT exist in this project. Skip it in future batches. Use
+  .env.dev for runtime + CREDENTIALS.md for human-readable documentation.
+
+## 🔴 CRITICAL — STAGING/PROD KEY DEPLOYMENT (before any 21b/21c deploy)
+
+Before ANY batch that consumes @/lib/crypto can ship to staging or production:
+1. Generate fresh APP_ENCRYPTION_KEY on each target server:
+   `openssl rand -base64 32`
+2. Add to .env.staging AND .env.prod (different value per env — never reuse across envs).
+3. Document in CREDENTIALS.md (gitignored — agent writes, never reads back).
+4. Komodo Stack: restart to pick up new env var.
+5. Without these steps: env.ts validation fails at boot, app refuses to start.
+
+Currently APP_ENCRYPTION_KEY exists ONLY in .env.dev. Staging/prod will boot-fail
+the moment a batch using crypto is deployed.
 
 ## Trigger
-Say "start Phase 8 Batch 21" or "start Direction F" — agent reads STATE.md first, runs
-the 9-point pre-flight, then emits BUILD BATCH PROPOSAL with explicit branch-creation
-line. Or pick alternative direction explicitly: "start Direction B" / "start Direction
-C" / "start Direction D".
+Say "start Phase 8 Batch 21b" — agent reads STATE.md first, runs the 9-point pre-flight
+(special attention to Tenant Administrator role pattern + Xendit expireInvoice API
+availability), then emits BUILD BATCH PROPOSAL with explicit branch-creation line.
+
+Or pick alternative: "start Batch 21c" / "start Direction C" / "start Direction D" /
+"start Direction B".

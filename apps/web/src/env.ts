@@ -5,6 +5,9 @@ const serverSchema = z.object({
   DATABASE_URL: z.string().url(),
   DIRECT_URL: z.string().url().optional(),
   AUTH_SECRET: z.string().min(48),
+  // Master encryption key for *Enc columns (TenantSmtpConfig, TenantXenditConfig, etc.).
+  // 32 bytes base64 (44 chars). Generate fresh per env: openssl rand -base64 32
+  APP_ENCRYPTION_KEY: z.string().min(44),
   NEXTAUTH_URL: z.string().url(),
   REDIS_URL: z.string(),
   STORAGE_ENDPOINT: z.string().url(),
@@ -36,6 +39,7 @@ const _serverEnv = serverSchema.safeParse({
   DATABASE_URL: process.env.DATABASE_URL,
   DIRECT_URL: process.env.DIRECT_URL,
   AUTH_SECRET: process.env.AUTH_SECRET,
+  APP_ENCRYPTION_KEY: process.env.APP_ENCRYPTION_KEY,
   NEXTAUTH_URL: process.env.NEXTAUTH_URL,
   REDIS_URL: process.env.REDIS_URL,
   STORAGE_ENDPOINT: process.env.STORAGE_ENDPOINT,
