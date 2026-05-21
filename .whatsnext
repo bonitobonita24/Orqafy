@@ -1,91 +1,100 @@
-# Next Session — Phase 8 Batch 21b — TenantXenditConfig CRUD + admin UI (Direction F split 2 of 3)
+# Next Session — Phase 8 Batch 21c — per-tenant Xendit refactor (Direction F split 3 of 3, COMPLETES Direction F)
 
-Last close: Batch 21a — Encryption infrastructure SHIPPED. NEW apps/web/src/lib/crypto.ts
-(AES-256-GCM via node:crypto, encrypt/decrypt with base64url format). APP_ENCRYPTION_KEY
-added to env.ts schema. No consumers yet. 9 unit tests covering all edge cases.
+Last close: Batch 21b — TenantXenditConfig CRUD + admin UI SHIPPED. NEW
+apps/web/src/server/trpc/routers/admin-xendit-config.ts (4 procedures:
+get/upsert/testConnection/delete) + admin UI page + config form. 8 unit tests.
+714/714 GREEN. _app.ts registers `adminXenditConfig`. Squash-merged as ff61bea.
 
-Test baseline: 706/706 GREEN. Web typecheck + lint clean. No migrations outstanding.
+Test baseline: 714/714 GREEN. Web typecheck + lint clean. No migrations outstanding.
 
-## Recommended next: Batch 21b — TenantXenditConfig CRUD + admin UI (T2 ~22-28K)
+## Recommended next: Batch 21c — per-tenant Xendit refactor (T2 ~18-22K, COMPLETES Direction F)
 
-Wires up the existing-but-unused TenantXenditConfig schema model. Tenant Administrators
-get a settings page to enter their Xendit credentials (secret key, public key, webhook
-token, isLive flag, enabled methods array). Secret + token fields encrypted at rest via
-21a's encrypt() before write; decrypt() called only at use-time in 21c. Test-connection
-procedure creates a $0.01 placeholder invoice on Xendit's real API then voids it — proves
-the credentials work AND flips isVerified to true.
+Wires up the consumer side. Refactors three call sites to read TenantXenditConfig
+per-tenant instead of using shared process.env-based secrets.
 
 Scope:
-- NEW: `apps/web/src/server/trpc/routers/admin-xendit-config.ts` — protected router with
-  Tenant Administrator role check. Procedures:
-    - `get` (query): returns current config WITHOUT decrypted secrets (only isLive,
-      isVerified, enabledMethods, publicKey, updatedAt). Never returns secretKeyEnc or
-      webhookTokenEnc to client.
-    - `upsert` (writeProcedure): accepts {secretKey, publicKey, webhookToken, isLive,
-      enabledMethods}; encrypts secretKey + webhookToken via @/lib/crypto.encrypt;
-      upserts TenantXenditConfig row scoped to ctx.tenantId; sets isVerified=false
-      (forces re-test after any credential change).
-    - `testConnection` (writeProcedure): looks up config, decrypts secret, creates a
-      tiny $0.01 invoice on Xendit's API with externalId=`test-${tenantId}-${nonce}`,
-      immediately voids it via Xendit's expireInvoice endpoint, on success flips
-      isVerified=true. On failure: leaves isVerified=false, returns error message.
-    - `delete` (writeProcedure): removes the config row entirely (tenant going off
-      Xendit). Throws if any EcommerceOrder.xenditPaymentId references would dangle.
-- MOD: `apps/web/src/server/trpc/routers/_app.ts` — register adminXenditConfig router.
-- NEW: `apps/web/src/app/(tenant)/[slug]/(app)/settings/xendit/page.tsx` — Server shell.
-- NEW: `apps/web/src/app/(tenant)/[slug]/(app)/settings/xendit/config-form.tsx` — Client
-  form with masked-display for secret/webhook fields (show ••••••••, edit button reveals
-  empty input for replacement). "Test connection" button calls testConnection procedure.
-  Status badge: isVerified ✅ vs ⚠ unverified.
-- NEW: `apps/web/src/__tests__/admin-xendit-config.test.ts` — coverage:
-    - upsert encrypts secretKey + webhookToken (verify ciphertext is NOT plaintext via
-      decrypt roundtrip in test)
-    - get never returns secretKeyEnc or webhookTokenEnc fields
-    - upsert resets isVerified to false
-    - testConnection happy path (mocked Xendit createInvoice + expireInvoice succeed)
-      flips isVerified to true
-    - testConnection failure (mocked Xendit createInvoice throws) leaves isVerified
-      false + returns error message
-    - delete blocked when referenced by existing EcommerceOrder.xenditPaymentId
-    - non-admin role rejection
-    - cross-tenant isolation (admin from tenant A cannot read/write tenant B config)
-- NO MIGRATION — TenantXenditConfig already exists in init migration (schema.prisma
-  line 160). Schema pre-flight item 5 will pay off 9th consecutive batch.
+- MOD: `apps/web/src/lib/xendit.ts` — replace `getXenditClient(): Xendit` with
+  `getXenditClient(tenantId: string): Promise<Xendit>`. Looks up
+  TenantXenditConfig by tenantId, decrypts secretKeyEnc via @/lib/crypto, returns
+  `new Xendit({secretKey})`. Throws if no config OR if isVerified=false (force
+  the admin to test before customers can pay). Remove `getXenditWebhookToken()` —
+  webhook token is now per-tenant and resolved by webhook handler directly.
+- MOD: `apps/web/src/app/api/webhooks/xendit/route.ts` — REORDER the webhook
+  handler:
+    1. Read raw body + x-callback-token header
+    2. Extract invoice.id from JSON payload (lightweight parse — does NOT validate sig yet)
+    3. Look up EcommerceOrder.xenditPaymentId === invoice.id → get order.id + (via tenant search_path lookup or direct ctx) tenantId
+    4. NOW look up TenantXenditConfig by tenantId → decrypt webhookTokenEnc
+    5. timingSafeEqual(x-callback-token, decryptedToken)
+    6. If match → proceed with the existing payment-status-update logic
+    7. If no match → 401 (do NOT reveal whether the order exists)
+  CRITICAL: tenant lookup MUST happen BEFORE signature verification because the
+  token IS per-tenant. The xenditPaymentId is unauthenticated input at this
+  point, but it can't be used to escalate — wrong xenditPaymentId means wrong
+  tenant means wrong token means timingSafeEqual fails.
+- MOD: `apps/web/src/lib/xendit-invoice.ts` — change
+  `createXenditInvoiceForOrder` to accept tenantId and use the per-tenant client.
+  Helper signature becomes:
+  `createXenditInvoiceForOrder({tenantId, externalId, amount, description, ...})`
+- MOD: `apps/web/src/server/trpc/routers/storefront.ts` — pass ctx.tenantId
+  through to createXenditInvoiceForOrder in BOTH createXenditInvoice
+  (protected/admin) AND placeOrderAsCustomer (public) call sites.
+- MOD: `apps/web/src/__tests__/xendit-webhook.test.ts` — extend mocks:
+  add tenantXenditConfig.findUnique to the @orqafy/db mock + ecommerceOrder.findFirst.
+  Update existing 8 webhook tests to reflect the new per-tenant resolution order
+  (mocks will need to return a TenantXenditConfig row with encrypted token).
+- MOD: `apps/web/src/__tests__/storefront.test.ts` — extend mocks for the 8
+  existing xendit-related tests (5 createXenditInvoice + 3 placeOrderAsCustomer
+  xendit branch). All must mock tenantXenditConfig.findUnique returning a row
+  with encrypted secretKeyEnc.
+- NEW: `apps/web/src/__tests__/xendit-per-tenant.test.ts` — coverage of the
+  new behaviors NOT already covered by extension of existing tests:
+    - getXenditClient(tenantId) throws when no TenantXenditConfig row exists
+    - getXenditClient(tenantId) throws when isVerified=false (force verify gate)
+    - webhook handler rejects when xenditPaymentId resolves to a different
+      tenant than the one whose webhook token is presented
+    - webhook handler returns 401 (not 404) when xenditPaymentId doesn't
+      resolve to any order (no enumeration leak)
+    - cross-tenant: tenant A's webhook token cannot validate tenant B's webhook
+- NO MIGRATION — TenantXenditConfig + EcommerceOrder.xenditPaymentId already exist.
 
-Branch: feat/batch-21b-xendit-config-admin
-RED→GREEN: write 8 procedure tests first, confirm RED, then router + UI.
+Branch: feat/batch-21c-xendit-per-tenant
+RED→GREEN: write 5 new tests first + EXPAND mocks on 8+ existing tests to
+RED (they'll fail because their mocks don't include tenantXenditConfig.findUnique
+which the refactored getXenditClient now requires). Implement refactors. All
+back to GREEN.
 
 ⚠ Pre-flight specifics for this batch:
-- Verify `_app.ts` (root tRPC router file) location and naming convention by grepping
-  for storefrontRouter registration.
-- Verify how existing "Tenant Administrator" role check is done (read storefront.ts
-  requireAdmin helper for pattern).
-- Verify which Xendit API methods are needed for testConnection — `Invoice.createInvoice`
-  is known from Batch 17, but `Invoice.expireInvoice` (the void method) needs to be
-  confirmed in xendit-node v7 SDK type definitions.
-- Verify admin layout exists at /[slug]/(app)/settings or if a settings layout needs to
-  be created. If absent: in-scope minimal settings index page that links to xendit
-  subpage.
-- masked-display pattern for sensitive fields: store the encrypted value server-side,
-  return only "has-value: true/false" boolean to client. Form posts NEW values for
-  replacement; never sends the existing encrypted value back.
+- Verify exactly which paths call getXenditClient() — grep `getXenditClient`
+  across apps/web/src and confirm the 3 call sites (helper + 2 router procedures).
+- Verify webhook handler current shape — read api/webhooks/xendit/route.ts in
+  full before refactoring. Note the current sig-verify-first ordering.
+- Verify TenantXenditConfig has isVerified column with default false (it does,
+  per Batch 21b confirmation).
+- Confirm timingSafeEqual is already imported in route.ts (it is, per Batch 17
+  webhook security work).
+- Determine the EcommerceOrder ↔ tenantId resolution path. Since EcommerceOrder
+  is tenant-schema-per-tenant (no tenantId column on the row), the webhook needs
+  to look up via search_path SET-statement. Likely needs a NEW helper:
+  `resolveTenantFromXenditPaymentId(invoiceId)` that iterates active tenants OR
+  uses a public-schema index. Estimate impact at pre-flight time.
+- THIS IS THE BATCH THAT MAKES STAGING/PROD BOOT-FAIL-LOUDLY without
+  APP_ENCRYPTION_KEY. Before merge, verify .env.staging + .env.prod have the
+  key — flag in BUILD BATCH PROPOSAL as a deployment gate.
 
-## Alternative directions (pick instead if 21b feels too heavy)
+## Alternative directions (pick instead if 21c feels too heavy)
 
-- **Batch 21c (out of order)** — Refactor xendit.ts + webhooks/route.ts to use
-  per-tenant config WITHOUT building the admin UI. Use a CLI seed script for now to
-  populate TenantXenditConfig. T2 ~18K. Trade-off: humans can't manage Xendit creds
-  via UI until 21b ships later.
 - **Direction C** — Xendit prod-readiness bundle (Turnstile activation + webhook
-  replay protection + Komodo Stack config). T2 ~25K. Independent of Direction F chain.
+  replay protection via processedAt timestamp + Komodo Stack config). T2 ~25K.
+  Independent of Direction F chain. Locks in security hardening.
 - **Direction D** — Small carry-forward bundle (guest order tracking page + audit-log
-  for guest checkout + admin filter). T1 ~12K. Quick win.
+  for guest checkout + admin filter). T1 ~12K. Quick win between heavier batches.
 - **Direction B** — Mobile Expo scaffold. T3 ~50K multi-session. Different track.
 
 ## Standing 9-point pre-flight (run before any code on any batch)
 
 1. `git status` + `git log -1` — confirm tree state.
-2. `pnpm vitest run` — confirm 706/706 GREEN baseline.
+2. `pnpm --filter @orqafy/web test` — confirm 714/714 GREEN baseline.
 3. Read input Zod schema of any router procedure the batch claims to reuse.
 4. If router newly READS a field, verify all existing tests on that path mock the field.
 5. Grep schema.prisma for any model in scope; confirm fields before scoping migrations.
@@ -105,8 +114,8 @@ RED→GREEN: write 8 procedure tests first, confirm RED, then router + UI.
 - 🟢 sanitizePlainText on user-facing text fields before storage.
 - ⚖️ Order-creation duplication tolerated — extraction deferred until 3rd variant.
 - 🔴 useCart() shape gotcha — destructure mismatch caught at typecheck.
-- 🟢 Intentional scope-trim — 4× consecutive (cart-only, order-only, Xendit-only,
-  crypto-only). Direction F NOW split 3 ways.
+- 🟢 Intentional scope-trim — 5× consecutive (cart-only, order-only, Xendit-only,
+  crypto-only, CRUD-only). Direction F NOW split 3 ways, 2/3 shipped.
 - 🟢 Helper-extract refactor pattern — protected→public dual-caller surfaces extract
   to src/lib/ helper.
 - 🟢 RED-phase Zod-enum tightening — assert specific mock-side error marker + mock
@@ -125,24 +134,51 @@ RED→GREEN: write 8 procedure tests first, confirm RED, then router + UI.
   entire file at load. Still valid RED.
 - 🟢 .env.example does NOT exist in this project. Skip it in future batches. Use
   .env.dev for runtime + CREDENTIALS.md for human-readable documentation.
+- 🟢 TENANT-SCHEMA-PER-TENANT MODELS HAVE NO TENANTID COLUMN — EcommerceOrder,
+  EcommerceOrderItem, and other t_{slug}-resident models do NOT expose tenantId
+  in their Prisma WhereInput. Isolation is via search_path, not WHERE clause.
+  Public-schema models (Tenant, TenantXenditConfig, TenantSmtpConfig, AuditLog)
+  DO have tenantId. Pre-flight check: grep `@@schema("public")` for each model
+  in scope to determine WHERE clause requirements.
+- 🟢 LAYERING ADMIN-GUARD ON WRITEPROCEDURE — compose `writeProcedure.use(...)`
+  to inherit demo-tenant block + add role check in one procedure surface. Avoids
+  duplicating the demo logic across admin write procedures.
+- 🟢 MASKED-DISPLAY PATTERN — never return *Enc fields. Return public-safe fields
+  + has-value booleans (hasSecretKey, hasWebhookToken). Form inputs always start
+  empty. User re-enters ALL secrets on every save. No partial update path in v1.
+- 🟢 STATESYNC-FROM-QUERY VIA USEEFFECT — sync tRPC useQuery data to local form
+  state via useEffect, NOT guarded-setState-during-render. StrictMode-safe.
+- 🟢 XENDIT SDK TESTCONNECTION CONTRACT — `new Xendit({secretKey})`, then
+  `xendit.Invoice.createInvoice({data:{externalId, amount, description, invoiceDuration}})`
+  returns `{id, ...}`. `xendit.Invoice.expireInvoice({invoiceId})` voids it.
+  Test mocks: vi.mock("xendit-node") + vi.hoisted for mock fns + capture ctor args.
+- 🟢 VERCEL-PLUGIN HOOK AS SELF-REVIEW REMINDER — even when skipping the skill
+  load per Rule 28, the auto-suggestion fire prompts a useful pause for
+  pattern-based self-review. Net positive on otherwise-skipped hooks.
 
-## 🔴 CRITICAL — STAGING/PROD KEY DEPLOYMENT (before any 21b/21c deploy)
+## 🔴 CRITICAL — STAGING/PROD KEY DEPLOYMENT (BLOCKING for 21c production deploy)
 
-Before ANY batch that consumes @/lib/crypto can ship to staging or production:
+This flag remains open from Batch 21a. Now LOAD-BEARING for 21c:
+
+Before 21c ships to staging or production:
 1. Generate fresh APP_ENCRYPTION_KEY on each target server:
    `openssl rand -base64 32`
 2. Add to .env.staging AND .env.prod (different value per env — never reuse across envs).
 3. Document in CREDENTIALS.md (gitignored — agent writes, never reads back).
 4. Komodo Stack: restart to pick up new env var.
-5. Without these steps: env.ts validation fails at boot, app refuses to start.
+5. Without these steps:
+   - 21a: env.ts validation fails at boot — app refuses to start.
+   - 21b: app boots but first upsert call throws "APP_ENCRYPTION_KEY is not configured".
+   - 21c: app boots BUT every Xendit call AND every webhook will throw at decrypt time
+     — payment flow completely broken.
 
 Currently APP_ENCRYPTION_KEY exists ONLY in .env.dev. Staging/prod will boot-fail
 the moment a batch using crypto is deployed.
 
 ## Trigger
-Say "start Phase 8 Batch 21b" — agent reads STATE.md first, runs the 9-point pre-flight
-(special attention to Tenant Administrator role pattern + Xendit expireInvoice API
-availability), then emits BUILD BATCH PROPOSAL with explicit branch-creation line.
+Say "start Phase 8 Batch 21c" — agent reads STATE.md first, runs the 9-point
+pre-flight (special attention to EcommerceOrder ↔ tenantId resolution path
+discovery and webhook handler current ordering), then emits BUILD BATCH PROPOSAL
+with explicit branch-creation line.
 
-Or pick alternative: "start Batch 21c" / "start Direction C" / "start Direction D" /
-"start Direction B".
+Or pick alternative: "start Direction C" / "start Direction D" / "start Direction B".
