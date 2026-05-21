@@ -60,11 +60,11 @@ vi.mock("@/server/lib/rate-limit", () => ({
 const { mockCreateInvoice } = vi.hoisted(() => ({
   mockCreateInvoice: vi.fn(),
 }));
+// Batch 21c: getXenditClient is async + takes tenantId; getXenditWebhookToken is gone.
 vi.mock("@/lib/xendit", () => ({
-  getXenditClient: (): unknown => ({
+  getXenditClient: async (_tenantId: string): Promise<unknown> => ({
     Invoice: { createInvoice: mockCreateInvoice },
   }),
-  getXenditWebhookToken: (): string => "test-webhook-token",
 }));
 
 import type { NextRequest } from "next/server";
@@ -980,7 +980,8 @@ describe("storefront router", () => {
   // ─── createXenditInvoice (Batch 17 Item 1) ───────────────────────────────
   describe("createXenditInvoice", () => {
     it("creates Xendit invoice and persists invoice id on pending order", async () => {
-      mockDb.ecommerceOrder.findUnique.mockResolvedValue({
+      // Batch 21c: createXenditInvoice now uses findFirst (tenantId-scoped).
+      mockDb.ecommerceOrder.findFirst.mockResolvedValue({
         id: ORDER_ID,
         orderNumber: "EC-2605-0001",
         totalAmount: 1500,
@@ -1017,7 +1018,7 @@ describe("storefront router", () => {
     });
 
     it("omits payerEmail when customer has no email", async () => {
-      mockDb.ecommerceOrder.findUnique.mockResolvedValue({
+      mockDb.ecommerceOrder.findFirst.mockResolvedValue({
         id: ORDER_ID,
         orderNumber: "EC-2605-0002",
         totalAmount: 500,
@@ -1039,7 +1040,7 @@ describe("storefront router", () => {
     });
 
     it("rejects when order paymentStatus is not pending", async () => {
-      mockDb.ecommerceOrder.findUnique.mockResolvedValue({
+      mockDb.ecommerceOrder.findFirst.mockResolvedValue({
         id: ORDER_ID,
         paymentStatus: "paid",
         xenditPaymentId: null,
@@ -1054,7 +1055,7 @@ describe("storefront router", () => {
     });
 
     it("rejects when order already has a Xendit invoice", async () => {
-      mockDb.ecommerceOrder.findUnique.mockResolvedValue({
+      mockDb.ecommerceOrder.findFirst.mockResolvedValue({
         id: ORDER_ID,
         paymentStatus: "pending",
         xenditPaymentId: "xendit-existing-001",
@@ -1069,7 +1070,7 @@ describe("storefront router", () => {
     });
 
     it("throws NOT_FOUND when order does not exist", async () => {
-      mockDb.ecommerceOrder.findUnique.mockResolvedValue(null);
+      mockDb.ecommerceOrder.findFirst.mockResolvedValue(null);
 
       const caller = createCaller(authenticatedCtx());
       await expect(
@@ -1090,6 +1091,7 @@ describe("storefront router", () => {
         "@/lib/xendit-invoice"
       );
       const res = await createXenditInvoiceForOrder({
+        tenantId: "ck1234567890123456789012b",
         orderId: ORDER_ID,
         orderNumber: "EC-2605-0001",
         totalAmount: 1500,
@@ -1115,6 +1117,7 @@ describe("storefront router", () => {
       );
       await expect(
         createXenditInvoiceForOrder({
+          tenantId: "ck1234567890123456789012b",
           orderId: ORDER_ID,
           orderNumber: "EC-2605-0001",
           totalAmount: 1500,

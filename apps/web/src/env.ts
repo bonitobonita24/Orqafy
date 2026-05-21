@@ -22,9 +22,7 @@ const serverSchema = z.object({
   SMTP_FROM: z.string(),
   // Turnstile (server-side secret — never exposed to client)
   TURNSTILE_SECRET_KEY: z.string(),
-  // Xendit (conditional — platform-level only at v1)
-  XENDIT_SECRET_KEY: z.string().optional(),
-  XENDIT_WEBHOOK_TOKEN: z.string().optional(),
+  // Xendit secrets removed as of Batch 21c — now per-tenant via TenantXenditConfig.
   // MaxStorageGB default for free tenants (can override per-tenant in DB)
   DEFAULT_MAX_STORAGE_GB: z.coerce.number().default(0),
 });
@@ -53,8 +51,6 @@ const _serverEnv = serverSchema.safeParse({
   SMTP_PASSWORD: process.env.SMTP_PASSWORD,
   SMTP_FROM: process.env.SMTP_FROM,
   TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
-  XENDIT_SECRET_KEY: process.env.XENDIT_SECRET_KEY,
-  XENDIT_WEBHOOK_TOKEN: process.env.XENDIT_WEBHOOK_TOKEN,
   DEFAULT_MAX_STORAGE_GB: process.env.DEFAULT_MAX_STORAGE_GB,
 });
 

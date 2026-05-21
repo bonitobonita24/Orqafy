@@ -133,10 +133,13 @@ export const adminXenditConfigRouter = createTRPCRouter({
    * payment history from losing its credential audit chain.
    */
   delete: adminWriteProcedure.mutation(async ({ ctx }) => {
-    // EcommerceOrder is a tenant-schema entity (no tenantId column).
-    // Tenant isolation is enforced by Prisma's tenant-guard via search_path.
+    // Batch 21c: EcommerceOrder now carries tenantId (public-schema column).
+    // The 21b comment claiming this entity is tenant-schema was incorrect —
+    // before 21c there was no tenant scoping on orders at all, so this FK
+    // count was actually counting across every tenant. Now scoped properly.
     const refs = await prisma.ecommerceOrder.count({
       where: {
+        tenantId: ctx.tenantId,
         xenditPaymentId: { not: null },
       },
     });

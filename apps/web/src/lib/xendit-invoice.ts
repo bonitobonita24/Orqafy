@@ -2,6 +2,9 @@ import { TRPCError } from "@trpc/server";
 import { getXenditClient } from "@/lib/xendit";
 
 export interface CreateXenditInvoiceForOrderInput {
+  // Batch 21c: tenantId required — selects which TenantXenditConfig's secret
+  // signs the Xendit invoice request. Callers MUST pass ctx.tenantId.
+  tenantId: string;
   orderId: string;
   orderNumber: string;
   totalAmount: number;
@@ -14,12 +17,13 @@ export interface XenditInvoiceResult {
 }
 
 export async function createXenditInvoiceForOrder({
+  tenantId,
   orderId,
   orderNumber,
   totalAmount,
   customerEmail,
 }: CreateXenditInvoiceForOrderInput): Promise<XenditInvoiceResult> {
-  const xendit = getXenditClient();
+  const xendit = await getXenditClient(tenantId);
   try {
     const invoice = await xendit.Invoice.createInvoice({
       data: {

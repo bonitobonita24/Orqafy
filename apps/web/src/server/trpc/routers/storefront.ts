@@ -217,6 +217,7 @@ export const storefrontRouter = createTRPCRouter({
         const created = await tx.ecommerceOrder.create({
           data: {
             orderNumber,
+            tenantId: ctx.tenantId,
             customerId: input.customerId,
             status: "pending",
             subtotal,
@@ -396,6 +397,7 @@ export const storefrontRouter = createTRPCRouter({
         const created = await tx.ecommerceOrder.create({
           data: {
             orderNumber,
+            tenantId: tenant.id,
             customerId,
             status: "pending",
             subtotal,
@@ -456,6 +458,7 @@ export const storefrontRouter = createTRPCRouter({
         let invoiceUrl: string | undefined;
         if (input.paymentMethod === "xendit") {
           const xenditResult = await createXenditInvoiceForOrder({
+            tenantId: tenant.id,
             orderId: created.id,
             orderNumber: created.orderNumber,
             totalAmount: Number(created.totalAmount),
@@ -551,9 +554,11 @@ export const storefrontRouter = createTRPCRouter({
 
   createXenditInvoice: writeProcedure
     .input(z.object({ orderId: cuid }))
-    .mutation(async ({ input }) => {
-      const order = await db.ecommerceOrder.findUnique({
-        where: { id: input.orderId },
+    .mutation(async ({ ctx, input }) => {
+      // Batch 21c: scope by ctx.tenantId so an admin cannot create an invoice
+      // against another tenant's order even if they guess the cuid.
+      const order = await db.ecommerceOrder.findFirst({
+        where: { id: input.orderId, tenantId: ctx.tenantId },
         include: {
           customer: { select: { email: true } },
         },
@@ -575,6 +580,7 @@ export const storefrontRouter = createTRPCRouter({
       }
 
       const { invoiceId, invoiceUrl } = await createXenditInvoiceForOrder({
+        tenantId: ctx.tenantId,
         orderId: order.id,
         orderNumber: order.orderNumber,
         totalAmount: Number(order.totalAmount),

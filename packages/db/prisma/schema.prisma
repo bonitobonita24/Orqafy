@@ -45,6 +45,7 @@ model Tenant {
   auditLogs        TenantAuditLog[]
   smtpConfig       TenantSmtpConfig?
   xenditConfig     TenantXenditConfig?
+  ecommerceOrders  EcommerceOrder[]
 
   @@map("tenants")
   @@schema("public")
@@ -1974,6 +1975,8 @@ model TicketAttachment {
 model EcommerceOrder {
   id              String   @id @default(cuid())
   orderNumber     String   @unique @map("order_number")
+  tenantId        String   @map("tenant_id")
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
   customerId      String   @map("customer_id")
   customer        Customer @relation(fields: [customerId], references: [id])
   status          String   @default("pending") // pending | confirmed | processing | shipped | delivered | cancelled | refunded
@@ -1996,6 +1999,7 @@ model EcommerceOrder {
 
   items           EcommerceOrderItem[]
 
+  @@index([tenantId])
   @@index([customerId])
   @@map("ecommerce_orders")
   @@schema("public")
