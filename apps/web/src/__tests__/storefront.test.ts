@@ -669,6 +669,101 @@ describe("storefront router", () => {
         caller.storefront.placeOrderAsCustomer(validGuestInput),
       ).rejects.toThrow(/tenant/i);
     });
+
+    // ─── Batch 20 — Xendit-for-guests refactor ───────────────────────────
+    it("xendit happy path: creates invoice in transaction, persists xenditPaymentId, returns invoiceUrl", async () => {
+      mockGuestHappyPath();
+      mockCreateInvoice.mockResolvedValue({
+        id: "xendit-guest-001",
+        invoiceUrl: "https://checkout.xendit.co/web/xendit-guest-001",
+      });
+      let orderUpdateData: any = null;
+      mockDb.$transaction.mockImplementation(async (fn: any) => {
+        const tx = {
+          customer: {
+            create: vi.fn().mockResolvedValue({ id: NEW_CUSTOMER_ID }),
+          },
+          ecommerceOrder: {
+            create: vi.fn().mockResolvedValue({
+              id: ORDER_ID,
+              orderNumber: "EC-2605-0001",
+              totalAmount: 250,
+            }),
+            update: vi.fn((args: any) => {
+              orderUpdateData = args.data;
+              return Promise.resolve({});
+            }),
+          },
+          ecommerceOrderItem: { create: vi.fn() },
+          warehouseStock: { update: vi.fn() },
+          stockMovement: { create: vi.fn() },
+        };
+        return fn(tx);
+      });
+
+      const caller = createCaller(unauthenticatedCtx());
+      const res = await caller.storefront.placeOrderAsCustomer({
+        ...validGuestInput,
+        paymentMethod: "xendit",
+      });
+
+      expect(res.orderId).toBe(ORDER_ID);
+      expect(res.orderNumber).toBe("EC-2605-0001");
+      expect((res as any).invoiceUrl).toBe(
+        "https://checkout.xendit.co/web/xendit-guest-001",
+      );
+      expect(orderUpdateData?.xenditPaymentId).toBe("xendit-guest-001");
+    });
+
+    it("xendit failure: transaction throws when Xendit invoice creation fails", async () => {
+      mockGuestHappyPath();
+      mockCreateInvoice.mockRejectedValue(
+        new Error("Xendit-API-unreachable-marker"),
+      );
+      mockDb.$transaction.mockImplementation(async (fn: any) => {
+        const tx = {
+          customer: {
+            create: vi.fn().mockResolvedValue({ id: NEW_CUSTOMER_ID }),
+          },
+          ecommerceOrder: {
+            create: vi.fn().mockResolvedValue({
+              id: ORDER_ID,
+              orderNumber: "EC-2605-0001",
+              totalAmount: 250,
+            }),
+            update: vi.fn(),
+          },
+          ecommerceOrderItem: { create: vi.fn() },
+          warehouseStock: { update: vi.fn() },
+          stockMovement: { create: vi.fn() },
+        };
+        return fn(tx);
+      });
+
+      const caller = createCaller(unauthenticatedCtx());
+      // Assert the Xendit-side error surfaces (not a Zod enum rejection).
+      // Pre-impl: Zod rejects "xendit" enum value → error mentions enum, NOT "unreachable-marker".
+      // Post-impl: procedure runs → Xendit mock rejects → "unreachable-marker" surfaces.
+      await expect(
+        caller.storefront.placeOrderAsCustomer({
+          ...validGuestInput,
+          paymentMethod: "xendit",
+        }),
+      ).rejects.toThrow(/unreachable-marker/);
+      // Xendit was actually attempted (proves procedure reached transaction body)
+      expect(mockCreateInvoice).toHaveBeenCalled();
+    });
+
+    it("cod path returns no invoiceUrl and never invokes Xendit", async () => {
+      mockGuestHappyPath();
+      const caller = createCaller(unauthenticatedCtx());
+      const res = await caller.storefront.placeOrderAsCustomer({
+        ...validGuestInput,
+        paymentMethod: "cod",
+      });
+      expect((res as any).invoiceUrl).toBeUndefined();
+      expect(mockCreateInvoice).not.toHaveBeenCalled();
+    });
   });
 
   // ─── getOrderById ────────────────────────────────────────────────────────
@@ -981,6 +1076,51 @@ describe("storefront router", () => {
         caller.storefront.createXenditInvoice({ orderId: ORDER_ID }),
       ).rejects.toThrow(/not found/i);
       expect(mockCreateInvoice).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── createXenditInvoiceForOrder helper (Batch 20 — extracted from createXenditInvoice) ──
+  describe("createXenditInvoiceForOrder helper", () => {
+    it("creates invoice via Xendit and returns {invoiceId, invoiceUrl}", async () => {
+      mockCreateInvoice.mockResolvedValue({
+        id: "helper-inv-001",
+        invoiceUrl: "https://checkout.xendit.co/web/helper-inv-001",
+      });
+      const { createXenditInvoiceForOrder } = await import(
+        "@/lib/xendit-invoice"
+      );
+      const res = await createXenditInvoiceForOrder({
+        orderId: ORDER_ID,
+        orderNumber: "EC-2605-0001",
+        totalAmount: 1500,
+        customerEmail: "buyer@example.com",
+      });
+      expect(res.invoiceId).toBe("helper-inv-001");
+      expect(res.invoiceUrl).toBe(
+        "https://checkout.xendit.co/web/helper-inv-001",
+      );
+
+      const callArgs = (mockCreateInvoice.mock.calls[0] as any[])[0];
+      expect(callArgs.data.externalId).toBe(ORDER_ID);
+      expect(callArgs.data.amount).toBe(1500);
+      expect(callArgs.data.currency).toBe("PHP");
+      expect(callArgs.data.payerEmail).toBe("buyer@example.com");
+      expect(callArgs.data.description).toBe("Order EC-2605-0001");
+    });
+
+    it("throws when Xendit createInvoice rejects (caller responsible for transaction rollback)", async () => {
+      mockCreateInvoice.mockRejectedValue(new Error("Xendit unreachable"));
+      const { createXenditInvoiceForOrder } = await import(
+        "@/lib/xendit-invoice"
+      );
+      await expect(
+        createXenditInvoiceForOrder({
+          orderId: ORDER_ID,
+          orderNumber: "EC-2605-0001",
+          totalAmount: 1500,
+          customerEmail: "buyer@example.com",
+        }),
+      ).rejects.toThrow();
     });
   });
 

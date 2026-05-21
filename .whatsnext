@@ -1,58 +1,82 @@
-# Next Session — Phase 8 Batch 20 — Direction E (Xendit-for-guests refactor)
+# Next Session — Phase 8 Batch 21 — pick a direction
 
-Last close: Batch 18 Item 2 / Batch 19 — Direction A (E-commerce customer self-service
-Phase 1) FULLY SHIPPED. storefront.placeOrderAsCustomer publicProcedure (first
-publicProcedure on storefront router) + /[slug]/store/checkout page + active cart drawer
-Checkout link. Squash-merged as 4d7de45. Rule 23 maintained. Opus-direct executor 18×.
+Last close: Batch 20 — Direction E (Xendit-for-guests refactor) FULLY SHIPPED. Helper
+extracted to apps/web/src/lib/xendit-invoice.ts. createXenditInvoice writeProcedure +
+placeOrderAsCustomer publicProcedure both delegate to helper. Customers can now
+end-to-end shop without account and pay via Xendit (or COD or bank transfer).
 
-Test baseline: 692/692 GREEN. Web typecheck + lint clean. No migrations outstanding.
+Test baseline: 697/697 GREEN. Web typecheck + lint clean. No migrations outstanding.
+E-commerce customer self-service Phase 1 (Direction A) is FULLY COMPLETE end-to-end.
 
-## Recommended next: Direction E — Xendit-for-guests refactor (T2 ~18-25K)
+## Recommended next: Direction F — Per-tenant Xendit config (T2 ~20-28K)
 
-Logical continuation of Direction A. Customer chooses "Pay with Xendit" on checkout →
-order created + Xendit invoice created in same transaction → client redirects to
-Xendit payment URL. Currently impossible because createXenditInvoice is writeProcedure
-(protected) — guests cannot call it.
+Logical continuation of Direction E. Multi-tenant SaaS: each tenant uses their OWN
+Xendit account (their own secret key, public key, webhook token), not the platform's.
+Currently `getXenditClient()` reads `process.env.XENDIT_SECRET_KEY` — same key for ALL
+tenants. The `TenantXenditConfig` schema model EXISTS at packages/db/prisma/schema.prisma
+line 160 (secretKeyEnc, publicKey, webhookTokenEnc, isLive, isVerified, enabledMethods)
+but is COMPLETELY UNUSED by current code. This batch wires it up.
 
 Scope:
-- NEW: `apps/web/src/lib/xendit-invoice.ts` (server-only helper `createXenditInvoiceForOrder`
-  — extract the Xendit-call logic from the existing createXenditInvoice writeProcedure body;
-  accepts {orderId, order, tenant} and returns {invoiceId, invoiceUrl}; throws TRPCError on
-  Xendit-side failure so callers can roll back the surrounding transaction).
-- MOD: `apps/web/src/server/trpc/routers/storefront.ts`
-  - Refactor `createXenditInvoice` writeProcedure to call the new helper (no behavior change).
-  - Extend `placeOrderAsCustomerInputSchema.paymentMethod` enum to include `"xendit"`.
-  - When paymentMethod="xendit": inside the existing $transaction, after order creation,
-    call createXenditInvoiceForOrder + persist xenditPaymentId on the created order.
-  - Return shape becomes `{orderId, orderNumber, invoiceUrl?: string}` (invoiceUrl present
-    only on xendit path).
-- MOD: `apps/web/src/app/(tenant)/[slug]/store/checkout/checkout-form.tsx`
-  - Add 3rd radio option "Pay online via Xendit" to PaymentMethod.
-  - onSuccess: if `data.invoiceUrl` present → redirect to invoiceUrl (not to /products);
-    else keep existing redirect behavior.
-- MOD: `apps/web/src/__tests__/storefront.test.ts`
-  - 3 new tests under placeOrderAsCustomer describe: (1) xendit happy path creates invoice
-    + persists xenditPaymentId + returns invoiceUrl, (2) Xendit-side failure rolls back the
-    order via transaction (no order row + no stock movement), (3) paymentMethod="xendit" with
-    missing TenantXenditConfig rejects gracefully.
-  - 2 new tests under existing createXenditInvoice describe verifying the refactor preserves
-    current behavior (no regression).
+- NEW: `apps/web/src/lib/xendit.ts` — refactor `getXenditClient()` to accept a tenantId
+  arg, lookup TenantXenditConfig.secretKeyEnc, decrypt it via existing crypto helper
+  (or env-key-wrapped scheme — TBD pre-flight), construct per-tenant Xendit client.
+  Cache by tenantId to avoid re-decrypting on every call within a request.
+- MOD: `apps/web/src/lib/xendit-invoice.ts` — add tenantId arg, pass to getXenditClient.
+- MOD: `apps/web/src/server/trpc/routers/storefront.ts` — both callers (admin
+  createXenditInvoice writeProcedure and guest placeOrderAsCustomer) pass tenantId
+  through to the helper. For admin: ctx.tenantId. For guest: the already-resolved
+  tenant.id from the tenantSlug lookup.
+- MOD: `apps/web/src/app/api/webhooks/xendit/route.ts` — webhook handler needs to
+  identify which tenant the callback is for. Options: (a) include tenantId in invoice
+  externalId encoding, (b) lookup by xenditPaymentId → EcommerceOrder → tenantId.
+  Verify webhook signature against THAT tenant's webhookTokenEnc (not env's
+  XENDIT_WEBHOOK_TOKEN).
+- NEW: `apps/web/src/server/trpc/routers/admin-xendit-config.ts` — CRUD procedures
+  for Tenant Administrators to enter/update their Xendit credentials. Secret + token
+  fields ALWAYS encrypted at rest; isVerified flag flipped via a "test connection"
+  procedure that creates a $0.01 test invoice then voids it.
+- NEW: `apps/web/src/app/(tenant)/[slug]/(app)/settings/xendit/page.tsx` — settings
+  page with form to enter Xendit credentials, test connection button, status display.
+- MOD: `apps/web/src/__tests__/storefront.test.ts` — extend existing xendit tests to
+  cover per-tenant config lookup; add new tests for missing/invalid/unverified config
+  rejection path.
+- NEW: `apps/web/src/__tests__/admin-xendit-config.test.ts` — CRUD coverage + encrypt
+  roundtrip verification + test-connection happy/failure paths.
 
-Branch: feat/batch-20-xendit-for-guests
-RED→GREEN: write all 5 new tests first, confirm RED, then write helper + refactor.
+Branch: feat/batch-21-per-tenant-xendit
+RED→GREEN: write helper-signature tests first, confirm RED, then refactor.
 
 ⚠ Pre-flight specifics for this batch:
-- Verify TenantXenditConfig table exists in schema and has the test-key fallback path so dev
-  works without real keys. (Schema-pre-flight item 5 — likely already populated.)
-- rateLimiters.public.check(ip) already covers the whole procedure — no separate Xendit-call
-  tier needed (the 30/min/IP cap caps the Xendit-creating path too).
-- Pre-flight item 9 REVERSES for this batch: we INTENTIONALLY refactor the existing protected
-  createXenditInvoice to share a helper with the new public path. Two callers, one helper.
+- Verify what crypto helper exists for `*Enc` columns. Grep schema.prisma for other
+  `*Enc` fields to find the encryption pattern in use. Likely there's a packages/shared
+  or apps/web/src/lib helper. If none — DECIDE encryption approach in pre-flight
+  (recommend NaCl secretbox keyed by APP_ENCRYPTION_KEY env var, similar to Auth.js v5
+  session encryption).
+- Verify TenantXenditConfig has the expected fields by reading schema.prisma directly
+  (don't assume from .whatsnext — already confirmed at line 160 in Batch 20 pre-flight).
+- Webhook tenant identification is the trickiest part — must work BEFORE we know the
+  tenant. Option (b) via xenditPaymentId lookup is safer than option (a) externalId
+  encoding (which would expose tenantIds in Xendit's dashboard).
+- Env-based XENDIT_SECRET_KEY should remain as a FALLBACK for the platform's own
+  tenant (the demo/test tenant), to keep the existing dev workflow working.
+
+## Alternative directions (pick instead if Direction F feels too heavy)
+
+- **Direction B** — Mobile Expo scaffold. T3 ~50K, multi-session. apps/mobile/ + Expo +
+  React Native Reusables + EAS Build config. Per .whatsnext pre-Batch 18.
+- **Direction C** — Xendit prod-readiness bundle. T2 ~25K. Cloudflare Turnstile
+  activation on checkout form (test keys → real keys), Xendit webhook signature replay
+  protection via processed-payload-id table, Komodo Stack config for staging+prod.
+- **Direction D** — Small carry-forward bundle. T1 ~12K. Audit-log integration for
+  guest checkout (currently no AuditLog write — only StockMovement), guest order
+  tracking page at /[slug]/store/orders/[orderNumber]?email=..., admin filter for
+  "guest orders only" on order list page.
 
 ## Standing 9-point pre-flight (run before any code on any batch)
 
 1. `git status` + `git log -1` — confirm tree state.
-2. `pnpm vitest run` — confirm 692/692 GREEN baseline.
+2. `pnpm vitest run` — confirm 697/697 GREEN baseline.
 3. Read input Zod schema of any router procedure the batch claims to reuse.
 4. If router newly READS a field, verify all existing tests on that path mock the field.
 5. Grep schema.prisma for any model in scope; confirm fields before scoping migrations.
@@ -63,18 +87,35 @@ RED→GREEN: write all 5 new tests first, confirm RED, then write helper + refac
 
 ## Recurring-pattern lessons banked (apply at next batch PRE-FLIGHT)
 
-- 🟢 publicProcedure tenant resolution — input.tenantSlug → db.tenant.findUnique; default
-  warehouse resolved server-side. NEVER let client supply warehouseId on a public path.
+- 🟢 publicProcedure tenant resolution — input.tenantSlug → db.tenant.findUnique;
+  default warehouse resolved server-side. NEVER let client supply warehouseId on a
+  public path.
 - 🟢 System-actor lookup for guest writes — db.user.findFirst({isActive:true},
   orderBy:{createdAt:"asc"}) → returns seeded webmaster for required createdById FKs.
-- 🟢 Rate-limit tier — rateLimiters.public.check(ip) at 30/min/IP for guest mutations.
-- 🟢 sanitizePlainText on user-facing text fields (firstName/lastName/notes) before storage.
-- ⚖️ Order-creation duplication tolerated — extraction deferred until 3rd variant emerges.
-- 🔴 useCart() shape gotcha — destructure mismatch caught at typecheck. ALWAYS grep the
-  CartContextValue's useMemo value before destructuring in a new consumer.
-- 🟢 Intentional scope-trim — 2× consecutive (Item 1 cart-only, Item 2 order-only). When a
-  Direction touches a new security/integration surface, ship that surface in its own batch.
+- 🟢 Rate-limit tier — rateLimiters.public.check(ip) at 10/min/IP for guest mutations
+  (actual config — .whatsnext used to say 30/min, fix to 10/min after Batch 20).
+- 🟢 sanitizePlainText on user-facing text fields (firstName/lastName/notes) before
+  storage.
+- ⚖️ Order-creation duplication tolerated — extraction deferred until 3rd variant
+  emerges.
+- 🔴 useCart() shape gotcha — destructure mismatch caught at typecheck. ALWAYS grep
+  the CartContextValue's useMemo value before destructuring in a new consumer.
+- 🟢 Intentional scope-trim — 3× consecutive (Item 1 cart-only, Item 2 order-only,
+  Batch 20 Xendit-only). When a Direction touches a new security/integration surface,
+  ship that surface in its own batch.
+- 🟢 Helper-extract refactor pattern — protected→public dual-caller surfaces extract
+  to src/lib/ helper. Existing tests verify behavioral equivalence; new tests verify
+  new surface. Reusable for future Stripe/PayPal/per-tenant-config refactors.
+- 🟢 RED-phase Zod-enum tightening — when adding new enum value, first-pass RED tests
+  may accidentally pass because Zod rejection throws BEFORE procedure logic. Assert
+  specific mock-side error marker + downstream mock-was-called to force true RED.
+- 🟢 Atomicity through in-transaction external calls — external HTTP call inside DB
+  transaction is acceptable for payment surfaces; any throw rolls back via Prisma.
+- 🟢 As-any cast cleanup post-GREEN — grep `as any` after implementation; remove dead
+  casts before lint flags them.
 
 ## Trigger
-Say "start Phase 8 Batch 20" or "start Direction E" — agent reads STATE.md first, runs the
-9-point pre-flight, then emits BUILD BATCH PROPOSAL with explicit branch-creation line.
+Say "start Phase 8 Batch 21" or "start Direction F" — agent reads STATE.md first, runs
+the 9-point pre-flight, then emits BUILD BATCH PROPOSAL with explicit branch-creation
+line. Or pick alternative direction explicitly: "start Direction B" / "start Direction
+C" / "start Direction D".

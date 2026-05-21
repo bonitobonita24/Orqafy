@@ -15,7 +15,7 @@ interface CheckoutFormProps {
   tenantSlug: string;
 }
 
-type PaymentMethod = "cod" | "bank_transfer";
+type PaymentMethod = "cod" | "bank_transfer" | "xendit";
 
 interface FormState {
   firstName: string;
@@ -54,8 +54,13 @@ export function CheckoutForm({
 
   const placeOrder = trpc.storefront.placeOrderAsCustomer.useMutation({
     onSuccess: (data) => {
-      toast.success(`Order ${data.orderNumber} placed. We will contact you shortly.`);
       clear();
+      if (data.invoiceUrl !== undefined && data.invoiceUrl !== "") {
+        toast.success(`Order ${data.orderNumber} placed. Redirecting to payment…`);
+        window.location.href = data.invoiceUrl;
+        return;
+      }
+      toast.success(`Order ${data.orderNumber} placed. We will contact you shortly.`);
       router.push(`/${tenantSlug}/store/products`);
     },
     onError: (err) => {
@@ -285,6 +290,26 @@ export function CheckoutForm({
                 <span className="font-medium">Bank transfer</span>
                 <span className="block text-muted-foreground">
                   We will send you bank details after you place the order.
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-3 rounded-md border border-border p-3 hover:bg-accent">
+              <input
+                type="radio"
+                name="paymentMethod"
+                value="xendit"
+                checked={form.paymentMethod === "xendit"}
+                onChange={() => {
+                  update("paymentMethod", "xendit");
+                }}
+                disabled={disabled}
+                className="mt-1"
+              />
+              <span className="text-sm">
+                <span className="font-medium">Pay online via Xendit</span>
+                <span className="block text-muted-foreground">
+                  Pay instantly by card, e-wallet, or bank. You will be
+                  redirected to a secure payment page.
                 </span>
               </span>
             </label>

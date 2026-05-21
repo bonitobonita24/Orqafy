@@ -8,7 +8,7 @@ import {
   writeProcedure,
 } from "../trpc";
 import { prisma as db } from "@orqafy/db";
-import { getXenditClient } from "@/lib/xendit";
+import { createXenditInvoiceForOrder } from "@/lib/xendit-invoice";
 import { sanitizePlainText } from "@/server/lib/sanitize";
 import { rateLimiters } from "@/server/lib/rate-limit";
 
@@ -103,7 +103,7 @@ const placeOrderAsCustomerInputSchema = z.object({
   customer: guestCustomerSchema,
   shippingAddress: addressSchema,
   billingAddress: addressSchema,
-  paymentMethod: z.enum(["cod", "bank_transfer"]),
+  paymentMethod: z.enum(["cod", "bank_transfer", "xendit"]),
   notes: z.string().max(2000).optional(),
 });
 
@@ -453,10 +453,29 @@ export const storefrontRouter = createTRPCRouter({
           });
         }
 
-        return created;
+        let invoiceUrl: string | undefined;
+        if (input.paymentMethod === "xendit") {
+          const xenditResult = await createXenditInvoiceForOrder({
+            orderId: created.id,
+            orderNumber: created.orderNumber,
+            totalAmount: Number(created.totalAmount),
+            customerEmail: input.customer.email ?? null,
+          });
+          await tx.ecommerceOrder.update({
+            where: { id: created.id },
+            data: { xenditPaymentId: xenditResult.invoiceId },
+          });
+          invoiceUrl = xenditResult.invoiceUrl;
+        }
+
+        return { created, invoiceUrl };
       });
 
-      return { orderId: result.id, orderNumber: result.orderNumber };
+      return {
+        orderId: result.created.id,
+        orderNumber: result.created.orderNumber,
+        ...(result.invoiceUrl !== undefined && { invoiceUrl: result.invoiceUrl }),
+      };
     }),
 
   getOrderById: protectedProcedure
@@ -555,26 +574,18 @@ export const storefrontRouter = createTRPCRouter({
         });
       }
 
-      const xendit = getXenditClient();
-      const customerEmail = order.customer.email;
-      const invoice = await xendit.Invoice.createInvoice({
-        data: {
-          externalId: order.id,
-          amount: Number(order.totalAmount),
-          description: `Order ${order.orderNumber}`,
-          currency: "PHP",
-          ...(customerEmail !== null &&
-            customerEmail !== "" && { payerEmail: customerEmail }),
-        },
+      const { invoiceId, invoiceUrl } = await createXenditInvoiceForOrder({
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        totalAmount: Number(order.totalAmount),
+        customerEmail: order.customer.email,
       });
-
-      const invoiceId = invoice.id ?? null;
       await db.ecommerceOrder.update({
         where: { id: input.orderId },
         data: { xenditPaymentId: invoiceId },
       });
 
-      return { invoiceUrl: invoice.invoiceUrl, invoiceId };
+      return { invoiceUrl, invoiceId };
     }),
 
   updateFulfillment: writeProcedure
