@@ -1010,4 +1010,53 @@
   procedure that ESTABLISHES that invariant must bypass the helper. Use a
   direct SDK instantiation (or a separate helper that omits the throw)
   for verification/initialization paths.
+
+## 2026-05-29 — 🟢 AuditLog inside $transaction for guest-write surfaces
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 23 D2 — placeOrderAsCustomer audit gap closure
+- Files:     apps/web/src/server/trpc/routers/storefront.ts, packages/db/src/helpers/audit.ts
+- Concepts:  AuditLog, transaction, systemActor, guest-checkout, publicProcedure, attribution
+- Narrative: When a publicProcedure mutates DB state and there is no ctx.userId
+  (guest write), AuditLog still requires userId NOT NULL. Pattern: resolve a
+  systemActor once via db.user.findFirst({where:{isActive:true}, orderBy:{createdAt:"asc"}})
+  before opening the transaction, then call writeAuditLog(tx, {userId: systemActor.id, ...})
+  INSIDE the $transaction alongside the order/stock writes. This makes order
+  creation + stock movement + audit attribution atomic — if any one fails, all
+  roll back together. Banked because this is the first time the framework
+  intentionally attributes a guest-write to a system actor for AuditLog
+  (previously systemActor was only used for StockMovement.createdById on the
+  same procedure — this batch extends the pattern to AuditLog).
+
+## 2026-05-29 — 🟢 Server Component chip-row filter pattern
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 23 D3b — admin orders page filter UI
+- Files:     apps/web/src/app/(tenant)/[slug]/(app)/ecommerce/orders/page.tsx
+- Concepts:  Server Component, searchParams, filter, pagination, hrefFor, URL serialization
+- Narrative: When the admin page is a Next.js Server Component reading prisma
+  directly (no tRPC client), filters live in searchParams. Pattern: define
+  OPTIONS const array + LABELS Record + isX type guard for each filter
+  dimension. Parse all filters from searchParams via the type guards, inject
+  into where{}, render as a row of <Link href={hrefFor(slug, {...allFilters,
+  thisOne: value})}>chip</Link> with "All" link passing undefined for that
+  dimension. The hrefFor helper signature must include ALL filter dimensions
+  so chip clicks preserve every other filter AND so pagination links preserve
+  every filter across page transitions. No client-side state. No react-query.
+  Pure URL-driven filter UI works perfectly for admin pages.
+
+## 2026-05-29 — 🟢 Hoisted vi.mock pattern for new module exports
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 23 D2 — adding writeAuditLog mock to storefront.test.ts
+- Files:     apps/web/src/__tests__/storefront.test.ts
+- Concepts:  vitest, vi.hoisted, vi.mock, mock-extension, testing
+- Narrative: When a test file already mocks "@orqafy/db" via vi.mock and you
+  need to add a NEW exported function (e.g. writeAuditLog) from that module
+  for the first time, the cleanest pattern is to (a) add a vi.hoisted block
+  with the new mock fn (mirrors the existing mockCreateInvoice pattern in the
+  same file), (b) extend the existing vi.mock("@orqafy/db") factory return to
+  include the new export as a sibling to prisma, (c) add a mockReset() in the
+  top-level beforeEach. This avoids creating a separate vi.mock call and
+  keeps the @orqafy/db mock as one source of truth. Banked because the
+  hoisted pattern is subtle — Sonnet defaulted to adding writeAuditLog: vi.fn()
+  inline first and the test could not capture the mock for assertions until
+  the hoisted pattern was applied.
 # ---

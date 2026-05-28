@@ -5,6 +5,7 @@ import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 
 vi.mock("@orqafy/db", () => ({
+  writeAuditLog: mockWriteAuditLog,
   prisma: {
     product: {
       findMany: vi.fn(),
@@ -63,6 +64,10 @@ vi.mock("@/lib/turnstile", () => ({
 
 const { mockCreateInvoice } = vi.hoisted(() => ({
   mockCreateInvoice: vi.fn(),
+}));
+
+const { mockWriteAuditLog } = vi.hoisted(() => ({
+  mockWriteAuditLog: vi.fn(),
 }));
 // Batch 21c: getXenditClient is async + takes tenantId; getXenditWebhookToken is gone.
 vi.mock("@/lib/xendit", () => ({
@@ -539,6 +544,7 @@ describe("storefront router", () => {
           ecommerceOrderItem: { create: vi.fn() },
           warehouseStock: { update: vi.fn() },
           stockMovement: { create: vi.fn() },
+          auditLog: { create: vi.fn() },
         };
         return fn(tx);
       });
@@ -552,6 +558,25 @@ describe("storefront router", () => {
 
       expect(res.orderId).toBe(ORDER_ID);
       expect(res.orderNumber).toBe("EC-2605-0001");
+    });
+
+    it("writes AuditLog entry attributing the order to systemActor", async () => {
+      mockGuestHappyPath();
+
+      const caller = createCaller(unauthenticatedCtx());
+      await caller.storefront.placeOrderAsCustomer(validGuestInput);
+
+      expect(mockWriteAuditLog).toHaveBeenCalledTimes(1);
+      const [tx, entry] = mockWriteAuditLog.mock.calls[0] as [unknown, Record<string, unknown>];
+      expect(tx).toBeDefined();
+      expect(entry.userId).toBe("ck1234567890123456789012a");
+      expect(entry.action).toBe("CREATE");
+      expect(entry.entity).toBe("EcommerceOrder");
+      expect(entry.entityId).toBe(ORDER_ID);
+      expect(entry.after).toMatchObject({
+        orderNumber: "EC-2605-0001",
+        paymentMethod: "cod",
+      });
     });
 
     it("rejects with BAD_REQUEST when verifyTurnstile returns false", async () => {
@@ -851,6 +876,28 @@ describe("storefront router", () => {
       await expect(caller.storefront.listAllOrders({})).rejects.toThrow(
         TRPCError,
       );
+    });
+
+    it("filters by paymentStatus when provided", async () => {
+      mockDb.ecommerceOrder.findMany.mockResolvedValue([]);
+      mockDb.ecommerceOrder.count.mockResolvedValue(0);
+
+      const caller = createCaller(authenticatedCtx());
+      await caller.storefront.listAllOrders({ paymentStatus: "paid" });
+
+      const call = mockDb.ecommerceOrder.findMany.mock.calls[0][0];
+      expect(call.where.paymentStatus).toBe("paid");
+    });
+
+    it("filters by paymentMethod when provided", async () => {
+      mockDb.ecommerceOrder.findMany.mockResolvedValue([]);
+      mockDb.ecommerceOrder.count.mockResolvedValue(0);
+
+      const caller = createCaller(authenticatedCtx());
+      await caller.storefront.listAllOrders({ paymentMethod: "xendit" });
+
+      const call = mockDb.ecommerceOrder.findMany.mock.calls[0][0];
+      expect(call.where.paymentMethod).toBe("xendit");
     });
   });
 
@@ -1247,6 +1294,69 @@ describe("storefront router", () => {
           trackingNumber: "TRK-1",
         }),
       ).rejects.toThrow(/not found/i);
+    });
+  });
+
+  // ─── trackGuestOrder (guest order lookup publicProcedure) ────────────────
+  describe("trackGuestOrder", () => {
+    const TENANT_SLUG_TG = "test-tenant";
+    const TENANT_ID_TG = "ck1234567890123456789012b";
+
+    it("returns order details on orderNumber + phone last-4 match", async () => {
+      mockDb.tenant.findUnique.mockResolvedValue({ id: TENANT_ID_TG, slug: TENANT_SLUG_TG, isActive: true });
+      mockDb.ecommerceOrder.findFirst.mockResolvedValue({
+        orderNumber: "EC-2605-0001",
+        status: "processing",
+        paymentStatus: "paid",
+        trackingNumber: "TRK-001",
+        totalAmount: 1500,
+        currency: "PHP",
+      });
+      const caller = createCaller(unauthenticatedCtx());
+      const res = await caller.storefront.trackGuestOrder({
+        tenantSlug: TENANT_SLUG_TG,
+        orderNumber: "EC-2605-0001",
+        phoneLast4: "0000",
+      });
+      expect(res.orderNumber).toBe("EC-2605-0001");
+      expect(res.status).toBe("processing");
+      expect(res.paymentStatus).toBe("paid");
+    });
+
+    it("returns NOT_FOUND when phone last-4 does not match (no enumeration leak)", async () => {
+      mockDb.tenant.findUnique.mockResolvedValue({ id: TENANT_ID_TG, slug: TENANT_SLUG_TG, isActive: true });
+      mockDb.ecommerceOrder.findFirst.mockResolvedValue(null);
+      const caller = createCaller(unauthenticatedCtx());
+      await expect(
+        caller.storefront.trackGuestOrder({
+          tenantSlug: TENANT_SLUG_TG,
+          orderNumber: "EC-2605-0001",
+          phoneLast4: "9999",
+        }),
+      ).rejects.toThrow(/not found/i);
+    });
+
+    it("returns NOT_FOUND when tenant slug is invalid (same error as wrong order)", async () => {
+      mockDb.tenant.findUnique.mockResolvedValue(null);
+      const caller = createCaller(unauthenticatedCtx());
+      await expect(
+        caller.storefront.trackGuestOrder({
+          tenantSlug: "wrong-tenant",
+          orderNumber: "EC-2605-0001",
+          phoneLast4: "0000",
+        }),
+      ).rejects.toThrow(/not found/i);
+    });
+
+    it("rejects malformed phoneLast4 (not 4 digits)", async () => {
+      const caller = createCaller(unauthenticatedCtx());
+      await expect(
+        caller.storefront.trackGuestOrder({
+          tenantSlug: TENANT_SLUG_TG,
+          orderNumber: "EC-2605-0001",
+          phoneLast4: "abcd",
+        }),
+      ).rejects.toThrow();
     });
   });
 });

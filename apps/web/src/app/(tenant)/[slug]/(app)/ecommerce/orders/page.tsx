@@ -38,12 +38,39 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   refunded: "text-rose-400 bg-rose-400/10 border-rose-400/30",
 };
 
+const PAYMENT_STATUS_OPTIONS = ["pending", "paid", "failed", "refunded"] as const;
+type PaymentStatus = (typeof PAYMENT_STATUS_OPTIONS)[number];
+
+const PAYMENT_METHOD_OPTIONS = ["cod", "bank_transfer", "xendit"] as const;
+type PaymentMethod = (typeof PAYMENT_METHOD_OPTIONS)[number];
+
+const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  pending: "Payment pending",
+  paid: "Paid",
+  failed: "Payment failed",
+  refunded: "Refunded",
+};
+
+const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  cod: "Cash on delivery",
+  bank_transfer: "Bank transfer",
+  xendit: "Xendit",
+};
+
 const DEFAULT_LIMIT = 50;
 
 function isStatus(value: string | undefined): value is OrderStatus {
   return (
     typeof value === "string" && (STATUS_OPTIONS as readonly string[]).includes(value)
   );
+}
+
+function isPaymentStatus(v: string | undefined): v is PaymentStatus {
+  return v !== undefined && (PAYMENT_STATUS_OPTIONS as readonly string[]).includes(v);
+}
+
+function isPaymentMethod(v: string | undefined): v is PaymentMethod {
+  return v !== undefined && (PAYMENT_METHOD_OPTIONS as readonly string[]).includes(v);
 }
 
 function customerLabel(
@@ -61,10 +88,17 @@ function customerLabel(
 
 function hrefFor(
   slug: string,
-  params: { status?: OrderStatus | undefined; page?: number | undefined },
+  params: {
+    status?: OrderStatus | undefined;
+    paymentStatus?: PaymentStatus | undefined;
+    paymentMethod?: PaymentMethod | undefined;
+    page?: number | undefined;
+  },
 ): string {
   const sp = new URLSearchParams();
   if (params.status !== undefined) sp.set("status", params.status);
+  if (params.paymentStatus !== undefined) sp.set("paymentStatus", params.paymentStatus);
+  if (params.paymentMethod !== undefined) sp.set("paymentMethod", params.paymentMethod);
   if (params.page !== undefined && params.page > 1) sp.set("page", String(params.page));
   const qs = sp.toString();
   return qs.length > 0
@@ -74,17 +108,32 @@ function hrefFor(
 
 interface PageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ status?: string; page?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    paymentStatus?: string;
+    paymentMethod?: string;
+    page?: string;
+  }>;
 }
 
 export default async function EcommerceOrdersPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const { status: rawStatus, page: rawPage } = await searchParams;
+  const {
+    status: rawStatus,
+    paymentStatus: rawPS,
+    paymentMethod: rawPM,
+    page: rawPage,
+  } = await searchParams;
   const status = isStatus(rawStatus) ? rawStatus : undefined;
+  const paymentStatus = isPaymentStatus(rawPS) ? rawPS : undefined;
+  const paymentMethod = isPaymentMethod(rawPM) ? rawPM : undefined;
   const parsedPage = typeof rawPage === "string" ? Number.parseInt(rawPage, 10) : 1;
   const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
 
-  const where = status !== undefined ? { status } : {};
+  const where: Record<string, unknown> = {};
+  if (status !== undefined) where.status = status;
+  if (paymentStatus !== undefined) where.paymentStatus = paymentStatus;
+  if (paymentMethod !== undefined) where.paymentMethod = paymentMethod;
 
   const [items, total] = await Promise.all([
     prisma.ecommerceOrder.findMany({
@@ -110,14 +159,17 @@ export default async function EcommerceOrdersPage({ params, searchParams }: Page
           <h1 className="text-2xl font-bold tracking-tight">Ecommerce orders</h1>
           <p className="text-sm text-muted-foreground">
             {items.length} of {total} {total === 1 ? "order" : "orders"}
-            {status ? ` filtered by "${STATUS_LABELS[status]}"` : ""}
+            {status ? ` · status "${STATUS_LABELS[status]}"` : ""}
+            {paymentStatus ? ` · payment "${PAYMENT_STATUS_LABELS[paymentStatus]}"` : ""}
+            {paymentMethod ? ` · method "${PAYMENT_METHOD_LABELS[paymentMethod]}"` : ""}
           </p>
         </div>
       </div>
 
+      {/* Order status filter */}
       <div className="flex flex-wrap gap-2">
         <Link
-          href={hrefFor(slug, {})}
+          href={hrefFor(slug, { paymentStatus, paymentMethod })}
           className={`rounded-full border px-3 py-1 text-xs font-medium ${
             status === undefined
               ? "border-[#00d992] bg-[#00d992]/10 text-[#00d992]"
@@ -129,7 +181,7 @@ export default async function EcommerceOrdersPage({ params, searchParams }: Page
         {STATUS_OPTIONS.map((s) => (
           <Link
             key={s}
-            href={hrefFor(slug, { status: s })}
+            href={hrefFor(slug, { status: s, paymentStatus, paymentMethod })}
             className={`rounded-full border px-3 py-1 text-xs font-medium ${
               status === s
                 ? STATUS_COLORS[s]
@@ -141,10 +193,69 @@ export default async function EcommerceOrdersPage({ params, searchParams }: Page
         ))}
       </div>
 
+      {/* Payment status filter */}
+      <div className="flex flex-wrap gap-2">
+        <span className="self-center text-xs text-muted-foreground">Payment status:</span>
+        <Link
+          href={hrefFor(slug, { status, paymentMethod, paymentStatus: undefined })}
+          className={`rounded-md border px-2 py-1 text-xs ${
+            paymentStatus === undefined
+              ? "border-foreground bg-card font-medium"
+              : "border-border text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          All
+        </Link>
+        {PAYMENT_STATUS_OPTIONS.map((ps) => (
+          <Link
+            key={ps}
+            href={hrefFor(slug, { status, paymentMethod, paymentStatus: ps })}
+            className={`rounded-md border px-2 py-1 text-xs ${
+              paymentStatus === ps
+                ? "border-foreground bg-card font-medium"
+                : "border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {PAYMENT_STATUS_LABELS[ps]}
+          </Link>
+        ))}
+      </div>
+
+      {/* Payment method filter */}
+      <div className="flex flex-wrap gap-2">
+        <span className="self-center text-xs text-muted-foreground">Payment method:</span>
+        <Link
+          href={hrefFor(slug, { status, paymentStatus, paymentMethod: undefined })}
+          className={`rounded-md border px-2 py-1 text-xs ${
+            paymentMethod === undefined
+              ? "border-foreground bg-card font-medium"
+              : "border-border text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          All
+        </Link>
+        {PAYMENT_METHOD_OPTIONS.map((pm) => (
+          <Link
+            key={pm}
+            href={hrefFor(slug, { status, paymentStatus, paymentMethod: pm })}
+            className={`rounded-md border px-2 py-1 text-xs ${
+              paymentMethod === pm
+                ? "border-foreground bg-card font-medium"
+                : "border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {PAYMENT_METHOD_LABELS[pm]}
+          </Link>
+        ))}
+      </div>
+
       <div className="rounded-lg border border-border bg-card">
         {items.length === 0 ? (
           <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No orders{status ? ` with status "${STATUS_LABELS[status]}"` : ""} yet.
+            No orders
+            {status ? ` with status "${STATUS_LABELS[status]}"` : ""}
+            {paymentStatus ? ` / payment "${PAYMENT_STATUS_LABELS[paymentStatus]}"` : ""}
+            {paymentMethod ? ` / method "${PAYMENT_METHOD_LABELS[paymentMethod]}"` : ""} yet.
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -207,7 +318,7 @@ export default async function EcommerceOrdersPage({ params, searchParams }: Page
           <div className="flex gap-2">
             {page > 1 ? (
               <Link
-                href={hrefFor(slug, { status, page: page - 1 })}
+                href={hrefFor(slug, { status, paymentStatus, paymentMethod, page: page - 1 })}
                 className="rounded-md border border-border bg-card px-3 py-1 hover:text-foreground"
               >
                 Previous
@@ -215,7 +326,7 @@ export default async function EcommerceOrdersPage({ params, searchParams }: Page
             ) : null}
             {page < totalPages ? (
               <Link
-                href={hrefFor(slug, { status, page: page + 1 })}
+                href={hrefFor(slug, { status, paymentStatus, paymentMethod, page: page + 1 })}
                 className="rounded-md border border-border bg-card px-3 py-1 hover:text-foreground"
               >
                 Next

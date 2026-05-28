@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-29 by CLAUDE_CODE (Phase 8 Batch 22 ✅ COMPLETE — Direction C Xendit prod-readiness: Turnstile on guest checkout + webhookProcessedAt audit column + deployment playbook. 728/728 GREEN.)
+# Last updated: 2026-05-29 by CLAUDE_CODE (Phase 8 Batch 23 ✅ COMPLETE — Direction D quickwin bundle: guest order tracking + AuditLog on guest checkout + admin payment filters. 735/735 GREEN.)
 # Note: Batch 6+ batch detail lives in docs/CHANGELOG_AI.md and .cline/STATE.md — see those files for per-batch records since this file's structured snapshot section was last refreshed at Batch 5.
 # ---
 
@@ -579,9 +579,18 @@ Schema-vs-spec drift remained the biggest source of post-write fixes despite exp
 
 ## Next Action
 
-**CURRENT STATE: Phase 8 Batch 22 ✅ COMPLETE (Direction C: Xendit prod-readiness). Next: Batch 23 planning — candidates from .whatsnext Direction D/B/G.**
+**CURRENT STATE: Phase 8 Batch 23 ✅ COMPLETE (Direction D: quickwin bundle). Web storefront public surface feature-complete for v1.0. Next: Batch 24 planning — candidates from .whatsnext Direction G/B/H.**
 
-1. **Phase 8 Batch 22 ✅ COMPLETE (Direction C: Xendit Prod-Readiness) — 2026-05-29:**
+1. **Phase 8 Batch 23 ✅ COMPLETE (Direction D: Quickwin Bundle) — 2026-05-29:**
+   - D1a ✅ `storefront.ts` trackGuestOrder publicProcedure ({tenantSlug, orderNumber, phoneLast4} → status/paymentStatus/trackingNumber/totalAmount/currency) + 4 tests
+   - D1b ✅ `app/(tenant)/[slug]/store/orders/track/page.tsx` guest tracking page UI (128 lines client component)
+   - D2 ✅ `storefront.ts` placeOrderAsCustomer now writes AuditLog inside $transaction — closes guest-checkout audit gap. systemActor (webmaster) attribution. +1 test.
+   - D3a ✅ `storefront.ts` listAllOrders extended with paymentStatus + paymentMethod Zod enum filters. +2 tests.
+   - D3b ✅ `app/(tenant)/[slug]/(app)/ecommerce/orders/page.tsx` Server Component extended with 2 chip-row filter UIs + searchParams parsing + hrefFor preserves all 3 filters across pagination
+   - Tests: 728 → 735 GREEN (+7). Test files: 26 (unchanged). Typecheck 0 errors. Lint 0 errors.
+   - Open deploy gates: unchanged from Batch 22 — (1) APP_ENCRYPTION_KEY in .env.staging + .env.prod, (2) prisma migrate deploy of both 21c + 22 migrations. See `docs/deployment-direction-f.md`.
+
+2. **Phase 8 Batch 22 ✅ COMPLETE (Direction C: Xendit Prod-Readiness) — 2026-05-29:**
    - A1 ✅ `apps/web/src/lib/turnstile.ts` extracted + `turnstile.test.ts` (9 tests)
    - A2+A3 ✅ `storefront.ts` placeOrderAsCustomer: cfTurnstileToken in schema + verifyTurnstile call; `checkout-form.tsx`: Turnstile widget + disabled-until-token submit button
    - B ✅ `EcommerceOrder.webhookProcessedAt` nullable audit column — migration `20260529014600`; `xendit/route.ts` sets `webhookProcessedAt: new Date()` on payment update; +1 webhook test

@@ -1764,4 +1764,18 @@
 - Errors resolved:    Lint: replaced `json: async () => (...)` with `json: () => Promise.resolve(...)` (4x) and `json: async () => { throw }` with `json: () => Promise.reject(...)` (1x). Typecheck: A3 frontend changes added cfTurnstileToken to the mutate payload.
 - Test delta:         719 → 728 GREEN (+9). Test files: 25 → 26 (+turnstile.test.ts).
 - Commits on branch:  54db807 (A1 lib + tests), 1f17ce7 (A2+A3 server + client), 7193c47 (B schema + migration + webhook), ac54ebe (C deployment doc). Squash-merged to main as a single Batch 22 commit.
+
+## 2026-05-29 — Phase 8 Batch 23 (Direction D: quickwin bundle) — guest order tracking + AuditLog on guest checkout + admin payment filters
+- Agent:               CLAUDE_CODE (Opus 4.7 architect + Sonnet 4.6 executor per V32 Zero Opus Execution)
+- Why:                 Close last UX/audit/admin gaps on Direction F surface before any production tenant onboards. Direction D was recommended next direction in .whatsnext after Batch 22 Direction C completion.
+- Files added:         apps/web/src/app/(tenant)/[slug]/store/orders/track/page.tsx (D1b — 128 lines, guest tracking page client component)
+- Files modified:      apps/web/src/server/trpc/routers/storefront.ts (D1a +47 trackGuestOrder, D2 +13 writeAuditLog call, D3a +4 paymentStatus/Method filters); apps/web/src/__tests__/storefront.test.ts (D1a +62 trackGuestOrder tests, D2 +22 audit log mock + test, D3a +22 filter tests); apps/web/src/app/(tenant)/[slug]/(app)/ecommerce/orders/page.tsx (D3b +~80 chip-row filter UI + searchParams + hrefFor extension)
+- Files deleted:       none
+- Schema/migrations:   none — Direction D required NO schema changes (paymentStatus and paymentMethod fields already existed on EcommerceOrder)
+- Tests:               728 → 735 GREEN (+7: D1a 4 trackGuestOrder + D2 1 audit log + D3a 2 payment filters). Files: 26 (unchanged).
+- Typecheck:           0 errors
+- Lint:                0 errors
+- Errors encountered:  none — clean execution across all 5 sub-tasks
+- Errors resolved:     none
+- Branch:              feat/batch-23-direction-d-quickwin → squash-merged to main this session
 - Deploy gates:       (1) APP_ENCRYPTION_KEY in .env.staging + .env.prod (carried from 21a). (2) Both migrations (21c tenantId + 22 webhookProcessedAt) must apply via `pnpm --filter @orqafy/db exec prisma migrate deploy` on each env. Full playbook in docs/deployment-direction-f.md.

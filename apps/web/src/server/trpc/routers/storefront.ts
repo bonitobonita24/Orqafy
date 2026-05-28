@@ -7,7 +7,7 @@ import {
   publicProcedure,
   writeProcedure,
 } from "../trpc";
-import { prisma as db } from "@orqafy/db";
+import { prisma as db, writeAuditLog } from "@orqafy/db";
 import { createXenditInvoiceForOrder } from "@/lib/xendit-invoice";
 import { sanitizePlainText } from "@/server/lib/sanitize";
 import { rateLimiters } from "@/server/lib/rate-limit";
@@ -481,6 +481,20 @@ export const storefrontRouter = createTRPCRouter({
           invoiceUrl = xenditResult.invoiceUrl;
         }
 
+        await writeAuditLog(tx, {
+          userId: systemActor.id,
+          action: "CREATE",
+          entity: "EcommerceOrder",
+          entityId: created.id,
+          after: {
+            orderNumber: created.orderNumber,
+            totalAmount: Number(totalAmount),
+            paymentMethod: input.paymentMethod,
+            tenantId: tenant.id,
+          },
+          ipAddress: ip,
+        });
+
         return { created, invoiceUrl };
       });
 
@@ -536,6 +550,12 @@ export const storefrontRouter = createTRPCRouter({
       z
         .object({
           status: z.enum(STATUS_VALUES).optional(),
+          paymentStatus: z
+            .enum(["pending", "paid", "failed", "refunded"])
+            .optional(),
+          paymentMethod: z
+            .enum(["cod", "bank_transfer", "xendit"])
+            .optional(),
           customerId: cuid.optional(),
           skip: z.number().int().min(0).default(0),
           take: z.number().int().min(1).max(100).default(20),
@@ -546,6 +566,10 @@ export const storefrontRouter = createTRPCRouter({
       requireAdmin(ctx.roles);
       const where: Record<string, unknown> = {};
       if (input.status !== undefined) where.status = input.status;
+      if (input.paymentStatus !== undefined)
+        where.paymentStatus = input.paymentStatus;
+      if (input.paymentMethod !== undefined)
+        where.paymentMethod = input.paymentMethod;
       if (input.customerId !== undefined) where.customerId = input.customerId;
       const [items, total] = await Promise.all([
         db.ecommerceOrder.findMany({
@@ -560,6 +584,54 @@ export const storefrontRouter = createTRPCRouter({
         db.ecommerceOrder.count({ where }),
       ]);
       return { items, total };
+    }),
+
+  // Guest order tracking — publicProcedure, rate-limited via rateLimiters.public.
+  // Returns NOT_FOUND on any mismatch (tenant, orderNumber, or phone last-4) to
+  // prevent enumeration. Matches the auth-gated-lookup posture from the xendit
+  // webhook handler (lessons.md 2026-05-22 — return same error for unknown vs
+  // wrong-auth to block resource enumeration).
+  trackGuestOrder: publicProcedure
+    .input(
+      z.object({
+        tenantSlug: z.string().trim().min(1).max(100),
+        orderNumber: z.string().trim().min(1).max(50),
+        phoneLast4: z.string().trim().regex(/^\d{4}$/),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const ipHeader = ctx.req.headers.get("x-forwarded-for") ?? ctx.req.headers.get("x-real-ip");
+      const ip = ipHeader ?? "unknown";
+      rateLimiters.public.check(ip);
+
+      const tenant = await db.tenant.findUnique({
+        where: { slug: input.tenantSlug },
+      });
+      if (tenant === null || tenant.isActive === false) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+      }
+
+      const order = await db.ecommerceOrder.findFirst({
+        where: {
+          orderNumber: input.orderNumber,
+          tenantId: tenant.id,
+          customer: { phone: { endsWith: input.phoneLast4 } },
+        },
+        select: {
+          orderNumber: true,
+          status: true,
+          paymentStatus: true,
+          trackingNumber: true,
+          totalAmount: true,
+          currency: true,
+        },
+      });
+
+      if (order === null) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+      }
+
+      return order;
     }),
 
   createXenditInvoice: writeProcedure
