@@ -1,6 +1,6 @@
 {
-  "scannedAt": "2026-05-11",
-  "previousScan": "2026-05-10",
+  "scannedAt": "2026-05-29",
+  "previousScan": "2026-05-11",
   "techStack": [
     "TypeScript (strict)",
     "Next.js 15 (App Router)",
@@ -22,8 +22,9 @@
     "Expo Router",
     "WatermelonDB",
     "Expo Push (FCM/APNs)",
-    "Xendit (dual-level payments)",
+    "Xendit (dual-level payments, per-tenant since Direction F)",
     "Cloudflare Turnstile (bot protection)",
+    "AES-256-GCM crypto (per-tenant secret encryption, APP_ENCRYPTION_KEY)",
     "Docker Compose",
     "Komodo (deployment manager)",
     "Traefik (reverse proxy)",
@@ -31,172 +32,45 @@
     "pnpm monorepo + Turborepo"
   ],
   "projectType": "full-stack monorepo (web + mobile + worker, multi-tenant SaaS)",
-  "phaseAtScan": "Phase 8 Batch 3 COMPLETE (3/3) — Batch 4 adaptive replan pending (PAUSED 2026-05-08, re-verified 2026-05-11)",
-  "deltaSinceLastScan": "zero — no dependency changes, no skill changes, no phase advance. Re-scan confirmed all 16 file-skills + active plugins (superpowers, context-mode, claude-mem, code-review-graph, claude-skills-65, planning-with-files) still in place. .claude/skills/ folder clean, no stale entries.",
+  "phaseAtScan": "Phase 8 Batch 21c COMPLETE — Direction F SHIPPED end-to-end (per-tenant Xendit refactor). 719/719 GREEN. Next: Direction C/D/B/G per .whatsnext.",
+  "deltaSinceLastScan": "Framework upgraded V31 → V32.1.4 (Zero Opus Execution, 500-line dispatch gate, Sonnet subagent overhead note). Batches 21a + 21b + 21c shipped (encryption infra → TenantXenditConfig CRUD + admin UI → per-tenant consumer refactor). Test baseline 714 → 719 GREEN, +5 new xendit-per-tenant tests. EcommerceOrder.tenantId migration added. crypto.ts module added with 9 unit tests. Zero dependency changes in package.json. Skill folders unchanged from 2026-05-11.",
   "specDriven": {
     "detected": true,
-    "version": "V31",
+    "version": "V32.1.4",
     "memoryGovernanceInstalled": true,
     "memoryGovernancePath": ".claude/rules/memory-governance.md",
-    "currentPhase": "Phase 8 Batch 4 replan",
+    "currentPhase": "Direction F COMPLETE — pick next Direction (C prod-readiness recommended, D guest-tracking, B mobile scaffold, G optional parity)",
     "midProjectAdoption": false,
-    "note": "Memory governance was already installed before this scan. §1 Tiered Decomposition + §2 Smart Checkpoint + §4 Architect-Execute Model wired into phase hooks."
+    "note": "Memory governance unchanged. §1 Tiered Decomposition + §2 Smart Checkpoint + §3 Phase Hooks + §4 Architect-Execute Model (Zero Opus Execution V32) wired into phase hooks. V32.1 Sonnet subagent context-overhead operational note now active in §1."
   },
   "installedSkills": [
-    {
-      "name": "ui-ux-pro-max",
-      "category": "Design & UI",
-      "tier": "T1",
-      "addedAt": "2026-05-02",
-      "reason": "Phase 2.6 design system generator. 161 industry rules, shadcn/ui theming, WCAG AA enforcement."
-    },
-    {
-      "name": "awesome-design-md",
-      "category": "Design & UI",
-      "tier": "T1",
-      "addedAt": "2026-05-02",
-      "reason": "VoltAgent aesthetic (docs/DESIGN.md). 31 DESIGN.md references for shadcn-compatible visual direction (Scenario 33)."
-    },
-    {
-      "name": "postgres",
-      "category": "Data & Analytics",
-      "tier": "T1",
-      "addedAt": "2026-05-02",
-      "reason": "PostgreSQL with schema-per-tenant isolation, Prisma ORM, PgBouncer pooler."
-    },
-    {
-      "name": "planning-with-files",
-      "category": "Development & DevOps",
-      "tier": "T2",
-      "addedAt": "2026-05-02",
-      "reason": "8-Part Phase 4 scaffold + multi-step Feature Updates + governance coordination."
-    },
-    {
-      "name": "webapp-testing",
-      "category": "Security & Testing",
-      "tier": "T2",
-      "addedAt": "2026-05-02",
-      "reason": "Next.js web app with localhost dev server, tRPC API endpoints, Docker-based services."
-    },
-    {
-      "name": "a11y-skill",
-      "category": "Security & Testing",
-      "tier": "T1",
-      "addedAt": "2026-05-02",
-      "reason": "WCAG 2.1 AA enforcement mandatory (accessibility.level: wcag_aa). axe-core + eslint-plugin-jsx-a11y."
-    },
-    {
-      "name": "owasp-security",
-      "category": "Security & Testing",
-      "tier": "T1",
-      "addedAt": "2026-05-06",
-      "reason": "Multi-tenant SaaS with Xendit payments, Turnstile, L1-L6 security layers. OWASP Top 10 review essential."
-    },
-    {
-      "name": "playwright-skill",
-      "category": "Security & Testing",
-      "tier": "T4",
-      "addedAt": "2026-05-06",
-      "reason": "Visual QA (Rule 16) after Phase 6 + major Phase 7 updates. E2E testing for auth flows and multi-tenant routing."
-    },
-    {
-      "name": "design-auditor",
-      "category": "Design & UI",
-      "tier": "T4",
-      "addedAt": "2026-05-06",
-      "reason": "Visual design scoring alongside ui-ux-pro-max. Different axis: audits vs generates."
-    },
-    {
-      "name": "test-fixing",
-      "category": "Collaboration & Workflow",
-      "tier": "T4",
-      "addedAt": "2026-05-06",
-      "reason": "Phase 5 validation gate requires all tests pass. Pairs with superpowers:systematic-debugging for test failures."
-    },
-    {
-      "name": "varlock-claude-skill",
-      "category": "Security & Testing",
-      "tier": "T4",
-      "addedAt": "2026-05-06",
-      "reason": "Environment variable auditing for .env.dev/.env.staging/.env.prod + CREDENTIALS.md validation."
-    },
-    {
-      "name": "frontend-design",
-      "category": "Design & UI",
-      "tier": "T2",
-      "addedAt": "2026-05-10",
-      "reason": "V31 Foundation Bundle Slot 4. Anthropic's production UI code generator. Coexists with ui-ux-pro-max (Phase 2.6 design system) and design-auditor (visual scoring) per V31 phase model."
-    },
-    {
-      "name": "git-pushing",
-      "category": "Collaboration & Workflow",
-      "tier": "T4",
-      "addedAt": "2026-05-10",
-      "reason": "V31 Foundation Bundle Slot 5. Commit discipline + safe push workflow. Complements Rule 23 conventional commits and squash-merge."
-    },
-    {
-      "name": "claude-skills-65",
-      "category": "Development & DevOps",
-      "tier": "T4",
-      "addedAt": "2026-05-10",
-      "reason": "V31 Foundation Bundle Slot 6. 65 framework skills covering React, Next.js, tRPC, Prisma, NestJS, etc. Reference library for Phase 7 Feature Updates."
-    },
-    {
-      "name": "oiloil-ui-ux-guide",
-      "category": "Design & UI",
-      "tier": "T4",
-      "addedAt": "2026-05-10",
-      "reason": "V31 Foundation Bundle Phase 4 Parts 5-6. UX theory — task-first UX, HCI laws, interaction psychology. Pairs with ui-ux-pro-max + frontend-design."
-    },
-    {
-      "name": "review-implementing",
-      "category": "Collaboration & Workflow",
-      "tier": "T4",
-      "addedAt": "2026-05-10",
-      "reason": "V31 Foundation Bundle Phase 7. Systematic code review feedback implementation. Maps to Rule 25 two-stage review responses."
-    }
+    { "name": "ui-ux-pro-max", "category": "Design & UI", "tier": "T1", "addedAt": "2026-05-02", "reason": "Phase 2.6 design system generator. 161 industry rules, shadcn/ui theming, WCAG AA enforcement." },
+    { "name": "awesome-design-md", "category": "Design & UI", "tier": "T1", "addedAt": "2026-05-02", "reason": "VoltAgent aesthetic (docs/DESIGN.md). 31 DESIGN.md references for shadcn-compatible visual direction (Scenario 33)." },
+    { "name": "postgres", "category": "Data & Analytics", "tier": "T1", "addedAt": "2026-05-02", "reason": "PostgreSQL with schema-per-tenant isolation, Prisma ORM, PgBouncer pooler." },
+    { "name": "planning-with-files", "category": "Development & DevOps", "tier": "T2", "addedAt": "2026-05-02", "reason": "8-Part Phase 4 scaffold + multi-step Feature Updates + governance coordination." },
+    { "name": "webapp-testing", "category": "Security & Testing", "tier": "T2", "addedAt": "2026-05-02", "reason": "Next.js web app with localhost dev server, tRPC API endpoints, Docker-based services." },
+    { "name": "a11y-skill", "category": "Security & Testing", "tier": "T1", "addedAt": "2026-05-02", "reason": "WCAG 2.1 AA enforcement mandatory (accessibility.level: wcag_aa). axe-core + eslint-plugin-jsx-a11y." },
+    { "name": "owasp-security", "category": "Security & Testing", "tier": "T1", "addedAt": "2026-05-06", "reason": "Multi-tenant SaaS with Xendit payments, Turnstile, L1-L6 security layers. OWASP Top 10 review essential. Direction C prod-readiness will exercise this heavily." },
+    { "name": "playwright-skill", "category": "Security & Testing", "tier": "T4", "addedAt": "2026-05-06", "reason": "Visual QA (Rule 16) after Phase 6 + major Phase 7 updates. E2E testing for auth flows and multi-tenant routing." },
+    { "name": "design-auditor", "category": "Design & UI", "tier": "T4", "addedAt": "2026-05-06", "reason": "Visual design scoring alongside ui-ux-pro-max. Different axis: audits vs generates." },
+    { "name": "test-fixing", "category": "Collaboration & Workflow", "tier": "T4", "addedAt": "2026-05-06", "reason": "Phase 5 validation gate requires all tests pass. Pairs with superpowers:systematic-debugging for test failures." },
+    { "name": "varlock-claude-skill", "category": "Security & Testing", "tier": "T4", "addedAt": "2026-05-06", "reason": "Environment variable auditing for .env.dev/.env.staging/.env.prod + CREDENTIALS.md validation. Now also relevant for APP_ENCRYPTION_KEY deployment gate." },
+    { "name": "frontend-design", "category": "Design & UI", "tier": "T2", "addedAt": "2026-05-10", "reason": "V31 Foundation Bundle Slot 4. Anthropic's production UI code generator. Coexists with ui-ux-pro-max + design-auditor per Spec-Driven phase model." },
+    { "name": "git-pushing", "category": "Collaboration & Workflow", "tier": "T4", "addedAt": "2026-05-10", "reason": "V31 Foundation Bundle Slot 5. Commit discipline + safe push workflow. Complements Rule 23 conventional commits and squash-merge." },
+    { "name": "claude-skills-65", "category": "Development & DevOps", "tier": "T4", "addedAt": "2026-05-10", "reason": "V31 Foundation Bundle Slot 6. 65 framework skills covering React, Next.js, tRPC, Prisma, NestJS, etc. Reference library for Phase 7 Feature Updates." },
+    { "name": "oiloil-ui-ux-guide", "category": "Design & UI", "tier": "T4", "addedAt": "2026-05-10", "reason": "V31 Foundation Bundle Phase 4 Parts 5-6. UX theory — task-first UX, HCI laws, interaction psychology. Pairs with ui-ux-pro-max + frontend-design." },
+    { "name": "review-implementing", "category": "Collaboration & Workflow", "tier": "T4", "addedAt": "2026-05-10", "reason": "V31 Foundation Bundle Phase 7. Systematic code review feedback implementation. Maps to Rule 25 two-stage review responses." },
+    { "name": "skillpilot", "category": "Context Management", "tier": "T1", "addedAt": "2026-05-29", "reason": "V32 Foundation Bundle anchor. Orchestrates active skill set per task, prevents competing directives. Copied from local AI-Skills-Repo/docs/skillpilot (34KB SKILL.md + references/)." }
   ],
   "removedSkills": [
-    {
-      "name": "test-driven-development",
-      "removedAt": "2026-05-10",
-      "reason": "Superseded by superpowers bundle (already plugin-installed). superpowers:test-driven-development now active. Avoids duplicate directives per phases.md anti-conflict rule."
-    },
-    {
-      "name": "systematic-debugging",
-      "removedAt": "2026-05-10",
-      "reason": "Superseded by superpowers bundle. superpowers:systematic-debugging now active."
-    },
-    {
-      "name": "using-git-worktrees",
-      "removedAt": "2026-05-10",
-      "reason": "Superseded by superpowers bundle. superpowers:using-git-worktrees now active."
-    },
-    {
-      "name": "vercel-agent-skills",
-      "removedAt": "2026-05-03",
-      "reason": "Deployment mismatch — project uses Komodo + Traefik, not Vercel. Honored across all subsequent scans."
-    },
-    {
-      "name": "design-system",
-      "removedAt": "2026-05-02",
-      "reason": "Redundant with shadcn/ui CSS variable system + ui-ux-pro-max."
-    },
-    {
-      "name": "claude-api",
-      "removedAt": "2026-05-06",
-      "reason": "No Claude API / Anthropic SDK usage in Orqafy. No AI integration features declared in PRODUCT.md."
-    },
-    {
-      "name": "mcp-builder",
-      "removedAt": "2026-05-06",
-      "reason": "Project consumes 4 pre-configured MCP servers but does not build custom MCPs."
-    },
-    {
-      "name": "root-cause-tracing",
-      "removedAt": "2026-05-06",
-      "reason": "Subset of systematic-debugging. Execution path tracing covered by superpowers bundle."
-    }
+    { "name": "test-driven-development", "removedAt": "2026-05-10", "reason": "Superseded by superpowers bundle. Now expected to be re-added via plugin install (user action below)." },
+    { "name": "systematic-debugging", "removedAt": "2026-05-10", "reason": "Superseded by superpowers bundle." },
+    { "name": "using-git-worktrees", "removedAt": "2026-05-10", "reason": "Superseded by superpowers bundle." },
+    { "name": "vercel-agent-skills", "removedAt": "2026-05-03", "reason": "Deployment mismatch — Komodo + Traefik, not Vercel. Honored across all subsequent scans." },
+    { "name": "design-system", "removedAt": "2026-05-02", "reason": "Redundant with shadcn/ui CSS variable system + ui-ux-pro-max." },
+    { "name": "claude-api", "removedAt": "2026-05-06", "reason": "No Anthropic SDK usage in Orqafy. No AI integration features declared in PRODUCT.md." },
+    { "name": "mcp-builder", "removedAt": "2026-05-06", "reason": "Project consumes 4 pre-configured MCP servers but does not build custom MCPs." },
+    { "name": "root-cause-tracing", "removedAt": "2026-05-06", "reason": "Subset of systematic-debugging. Execution path tracing covered by superpowers bundle." }
   ],
   "excludedGlobals": [],
   "resolvedConflicts": [
@@ -204,57 +78,33 @@
       "recommended": "superpowers (bundle, plugin-installed)",
       "conflictsWith": "test-driven-development + systematic-debugging + using-git-worktrees (3 individual file-based skills)",
       "severity": "HIGH",
-      "resolution": "Removed all 3 individual skills. superpowers bundle (already plugin-installed) supersedes them. Verified by superpowers:* namespaced skills in active skill list."
+      "resolution": "Removed all 3 individual skills on 2026-05-10. Bundle status to be re-verified after user runs /plugin install superpowers below.",
+      "asOf": "2026-05-10"
     }
   ],
   "recommendedPlugins": [
-    {
-      "name": "context-mode",
-      "purpose": "98% token reduction on tool outputs — strong protection for Phase 8 SAFE zone",
-      "installCommand": "/plugin marketplace add mksglu/context-mode && /plugin install context-mode@context-mode",
-      "priority": "HIGH VALUE for Phase 8 thrashing protection"
-    },
-    {
-      "name": "code-review-graph",
-      "purpose": "Tree-sitter graph + SQLite — blast radius before Phase 7 Feature Updates. 28 MCP tools.",
-      "installCommand": "claude plugin add tirth8205/code-review-graph",
-      "priority": "HIGH VALUE for Phase 8 blast radius analysis",
-      "postInstall": "After install: cd to project root and run `code-review-graph build` to index the codebase. Add `code-review-graph watch` to a background WSL2 terminal."
-    },
-    {
-      "name": "skillpilot",
-      "purpose": "Orchestrator — assembles skill set per task, prevents competing directives",
-      "installCommand": "/plugin marketplace add [skillpilot-repo] && /plugin install skillpilot@skillpilot",
-      "priority": "optional"
-    },
-    {
-      "name": "claude-mem",
-      "purpose": "Compressed cross-session memory — alternative path to memory-governance §2 Smart Checkpoint",
-      "installCommand": "/plugin marketplace add thedotmack/claude-mem && /plugin install claude-mem@claude-mem",
-      "priority": "optional — memory-governance §2 already covers this"
-    }
+    { "name": "context-mode", "purpose": "98% token reduction on tool outputs — strong protection for Phase 8 SAFE zone", "installCommand": "/plugin marketplace add mksglu/context-mode && /plugin install context-mode@context-mode", "priority": "INSTALLED", "asOf": "settings.local.json enabledPlugins" },
+    { "name": "claude-mem", "purpose": "Compressed cross-session memory — alternative path to memory-governance §2 Smart Checkpoint", "installCommand": "/plugin marketplace add thedotmack/claude-mem && /plugin install claude-mem@claude-mem", "priority": "INSTALLED", "asOf": "settings.local.json enabledPlugins" },
+    { "name": "code-review-graph", "purpose": "Tree-sitter graph + SQLite — blast radius before Phase 7 Feature Updates. 28 MCP tools.", "installCommand": "uv tool install code-review-graph && code-review-graph install --platform claude-code", "priority": "INSTALLED (uv tool v2.3.3, graph refreshed 2026-05-29 commit 5ce57b79)", "postInstall": "Graph refreshed: 1037 nodes, 10412 edges, 263 files, branch=main, commit=5ce57b79df9e. Run `code-review-graph watch` in background WSL2 terminal to keep live." },
+    { "name": "superpowers", "purpose": "Bundle: TDD + systematic-debugging + root-cause-tracing + brainstorming + git-worktrees + finishing-branch + parallel-agents + code-review + defense-in-depth", "installCommand": "/plugin marketplace add anthropics/superpowers && /plugin install superpowers@superpowers", "priority": "NEEDS USER ACTION — slash command must be run inside Claude Code CLI" },
+    { "name": "karpathy-guidelines", "purpose": "Universal behavioral advisory — Think Before Coding, Simplicity First, Surgical Changes, Goal-Driven Execution. 2.3KB CLAUDE.md merge.", "installCommand": "/plugin marketplace add forrestchang/karpathy-guidelines && /plugin install karpathy-guidelines@karpathy-guidelines", "priority": "NEEDS USER ACTION — slash command must be run inside Claude Code CLI" }
   ],
   "skippedOptional": [
-    {
-      "name": "n8n-* skill suite (7 skills)",
-      "reason": "Orqafy does not declare n8n in PRODUCT.md or any package.json. Framework references OpenClaw/automation but no n8n integration."
-    },
-    {
-      "name": "aws-skills",
-      "reason": "Project uses Cloudflare R2 (S3-compatible) and MinIO with @aws-sdk/client-s3 only. No AWS CDK, no AWS deployment."
-    },
-    {
-      "name": "vercel-agent-skills",
-      "reason": "Honored deliberate removal from 2026-05-03. Komodo + Traefik deployment, not Vercel."
-    }
+    { "name": "n8n-* skill suite (3+ skills)", "reason": "Orqafy does not declare n8n in PRODUCT.md or any package.json." },
+    { "name": "aws-skills", "reason": "Project uses Cloudflare R2 (S3-compatible) and MinIO with @aws-sdk/client-s3 only. No AWS CDK, no AWS deployment." },
+    { "name": "vercel-agent-skills", "reason": "Honored deliberate removal from 2026-05-03. Komodo + Traefik deployment, not Vercel." },
+    { "name": "claude-api", "reason": "No Anthropic SDK in deps. Re-affirmed 2026-05-29." },
+    { "name": "mcp-builder", "reason": "Project consumes 4 MCP servers but builds none." }
   ],
   "globalCleanupAdvised": true,
   "mcpServers": {
-    "configuredIn": ".vscode/mcp.json",
+    "configuredIn": [".vscode/mcp.json", ".mcp.json"],
     "active": [
       "socraticode (vector search — bootstrap step 10)",
       "context7 (live library docs — Rule 30)",
-      "shadcn (component search + install)"
+      "shadcn (component search + install)",
+      "playwright (browser automation for Visual QA + E2E)",
+      "code-review-graph (registered via uv tool install --platform claude-code)"
     ]
   }
 }
