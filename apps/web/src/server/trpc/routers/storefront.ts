@@ -11,6 +11,7 @@ import { prisma as db } from "@orqafy/db";
 import { createXenditInvoiceForOrder } from "@/lib/xendit-invoice";
 import { sanitizePlainText } from "@/server/lib/sanitize";
 import { rateLimiters } from "@/server/lib/rate-limit";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -105,6 +106,7 @@ const placeOrderAsCustomerInputSchema = z.object({
   billingAddress: addressSchema,
   paymentMethod: z.enum(["cod", "bank_transfer", "xendit"]),
   notes: z.string().max(2000).optional(),
+  cfTurnstileToken: z.string().min(1),
 });
 
 function requireAdmin(roles: readonly string[]): void {
@@ -290,6 +292,14 @@ export const storefrontRouter = createTRPCRouter({
       const ipHeader = ctx.req.headers.get("x-forwarded-for") ?? ctx.req.headers.get("x-real-ip");
       const ip = ipHeader ?? "unknown";
       rateLimiters.public.check(ip);
+
+      const turnstileOk = await verifyTurnstile(input.cfTurnstileToken, ip);
+      if (!turnstileOk) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid bot protection token.",
+        });
+      }
 
       const tenant = await db.tenant.findUnique({
         where: { slug: input.tenantSlug },

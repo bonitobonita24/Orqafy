@@ -4,6 +4,48 @@
 # READ ORDER: 🔴 first → 🟤 second → rest by relevance
 # ---
 
+## 2026-05-29 — 🟢 change Helper-extract dual-caller pattern confirmed (verifyTurnstile)
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 22 (Direction C, Sub-task A1)
+- Files:     apps/web/src/lib/turnstile.ts, apps/web/src/server/trpc/routers/auth.ts, apps/web/src/server/trpc/routers/storefront.ts
+- Concepts:  helper-extract, shared-library, dual-caller, dry, turnstile, fail-closed
+- Narrative: The "Helper-extract refactor pattern — protected→public dual-caller surfaces extract to src/lib/ helper" lesson banked from prior batches was applied directly in this batch. verifyTurnstile lived inline in auth.ts since framework bootstrap. With storefront's placeOrderAsCustomer becoming the second caller, the extract was clean: auth.ts went -14/+1 (inline function deleted, import added, even env import dropped). lib/turnstile.ts owns the single source of truth — fail-closed try/catch (network errors and malformed JSON both resolve to false). Confirms the pattern works for boolean-returning helpers, not just data-shaping ones.
+
+## 2026-05-29 — 🟢 change Turnstile widget lifecycle requires onSuccess + onExpire + onError trio
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 22 (Direction C, Sub-task A3)
+- Files:     apps/web/src/app/(tenant)/[slug]/store/checkout/checkout-form.tsx
+- Concepts:  turnstile, cloudflare, widget-lifecycle, react-state, form-validation
+- Narrative: Cloudflare Turnstile tokens expire after 300 seconds. The @marsidev/react-turnstile widget needs three callbacks to behave correctly: onSuccess (set local token state), onExpire (clear it — token no longer valid), onError (clear it — verification failed transiently). Missing any one leaves the form vulnerable to stale-token submission: server-side verifyTurnstile would reject (correct), but the UX would be confusing (button enabled, click submits, mysterious BAD_REQUEST). Always implement all three callbacks even though only onSuccess is "obvious".
+
+## 2026-05-29 — 🟢 change Inline button-disabled gate beats far-away const update
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 22 (Direction C, Sub-task A3)
+- Files:     apps/web/src/app/(tenant)/[slug]/store/checkout/checkout-form.tsx
+- Concepts:  refactor-locality, single-edit, code-review, button-state, react
+- Narrative: When the `const disabled = placeOrder.isPending || !hydrated` is declared many lines above the button it gates (250+ lines in this file), adding a new disable condition has two paths: (1) modify the const, (2) inline the new check on the button's disabled prop. Path 1 is "cleaner" abstractly but requires tracing all OTHER button consumers of `disabled` to confirm no regression, AND the new condition is conceptually about THIS specific submit (Turnstile gating), not all buttons. Path 2 — `disabled={disabled || state.items.length === 0 || turnstileToken === ""}` — is a single Edit, single concern, single grep target. Choose locality over abstraction when the new condition is button-specific.
+
+## 2026-05-29 — 🟢 change Additive nullable migration is the simplest column-add shape
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 22 (Direction C, Sub-task B)
+- Files:     packages/db/prisma/schema.prisma, packages/db/prisma/migrations/20260529014600_add_webhook_processed_at_to_ecommerce_orders/migration.sql
+- Concepts:  prisma-migration, zero-downtime, additive, audit-column, observability
+- Narrative: For audit/observability fields where no query path depends on the column being non-null (e.g. webhookProcessedAt — purely informational), the migration is a single `ALTER TABLE … ADD COLUMN … NULL` with no backfill step. Zero downtime, zero edge cases, zero risk on a live DB. Contrast: tenantId migration from Batch 21c required three-stage backfill (nullable ADD → UPDATE → SET NOT NULL → FK → INDEX) because tenantId is a hard isolation requirement. Match the migration shape to the column's load-bearing role. Reserve three-stage for hard-required columns; use additive-nullable for everything observational.
+
+## 2026-05-29 — 🟢 change process.env.NEXT_PUBLIC_* with Cloudflare test-key fallback
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 22 (Direction C, Sub-task A3)
+- Files:     apps/web/src/app/(tenant)/[slug]/store/checkout/checkout-form.tsx
+- Concepts:  env-vars, resilience, cloudflare-turnstile, test-keys, defense-in-depth
+- Narrative: Client-side env var access pattern: `process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA"`. The fallback is Cloudflare's documented test sitekey that ALWAYS passes verification. Safe for any environment that misconfigures the var — dev mode without .env.dev populated, CI runs, staging where test keys are intentional. Real production sitekey is mandatory and documented in docs/deployment-direction-f.md, but the fallback prevents render failure on misconfiguration. Pattern transferable to other public env vars where a known-safe default exists.
+
+## 2026-05-29 — 🟢 change Scout-via-batch-execute pre-dispatch pattern (V32.1 mitigation)
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 22 (Direction C, all sub-tasks)
+- Files:     N/A (process pattern, not code)
+- Concepts:  v32, sonnet-dispatch, thrash-prevention, opus-architect, scout-then-edit
+- Narrative: Every Sonnet 4.6 dispatch in this batch was preceded by a single ctx_batch_execute call from the Opus 4.7 architect that gathered ALL needed line ranges, file sizes, existing patterns, and grep hits in one round trip. Result: each Sonnet prompt could pre-specify old_string content exactly, allowing 2-4 tool-use dispatches with zero thrash across 8 consecutive Sonnet calls. The V32.1 operational lesson about Sonnet's 30-50K baseline context overhead means tight prompts + pre-specified old_strings + small tool budgets are the reliability multiplier. Pattern: scout once batch-wise → dispatch sequentially → each dispatch is essentially mechanical replacement, not exploration. Maintain across all future batches.
+
 ## BOOTSTRAP — 🔴 WSL2 + Docker Desktop known pitfalls
 - Type:      🔴 gotcha
 - Phase:     Phase 0 Bootstrap / Phase 1 dev environment open

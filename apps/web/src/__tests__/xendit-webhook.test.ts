@@ -68,6 +68,7 @@ function orderRow(overrides: Record<string, unknown> = {}) {
     totalAmount: 1500,
     paymentStatus: "pending",
     xenditPaymentId: INVOICE_ID,
+    webhookProcessedAt: null,
     ...overrides,
   };
 }
@@ -147,6 +148,24 @@ describe("POST /api/webhooks/xendit", () => {
     expect(mockDb.tenantXenditConfig.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({ where: { tenantId: TENANT_ID } }),
     );
+  });
+
+  it("writes webhookProcessedAt timestamp on successful PAID webhook", async () => {
+    mockDb.ecommerceOrder.findUnique.mockResolvedValue(orderRow());
+    mockDb.tenantXenditConfig.findUnique.mockResolvedValue(
+      configRow(VALID_TOKEN),
+    );
+
+    const before = Date.now();
+    await POST(makeReq({ token: VALID_TOKEN, body: VALID_BODY }));
+    const after = Date.now();
+
+    expect(mockDb.ecommerceOrder.update).toHaveBeenCalledOnce();
+    const updateCall = mockDb.ecommerceOrder.update.mock.calls[0][0];
+    expect(updateCall.data.webhookProcessedAt).toBeInstanceOf(Date);
+    const ts = (updateCall.data.webhookProcessedAt as Date).getTime();
+    expect(ts).toBeGreaterThanOrEqual(before);
+    expect(ts).toBeLessThanOrEqual(after);
   });
 
   it("returns 200 idempotent on duplicate webhook (order already paid)", async () => {

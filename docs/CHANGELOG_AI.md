@@ -1752,3 +1752,16 @@
 - Schema/migrations:   none
 - Errors encountered:  none
 - Errors resolved:     none
+
+## 2026-05-29 — Phase 8 Batch 22 (Direction C: Xendit Prod-Readiness) — Squash-merged
+- Agent:              CLAUDE_CODE (Opus 4.7 architect + Sonnet 4.6 executor per V32 Zero Opus Execution)
+- Why:                Lock in Direction F's production posture before any tenant onboards live Xendit payments. Three coordinated changes: (1) Cloudflare Turnstile bot protection on the public guest-checkout publicProcedure, (2) webhookProcessedAt audit column on EcommerceOrder for replay observability + idempotency belt-and-suspenders, (3) Komodo deployment playbook covering Direction F (21a/b/c) + Batch 22 rollout end-to-end.
+- Files added:        apps/web/src/lib/turnstile.ts; apps/web/src/__tests__/turnstile.test.ts; packages/db/prisma/migrations/20260529014600_add_webhook_processed_at_to_ecommerce_orders/migration.sql; docs/deployment-direction-f.md
+- Files modified:     apps/web/src/server/trpc/routers/auth.ts (inline verifyTurnstile replaced with @/lib/turnstile import; env import dropped as no longer used); apps/web/src/server/trpc/routers/storefront.ts (cfTurnstileToken in placeOrderAsCustomer Zod schema + verifyTurnstile call after rate-limit before tenant lookup); apps/web/src/__tests__/storefront.test.ts (vi.mock for @/lib/turnstile defaulting to true; cfTurnstileToken on validGuestInput; +2 tests); apps/web/src/app/(tenant)/[slug]/store/checkout/checkout-form.tsx (Turnstile widget rendered before submit button; turnstileToken state with onSuccess/onExpire/onError; button disabled until token resolves; cfTurnstileToken in mutate payload); packages/db/prisma/schema.prisma (EcommerceOrder.webhookProcessedAt: DateTime? @map("webhook_processed_at")); apps/web/src/app/api/webhooks/xendit/route.ts (webhookProcessedAt: new Date() in update data block); apps/web/src/__tests__/xendit-webhook.test.ts (webhookProcessedAt: null in orderRow default; +1 test asserting Date instance bounded by before/after timestamps)
+- Files deleted:      none
+- Schema/migrations:  20260529014600_add_webhook_processed_at_to_ecommerce_orders — additive nullable ADD COLUMN; safe to apply on live DB without downtime
+- Errors encountered: 5 @typescript-eslint/require-await lint errors in initial turnstile.test.ts (mock json functions marked async without awaits); typecheck failure on checkout-form.tsx after server-side Zod schema extension (expected — payload didn't yet include cfTurnstileToken)
+- Errors resolved:    Lint: replaced `json: async () => (...)` with `json: () => Promise.resolve(...)` (4x) and `json: async () => { throw }` with `json: () => Promise.reject(...)` (1x). Typecheck: A3 frontend changes added cfTurnstileToken to the mutate payload.
+- Test delta:         719 → 728 GREEN (+9). Test files: 25 → 26 (+turnstile.test.ts).
+- Commits on branch:  54db807 (A1 lib + tests), 1f17ce7 (A2+A3 server + client), 7193c47 (B schema + migration + webhook), ac54ebe (C deployment doc). Squash-merged to main as a single Batch 22 commit.
+- Deploy gates:       (1) APP_ENCRYPTION_KEY in .env.staging + .env.prod (carried from 21a). (2) Both migrations (21c tenantId + 22 webhookProcessedAt) must apply via `pnpm --filter @orqafy/db exec prisma migrate deploy` on each env. Full playbook in docs/deployment-direction-f.md.

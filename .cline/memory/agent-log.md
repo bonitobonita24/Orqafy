@@ -3,6 +3,8 @@
 # Append-only — never delete entries.
 # ---
 
+2026-05-29 02:00 GMT+8  CLAUDE_CODE  Batch 22 (Direction C: Xendit prod-readiness) close. Branch feat/batch-22-direction-c-prod-readiness — 4 commits (54db807 A1 lib+tests, 1f17ce7 A2+A3 server+client, 7193c47 B schema+migration+webhook, ac54ebe C deployment doc) squash-merged to main. Vitest 719→728 GREEN (+9). 26 test files. Web typecheck + lint clean. STATE.md + CHANGELOG_AI.md + IMPLEMENTATION_MAP.md + .whatsnext + lessons.md updated. Two deploy gates carried forward (APP_ENCRYPTION_KEY + two prisma migrations) — full procedure in docs/deployment-direction-f.md. Next session: Direction D recommended.
+
 CLAUDE_CODE | Bootstrap Step 1-4 | Folder structure created. .clinerules written. 8 Phase 4 task files written.
 CLAUDE_CODE | Bootstrap Step 5-7 | lessons.md template written (WSL2 gotcha pre-seeded). agent-log.md created. .claude/settings.json written with 9 context file paths.
 CLAUDE_CODE | Bootstrap Step 8 | .nvmrc (22) and package.json (orqafy, pnpm@10) written.

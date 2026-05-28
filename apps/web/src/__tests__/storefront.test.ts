@@ -57,6 +57,10 @@ vi.mock("@/server/lib/rate-limit", () => ({
   },
 }));
 
+vi.mock("@/lib/turnstile", () => ({
+  verifyTurnstile: vi.fn().mockResolvedValue(true),
+}));
+
 const { mockCreateInvoice } = vi.hoisted(() => ({
   mockCreateInvoice: vi.fn(),
 }));
@@ -487,6 +491,7 @@ describe("storefront router", () => {
         country: "PH",
       },
       paymentMethod: "cod" as const,
+      cfTurnstileToken: "test-turnstile-token",
     };
 
     function mockGuestHappyPath() {
@@ -547,6 +552,29 @@ describe("storefront router", () => {
 
       expect(res.orderId).toBe(ORDER_ID);
       expect(res.orderNumber).toBe("EC-2605-0001");
+    });
+
+    it("rejects with BAD_REQUEST when verifyTurnstile returns false", async () => {
+      const { verifyTurnstile } = await import("@/lib/turnstile");
+      (verifyTurnstile as any).mockResolvedValueOnce(false);
+
+      const caller = createCaller(unauthenticatedCtx());
+      await expect(
+        caller.storefront.placeOrderAsCustomer(validGuestInput),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    });
+
+    it("calls verifyTurnstile with the supplied token before any DB write", async () => {
+      mockGuestHappyPath();
+      const { verifyTurnstile } = await import("@/lib/turnstile");
+
+      const caller = createCaller(unauthenticatedCtx());
+      await caller.storefront.placeOrderAsCustomer(validGuestInput);
+
+      expect(verifyTurnstile).toHaveBeenCalledWith(
+        "test-turnstile-token",
+        expect.any(String),
+      );
     });
 
     it("reuses existing customer when email match found", async () => {

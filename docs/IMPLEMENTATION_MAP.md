@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-17 by CLAUDE_CODE Opus 4.7 (Phase 8 Batch 18 Item 2 / Batch 19 ✅ COMPLETE — guest checkout + first storefront publicProcedure shipped, 4d7de45. 692/692 GREEN.)
+# Last updated: 2026-05-29 by CLAUDE_CODE (Phase 8 Batch 22 ✅ COMPLETE — Direction C Xendit prod-readiness: Turnstile on guest checkout + webhookProcessedAt audit column + deployment playbook. 728/728 GREEN.)
 # Note: Batch 6+ batch detail lives in docs/CHANGELOG_AI.md and .cline/STATE.md — see those files for per-batch records since this file's structured snapshot section was last refreshed at Batch 5.
 # ---
 
@@ -579,9 +579,17 @@ Schema-vs-spec drift remained the biggest source of post-write fixes despite exp
 
 ## Next Action
 
-**CURRENT STATE: Phase 8 Batch 5 ✅ COMPLETE. Next: Batch 6 planning — candidates POS / E-commerce / Reports / Mobile.**
+**CURRENT STATE: Phase 8 Batch 22 ✅ COMPLETE (Direction C: Xendit prod-readiness). Next: Batch 23 planning — candidates from .whatsnext Direction D/B/G.**
 
-1. **Phase 8 Batch 5 ✅ COMPLETE (3/3) — single Opus 4.7 session:**
+1. **Phase 8 Batch 22 ✅ COMPLETE (Direction C: Xendit Prod-Readiness) — 2026-05-29:**
+   - A1 ✅ `apps/web/src/lib/turnstile.ts` extracted + `turnstile.test.ts` (9 tests)
+   - A2+A3 ✅ `storefront.ts` placeOrderAsCustomer: cfTurnstileToken in schema + verifyTurnstile call; `checkout-form.tsx`: Turnstile widget + disabled-until-token submit button
+   - B ✅ `EcommerceOrder.webhookProcessedAt` nullable audit column — migration `20260529014600`; `xendit/route.ts` sets `webhookProcessedAt: new Date()` on payment update; +1 webhook test
+   - C ✅ `docs/deployment-direction-f.md` — Komodo playbook covering Direction F (21a/b/c) + Batch 22 migrations end-to-end
+   - Tests: 719 → 728 GREEN (+9). Test files: 25 → 26. Typecheck 0 errors. Lint 0 errors.
+   - Open deploy gates: (1) APP_ENCRYPTION_KEY in .env.staging + .env.prod. (2) Both migrations (21c tenantId + 22 webhookProcessedAt) via `prisma migrate deploy` on each env. See `docs/deployment-direction-f.md`.
+
+2. **Phase 8 Batch 5 ✅ COMPLETE (3/3) — single Opus 4.7 session:**
    - Item 1 ✅ Module 13 Support Phase 1 — merged `5c1e674` (10 procedures + 39 tests + 2 UI pages; 4 schema-drift fixes on pre-existing untracked May 11 draft)
    - Item 2 ✅ Module 10 HR/Payroll Phase 1 — merged `126db37` (employee.ts + payroll.ts: 12 procedures total + state machine draft→processing→approved→paid + 38 tests + 4 UI pages)
    - Item 3 ✅ Module 11 Job Order Phase 1 — merged `3f8f330` (188-line router: 6 procedures + 8-state state machine received→...→released → cancelled + publicView token-gated minimal projection + 31 tests + 2 UI pages with progress chevron + parts table)

@@ -1989,6 +1989,7 @@ model EcommerceOrder {
   paymentMethod   String?  @map("payment_method")
   paymentStatus   String   @default("pending") @map("payment_status") // pending | paid | failed | refunded
   xenditPaymentId String?  @map("xendit_payment_id")
+  webhookProcessedAt DateTime? @map("webhook_processed_at")
   shippingAddress Json?    @map("shipping_address")
   billingAddress  Json?    @map("billing_address")
   trackingNumber  String?  @map("tracking_number")

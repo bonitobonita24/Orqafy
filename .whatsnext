@@ -1,59 +1,51 @@
-# Next Session — Direction F COMPLETE. Pick the next direction.
+# Next Session — Direction C COMPLETE. Pick the next direction.
 
-Last close: Batch 21c — per-tenant Xendit refactor SHIPPED end-to-end.
-NEW EcommerceOrder.tenantId column (migration 20260521194500). NEW
-xendit-per-tenant.test.ts (5 tests). Rewrote lib/xendit.ts, lib/xendit-invoice.ts,
-api/webhooks/xendit/route.ts. Updated storefront.ts (both order.create paths
-+ both invoice helper call sites + createXenditInvoice tenantId scoping),
-admin-xendit-config.ts (delete FK count scoped by tenantId — fixes latent
-cross-tenant bug), env.ts (drops dead XENDIT_SECRET_KEY/WEBHOOK_TOKEN).
-719/719 GREEN. Squash-merged as abe57ce.
+Last close: Batch 22 — Xendit prod-readiness bundle SHIPPED end-to-end.
+Three coordinated changes: (A) Cloudflare Turnstile gates guest checkout
+publicProcedure (cfTurnstileToken in Zod input + verifyTurnstile call +
+@marsidev/react-turnstile widget on checkout-form.tsx), (B) webhookProcessedAt
+audit column on EcommerceOrder + migration + webhook handler writes timestamp
+on every successful event, (C) deployment playbook docs/deployment-direction-f.md
+(231 lines, 8 sections) covers the full Direction F + Batch 22 rollout.
+728/728 GREEN. Squash-merged this session.
 
-★ DIRECTION F COMPLETE ★
-  21a ✅ encryption infrastructure (crypto.ts + 9 tests)
-  21b ✅ TenantXenditConfig CRUD + admin UI (4 procedures + 8 tests)
-  21c ✅ per-tenant Xendit consumer refactor (5 new tests)
+★ DIRECTION C COMPLETE ★
+  A ✅ Turnstile on guest checkout (lib extract + server wiring + widget + 6 unit tests + 2 integration tests)
+  B ✅ webhookProcessedAt audit column (schema + migration + handler + 1 test)
+  C ✅ Komodo deployment playbook (231-line doc)
 
-Tenants now own their Xendit credentials end-to-end. Storefront writes
-per-tenant invoices. Webhook resolves+verifies per-tenant tokens. No
-shared process.env Xendit secrets remaining.
+Production posture locked. Tenants can now safely onboard live Xendit payments
+provided the two deploy gates below are cleared.
 
-Test baseline: 719/719 GREEN. Web typecheck + lint clean. 25 test files.
+Test baseline: 728/728 GREEN. Web typecheck + lint clean. 26 test files.
 
-## 🔴 BLOCKING — Two deployment gates before 21a/b/c work in staging/prod
+## 🔴 BLOCKING — Two deploy gates before Direction F + Batch 22 work in staging/prod
 
 1. **APP_ENCRYPTION_KEY** must be present in .env.staging + .env.prod.
-   Generate per env: `openssl rand -base64 32`. Add to CREDENTIALS.md
-   (gitignored). Komodo Stack restart to pick up new env var. Without
-   this, every checkout AND every webhook throws at decrypt time.
+   Generate per env: `openssl rand -base64 32 | tr -d '\n' | head -c 44`.
+   Add to CREDENTIALS.md (gitignored). Komodo Stack restart to pick up the
+   new env var. Without this, every checkout AND every webhook throws at
+   decrypt time. (Carried from Batch 21a.)
 
-2. **EcommerceOrder migration** must run before deploy. Apply via:
+2. **Both EcommerceOrder migrations** must run before deploy. Apply via:
    `pnpm --filter @orqafy/db exec prisma migrate deploy` on each env.
-   Backfill UPDATE sets tenant_id to the oldest tenant — verify in dev
-   that this is acceptable (or run a manual UPDATE first for finer
-   assignment). Dev migration was NOT applied during 21c (Docker
-   postgres was down — P1001 on localhost:42941). Apply before next
-   runtime testing of the checkout flow.
+   - 20260521194500_add_tenant_id_to_ecommerce_orders (3-stage backfill — Batch 21c)
+   - 20260529014600_add_webhook_processed_at_to_ecommerce_orders (additive — Batch 22)
+   Full apply procedure + rollback notes in docs/deployment-direction-f.md.
 
 ## Recommended next directions (any can start independently)
 
-### Direction C — Xendit prod-readiness bundle (T2 ~25K) ★ recommended
-   - Activate Cloudflare Turnstile on the public guest checkout
-     (TURNSTILE_SITE_KEY/SECRET_KEY env vars + form integration + Zod input)
-   - Add webhook replay protection via processedAt timestamp column on
-     EcommerceOrder (idempotency hardening — currently relies on
-     paymentStatus terminal-state check, which is correct but tighter
-     would be: dedup by xenditPaymentId + event id)
-   - Komodo Stack config doc: APP_ENCRYPTION_KEY + .env.{staging,prod}
-     setup checklist + migration apply sequence + rollback procedure
-   - Independent of any other direction. Locks in Direction F's
-     production posture before any tenant onboards live payment.
-
-### Direction D — Small carry-forward bundle (T1 ~12K)
+### Direction D — Small carry-forward bundle (T1 ~12K) ★ recommended
    - Guest order tracking page (orderNumber lookup at /[slug]/orders/track)
-   - Audit log for guest checkout (currently no AuditLog write)
+     reads EcommerceOrder by orderNumber + last-4-digits-of-phone, returns
+     status + payment status + tracking number. publicProcedure with
+     rateLimiters.public.check(ip) gate.
+   - Audit log for guest checkout (currently no AuditLog write on
+     placeOrderAsCustomer — fix this gap as part of D, scoped by tenantId)
    - Admin order list filter: payment status + xendit-vs-cod dropdown
-   - Quick win between heavier batches.
+   - Quick wins between heavier batches. Natural sequel to Direction C
+     because guest tracking + audit log close the last UX/audit gaps on
+     the Direction F surface.
 
 ### Direction B — Mobile Expo scaffold (T3 ~50K, multi-session)
    - apps/mobile/ doesn't exist yet
@@ -68,7 +60,7 @@ Test baseline: 719/719 GREEN. Web typecheck + lint clean. 25 test files.
 ## Standing 9-point pre-flight (run before any code on any batch)
 
 1. `git status` + `git log -1` — confirm tree state.
-2. `pnpm --filter @orqafy/web test` — confirm 719/719 GREEN baseline.
+2. `pnpm --filter @orqafy/web test` — confirm 728/728 GREEN baseline.
 3. Read input Zod schema of any router procedure the batch claims to reuse.
 4. If router newly READS a field, verify all existing tests on that path mock the field.
 5. Grep schema.prisma for any model in scope; confirm fields before scoping migrations.
@@ -83,15 +75,15 @@ Test baseline: 719/719 GREEN. Web typecheck + lint clean. 25 test files.
   default warehouse server-side. NEVER let client supply warehouseId on public path.
 - 🟢 System-actor lookup for guest writes — db.user.findFirst({isActive:true},
   orderBy:{createdAt:"asc"}) returns seeded webmaster for required createdById FKs.
-- 🟢 Rate-limit tier — rateLimiters.public.check(ip) at 10/min/IP for guest mutations
-  (NOT 30/min — actual config is 10).
+- 🟢 Rate-limit tier — rateLimiters.public.check(ip) at 10/min/IP for guest mutations.
 - 🟢 sanitizePlainText on user-facing text fields before storage.
 - ⚖️ Order-creation duplication tolerated — extraction deferred until 3rd variant.
 - 🔴 useCart() shape gotcha — destructure mismatch caught at typecheck.
-- 🟢 Intentional scope-trim — 5× consecutive (cart-only, order-only, Xendit-only,
-  crypto-only, CRUD-only). Direction F COMPLETE 3/3 across 21a/b/c.
+- 🟢 Intentional scope-trim — 6× consecutive (cart-only, order-only, Xendit-only,
+  crypto-only, CRUD-only, prod-readiness-only). Direction F + Direction C
+  COMPLETE 4-batch arc.
 - 🟢 Helper-extract refactor pattern — protected→public dual-caller surfaces extract
-  to src/lib/ helper.
+  to src/lib/ helper. CONFIRMED THIS BATCH on verifyTurnstile (auth + storefront).
 - 🟢 RED-phase Zod-enum tightening — assert specific mock-side error marker + mock
   was-called to force true RED when new enum value would also Zod-reject.
 - 🟢 Atomicity through in-transaction external calls — external HTTP inside DB
@@ -109,11 +101,10 @@ Test baseline: 719/719 GREEN. Web typecheck + lint clean. 25 test files.
 - 🟢 .env.example does NOT exist in this project. Skip it in future batches. Use
   .env.dev for runtime + CREDENTIALS.md for human-readable documentation.
 - 🟢 LAYERING ADMIN-GUARD ON WRITEPROCEDURE — compose `writeProcedure.use(...)`
-  to inherit demo-tenant block + add role check in one procedure surface. Avoids
-  duplicating the demo logic across admin write procedures.
+  to inherit demo-tenant block + add role check in one procedure surface.
 - 🟢 MASKED-DISPLAY PATTERN — never return *Enc fields. Return public-safe fields
-  + has-value booleans (hasSecretKey, hasWebhookToken). Form inputs always start
-  empty. User re-enters ALL secrets on every save. No partial update path in v1.
+  + has-value booleans. Form inputs always start empty. User re-enters ALL secrets
+  on every save. No partial update path in v1.
 - 🟢 STATESYNC-FROM-QUERY VIA USEEFFECT — sync tRPC useQuery data to local form
   state via useEffect, NOT guarded-setState-during-render. StrictMode-safe.
 - 🟢 XENDIT SDK TESTCONNECTION CONTRACT — `new Xendit({secretKey})`, then
@@ -122,26 +113,42 @@ Test baseline: 719/719 GREEN. Web typecheck + lint clean. 25 test files.
 - 🟢 VERCEL-PLUGIN HOOK AS SELF-REVIEW REMINDER — even when skipping the skill
   load per Rule 28, the auto-suggestion fire prompts a useful pause for
   pattern-based self-review. Net positive on otherwise-skipped hooks.
-- 🔴 [NEW from 21c] SCHEMA @@schema("public") IS NOT TENANT-SCHEMA-PER-TENANT —
-  prior banked lesson called EcommerceOrder "tenant-schema-per-tenant" which was
-  wrong. Public-schema entities with no tenantId column have NO TENANT ISOLATION
-  AT ALL. The fix is to add tenantId, not to assume search_path handles it.
-  Pre-flight check: grep `@@schema("public")` AND `tenantId` for each model in
-  scope. If public-schema AND no tenantId AND multi-tenant feature needs tenant
-  resolution → MIGRATION REQUIRED, not search_path trickery.
-- 🟢 [NEW from 21c] WEBHOOK ENUMERATION PREVENTION — return same status code (401)
-  for "unknown order" AND "wrong token" cases. Otherwise attacker can probe
-  status-code differences to discover valid order IDs. Trade-off: legitimate
-  Xendit webhook retries continue indefinitely on bogus IDs, but Xendit never
-  sends bogus IDs in normal operation (it only webhooks for invoices YOU created).
-- 🟢 [NEW from 21c] BUILD BATCH PROPOSAL OPTIONS PATTERN — when pre-flight surfaces
-  a critical architectural gap not in .whatsnext, HALT before any code. Emit
-  numbered options (A/B/C/D) with cost/benefit/tier per option. User picks.
-  Don't ad-hoc-decide architecture mid-implementation. Direct application of
-  Rule 29 (no fuzzy reasoning, ask if not in DECISIONS_LOG/PRODUCT.md/inputs.yml).
+- 🔴 SCHEMA @@schema("public") IS NOT TENANT-SCHEMA-PER-TENANT — public-schema
+  entities with no tenantId column have NO TENANT ISOLATION AT ALL. The fix is
+  to add tenantId, not to assume search_path handles it. Pre-flight check: grep
+  `@@schema("public")` AND `tenantId` for each model in scope.
+- 🟢 WEBHOOK ENUMERATION PREVENTION — return same status code (401) for "unknown
+  order" AND "wrong token" cases. Otherwise attacker can probe status-code
+  differences to discover valid order IDs.
+- 🟢 BUILD BATCH PROPOSAL OPTIONS PATTERN — when pre-flight surfaces a critical
+  architectural gap not in .whatsnext, HALT before any code. Emit numbered options
+  (A/B/C/D) with cost/benefit/tier per option. User picks. Don't ad-hoc-decide
+  architecture mid-implementation.
+- 🟢 [NEW from 22] TURNSTILE WIDGET LIFECYCLE TRIO — Turnstile widget needs three
+  callbacks: onSuccess (set token), onExpire (clear — Cloudflare tokens expire at
+  300s), onError (clear — handles transient verification failures). Missing any one
+  leaves the form vulnerable to stale-token submission.
+- 🟢 [NEW from 22] INLINE BUTTON-DISABLED GATE > FAR-AWAY CONST UPDATE — when the
+  `const disabled = ...` is defined many lines above the button it gates, adding
+  the new condition inline on the button is a single Edit with single concern.
+  Modifying the const requires also tracing all other consumers.
+- 🟢 [NEW from 22] ADDITIVE NULLABLE MIGRATION IS THE SIMPLEST COLUMN-ADD — for
+  audit/observability fields (no query path depends on them being non-null),
+  nullable with no backfill = zero downtime, zero edge cases, zero risk. Reserve
+  three-stage backfill for hard-required columns like tenantId.
+- 🟢 [NEW from 22] PROCESS.ENV.NEXT_PUBLIC_* FALLBACK TO CLOUDFLARE TEST KEY — in
+  the checkout form widget, `process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "1x...AA"`
+  uses Cloudflare's documented test sitekey as the fallback. Test key always
+  passes verification. Safe for any environment that misconfigures the var. Real
+  sitekey is mandatory in production per the deployment playbook.
+- 🟢 [NEW from 22] SCOUT-VIA-BATCH-EXECUTE PRE-DISPATCH — every Sonnet dispatch in
+  Batch 22 was preceded by a single ctx_batch_execute call that gathered ALL needed
+  line ranges, file sizes, existing patterns, and grep hits. Result: each Sonnet
+  prompt pre-specified old_string content exactly, allowing 2-4 tool-use dispatches
+  with zero thrash. V32.1 operational lesson holds across 8 consecutive dispatches.
 
 ## Trigger
-Say "start Direction C" / "start Direction D" / "start Direction B" / "start Direction G" —
+Say "start Direction D" / "start Direction B" / "start Direction G" —
 agent reads STATE.md first, runs 9-point pre-flight, then emits BUILD BATCH PROPOSAL.
 
-Or open-ended: "what's next" — agent surfaces the four options above with current state.
+Or open-ended: "what's next" — agent surfaces the three options above with current state.

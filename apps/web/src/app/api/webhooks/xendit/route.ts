@@ -131,7 +131,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   await db.ecommerceOrder.update({
     where: { id: order.id },
-    data: { paymentStatus: nextPaymentStatus },
+    data: { paymentStatus: nextPaymentStatus, webhookProcessedAt: new Date() },
   });
 
   return NextResponse.json({ received: true });

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,6 +52,7 @@ export function CheckoutForm({
   const router = useRouter();
   const { state, subtotal, hydrated, clear } = useCart();
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
+  const [turnstileToken, setTurnstileToken] = useState<string>("");
 
   const placeOrder = trpc.storefront.placeOrderAsCustomer.useMutation({
     onSuccess: (data) => {
@@ -92,6 +94,7 @@ export function CheckoutForm({
 
     placeOrder.mutate({
       tenantSlug,
+      cfTurnstileToken: turnstileToken,
       items: state.items.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
@@ -368,9 +371,18 @@ export function CheckoutForm({
               </div>
             </>
           )}
+          <div className="mt-5 flex justify-center">
+            <Turnstile
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA"}
+              onSuccess={setTurnstileToken}
+              onExpire={() => setTurnstileToken("")}
+              onError={() => setTurnstileToken("")}
+              options={{ theme: "auto" }}
+            />
+          </div>
           <button
             type="submit"
-            disabled={disabled || state.items.length === 0}
+            disabled={disabled || state.items.length === 0 || turnstileToken === ""}
             className="mt-5 w-full rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-4 py-3 text-sm font-medium text-[#00d992] transition hover:bg-[#00d992]/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {placeOrder.isPending ? "Placing order…" : "Place order"}
