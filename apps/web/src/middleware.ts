@@ -61,6 +61,7 @@ export default auth(function middleware(req) {
 });
 
 export const config = {
+  runtime: "nodejs",
   matcher: [
     /*
      * Match all paths except static files and Next.js internals.
