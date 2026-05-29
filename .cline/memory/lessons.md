@@ -1247,3 +1247,24 @@
   inline-guard duplication tax. Counter-pattern avoided: copy-paste the inline guard at each new site as
   features grow — leads to drift (one site says `NOT_FOUND` with a custom message, another with no message,
   a third forgets the `!po` branch and crashes on null).
+
+## 2026-05-29 — 🟢 Dual-helper pattern + mixed-treatment batch canonical (Batch 30)
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 30 Direction I-5a BUILD BATCH PROPOSAL design + I-5a-3 GREEN dispatch
+- Files:     apps/web/src/server/trpc/routers/purchasing.ts (loadPoForTenant L40-50 from Batch 29; loadGrForTenant L53-65 from Batch 30)
+- Concepts:  helper-extraction, dual-helper, mixed-treatment, scaffold-only-model, parity-wave, dry, defense-in-depth
+- Narrative: Batch 30 extended the loadPoForTenant pattern (Batch 29) to a SECOND helper, loadGrForTenant, with IDENTICAL shape:
+  structural ctx type `{ tenantId: string }`, Prisma-derived return type via `NonNullable<Awaited<ReturnType<typeof db.X.findUnique>>>`,
+  NOT_FOUND throw on missing-or-cross-tenant. The dual-helper pattern is now CANONICAL for the purchasing surface and any
+  future surface that needs parent-scoped tenant guards across multiple call sites.
+  Mixed-treatment pattern: Batch 30 was the FIRST parity batch in the wave to mix unwired and wired models in one batch.
+  ShippingCost + ShippingCostDistribution have no router/UI in the codebase (verified via `grep -rn 'shippingCost\.' apps/ packages/db/src/`
+  → no matches outside tests) — they're Phase 4 scaffold models awaiting future Phase 8 work. Treatment:
+  schema + migration + Tenant back-pointer ONLY. No router edits, no RED tests (no mockable call site exists). GoodsReceipt
+  has a full router (list, byId, create) — treatment: schema + migration + back-pointer + helper + byId guard + create guard
+  + 3 RED→GREEN tests + bonus PO-load defense-in-depth via loadPoForTenant on GR.create's findUnique site (closes Batch 29
+  banked follow-on for cross-tenant PO id on receive flow). Pattern preserves tier-1 scope per sub-task while still
+  closing the entire I-5a banked scope in one batch. Defers RED tests for SC + SCD to whichever future batch adds their
+  routers (will be I-5a-router or whichever Phase 8 batch wires them to UI). Avoids the counter-pattern of either (a)
+  deferring SC + SCD column work indefinitely until UI exists, or (b) widening scope to include speculative router work
+  on unwired models (would violate Rule 25 TDD and YAGNI).

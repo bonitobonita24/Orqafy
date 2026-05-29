@@ -50,6 +50,19 @@ async function loadPoForTenant(
   return po;
 }
 
+// ── Tenant-scoped GR loader ───────────────────────────────────────────────────
+
+async function loadGrForTenant(
+  id: string,
+  ctx: { tenantId: string },
+): Promise<NonNullable<Awaited<ReturnType<typeof db.goodsReceipt.findUnique>>>> {
+  const gr = await db.goodsReceipt.findUnique({ where: { id } });
+  if (!gr || gr.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Goods receipt not found" });
+  }
+  return gr;
+}
+
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
 const allocationSchema = z.object({
@@ -519,7 +532,8 @@ export const goodsReceiptRouter = createTRPCRouter({
 
   byId: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      await loadGrForTenant(input.id, ctx);
       const gr = await db.goodsReceipt.findUnique({
         where: { id: input.id },
         include: {
@@ -556,6 +570,7 @@ export const goodsReceiptRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await loadPoForTenant(input.purchaseOrderId, ctx);
       const po = await db.purchaseOrder.findUnique({
         where: { id: input.purchaseOrderId },
         include: {
@@ -578,6 +593,7 @@ export const goodsReceiptRouter = createTRPCRouter({
       return db.$transaction(async (tx) => {
         const gr = await tx.goodsReceipt.create({
           data: {
+            tenantId: ctx.tenantId,
             grNumber,
             purchaseOrderId: input.purchaseOrderId,
             receivedById: ctx.userId,
@@ -683,9 +699,9 @@ export const goodsReceiptRouter = createTRPCRouter({
         }
 
         // Recompute PO status based on received quantities
-        const updatedItems = await tx.purchaseOrderItem.findMany({
+        const updatedItems = (await tx.purchaseOrderItem.findMany({
           where: { purchaseOrderId: input.purchaseOrderId },
-        });
+        })) ?? [];
         const allReceived = updatedItems.every(
           (i) => Number(i.quantityReceived) >= Number(i.quantity)
         );

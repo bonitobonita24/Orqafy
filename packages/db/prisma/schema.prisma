@@ -50,6 +50,9 @@ model Tenant {
   purchaseOrders   PurchaseOrder[]
   purchaseOrderItems PurchaseOrderItem[]
   purchaseOrderItemAllocations PurchaseOrderItemAllocation[]
+  shippingCosts                ShippingCost[]
+  shippingCostDistributions    ShippingCostDistribution[]
+  goodsReceipts                GoodsReceipt[]
 
   @@map("tenants")
   @@schema("public")
@@ -828,6 +831,8 @@ model ShippingCost {
   id              String   @id @default(cuid())
   purchaseOrderId String   @map("purchase_order_id")
   purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  tenantId        String   @map("tenant_id")
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   legNumber       Int      @default(1) @map("leg_number")
   courierName     String   @map("courier_name")
   trackingNumber  String?  @map("tracking_number")
@@ -844,6 +849,7 @@ model ShippingCost {
   distributions   ShippingCostDistribution[]
 
   @@index([purchaseOrderId])
+  @@index([tenantId])
   @@map("shipping_costs")
   @@schema("public")
 }
@@ -852,6 +858,8 @@ model ShippingCostDistribution {
   id              String   @id @default(cuid())
   shippingCostId  String   @map("shipping_cost_id")
   shippingCost    ShippingCost @relation(fields: [shippingCostId], references: [id], onDelete: Cascade)
+  tenantId        String   @map("tenant_id")
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   itemId          String   @map("item_id")
   item            PurchaseOrderItem @relation(fields: [itemId], references: [id])
   calculatedShare Decimal  @map("calculated_share") @db.Decimal(12, 2)
@@ -860,6 +868,7 @@ model ShippingCostDistribution {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
+  @@index([tenantId])
   @@unique([shippingCostId, itemId])
   @@map("shipping_cost_distributions")
   @@schema("public")
@@ -870,6 +879,8 @@ model GoodsReceipt {
   grNumber        String   @unique @map("gr_number")
   purchaseOrderId String   @map("purchase_order_id")
   purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  tenantId        String   @map("tenant_id")
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   receivedById    String   @map("received_by_id")
   receivedBy      User     @relation("GRReceivedBy", fields: [receivedById], references: [id])
   status          String   @default("pending") // pending | inspecting | accepted | rejected | partial
@@ -881,6 +892,7 @@ model GoodsReceipt {
   items           GoodsReceiptItem[]
 
   @@index([purchaseOrderId])
+  @@index([tenantId])
   @@map("goods_receipts")
   @@schema("public")
 }

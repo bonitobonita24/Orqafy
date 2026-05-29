@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-29 by CLAUDE_CODE (Phase 8 Batch 29 ✅ COMPLETE — Direction I-4: PurchaseOrder status-transition tenant guards. loadPoForTenant helper extracted; 5 mutations (update/submit/approve/markOrdered/cancel) guarded against cross-tenant id. Zero schema, zero migration. 754/754 GREEN.)
+# Last updated: 2026-05-29 by CLAUDE_CODE (Phase 8 Batch 30 ✅ COMPLETE — Direction I-5a: sibling wave Q1 tenant parity. ShippingCost + ShippingCostDistribution + GoodsReceipt tenantId NOT NULL via JOIN-backfill (SC + GR from PO, SCD from POI on item_id). loadGrForTenant helper added; GR.byId + GR.create guarded; mixed-treatment pattern (schema-only for unwired SC+SCD + full for wired GR). 757/757 GREEN. Deploy gates 7 → 10.)
 # Note: Batch 6+ batch detail lives in docs/CHANGELOG_AI.md and .cline/STATE.md — see those files for per-batch records since this file's structured snapshot section was last refreshed at Batch 5.
 # ---
 

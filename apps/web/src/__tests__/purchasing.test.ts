@@ -900,3 +900,73 @@ describe("purchasing.po — Direction I-4 PurchaseOrder tenant-scoped status gua
   });
 });
 
+describe("purchasing.goodsReceipt — Direction I-5a tenant guards (RED)", () => {
+  const fakeGrBase = {
+    id: "gr-1",
+    tenantId: "tenant-acme",
+    grNumber: "GR-2401-0001",
+    purchaseOrderId: "po-1",
+    receivedById: "user-admin",
+    status: "pending" as const,
+    receivedAt: new Date(),
+    notes: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  it("create throws NOT_FOUND when PO belongs to another tenant", async () => {
+    mockDb.purchaseOrder.findUnique.mockResolvedValue({
+      ...fakePoBase,
+      tenantId: "tenant-other",
+      status: "approved" as const,
+      items: [],
+    });
+    await expect(
+      createCaller(adminCtx()).purchasing.goodsReceipt.create({
+        purchaseOrderId: "po-cross",
+        items: [{ description: "Widget A", quantityExpected: 10, quantityReceived: 10 }],
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("create passes ctx.tenantId on tx.goodsReceipt.create", async () => {
+    mockDb.purchaseOrder.findUnique.mockResolvedValue({
+      ...fakePoBase,
+      status: "approved" as const,
+      items: [
+        {
+          id: "poi-1",
+          tenantId: "tenant-acme",
+          description: "Widget A",
+          quantity: 10,
+          unitPrice: 100,
+          totalPrice: 1000,
+          allocations: [],
+        },
+      ],
+    });
+    mockDb.goodsReceipt.findFirst.mockResolvedValue(null);
+    mockDb.goodsReceipt.create.mockResolvedValue({ ...fakeGrBase });
+    mockDb.goodsReceiptItem.create.mockResolvedValue({});
+    mockDb.goodsReceipt.findUnique.mockResolvedValue({ ...fakeGrBase, items: [] });
+    mockDb.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(mockDb));
+
+    await createCaller(adminCtx()).purchasing.goodsReceipt.create({
+      purchaseOrderId: "po-1",
+      items: [{ description: "Widget A", quantityExpected: 10, quantityReceived: 10 }],
+    });
+    expect(mockDb.goodsReceipt.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ tenantId: "tenant-acme" }),
+      }),
+    );
+  });
+
+  it("byId throws NOT_FOUND when gr belongs to another tenant", async () => {
+    mockDb.goodsReceipt.findUnique.mockResolvedValue({ ...fakeGrBase, tenantId: "tenant-other" });
+    await expect(
+      createCaller(adminCtx()).purchasing.goodsReceipt.byId({ id: "gr-cross" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
