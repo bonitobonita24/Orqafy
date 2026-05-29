@@ -2,14 +2,30 @@
   "name": "@orqafy/db",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist", "prisma"],
   "exports": {
-    ".": "./src/index.ts",
-    "./client": "./src/client.ts",
-    "./middleware/tenant-guard": "./src/middleware/tenant-guard.ts",
-    "./helpers/audit": "./src/helpers/audit.ts",
-    "./helpers/tenant-schema": "./src/helpers/tenant-schema.ts",
-    "./seed": "./src/seed/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
+    },
+    "./middleware/tenant-guard": {
+      "types": "./dist/middleware/tenant-guard.d.ts",
+      "default": "./dist/middleware/tenant-guard.js"
+    },
+    "./helpers/audit": {
+      "types": "./dist/helpers/audit.d.ts",
+      "default": "./dist/helpers/audit.js"
+    },
+    "./helpers/tenant-schema": {
+      "types": "./dist/helpers/tenant-schema.d.ts",
+      "default": "./dist/helpers/tenant-schema.js"
+    }
   },
   "scripts": {
     "db:generate": "prisma generate",
@@ -21,7 +37,8 @@
     "lint": "eslint src/ --ext .ts",
     "typecheck": "tsc --noEmit",
     "test": "echo \"No tests yet\" && exit 0",
-    "build": "tsc"
+    "build": "tsc --project tsconfig.build.json",
+    "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
     "@paralleldrive/cuid2": "^2.2.2",
