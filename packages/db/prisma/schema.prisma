@@ -48,6 +48,7 @@ model Tenant {
   ecommerceOrders  EcommerceOrder[]
   ecommerceOrderItems EcommerceOrderItem[]
   purchaseOrders   PurchaseOrder[]
+  purchaseOrderItems PurchaseOrderItem[]
 
   @@map("tenants")
   @@schema("public")
@@ -777,6 +778,8 @@ model PurchaseOrderItem {
   id              String   @id @default(cuid())
   purchaseOrderId String   @map("purchase_order_id")
   purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  tenantId        String   @map("tenant_id")
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   productId       String?  @map("product_id")
   product         Product? @relation(fields: [productId], references: [id])
   description     String
@@ -793,6 +796,7 @@ model PurchaseOrderItem {
   shippingDistributions ShippingCostDistribution[]
 
   @@index([purchaseOrderId])
+  @@index([tenantId])
   @@map("purchase_order_items")
   @@schema("public")
 }

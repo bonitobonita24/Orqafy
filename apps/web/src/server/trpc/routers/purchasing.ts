@@ -347,6 +347,7 @@ export const poRouter = createTRPCRouter({
           const created = await tx.purchaseOrderItem.create({
             data: {
               purchaseOrderId: po.id,
+              tenantId: ctx.tenantId,
               ...(item.productId !== undefined ? { productId: item.productId } : {}),
               description: item.description,
               unit: item.unit,

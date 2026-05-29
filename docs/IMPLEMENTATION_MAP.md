@@ -579,9 +579,16 @@ Schema-vs-spec drift remained the biggest source of post-write fixes despite exp
 
 ## Next Action
 
-**CURRENT STATE: Phase 8 Batch 26 ✅ COMPLETE (Direction I-narrow: PurchaseOrder.tenantId parity). Parent-most purchasing model now tenant-scoped on list/byId/create. 747/747 GREEN. Pre-flight discovered .whatsnext Direction I premise was wrong — entire purchasing surface (9 models) is Q2 NO TENANT ISOLATION. Batch 26 closes the root; Directions I-2 through I-5 queued for subsequent parent-backfill waves.**
+**CURRENT STATE: Phase 8 Batch 27 ✅ COMPLETE (Direction I-2: PurchaseOrderItem.tenantId parity). Immediate child of PurchaseOrder now tenant-scoped on create via parent-backfill JOIN. 748/748 GREEN. Direction I-3 (PurchaseOrderItemAllocation grandchild) ★ recommended next — same JOIN-backfill pattern from PurchaseOrderItem.tenantId via item_id. 6 deploy gates queued on staging/prod (was 5 — Batch 27 adds migration 20260529110000).**
 
-1. **Phase 8 Batch 26 ✅ COMPLETE (Direction I-narrow: PurchaseOrder.tenantId parity) — 2026-05-29:**
+1. **Phase 8 Batch 27 ✅ COMPLETE (Direction I-2: PurchaseOrderItem.tenantId parity) — 2026-05-29:**
+   - I-2-1 ✅ RED test: asserts tx.purchaseOrderItem.create receives data.tenantId === ctx.tenantId. Commit 140f0ef.
+   - I-2-2 ✅ schema + JOIN-backfill migration 20260529110000 (Batch 24 pattern: UPDATE FROM purchase_orders ON purchase_order_id). Commit b83e76e.
+   - I-2-3 ✅ GREEN: 1 surgical edit at purchasing.ts ~L350 — tenantId: ctx.tenantId injected into tx.purchaseOrderItem.create data. Commit c042f0f.
+   - I-2-4 ✅ governance close + squash-merge.
+   - Tests: 747 → 748 GREEN (+1). Typecheck 0 errors. Lint 0 errors.
+
+2. **Phase 8 Batch 26 ✅ COMPLETE (Direction I-narrow: PurchaseOrder.tenantId parity) — 2026-05-29:**
    - I-1 ✅ RED tests: 3 assertions (list WHERE tenantId, create data tenantId, byId tenant-mismatch NOT_FOUND). Path-fix amend after first dispatch used wrong router key (`purchaseOrder` → `po`).
    - I-2 ✅ schema + migration: PurchaseOrder.tenantId column + Tenant back-pointer + 5-step backfill from tenants table (mirrors 21c since no parent has tenantId on this model).
    - I-3a ✅ GREEN: po.list shared `where` const + tenantId injection; po.byId NOT_FOUND guard on tenant mismatch; po.create data.tenantId from ctx.

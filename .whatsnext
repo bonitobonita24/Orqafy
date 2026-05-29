@@ -1,6 +1,6 @@
-# Next Session — ★ DIRECTION I-narrow (Batch 26) COMPLETE ★. Pick the next direction.
+# Next Session — ★ DIRECTION I-2 (Batch 27) COMPLETE ★. Pick the next direction.
 
-Last close: Batch 26 — Direction I-narrow (PurchaseOrder.tenantId parity). 747/747 GREEN.
+Last close: Batch 27 — Direction I-2 (PurchaseOrderItem.tenantId parity). 748/748 GREEN.
 
 🔴 PRE-FLIGHT FINDING NOW BANKED: the purchasing surface is FULLY Q2 NO TENANT ISOLATION.
 9 models (Vendor, PurchaseOrder, PurchaseOrderItem, PurchaseOrderItemAllocation, ShippingCost,
@@ -8,25 +8,25 @@ ShippingCostDistribution, GoodsReceipt, GoodsReceiptItem, PurchaseInvoice) all h
 `@@schema("public")` + no tenantId column. Batch 26 closed PurchaseOrder (parent-most).
 Eight models remain.
 
-## 🔴 BLOCKING — Three deploy gates (UPDATED — now FOUR migrations)
+## 🔴 BLOCKING — Deploy gates (UPDATED — now SIX migrations)
 1. APP_ENCRYPTION_KEY in .env.staging + .env.prod + Komodo restart.
 2. prisma migrate deploy of 21c (ecommerce_orders.tenantId).
 3. prisma migrate deploy of 22 (webhookProcessedAt).
 4. prisma migrate deploy of 24 (ecommerce_order_items.tenantId).
-5. NEW — prisma migrate deploy of 26 (20260529100000_add_tenant_id_to_purchase_orders).
+5. prisma migrate deploy of 26 (20260529100000_add_tenant_id_to_purchase_orders).
+6. NEW — prisma migrate deploy of 27 (20260529110000_add_tenant_id_to_purchase_order_items).
 See docs/deployment-direction-f.md for full procedure.
 
 ## Recommended next directions
 
-### Direction I-2 — PurchaseOrderItem.tenantId parity (T1 ~7K) ★ recommended next
-   - Parent-backfill pattern from Batch 24 — UPDATE FROM purchase_orders via JOIN on purchase_order_id.
-   - 1 migration, 1 schema change, 1 router call-site edit at purchasing.ts:345 (`tx.purchaseOrderItem.create`), 2-3 RED→GREEN tests.
-   - Same shape as Direction G (EcommerceOrderItem) — cleanest, fastest follow-on.
-   - Lowest-risk, highest-ROI next step.
+### Direction I-2 — PurchaseOrderItem.tenantId parity (T1 ~7K) ✅ COMPLETE (Batch 27)
+   - Shipped 2026-05-29. JOIN-backfill from parent purchase_orders. 1 migration + 1 schema edit + 1 router line + 1 RED→GREEN test. 748/748.
 
-### Direction I-3 — PurchaseOrderItemAllocation.tenantId (T1 ~6K)
-   - Grandchild parity. Two-hop backfill: UPDATE FROM purchase_order_items (item_id JOIN, items get tenantId in I-2).
-   - 1 migration, schema, 2 call-site edits (purchasing.ts:360 create, 634/656 update), 2 RED→GREEN tests.
+### Direction I-3 — PurchaseOrderItemAllocation.tenantId parity (T1 ~6K) ★ recommended next
+   - Grandchild — JOIN-backfill UPDATE FROM purchase_order_items ON item_id (now that poi.tenantId is NOT NULL from Batch 27).
+   - 1 migration + 1 schema edit + 1-2 router edits at `tx.purchaseOrderItemAllocation.create` sites (L362 in po.create txn, plus any GR-driven allocation updates). 1-2 RED→GREEN tests.
+   - Same shape as Direction I-2 — lowest-risk, highest-ROI next step.
+   - Completes the PO → POI → POIA three-generation chain.
 
 ### Direction I-4 — PurchaseOrder status-transition guards (T1 ~6K)
    - Add tenant-mismatch NOT_FOUND guards to submit/approve/markOrdered/cancel mutations (lines 391-460).

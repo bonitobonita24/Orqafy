@@ -1180,3 +1180,33 @@
   ref. Direction I-5 long-term should add tenantId directly to GoodsReceipt
   (Q2→Q1 transition) so it's index-friendly. Pattern locks in the discipline
   that future PO consumers cannot forget the gate.
+
+## 2026-05-29 — 🟢 JOIN-backfill from parent table — proven pattern for child models with parent already tenant-scoped (Batch 27)
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 27 Direction I-2 (PurchaseOrderItem.tenantId parity)
+- Files:     packages/db/prisma/migrations/20260529110000_add_tenant_id_to_purchase_order_items/migration.sql
+- Concepts:  parent-backfill, join-update, tenant-parity, child-model, migration-pattern, batch-24-pattern
+- Narrative: When a child model needs tenantId parity and its parent already has tenantId NOT NULL,
+  the cleanest backfill is `UPDATE child SET tenant_id = parent.tenant_id FROM parent WHERE child.parent_id = parent.id`.
+  No re-sourcing from tenants table needed (Batch 26 used ORDER BY created_at LIMIT 1 only because PurchaseOrder
+  had no parent with tenantId — single-tenant deployment assumption). Batch 27 applied JOIN-backfill from
+  purchase_orders.tenant_id via purchase_order_id — race-free, deterministic, FK integrity guaranteed by
+  the existing parent FK + NOT NULL constraint. Direction I-3 (PurchaseOrderItemAllocation) will use the
+  identical shape via item_id JOIN from PurchaseOrderItem.tenantId. Direction I-5 sibling models on
+  shipping/goods-receipt/invoice — all have PurchaseOrder as a parent — will reuse this pattern. CANONICAL
+  pattern for any future child-model parity work.
+
+## 2026-05-29 — 🟤 Grandchild deferral discipline preserves batch tier-1 scope (Batch 27)
+- Type:      🟤 decision
+- Phase:     Phase 8 Batch 27 Direction I-2 BUILD BATCH PROPOSAL design
+- Files:     apps/web/src/server/trpc/routers/purchasing.ts (L362 `tx.purchaseOrderItemAllocation.create`, L669 `tx.purchaseOrderItem.update`, L676 `tx.purchaseOrderItem.findMany`)
+- Concepts:  scope-discipline, tier-1-preservation, deferral, defense-in-depth, txn-inheritance
+- Narrative: Batch 27 IN-SCOPE was strictly: PurchaseOrderItem.tenantId column + create-site injection + RED→GREEN
+  test. EXCLUDED: (a) grandchild PurchaseOrderItemAllocation create at L362 → Direction I-3 next batch.
+  (b) tx.purchaseOrderItem.update at L669 + findMany at L676 → both inside po-scoped transactions where parent
+  PurchaseOrder was already tenant-guarded by Batch 26 byId/list — safe via inheritance, defense-in-depth
+  tenant injection deferred to L6 Prisma guardrails workstream. Discipline kept batch at tier-1 (~75 net edit
+  lines, single Sonnet dispatch per sub-task, ~700K subagent total). Same discipline applied Batches 24/26.
+  Counter-pattern (what NOT to do): widen scope to include grandchild + all update/findMany sites in same batch
+  → tier-2 minimum, multi-dispatch coordination required, harder to verify completeness against PRODUCT.md spec.
+  Banking this as an explicit decision so future batches don't get talked into "while we're here" scope creep.
