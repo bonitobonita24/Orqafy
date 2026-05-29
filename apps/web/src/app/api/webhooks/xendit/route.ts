@@ -18,6 +18,7 @@ import { timingSafeEqual } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma as db } from "@orqafy/db";
 import { decrypt } from "@/lib/crypto";
+import { logger } from "@/lib/logger";
 
 const XENDIT_STATUS_TO_PAYMENT_STATUS: Record<string, string | undefined> = {
   PAID: "paid",
@@ -65,6 +66,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
+  logger.info({ invoiceId, surface: "xendit.webhook" }, "webhook received");
+
   // 3. Resolve order. Null → 401 (enumeration prevention).
   const order = await db.ecommerceOrder.findUnique({
     where: { id: externalId },
@@ -77,6 +80,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     },
   });
   if (order === null) {
+    logger.warn({ invoiceId, surface: "xendit.webhook" }, "webhook: order not found");
     return unauthorized();
   }
 
@@ -97,11 +101,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     expected.length === received.length &&
     timingSafeEqual(expected, received);
   if (!tokensMatch) {
+    logger.warn({ orderId: order.id, tenantId: order.tenantId, surface: "xendit.webhook" }, "webhook: token mismatch");
     return unauthorized();
   }
 
   // 6. Replay guard: stored invoice id must match the webhook's invoice id.
   if (order.xenditPaymentId !== invoiceId) {
+    logger.warn({ orderId: order.id, tenantId: order.tenantId, surface: "xendit.webhook" }, "webhook: invoice id mismatch");
     return NextResponse.json(
       { error: "Invoice id mismatch" },
       { status: 400 },
@@ -111,17 +117,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const nextPaymentStatus = XENDIT_STATUS_TO_PAYMENT_STATUS[status];
   // Unknown Xendit event — acknowledge, skip DB update.
   if (nextPaymentStatus === undefined) {
+    logger.info({ orderId: order.id, tenantId: order.tenantId, xenditStatus: status, surface: "xendit.webhook" }, "webhook: unknown event, acknowledged");
     return NextResponse.json({ received: true });
   }
 
   // Idempotency: already terminal — no-op, return 200.
   if (TERMINAL_PAYMENT_STATUSES.has(order.paymentStatus)) {
+    logger.info({ orderId: order.id, tenantId: order.tenantId, currentStatus: order.paymentStatus, surface: "xendit.webhook" }, "webhook: idempotent terminal hit");
     return NextResponse.json({ received: true });
   }
 
   // Defence-in-depth: verify amount matches our recorded total for PAID events.
   if (nextPaymentStatus === "paid" && paidAmount !== undefined) {
     if (Number(order.totalAmount) !== paidAmount) {
+      logger.error({ orderId: order.id, tenantId: order.tenantId, surface: "xendit.webhook" }, "webhook: amount mismatch");
       return NextResponse.json(
         { error: "Amount mismatch" },
         { status: 400 },
@@ -134,5 +143,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     data: { paymentStatus: nextPaymentStatus, webhookProcessedAt: new Date() },
   });
 
+  logger.info({ orderId: order.id, tenantId: order.tenantId, nextStatus: nextPaymentStatus, surface: "xendit.webhook" }, "webhook: payment status updated");
   return NextResponse.json({ received: true });
 }

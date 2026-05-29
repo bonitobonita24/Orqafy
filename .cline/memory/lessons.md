@@ -1060,3 +1060,32 @@
   inline first and the test could not capture the mock for assertions until
   the hoisted pattern was applied.
 # ---
+
+## 2026-05-29 — 🟢 Direction H — pino chosen as logger of record
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 25 Direction H (H1)
+- Files:     apps/web/src/lib/logger.ts, apps/web/package.json
+- Concepts:  pino, logger, observability, structured-logging, createScopedLogger
+- Narrative: First logger infra for orqafy-web. pino v9 chosen for: (a) widely
+  adopted in Next.js server contexts, (b) JSON-by-default — no transport needed
+  for prod stdout, (c) child loggers via .child({}) map cleanly onto per-request
+  tenant/actor context. Deferred: dev pretty-print transport (pino-pretty),
+  request-correlation IDs, OpenTelemetry traces, external log-shipping. Bundle
+  hit is acceptable at the server boundary (pino is server-only). `createScopedLogger(bindings)`
+  is the only helper exposed — keep the API minimal until consumption patterns
+  demand more.
+
+## 2026-05-29 — 🟡 env.ts startup hook needs explicit inline type, not typeof import()
+- Type:      🟡 fix
+- Phase:     Phase 8 Batch 25 Direction H (H2)
+- Files:     apps/web/src/env.ts
+- Concepts:  eslint, consistent-type-imports, env, require, startup
+- Narrative: Per the H2 design, assertEncryptionKeyHealthy is called from env.ts
+  inside the SKIP_ENV_VALIDATION guard using require() — avoids a top-of-file
+  ESM import that would couple env validation to the logger module transitively.
+  First attempt used `as typeof import("./lib/startup-health-check")` for the
+  type cast. @typescript-eslint/consistent-type-imports rejected it: the rule
+  disallows the `typeof import()` form inside value positions. Fix: write the
+  type inline as `{ assertEncryptionKeyHealthy: () => void }`. Strict-mode
+  passes, lint passes. If the require() pattern is ever replaced with a
+  top-level ESM import, this footnote becomes moot.

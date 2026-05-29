@@ -69,6 +69,12 @@ if (process.env.SKIP_ENV_VALIDATION !== "1") {
     console.error("❌ Invalid client env vars:", _clientEnv.error.flatten().fieldErrors);
     throw new Error("Invalid client environment variables");
   }
+
+  // Defense-in-depth: zod only validates the 44-char string length.
+  // Verify the value actually base64-decodes to 32 bytes (Direction H).
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { assertEncryptionKeyHealthy } = require("./lib/startup-health-check") as { assertEncryptionKeyHealthy: () => void };
+  assertEncryptionKeyHealthy();
 }
 
 export const env = (_serverEnv.success && _clientEnv.success

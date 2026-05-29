@@ -1,17 +1,16 @@
-# Next Session — Direction G COMPLETE. Pick the next direction.
+# Next Session — ★ DIRECTION H COMPLETE ★. Pick the next direction.
 
-Last close: Batch 24 — Direction G (EcommerceOrderItem.tenantId parity) SHIPPED.
-Three commits squash-merged: G1 RED (2 tests), G2a schema + 3-stage backfill
-migration, G2b GREEN (router both sites pass tenantId from parent order).
-737/737 GREEN. Per-tenant gap on ecommerce surface fully closed.
+Last close: Batch 25 — Direction H (Observability) SHIPPED.
+7 commits squash-merged: H1 pino logger (RED + GREEN), H2 startup health check
+(RED + GREEN), H3 log instrumentation (3 surfaces), H-close governance.
+744/744 GREEN.
 
-★ DIRECTION G COMPLETE ★
-  G1  ✅ RED tests (placeOrderAsCustomer + placeOrder tenantId assertions)
-  G2a ✅ Schema + migration (3-stage backfill from parent order)
-  G2b ✅ Router GREEN (both ecommerceOrderItem.create sites)
-  G3  ✅ Close (typecheck/lint clean, governance, squash-merge)
+★ DIRECTION H COMPLETE ★
+  H1  ✅ pino logger module (logger.ts + createScopedLogger + 3 tests)
+  H2  ✅ APP_ENCRYPTION_KEY startup health check (startup-health-check.ts + 4 tests)
+  H3  ✅ Log instrumentation — xendit-invoice.ts (3 lines), webhooks/xendit/route.ts (8 lines), admin-xendit-config.ts (4 lines)
 
-## 🔴 BLOCKING — Three deploy gates now (was two)
+## 🔴 BLOCKING — Three deploy gates (unchanged)
 
 1. **APP_ENCRYPTION_KEY** in .env.staging + .env.prod (from Batch 21a).
    `openssl rand -base64 32 | tr -d '\n' | head -c 44`. CREDENTIALS.md.
@@ -20,30 +19,25 @@ migration, G2b GREEN (router both sites pass tenantId from parent order).
    `pnpm --filter @orqafy/db exec prisma migrate deploy`:
    - 20260521194500_add_tenant_id_to_ecommerce_orders (Batch 21c)
    - 20260529014600_add_webhook_processed_at_to_ecommerce_orders (Batch 22)
-   - 20260529080000_add_tenant_id_to_ecommerce_order_items (Batch 24 — NEW)
+   - 20260529080000_add_tenant_id_to_ecommerce_order_items (Batch 24)
    Full procedure: docs/deployment-direction-f.md.
 
 ## Recommended next directions
 
-### Direction H — Observability bundle (T2 ~25K) ★ recommended next
-   - Add structured logger (pino) — currently no logger infrastructure.
-   - Wire log lines on payment events, webhook receipts, admin actions.
-   - Surface APP_ENCRYPTION_KEY missing as a startup health check.
-   - Useful before any production tenant onboards.
+### Direction I — PurchaseOrderItem tenantId parity (T1 ~6K) ★ recommended next
+   - Same pattern as Direction G (sibling-model parent-backfill).
+   - PurchaseOrderItem lacks tenantId; PurchaseOrder has it.
+   - 5-step migration, router call-site update, 2 RED→GREEN tests.
+   - Single session, ~6K tokens. Lowest-risk, highest-ROI next step.
 
 ### Direction B — Mobile Expo scaffold (T3 ~50K, multi-session)
    - apps/mobile/ doesn't exist yet.
    - Different track entirely; appropriate now that web surface is feature-complete.
 
-### Direction I (NEW) — PurchaseOrderItem tenantId parity (T1 ~6K)
-   - Same pattern as Direction G but for purchasing surface.
-   - Even smaller batch. Closes the analogous gap on purchasing.
-   - Schema + 3-stage backfill + router updates.
-
 ## Standing 9-point pre-flight (run before any code on any batch)
 
 1. `git status` + `git log -1` — confirm tree state.
-2. `pnpm --filter @orqafy/web test` — confirm 737/737 GREEN baseline.
+2. `pnpm --filter @orqafy/web test` — confirm 744/744 GREEN baseline.
 3. Read input Zod schema of any router procedure the batch claims to reuse.
 4. If router newly READS a field, verify all existing tests on that path mock the field.
 5. Grep schema.prisma for any model in scope; confirm fields before scoping migrations.
@@ -74,3 +68,4 @@ migration, G2b GREEN (router both sites pass tenantId from parent order).
 - 🟢 (Batch 23): Server Component chip-row filter pattern — Link-based filters with hrefFor URL serialization
 - 🟢 (Batch 23): Hoisted vi.mock pattern for new module export
 - 🟢 NEW (Batch 24): Sibling-model tenantId backfill — UPDATE FROM parent table (ecommerce_order_items.tenant_id from ecommerce_orders.tenant_id via order_id JOIN) is cleaner than re-sourcing from tenants table. Works when parent already has NOT NULL tenant_id from a prior migration.
+- 🟢 NEW (Batch 25): admin router ctx has no session.user — admin log lines omit actor; revisit when admin audit-log work surfaces

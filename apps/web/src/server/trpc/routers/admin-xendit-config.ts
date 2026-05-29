@@ -6,6 +6,7 @@ import { createTRPCRouter } from "../trpc";
 import { requireRole } from "../middleware/rbac";
 import { writeProcedure } from "../trpc";
 import { encrypt, decrypt } from "@/lib/crypto";
+import { logger } from "@/lib/logger";
 
 // ── Authorization helpers ─────────────────────────────────────────────────────
 // Reads = Administrator OR Platform Owner (composable middleware from rbac.ts).
@@ -78,11 +79,13 @@ export const adminXenditConfigRouter = createTRPCRouter({
       enabledMethods: input.enabledMethods,
       isVerified: false,
     };
-    return prisma.tenantXenditConfig.upsert({
+    const result = await prisma.tenantXenditConfig.upsert({
       where: { tenantId: ctx.tenantId },
       create: { tenantId: ctx.tenantId, ...data },
       update: data,
     });
+    logger.info({ tenantId: ctx.tenantId, surface: "admin.xendit.config", action: "upsert" }, "tenant xendit config upserted");
+    return result;
   }),
 
   /**
@@ -121,10 +124,12 @@ export const adminXenditConfigRouter = createTRPCRouter({
     await xendit.Invoice.expireInvoice({ invoiceId: invoice.id });
 
     // Mark verified.
-    return prisma.tenantXenditConfig.update({
+    const verified = await prisma.tenantXenditConfig.update({
       where: { tenantId: ctx.tenantId },
       data: { isVerified: true },
     });
+    logger.info({ tenantId: ctx.tenantId, surface: "admin.xendit.config", action: "testConnection" }, "tenant xendit config connection tested");
+    return verified;
   }),
 
   /**
@@ -149,8 +154,10 @@ export const adminXenditConfigRouter = createTRPCRouter({
         message: `Cannot delete Xendit configuration — ${String(refs)} order(s) still reference Xendit payments.`,
       });
     }
-    return prisma.tenantXenditConfig.delete({
+    const deleted = await prisma.tenantXenditConfig.delete({
       where: { tenantId: ctx.tenantId },
     });
+    logger.warn({ tenantId: ctx.tenantId, surface: "admin.xendit.config", action: "delete" }, "tenant xendit config deleted");
+    return deleted;
   }),
 });

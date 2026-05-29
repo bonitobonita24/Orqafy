@@ -1790,3 +1790,31 @@
 - Errors encountered:  none
 - Errors resolved:     none
 - Tests:               735 → 737 (+2 GREEN: tenantId passed to ecommerceOrderItem.create in both publicProcedure placeOrderAsCustomer + protectedProcedure placeOrder paths)
+
+## 2026-05-29 — Phase 8 Batch 25 — Direction H (Observability) COMPLETE
+- Agent:               CLAUDE_CODE (Opus 4.7 architect + Sonnet 4.6 executor — V32 Zero Opus Execution; 4 dispatches: H1 logger, H2 startup health check, H3 log instrumentation, H-close governance)
+- Why:                 First observability layer for production tenant onboarding. No structured logger existed in orqafy-web before this batch — payment/webhook/admin flows used silent error paths or bare console.error. APP_ENCRYPTION_KEY validation was string-length-only in Zod; first encryption call at runtime would fail with a cryptic AES key-length error if the key was malformed. Direction H establishes pino as the logger of record, adds a startup assertion for the encryption key, and instruments the 3 highest-value production flows (invoice creation, webhook dispatch, admin config mutations) with structured log lines.
+- Files added:         apps/web/src/lib/logger.ts (10 lines — pino v9 + createScopedLogger helper);
+                       apps/web/src/lib/startup-health-check.ts (17 lines — assertEncryptionKeyHealthy startup guard);
+                       apps/web/src/__tests__/logger.test.ts (25 lines — 3 assertions: createScopedLogger returns child, scope bound in bindings, child method callable);
+                       apps/web/src/__tests__/startup-health-check.test.ts (69 lines — 4 assertions: valid key passes, missing key throws, wrong-length key throws, malformed base64 throws)
+- Files modified:      apps/web/src/env.ts (+6 lines — require() call inside SKIP_ENV_VALIDATION guard to hook assertEncryptionKeyHealthy into startup without top-of-file ESM coupling);
+                       apps/web/package.json (pino ^9.5.0 added as production dep);
+                       pnpm-lock.yaml (pino lock entries);
+                       apps/web/src/lib/xendit-invoice.ts (+3 log lines — invoice creation/success/failure);
+                       apps/web/src/app/api/webhooks/xendit/route.ts (+8 log lines — RECEIVED, PAID, EXPIRED, REFUNDED, UNKNOWN branches + handler error);
+                       apps/web/src/server/trpc/routers/admin-xendit-config.ts (+4 log lines — create/update/rotate/delete mutations)
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  H2 lint failure — @typescript-eslint/consistent-type-imports rejected `as typeof import("./lib/startup-health-check")` in the env.ts require() cast.
+- Errors resolved:     Replaced typeof import() form with explicit inline type `{ assertEncryptionKeyHealthy: () => void }`. Preserves SKIP_ENV_VALIDATION guard semantics; strict-mode and lint both pass.
+- Tests:               740 → 744 GREEN (+4: 3 logger assertions + 1 startup-health-check; net of H1 +3 and H2 +1 counted from 740 baseline which itself was 737 + 3 from Batch 24 Direction G)
+                       Note: task brief states 737→740 (H1) → 740→744 (H2); 7 commits total across H1+H2+H3+H-close.
+- Commits:             c404006 test(observability): logger RED test
+                       3499a5e feat(observability): pino logger module with createScopedLogger helper
+                       00d7e32 test(observability): startup health check RED test
+                       31d2539 feat(observability): APP_ENCRYPTION_KEY startup health check
+                       3077874 feat(observability): log payment events in xendit-invoice lib (H3 surface 1)
+                       b8457f5 feat(observability): log webhook events at each branch (H3 surface 2)
+                       38211ec feat(observability): log admin xendit config mutations (H3 surface 3)
+- Finding (non-blocking): admin-xendit-config.ts router ctx has no session.user shape — actor field omitted from admin log lines. Deferred; will surface when admin audit-log work is implemented.
