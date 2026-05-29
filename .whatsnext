@@ -44,13 +44,14 @@ See docs/deployment-direction-f.md for full procedure.
    - All 9 purchasing models now have tenantId NOT NULL: PurchaseOrder (B26), PurchaseOrderItem (B27), PurchaseOrderItemAllocation (B28), PurchaseOrder status guards (B29), ShippingCost + ShippingCostDistribution + GoodsReceipt (B30), GoodsReceiptItem + PurchaseInvoice (B31).
    - Direction I purchasing-surface tenant parity COMPLETE — pick next from Vendor Q2 catalogue, Direction B Mobile Expo scaffold, or deploy 12 staging/prod migration gates.
 
-### Direction J — @orqafy/jobs build pipeline (T2 ~15K, blocks worker in staging/prod)
+### Direction J — @orqafy/jobs build pipeline ✅ COMPLETE (commit 79df191, 2026-05-29)
    - Surfaced 2026-05-29 by staging compose dry-run (PR fix/web-transpile-workspace-packages, commit 997d1a5). Web fix shipped via that branch; worker still crash-loops at runtime.
    - Root cause: `packages/jobs/package.json` `exports` points at `./src/*.ts` instead of built `./dist/*.js`. Node 22 type-stripper rejects `.ts` files under `node_modules/` in the worker runner stage.
    - Scope: add `tsconfig.build.json` + `build` script to `packages/jobs`; rewrite `exports` to `./dist/*.js` paths; add `RUN pnpm --filter @orqafy/jobs build` to `apps/worker/Dockerfile` (and possibly `apps/web/Dockerfile`) before downstream builds; verify `pnpm --filter @orqafy/jobs build && pnpm --filter @orqafy/web test && pnpm --filter @orqafy/worker test` all clean; rebuild worker image and confirm boot via local dry-run.
    - Note: BullMQ is already non-functional on current main, so this is not a regression — but it is a hard blocker on the first real Komodo deploy if the worker is expected to process queues.
    - Suggested branch: `feat/jobs-build-pipeline`. May also need to revisit `apps/web/next.config.ts` transpilePackages once jobs ships built `.js` (the extensionAlias workaround may become unnecessary).
    - Full handoff in `.cline/handoffs/2026-05-29-staging-dryrun-session.md` (committed alongside the web fix).
+   - SHIPPED 2026-05-29 via squash-merge 79df191. tsconfig.build.json + build script added to packages/jobs; exports rewritten to ./dist/*.js conditional form; apps/worker + apps/web Dockerfiles insert `RUN pnpm --filter @orqafy/jobs build` before downstream builds; next.config.ts dropped @orqafy/jobs from transpilePackages and removed extensionAlias workaround (db/src has zero .js ESM imports — verified). Worker runtime blocker for first Komodo deploy now CLEARED.
 
 ### Direction B — Mobile Expo scaffold (T3 ~50K, multi-session)
    - apps/mobile/ doesn't exist yet. Different track entirely.

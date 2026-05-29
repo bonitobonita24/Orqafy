@@ -1889,3 +1889,14 @@
 - Tests:              758/758 GREEN (was 757; +1 RED→GREEN for GoodsReceiptItem tenantId injection assertion). Typecheck 0 errors. Lint 0 errors.
 - Errors encountered: none — clean dispatch sequence, no thrash. Sonnet I-5b-1 RED 4 tool uses; I-5b-2 schema+migrations 10 tool uses (schema-heavy, expected per Batch 30 banked observation); I-5b-3 router GREEN 5 tool uses.
 - Errors resolved:    none
+
+## 2026-05-29 — Direction J — @orqafy/jobs build pipeline (commit 79df191)
+- Agent:              CLAUDE_OPUS_4_7 (architect) + CLAUDE_SONNET_4_6 (executor)
+- Why:                Worker runtime blocker surfaced by 2026-05-29 staging dry-run — Node 22 type-stripper rejected .ts files under node_modules/ because packages/jobs exports pointed at ./src/*.ts. Worker crash-looped on first staging compose boot.
+- Files added:        packages/jobs/tsconfig.build.json
+- Files modified:     packages/jobs/package.json, apps/worker/Dockerfile, apps/web/Dockerfile, apps/web/next.config.ts
+- Files deleted:      none
+- Schema/migrations:  none
+- Errors encountered: pre-existing TS2786 React 19/shadcn ReactPortal type errors in apps/web (confirmed identical on main baseline — not introduced by this change)
+- Errors resolved:    worker runtime cannot import @orqafy/jobs at runtime (compiled JS now ships via dist/)
+- Verification:       jobs build emits 4 .js + 4 .d.ts with sourcemaps; web test 758/758 GREEN preserved; worker typecheck 0; worker build 0; web/worker tests run identically to baseline.

@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-29 by CLAUDE_CODE (Phase 8 Batch 31 ✅ COMPLETE — Direction I-5b: sibling wave Q2 tenant parity. GoodsReceiptItem (full treatment — JOIN-backfill from GoodsReceipt, +1 router line, +1 RED→GREEN test) + PurchaseInvoice (schema-only — unwired, JOIN-backfill from PurchaseOrder). Mixed-treatment pattern iterated cleanly from Batch 30. 758/758 GREEN. Deploy gates 7 → 12.)
+# Last updated: 2026-05-29 by CLAUDE_CODE (Phase 8 Batch 31 ✅ COMPLETE — Direction I-5b: sibling wave Q2 tenant parity. Direction J ✅ COMPLETE — @orqafy/jobs build pipeline (commit 79df191). GoodsReceiptItem (full treatment — JOIN-backfill from GoodsReceipt, +1 router line, +1 RED→GREEN test) + PurchaseInvoice (schema-only — unwired, JOIN-backfill from PurchaseOrder). Mixed-treatment pattern iterated cleanly from Batch 30. 758/758 GREEN. Deploy gates 12.)
 # Note: Batch 6+ batch detail lives in docs/CHANGELOG_AI.md and .cline/STATE.md — see those files for per-batch records since this file's structured snapshot section was last refreshed at Batch 5.
 # ---
 
@@ -90,6 +90,7 @@
 | .github/workflows/ci.yml | ✅ Complete | 3-job CI: governance gates → quality matrix (lint/typecheck/test/build via Turbo) → dependency security audit. pnpm/action-setup@v4, Node 22. |
 | .github/workflows/docker-publish.yml | ✅ Complete | Docker Hub build & push on push to main. Multi-platform (amd64+arm64). Tags: :latest, :staging-latest, :sha-{short}. GHA layer cache. |
 | MANIFEST.txt | ✅ Complete | ~280 files across all 8 Parts + Bootstrap + Design System + Spec Files. |
+| @orqafy/jobs build pipeline | ✅ Complete | @orqafy/jobs compiled to dist/ via tsconfig.build.json — Direction J 2026-05-29 (79df191) |
 
 ## Governance Docs
 
