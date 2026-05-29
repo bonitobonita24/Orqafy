@@ -216,8 +216,9 @@ export const poRouter = createTRPCRouter({
         status: z.string().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.vendorId !== undefined ? { vendorId: input.vendorId } : {}),
         ...(input.status !== undefined ? { status: input.status } : {}),
         ...(input.search !== undefined && input.search !== ""
@@ -248,7 +249,7 @@ export const poRouter = createTRPCRouter({
 
   byId: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const po = await db.purchaseOrder.findUnique({
         where: { id: input.id },
         include: {
@@ -268,7 +269,7 @@ export const poRouter = createTRPCRouter({
           },
         },
       });
-      if (po === null) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!po || po.tenantId !== ctx.tenantId) throw new TRPCError({ code: "NOT_FOUND", message: "Purchase order not found" });
       return po;
     }),
 
@@ -325,6 +326,7 @@ export const poRouter = createTRPCRouter({
       return db.$transaction(async (tx) => {
         const po = await tx.purchaseOrder.create({
           data: {
+            tenantId: ctx.tenantId,
             poNumber,
             vendorId: input.vendorId,
             createdById: ctx.userId,

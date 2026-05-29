@@ -718,3 +718,59 @@ describe("purchasing.goodsReceipt.create — atomic rollback", () => {
     expect(mockDb.goodsReceiptItem.create).not.toHaveBeenCalled();
   });
 });
+
+// ─── Batch 26 Direction I — PurchaseOrder.tenantId parity ─────────────────────
+describe("purchasing.po — Direction I tenantId scoping (RED)", () => {
+  it("scopes list findMany WHERE by ctx.tenantId", async () => {
+    mockDb.purchaseOrder.findMany.mockResolvedValue([]);
+    mockDb.purchaseOrder.count.mockResolvedValue(0);
+    await createCaller(adminCtx()).purchasing.po.list({});
+    expect(mockDb.purchaseOrder.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ tenantId: "tenant-acme" }),
+      }),
+    );
+  });
+
+  it("passes ctx.tenantId on purchaseOrder.create", async () => {
+    mockDb.vendor.findUnique.mockResolvedValue({ id: "vendor-1", isActive: true });
+    mockDb.purchaseOrder.findFirst.mockResolvedValue(null);
+    mockDb.purchaseOrder.create.mockResolvedValue({ ...fakePoBase });
+    mockDb.purchaseOrderItem.create.mockResolvedValue({ id: "poi-1" });
+    mockDb.purchaseOrder.findUnique.mockResolvedValue({
+      ...fakePoBase,
+      items: [],
+      vendor: fakeVendor,
+    });
+    mockDb.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(mockDb));
+
+    await createCaller(adminCtx()).purchasing.po.create({
+      vendorId: "vendor-1",
+      items: [
+        {
+          description: "Widget A",
+          quantity: 10,
+          unitPrice: 100,
+          allocations: [{ type: "company_expense", quantity: 10 }],
+        },
+      ],
+    });
+    expect(mockDb.purchaseOrder.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ tenantId: "tenant-acme" }),
+      }),
+    );
+  });
+
+  it("byId throws NOT_FOUND when PO tenantId mismatches ctx.tenantId", async () => {
+    mockDb.purchaseOrder.findUnique.mockResolvedValue({
+      ...fakePoBase,
+      tenantId: "tenant-other",
+      items: [],
+      vendor: fakeVendor,
+    });
+    await expect(
+      createCaller(adminCtx()).purchasing.po.byId({ id: "po-1" }),
+    ).rejects.toThrow();
+  });
+});

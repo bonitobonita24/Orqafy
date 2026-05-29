@@ -47,6 +47,7 @@ model Tenant {
   xenditConfig     TenantXenditConfig?
   ecommerceOrders  EcommerceOrder[]
   ecommerceOrderItems EcommerceOrderItem[]
+  purchaseOrders   PurchaseOrder[]
 
   @@map("tenants")
   @@schema("public")
@@ -747,6 +748,8 @@ model PurchaseOrder {
   createdBy       User     @relation("POCreatedBy", fields: [createdById], references: [id])
   approvedById    String?  @map("approved_by_id")
   approvedBy      User?    @relation("POApprovedBy", fields: [approvedById], references: [id])
+  tenantId        String   @map("tenant_id")
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   status          String   @default("draft") // draft | pending_approval | approved | ordered | partially_received | received | cancelled
   subtotal        Decimal  @default(0) @db.Decimal(12, 2)
   taxAmount       Decimal  @default(0) @map("tax_amount") @db.Decimal(12, 2)
@@ -765,6 +768,7 @@ model PurchaseOrder {
   goodsReceipts   GoodsReceipt[]
   purchaseInvoices PurchaseInvoice[]
 
+  @@index([tenantId])
   @@map("purchase_orders")
   @@schema("public")
 }

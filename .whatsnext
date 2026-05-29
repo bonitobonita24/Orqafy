@@ -1,50 +1,58 @@
-# Next Session — ★ DIRECTION H COMPLETE ★. Pick the next direction.
+# Next Session — ★ DIRECTION I-narrow (Batch 26) COMPLETE ★. Pick the next direction.
 
-Last close: Batch 25 — Direction H (Observability) SHIPPED.
-7 commits squash-merged: H1 pino logger (RED + GREEN), H2 startup health check
-(RED + GREEN), H3 log instrumentation (3 surfaces), H-close governance.
-744/744 GREEN.
+Last close: Batch 26 — Direction I-narrow (PurchaseOrder.tenantId parity). 747/747 GREEN.
 
-★ DIRECTION H COMPLETE ★
-  H1  ✅ pino logger module (logger.ts + createScopedLogger + 3 tests)
-  H2  ✅ APP_ENCRYPTION_KEY startup health check (startup-health-check.ts + 4 tests)
-  H3  ✅ Log instrumentation — xendit-invoice.ts (3 lines), webhooks/xendit/route.ts (8 lines), admin-xendit-config.ts (4 lines)
+🔴 PRE-FLIGHT FINDING NOW BANKED: the purchasing surface is FULLY Q2 NO TENANT ISOLATION.
+9 models (Vendor, PurchaseOrder, PurchaseOrderItem, PurchaseOrderItemAllocation, ShippingCost,
+ShippingCostDistribution, GoodsReceipt, GoodsReceiptItem, PurchaseInvoice) all have
+`@@schema("public")` + no tenantId column. Batch 26 closed PurchaseOrder (parent-most).
+Eight models remain.
 
-## 🔴 BLOCKING — Three deploy gates (unchanged)
-
-1. **APP_ENCRYPTION_KEY** in .env.staging + .env.prod (from Batch 21a).
-   `openssl rand -base64 32 | tr -d '\n' | head -c 44`. CREDENTIALS.md.
-   Komodo Stack restart.
-2. **Three migrations apply** on each env via
-   `pnpm --filter @orqafy/db exec prisma migrate deploy`:
-   - 20260521194500_add_tenant_id_to_ecommerce_orders (Batch 21c)
-   - 20260529014600_add_webhook_processed_at_to_ecommerce_orders (Batch 22)
-   - 20260529080000_add_tenant_id_to_ecommerce_order_items (Batch 24)
-   Full procedure: docs/deployment-direction-f.md.
+## 🔴 BLOCKING — Three deploy gates (UPDATED — now FOUR migrations)
+1. APP_ENCRYPTION_KEY in .env.staging + .env.prod + Komodo restart.
+2. prisma migrate deploy of 21c (ecommerce_orders.tenantId).
+3. prisma migrate deploy of 22 (webhookProcessedAt).
+4. prisma migrate deploy of 24 (ecommerce_order_items.tenantId).
+5. NEW — prisma migrate deploy of 26 (20260529100000_add_tenant_id_to_purchase_orders).
+See docs/deployment-direction-f.md for full procedure.
 
 ## Recommended next directions
 
-### Direction I — PurchaseOrderItem tenantId parity (T1 ~6K) ★ recommended next
-   - Same pattern as Direction G (sibling-model parent-backfill).
-   - PurchaseOrderItem lacks tenantId; PurchaseOrder has it.
-   - 5-step migration, router call-site update, 2 RED→GREEN tests.
-   - Single session, ~6K tokens. Lowest-risk, highest-ROI next step.
+### Direction I-2 — PurchaseOrderItem.tenantId parity (T1 ~7K) ★ recommended next
+   - Parent-backfill pattern from Batch 24 — UPDATE FROM purchase_orders via JOIN on purchase_order_id.
+   - 1 migration, 1 schema change, 1 router call-site edit at purchasing.ts:345 (`tx.purchaseOrderItem.create`), 2-3 RED→GREEN tests.
+   - Same shape as Direction G (EcommerceOrderItem) — cleanest, fastest follow-on.
+   - Lowest-risk, highest-ROI next step.
+
+### Direction I-3 — PurchaseOrderItemAllocation.tenantId (T1 ~6K)
+   - Grandchild parity. Two-hop backfill: UPDATE FROM purchase_order_items (item_id JOIN, items get tenantId in I-2).
+   - 1 migration, schema, 2 call-site edits (purchasing.ts:360 create, 634/656 update), 2 RED→GREEN tests.
+
+### Direction I-4 — PurchaseOrder status-transition guards (T1 ~6K)
+   - Add tenant-mismatch NOT_FOUND guards to submit/approve/markOrdered/cancel mutations (lines 391-460).
+   - REQUIRES RED tests FIRST per Rule 25 TDD — deferred from Batch 26 explicitly.
+   - 4 RED tests asserting each mutation throws on tenantId mismatch; then 4 guard inserts.
+
+### Direction I-5 — Sibling wave (T2 ~20-25K, may need 2 sub-batches)
+   - ShippingCost + ShippingCostDistribution + GoodsReceipt + GoodsReceiptItem + PurchaseInvoice.
+   - Either one big batch (T2) or 2 sub-batches (T1 each).
+   - Suggest splitting: I-5a = ShippingCost + ShippingCostDistribution + GoodsReceipt; I-5b = GoodsReceiptItem + PurchaseInvoice.
 
 ### Direction B — Mobile Expo scaffold (T3 ~50K, multi-session)
-   - apps/mobile/ doesn't exist yet.
-   - Different track entirely; appropriate now that web surface is feature-complete.
+   - apps/mobile/ doesn't exist yet. Different track entirely.
 
-## Standing 9-point pre-flight (run before any code on any batch)
+## Standing 9-point pre-flight (run before any code on any batch — REINFORCED)
 
 1. `git status` + `git log -1` — confirm tree state.
-2. `pnpm --filter @orqafy/web test` — confirm 744/744 GREEN baseline.
+2. `pnpm --filter @orqafy/web test` — confirm 747/747 GREEN baseline.
 3. Read input Zod schema of any router procedure the batch claims to reuse.
 4. If router newly READS a field, verify all existing tests on that path mock the field.
-5. Grep schema.prisma for any model in scope; confirm fields before scoping migrations.
+5. Grep schema.prisma for any model in scope; **emit four-quadrant verdict per model** (public+tid / public-only / no-schema+tid / no-schema-only). Never trust .whatsnext premise alone.
 6. Confirm package.json has any third-party library called out in scope.
 7. Re-read .claude/rules/memory-governance.md §1 for the tier classification.
 8. Emit explicit branch-creation line item in the BUILD BATCH PROPOSAL.
-9. For publicProcedure vs protectedProcedure claims, grep the router to verify.
+9. For publicProcedure vs protectedProcedure claims, grep the router to verify. **Verify the EXACT test path against the router composition block (`createTRPCRouter({ key: subRouter })`) — model name often differs from mount key (e.g. `poRouter` mounts as `po:`).**
+
 
 ## Recurring-pattern lessons banked (apply at next batch PRE-FLIGHT)
 

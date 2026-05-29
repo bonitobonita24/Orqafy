@@ -579,9 +579,17 @@ Schema-vs-spec drift remained the biggest source of post-write fixes despite exp
 
 ## Next Action
 
-**CURRENT STATE: Phase 8 Batch 24 ✅ COMPLETE (Direction G: EcommerceOrderItem.tenantId parity). Per-tenant gap on ecommerce surface fully closed. 737/737 GREEN. Next: Batch 25 — Direction H (observability) / Direction I (PurchaseOrderItem tenantId) / Direction B (Mobile).**
+**CURRENT STATE: Phase 8 Batch 26 ✅ COMPLETE (Direction I-narrow: PurchaseOrder.tenantId parity). Parent-most purchasing model now tenant-scoped on list/byId/create. 747/747 GREEN. Pre-flight discovered .whatsnext Direction I premise was wrong — entire purchasing surface (9 models) is Q2 NO TENANT ISOLATION. Batch 26 closes the root; Directions I-2 through I-5 queued for subsequent parent-backfill waves.**
 
-1. **Phase 8 Batch 24 ✅ COMPLETE (Direction G: EcommerceOrderItem.tenantId parity) — 2026-05-29:**
+1. **Phase 8 Batch 26 ✅ COMPLETE (Direction I-narrow: PurchaseOrder.tenantId parity) — 2026-05-29:**
+   - I-1 ✅ RED tests: 3 assertions (list WHERE tenantId, create data tenantId, byId tenant-mismatch NOT_FOUND). Path-fix amend after first dispatch used wrong router key (`purchaseOrder` → `po`).
+   - I-2 ✅ schema + migration: PurchaseOrder.tenantId column + Tenant back-pointer + 5-step backfill from tenants table (mirrors 21c since no parent has tenantId on this model).
+   - I-3a ✅ GREEN: po.list shared `where` const + tenantId injection; po.byId NOT_FOUND guard on tenant mismatch; po.create data.tenantId from ctx.
+   - I-4 ✅ governance close + squash-merge.
+   - Tests: 744 → 747 GREEN (+3). Typecheck 0 errors. Lint 0 errors.
+   - Deploy gates: +1 migration (20260529100000). All prior gates carry forward.
+
+2. **Phase 8 Batch 24 ✅ COMPLETE (Direction G: EcommerceOrderItem.tenantId parity) — 2026-05-29:**
    - 2026-05-29 — Direction G shipped — EcommerceOrderItem.tenantId column + Tenant back-pointer + 3-stage backfill migration. Per-tenant gap on ecommerce surface fully closed. 737/737 GREEN.
    - G1 ✅ RED tests: 2 tests asserting tenantId passed to ecommerceOrderItem.create (publicProcedure placeOrderAsCustomer + protectedProcedure placeOrder)
    - G2a ✅ Schema + migration: EcommerceOrderItem.tenantId NOT NULL + Tenant relation + migration 20260529080000 (5-step: ADD nullable → UPDATE FROM parent → SET NOT NULL → FK → INDEX)

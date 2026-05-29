@@ -1089,3 +1089,63 @@
   type inline as `{ assertEncryptionKeyHealthy: () => void }`. Strict-mode
   passes, lint passes. If the require() pattern is ever replaced with a
   top-level ESM import, this footnote becomes moot.
+
+## 2026-05-29 — 🟤 .whatsnext premises are HYPOTHESES, not facts — verify at pre-flight
+- Type:      🟤 decision
+- Phase:     Phase 8 Batch 26 Direction I
+- Files:     .whatsnext (will be corrected this batch)
+- Concepts:  pre-flight, four-quadrant-rule, schema-grep, premise-verification
+- Narrative: `.whatsnext` Direction I claimed "PurchaseOrderItem lacks tenantId;
+  PurchaseOrder HAS it" — sized T1 ~6K. Pre-flight schema grep proved
+  PurchaseOrder ALSO lacks tenantId. Same for 8 sibling purchasing models
+  (Vendor + PurchaseOrder + PurchaseOrderItem + PurchaseOrderItemAllocation +
+  ShippingCost + ShippingCostDistribution + GoodsReceipt + GoodsReceiptItem +
+  PurchaseInvoice — all Q2 per the 2026-05-22 four-quadrant lesson).
+  The .whatsnext author (Opus session that closed Batch 25) likely
+  pattern-matched from EcommerceOrder→EcommerceOrderItem (Direction G)
+  without re-running the four-quadrant check. Pre-flight step #5 (schema
+  grep for @@schema + tenantId per scope model) caught it. LOCKED rule:
+  every Direction's .whatsnext blurb is a hypothesis. The standing 9-point
+  pre-flight is authoritative. Same applies to any "follow-on" or
+  "obvious next step" predicted by a prior batch — may be stale when
+  picked up. Mitigation: every BUILD BATCH PROPOSAL must include the
+  quadrant-check output for every model in scope, not a reference to it.
+
+## 2026-05-29 — 🟢 Direction I-narrow split — parent-first wave for surface-wide Q2 gap
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 26 Direction I
+- Files:     purchasing surface (9 models), starting with PurchaseOrder
+- Concepts:  scope-splitting, parent-first, backfill-from-tenants-vs-parent, multi-batch-wave, defense-in-depth, TDD-discipline
+- Narrative: When pre-flight finds a SURFACE-WIDE Q2 gap (9 models needing
+  tenantId, like purchasing), the right pattern is parent-first split:
+    Batch N — root parent (PurchaseOrder) — backfill from tenants table
+    Batch N+1 — direct child (PurchaseOrderItem) — backfill from parent JOIN
+    Batch N+2 — grandchild (PurchaseOrderItemAllocation) — backfill from parent JOIN
+    Batch N+3 — sibling waves (ShippingCost + GoodsReceipt + PurchaseInvoice)
+  Same shape Direction F used (21a/b/c). Each batch is T1 or T2, never T3
+  thrash zone. Per-batch RED tests cover only the model added this batch.
+  CRITICAL — defense-in-depth guards on the parent's update/status flows
+  go in their OWN batch with their OWN RED tests (Rule 25 TDD) — never
+  smuggled in alongside an additive parity migration. Batch 26 deferred
+  status-transition guards (submit/approve/markOrdered/cancel) to a
+  follow-on batch precisely because no RED tests existed for them yet —
+  adding guards without RED tests violates the Rule 25 TDD discipline
+  AND creates the worst kind of latent bug (looks safe but unverified).
+
+## 2026-05-29 — 🔴 Router mount-key drift — `poRouter` is `po:` not `purchaseOrder:`
+- Type:      🔴 gotcha
+- Phase:     Phase 8 Batch 26 Direction I-1 (RED test dispatch)
+- Files:     apps/web/src/server/trpc/routers/purchasing.ts (line 702 composition)
+- Concepts:  trpc, nested-router, mount-key, test-path-mismatch, false-pass
+- Narrative: `poRouter` (defined at line 208) is mounted under key `po:`
+  in `purchasingRouter` at line 702: `{ vendor: vendorRouter, po: poRouter, goodsReceipt: goodsReceiptRouter }`.
+  So the test path is `createCaller(ctx).purchasing.po.list(...)` — NOT
+  `purchasing.purchaseOrder.list(...)`. First I-1 dispatch used the
+  wrong path and got TWO "No procedure found" failures + ONE FALSE PASS
+  (the `.rejects.toThrow()` test passed because TRPCError "No procedure
+  found" matched the matcher — a path-error masqueraded as a tenant-guard
+  throw). Fix: amend with the correct path. PREVENTION: standing pre-flight
+  step #9 should explicitly verify the EXACT test path against the router
+  composition block (`createTRPCRouter({ key: subRouter, ... })`) — not
+  just the procedure name. Naming drift between model name (PurchaseOrder)
+  and router mount key (po) is the failure mode.
