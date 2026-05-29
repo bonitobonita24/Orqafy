@@ -1149,3 +1149,34 @@
   composition block (`createTRPCRouter({ key: subRouter, ... })`) — not
   just the procedure name. Naming drift between model name (PurchaseOrder)
   and router mount key (po) is the failure mode.
+
+## 2026-05-29 — 🟢 Direction I-4 helper pattern — `loadPoForTenant(id, ctx)` (from Batch 26 security review)
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 26 close (banking for Direction I-4 future batch)
+- Files:     apps/web/src/server/trpc/routers/purchasing.ts (FIVE mutations: update L380, submit L409, approve L423, markOrdered L445, cancel L459 — note: count was 4 in original Batch 26 STATE.md, security review corrected to 5 by including `update`)
+- Concepts:  helper-extract, tenant-guard, sibling-path-gate, dry, findFirst-compound-where
+- Narrative: Automated commit security review on Batch 26 flagged 3 HIGH/MEDIUM
+  findings: (1) sibling mutations (update/submit/approve/markOrdered/cancel) on
+  PurchaseOrder lack the tenant-mismatch NOT_FOUND guard that po.byId got in
+  I-3a; (2) goodsReceiptRouter.create cross-component PO reference at L548-692
+  has no tenant check before the $transaction that writes GR + StockMovement
+  + ProjectExpense + PO status update; (3) goodsReceiptRouter.list/byId leak
+  cross-tenant GR + nested PO data.
+  ALL THREE are governed by banked follow-ons (Direction I-4 for #1, Direction
+  I-5 for #2 + #3) — not bugs introduced by Batch 26, but pre-existing Q2 gaps
+  exposed by the same four-quadrant pre-flight.
+  RECOMMENDED PATTERN for Direction I-4 (when its RED tests are written):
+  extract `loadPoForTenant(id: string, ctx: TRPCContext): Promise<PurchaseOrder>`
+  helper that does either:
+    (a) `findFirst({ where: { id, tenantId: ctx.tenantId } })` then throw if null
+    (b) `findUnique({ where: { id } })` then check `po.tenantId !== ctx.tenantId`
+  Use (a) — race-free, single round-trip, no info-leak on the throw.
+  Apply to every PO-by-id read site: byId (already done I-3a), update, submit,
+  approve, markOrdered, cancel. Helper-extract pattern aligns with banked
+  Batch 21c lesson "🟢 Helper-extract refactor pattern — protected→public
+  dual-caller surfaces extract to src/lib/". For goodsReceiptRouter, prefer
+  nested-relation filter `where: { purchaseOrder: { tenantId: ctx.tenantId } }`
+  on the list/byId reads — easier than threading the helper into every parent
+  ref. Direction I-5 long-term should add tenantId directly to GoodsReceipt
+  (Q2→Q1 transition) so it's index-friendly. Pattern locks in the discipline
+  that future PO consumers cannot forget the gate.
