@@ -16,6 +16,7 @@ COPY --from=deps /app/ ./
 COPY . .
 ENV SKIP_ENV_VALIDATION=1
 RUN pnpm --filter @orqafy/db db:generate
+RUN pnpm --filter @orqafy/jobs build
 RUN pnpm --filter @orqafy/worker build
 
 # Stage 3 — minimal production runner

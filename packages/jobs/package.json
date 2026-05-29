@@ -3,12 +3,26 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
   "exports": {
-    ".": "./src/index.ts",
-    "./queues": "./src/queues/index.ts",
-    "./workers": "./src/workers/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./queues": {
+      "types": "./dist/queues/index.d.ts",
+      "default": "./dist/queues/index.js"
+    },
+    "./workers": {
+      "types": "./dist/workers/index.d.ts",
+      "default": "./dist/workers/index.js"
+    }
   },
   "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "clean": "rm -rf dist .turbo",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/"
   },

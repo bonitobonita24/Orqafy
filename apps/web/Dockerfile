@@ -21,6 +21,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV SKIP_ENV_VALIDATION=1
 RUN pnpm --filter @orqafy/db db:generate
+RUN pnpm --filter @orqafy/jobs build
 RUN pnpm --filter @orqafy/web build
 
 # Stage 3 — minimal production runner
