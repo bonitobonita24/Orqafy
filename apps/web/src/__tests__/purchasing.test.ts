@@ -970,3 +970,51 @@ describe("purchasing.goodsReceipt — Direction I-5a tenant guards (RED)", () =>
   });
 });
 
+describe("purchasing.goodsReceipt — Direction I-5b GoodsReceiptItem tenantId scoping (RED)", () => {
+  const fakeGrBase = {
+    id: "gr-1",
+    tenantId: "tenant-acme",
+    grNumber: "GR-2401-0001",
+    purchaseOrderId: "po-1",
+    receivedById: "user-admin",
+    status: "pending" as const,
+    receivedAt: new Date(),
+    notes: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  it("create passes ctx.tenantId on tx.goodsReceiptItem.create", async () => {
+    mockDb.purchaseOrder.findUnique.mockResolvedValue({
+      ...fakePoBase,
+      status: "approved" as const,
+      items: [
+        {
+          id: "poi-1",
+          tenantId: "tenant-acme",
+          description: "Widget A",
+          quantity: 10,
+          unitPrice: 100,
+          totalPrice: 1000,
+          allocations: [],
+        },
+      ],
+    });
+    mockDb.goodsReceipt.findFirst.mockResolvedValue(null);
+    mockDb.goodsReceipt.create.mockResolvedValue({ ...fakeGrBase });
+    mockDb.goodsReceiptItem.create.mockResolvedValue({});
+    mockDb.goodsReceipt.findUnique.mockResolvedValue({ ...fakeGrBase, items: [] });
+    mockDb.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(mockDb));
+
+    await createCaller(adminCtx()).purchasing.goodsReceipt.create({
+      purchaseOrderId: "po-1",
+      items: [{ description: "Widget A", quantityExpected: 10, quantityReceived: 10 }],
+    });
+    expect(mockDb.goodsReceiptItem.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ tenantId: "tenant-acme" }),
+      }),
+    );
+  });
+});
+

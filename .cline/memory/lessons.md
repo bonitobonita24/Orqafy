@@ -1268,3 +1268,11 @@
   routers (will be I-5a-router or whichever Phase 8 batch wires them to UI). Avoids the counter-pattern of either (a)
   deferring SC + SCD column work indefinitely until UI exists, or (b) widening scope to include speculative router work
   on unwired models (would violate Rule 25 TDD and YAGNI).
+
+## 2026-05-29 — 🟢 change Mixed-treatment batch pattern iterated cleanly (Batch 31)
+
+- Type:       🟢 change
+- Phase:      Phase 8 Batch 31 / Direction I-5b
+- Files:      packages/db/prisma/schema.prisma, packages/db/prisma/migrations/20260529140000_*, packages/db/prisma/migrations/20260529140100_*, apps/web/src/server/trpc/routers/purchasing.ts, apps/web/src/__tests__/purchasing.test.ts
+- Concepts:   mixed-treatment, schema-only, wired-vs-unwired, JOIN-backfill, sibling-wave, YAGNI
+- Narrative:  Batch 31 confirms the Batch 30 mixed-treatment pattern is robust across iterations. Pre-flight grep for router usage is the load-bearing predicate: zero usage → schema-only (no router edit, no test, no helper); ≥1 usage → full I-3-style (schema + migration + router-line + RED→GREEN test). PurchaseInvoice took the schema-only path (zero router usage today) and the loadPurchaseInvoiceForTenant helper was DEFERRED — extracting a helper for a model with no caller would be dead code (YAGNI). Sibling-wave batches close the full surface scope without speculative router work on unwired models. The 5-step JOIN-backfill migration template (ADD nullable → UPDATE FROM parent → SET NOT NULL → FK → INDEX) is now applied 8× across Batches 26-31 with zero variance — fully canonical.

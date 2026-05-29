@@ -606,6 +606,7 @@ export const goodsReceiptRouter = createTRPCRouter({
         for (const grItem of input.items) {
           await tx.goodsReceiptItem.create({
             data: {
+              tenantId: ctx.tenantId,
               goodsReceiptId: gr.id,
               ...(grItem.productId !== undefined ? { productId: grItem.productId } : {}),
               description: grItem.description,

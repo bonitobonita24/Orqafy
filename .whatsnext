@@ -1,4 +1,4 @@
-# Next Session — ★ DIRECTION I-5a (Batch 30) COMPLETE ★. Pick the next direction.
+# Next Session — ★ DIRECTION I-5b (Batch 31) COMPLETE ★. Pick the next direction.
 
 Last close: Batch 27 — Direction I-2 (PurchaseOrderItem.tenantId parity). 748/748 GREEN.
 
@@ -8,17 +8,19 @@ ShippingCostDistribution, GoodsReceipt, GoodsReceiptItem, PurchaseInvoice) all h
 `@@schema("public")` + no tenantId column. Batch 26 closed PurchaseOrder (parent-most).
 Eight models remain.
 
-## 🔴 BLOCKING — Deploy gates (UPDATED — now TEN migrations)
+## 🔴 BLOCKING — Deploy gates (UPDATED — now TWELVE migrations)
 1. APP_ENCRYPTION_KEY in .env.staging + .env.prod + Komodo restart.
 2. prisma migrate deploy of 21c (ecommerce_orders.tenantId).
 3. prisma migrate deploy of 22 (webhookProcessedAt).
 4. prisma migrate deploy of 24 (ecommerce_order_items.tenantId).
 5. prisma migrate deploy of 26 (20260529100000_add_tenant_id_to_purchase_orders).
 6. prisma migrate deploy of 27 (20260529110000_add_tenant_id_to_purchase_order_items).
-7. NEW — prisma migrate deploy of 28 (20260529120000_add_tenant_id_to_purchase_order_item_allocations).
+7. prisma migrate deploy of 28 (20260529120000_add_tenant_id_to_purchase_order_item_allocations).
 8. prisma migrate deploy of 20260529130000_add_tenant_id_to_shipping_costs.
 9. prisma migrate deploy of 20260529130100_add_tenant_id_to_shipping_cost_distributions.
-10. NEW — prisma migrate deploy of 20260529130200_add_tenant_id_to_goods_receipts.
+10. prisma migrate deploy of 20260529130200_add_tenant_id_to_goods_receipts.
+11. NEW — prisma migrate deploy of 20260529140000_add_tenant_id_to_goods_receipt_items.
+12. NEW — prisma migrate deploy of 20260529140100_add_tenant_id_to_purchase_invoices.
 See docs/deployment-direction-f.md for full procedure.
 
 ## Recommended next directions
@@ -35,10 +37,12 @@ See docs/deployment-direction-f.md for full procedure.
 ### Direction I-5a — Sibling wave Q1: ShippingCost + ShippingCostDistribution + GoodsReceipt (T2 ~12K) ✅ COMPLETE (Batch 30)
    - Shipped 2026-05-29. SC + SCD + GR tenantId NOT NULL via JOIN-backfill (SC+GR from PO, SCD from POI on item_id). loadGrForTenant helper mirrors loadPoForTenant. Mixed-treatment pattern: schema-only for unwired SC+SCD (no router/UI), full I-3+I-4-style for wired GR (byId + create guards + 3 RED→GREEN tests). 757/757. Dual-helper pattern now canonical for purchasing surface.
 
-### Direction I-5b — Sibling wave Q2 (GoodsReceiptItem + PurchaseInvoice) (T2 ~10K) ★ recommended next
-   - GoodsReceiptItem: child-of-GoodsReceipt, JOIN-backfill via goods_receipt_id once GoodsReceipt has tenantId (I-5a must ship first).
-   - PurchaseInvoice: standalone with purchase_order_id FK — JOIN-backfill from purchase_orders.tenant_id.
-   - Depends on I-5a completing GoodsReceipt migration.
+### Direction I-5b — Sibling wave Q2 (GoodsReceiptItem + PurchaseInvoice) (T2 ~10K) ✅ COMPLETE (Batch 31)
+   - Shipped 2026-05-29. GoodsReceiptItem (wired — full I-3-style) + PurchaseInvoice (unwired — schema-only). Both JOIN-backfill from parents (GRI from GR; PI from PO). 1 RED→GREEN test on GRI. 758/758. Mixed-treatment pattern iterated cleanly from Batch 30.
+
+### Direction I purchasing-surface tenant parity — ✅ FULLY COMPLETE (Batches 26-31)
+   - All 9 purchasing models now have tenantId NOT NULL: PurchaseOrder (B26), PurchaseOrderItem (B27), PurchaseOrderItemAllocation (B28), PurchaseOrder status guards (B29), ShippingCost + ShippingCostDistribution + GoodsReceipt (B30), GoodsReceiptItem + PurchaseInvoice (B31).
+   - Direction I purchasing-surface tenant parity COMPLETE — pick next from Vendor Q2 catalogue, Direction B Mobile Expo scaffold, or deploy 12 staging/prod migration gates.
 
 ### Direction B — Mobile Expo scaffold (T3 ~50K, multi-session)
    - apps/mobile/ doesn't exist yet. Different track entirely.
