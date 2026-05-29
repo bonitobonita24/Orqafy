@@ -134,13 +134,22 @@ async function main() {
     throw new Error('tenant_super_admin role not found');
   }
 
-  const webmasterId = createId();
-  const safeHash = passwordHash.replace(/'/g, "''");
-  await prisma.$executeRawUnsafe(
-    `INSERT INTO "${schemaName}".users (id, email, password_hash, first_name, last_name, display_name, role_id, is_active, security_version, created_at, updated_at)
-     VALUES ('${webmasterId}', 'webmaster@orqafy.local', '${safeHash}', 'Web', 'Master', 'webmaster', '${superAdminRoleId}', true, 1, NOW(), NOW())
-     ON CONFLICT (email) DO NOTHING`
-  );
+  // Webmaster lives in public.users (User model is @@schema("public")).
+  // Prisma upsert respects @@schema mapping, so this targets public regardless of current search_path.
+  await prisma.user.upsert({
+    where: { email: 'webmaster@orqafy.local' },
+    update: {},
+    create: {
+      email: 'webmaster@orqafy.local',
+      passwordHash,
+      firstName: 'Web',
+      lastName: 'Master',
+      displayName: 'webmaster',
+      roleId: superAdminRoleId,
+      isActive: true,
+      securityVersion: 1,
+    },
+  });
   console.log('  ✅ Webmaster account seeded (webmaster@orqafy.local)');
 
   // ── Departments ──
