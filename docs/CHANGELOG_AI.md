@@ -1779,3 +1779,14 @@
 - Errors resolved:     none
 - Branch:              feat/batch-23-direction-d-quickwin → squash-merged to main this session
 - Deploy gates:       (1) APP_ENCRYPTION_KEY in .env.staging + .env.prod (carried from 21a). (2) Both migrations (21c tenantId + 22 webhookProcessedAt) must apply via `pnpm --filter @orqafy/db exec prisma migrate deploy` on each env. Full playbook in docs/deployment-direction-f.md.
+
+## 2026-05-29 — Phase 8 Batch 24 — Direction G — EcommerceOrderItem.tenantId parity
+- Agent:               CLAUDE_CODE (Opus 4.7 architect + Sonnet 4.6 executor, V32 Zero Opus Execution)
+- Why:                 Defense-in-depth — closes the last per-tenant gap on the ecommerce surface introduced by Batch 21c. EcommerceOrderItem now carries tenantId directly, removing the need to JOIN through parent EcommerceOrder for any future item-level admin query.
+- Files added:         packages/db/prisma/migrations/20260529080000_add_tenant_id_to_ecommerce_order_items/migration.sql
+- Files modified:      packages/db/prisma/schema.prisma (EcommerceOrderItem model + Tenant back-pointer); apps/web/src/server/trpc/routers/storefront.ts (both ecommerceOrderItem.create call-sites pass tenantId from parent order); apps/web/src/__tests__/storefront.test.ts (2 RED→GREEN tests asserting tenantId is passed)
+- Files deleted:       none
+- Schema/migrations:   1 new migration (20260529080000) — 5-step pattern (ADD nullable → UPDATE FROM parent → SET NOT NULL → FK ON DELETE RESTRICT ON UPDATE CASCADE → INDEX). Backfill sources from parent ecommerce_orders.tenant_id (different from Batch 21c which sourced from tenants table)
+- Errors encountered:  none
+- Errors resolved:     none
+- Tests:               735 → 737 (+2 GREEN: tenantId passed to ecommerceOrderItem.create in both publicProcedure placeOrderAsCustomer + protectedProcedure placeOrder paths)

@@ -18,9 +18,10 @@
 
 Net new infrastructure requirements introduced by Direction F + Batch 22:
 1. `APP_ENCRYPTION_KEY` (32-byte base64) — required by `crypto.ts`. Without it, every checkout AND every webhook throws at decrypt-time.
-2. Two new Prisma migrations to apply:
+2. Three new Prisma migrations to apply:
    - `20260521194500_add_tenant_id_to_ecommerce_orders` — 3-stage NOT-NULL backfill (Batch 21c)
    - `20260529014600_add_webhook_processed_at_to_ecommerce_orders` — additive nullable (Batch 22)
+   - `20260529080000_add_tenant_id_to_ecommerce_order_items` — 3-stage backfill from parent order (Batch 24 — Direction G defense-in-depth, no runtime behavior change)
 3. Cloudflare Turnstile production sitekey/secret (only if not already set).
 4. Per-tenant Xendit credentials are now entered through the admin UI at runtime (no env vars to populate — `XENDIT_SECRET_KEY` and `XENDIT_WEBHOOK_TOKEN` were removed from `env.ts` in Batch 21c).
 
@@ -72,7 +73,7 @@ Then place each value in the matching env file on the host or in the Komodo Stac
 
 ---
 
-## 2. Apply the two new migrations
+## 2. Apply the three new migrations
 
 Run on EACH environment in order: dev → staging → prod.
 
@@ -81,7 +82,7 @@ Run on EACH environment in order: dev → staging → prod.
 pnpm --filter @orqafy/db exec prisma migrate deploy
 ```
 
-Expected output: 2 migrations applied (the tenantId migration AND the webhookProcessedAt migration).
+Expected output: 3 migrations applied (the tenantId migration AND the webhookProcessedAt migration AND the orderItem tenantId migration).
 
 **About the tenantId migration (Batch 21c)** — three-stage backfill:
 1. `ALTER TABLE ecommerce_orders ADD COLUMN tenant_id TEXT;` (nullable, survives ADD)
@@ -94,6 +95,11 @@ Expected output: 2 migrations applied (the tenantId migration AND the webhookPro
 - Populated DB with multiple tenants but only one is the "real" current tenant: backfill assigns ALL existing orders to the oldest tenant. If you need finer assignment, run a manual UPDATE statement BEFORE running migrate deploy.
 
 **About the webhookProcessedAt migration (Batch 22)** — additive nullable, no edge cases. Safe to apply on a live DB without downtime.
+
+**About the orderItem tenantId migration (Batch 24 — Direction G)** — three-stage backfill from parent order:
+1. `ALTER TABLE ecommerce_order_items ADD COLUMN tenant_id TEXT;` (nullable)
+2. `UPDATE ecommerce_order_items SET tenant_id = o.tenant_id FROM ecommerce_orders o WHERE ecommerce_order_items.order_id = o.id AND ecommerce_order_items.tenant_id IS NULL;` (backfill from parent order — requires Batch 21c migration to have already run on this env)
+3. `ALTER TABLE ecommerce_order_items ALTER COLUMN tenant_id SET NOT NULL;` + FK ON DELETE RESTRICT ON UPDATE CASCADE + INDEX. No runtime behavior change — defense-in-depth only.
 
 ---
 

@@ -1,65 +1,49 @@
-# Next Session — Direction D COMPLETE. Pick the next direction.
+# Next Session — Direction G COMPLETE. Pick the next direction.
 
-Last close: Batch 23 — Direction D (quickwin bundle) SHIPPED end-to-end.
-Five sub-tasks: (D1a) trackGuestOrder publicProcedure on storefront router
-({tenantSlug, orderNumber, phoneLast4} input + rate-limit + generic
-NOT_FOUND on mismatch), (D1b) guest tracking page at /[slug]/store/orders/
-track, (D2) writeAuditLog on placeOrderAsCustomer closes guest-write
-audit gap, (D3a) listAllOrders paymentStatus + paymentMethod filters,
-(D3b) admin orders page chip-row filter UI + pagination preservation.
-735/735 GREEN. Squash-merged this session.
+Last close: Batch 24 — Direction G (EcommerceOrderItem.tenantId parity) SHIPPED.
+Three commits squash-merged: G1 RED (2 tests), G2a schema + 3-stage backfill
+migration, G2b GREEN (router both sites pass tenantId from parent order).
+737/737 GREEN. Per-tenant gap on ecommerce surface fully closed.
 
-★ DIRECTION D COMPLETE ★
-  D1a ✅ trackGuestOrder publicProcedure (4 tests)
-  D1b ✅ Guest tracking page UI (128 lines, client component)
-  D2  ✅ AuditLog on guest checkout (1 test)
-  D3a ✅ listAllOrders payment filters (2 tests)
-  D3b ✅ Admin orders chip-row filters
+★ DIRECTION G COMPLETE ★
+  G1  ✅ RED tests (placeOrderAsCustomer + placeOrder tenantId assertions)
+  G2a ✅ Schema + migration (3-stage backfill from parent order)
+  G2b ✅ Router GREEN (both ecommerceOrderItem.create sites)
+  G3  ✅ Close (typecheck/lint clean, governance, squash-merge)
 
-The web storefront public surface — guest browse, Turnstile-gated guest
-checkout, per-tenant Xendit invoice creation, webhook idempotency,
-guest order tracking, AuditLog attribution, admin payment filtering —
-is now feature-complete for v1.0.
-
-Test baseline: 735/735 GREEN. Web typecheck + lint clean. 26 test files.
-
-## 🔴 BLOCKING — Two deploy gates (unchanged from Batch 22)
+## 🔴 BLOCKING — Three deploy gates now (was two)
 
 1. **APP_ENCRYPTION_KEY** in .env.staging + .env.prod (from Batch 21a).
    `openssl rand -base64 32 | tr -d '\n' | head -c 44`. CREDENTIALS.md.
    Komodo Stack restart.
-2. **Two migrations apply** on each env via
+2. **Three migrations apply** on each env via
    `pnpm --filter @orqafy/db exec prisma migrate deploy`:
    - 20260521194500_add_tenant_id_to_ecommerce_orders (Batch 21c)
    - 20260529014600_add_webhook_processed_at_to_ecommerce_orders (Batch 22)
+   - 20260529080000_add_tenant_id_to_ecommerce_order_items (Batch 24 — NEW)
    Full procedure: docs/deployment-direction-f.md.
 
 ## Recommended next directions
 
-### Direction G — EcommerceOrderItem.tenantId parity (T1 ~8K) ★ recommended next
-   - Add tenantId column to EcommerceOrderItem (currently only on parent
-     EcommerceOrder). Three-stage backfill migration mirroring Batch 21c
-     pattern. Defense-in-depth for any future direct item-level admin query.
-   - Smallest possible batch. Closes the last per-tenant gap on the
-     ecommerce surface introduced by Batch 21c.
-   - Schema change + migration + L6 tenant-guard verification + tests.
-
-### Direction B — Mobile Expo scaffold (T3 ~50K, multi-session)
-   - apps/mobile/ doesn't exist yet
-   - Different track entirely; appropriate now that web surface is
-     feature-complete at v1.0.
-
-### Direction H (NEW) — Observability bundle (T2 ~25K)
-   - Add structured logger (pino or similar) — currently no logger
-     infrastructure (noted in Batch 21c agent-log).
+### Direction H — Observability bundle (T2 ~25K) ★ recommended next
+   - Add structured logger (pino) — currently no logger infrastructure.
    - Wire log lines on payment events, webhook receipts, admin actions.
    - Surface APP_ENCRYPTION_KEY missing as a startup health check.
    - Useful before any production tenant onboards.
 
+### Direction B — Mobile Expo scaffold (T3 ~50K, multi-session)
+   - apps/mobile/ doesn't exist yet.
+   - Different track entirely; appropriate now that web surface is feature-complete.
+
+### Direction I (NEW) — PurchaseOrderItem tenantId parity (T1 ~6K)
+   - Same pattern as Direction G but for purchasing surface.
+   - Even smaller batch. Closes the analogous gap on purchasing.
+   - Schema + 3-stage backfill + router updates.
+
 ## Standing 9-point pre-flight (run before any code on any batch)
 
 1. `git status` + `git log -1` — confirm tree state.
-2. `pnpm --filter @orqafy/web test` — confirm 735/735 GREEN baseline.
+2. `pnpm --filter @orqafy/web test` — confirm 737/737 GREEN baseline.
 3. Read input Zod schema of any router procedure the batch claims to reuse.
 4. If router newly READS a field, verify all existing tests on that path mock the field.
 5. Grep schema.prisma for any model in scope; confirm fields before scoping migrations.
@@ -73,19 +57,20 @@ Test baseline: 735/735 GREEN. Web typecheck + lint clean. 26 test files.
 - 🟢 publicProcedure tenant resolution — input.tenantSlug → db.tenant.findUnique
 - 🟢 System-actor lookup for guest writes — webmaster via findFirst+orderBy createdAt asc
 - 🟢 Rate-limit tier — rateLimiters.public.check(ip) at 10/min/IP for guest mutations
-- 🟢 Auth-gated-lookup enumeration resistance — same NOT_FOUND for "wrong auth" vs "missing resource" (banked 2026-05-22 from xendit webhook, applied 2026-05-29 in trackGuestOrder)
+- 🟢 Auth-gated-lookup enumeration resistance — same NOT_FOUND for "wrong auth" vs "missing resource"
 - 🟢 sanitizePlainText on user-facing text fields before storage
 - ⚖️ Order-creation duplication tolerated — extraction deferred until 3rd variant
 - 🔴 useCart() shape gotcha — destructure mismatch caught at typecheck
-- 🟢 Intentional scope-trim — 7× consecutive single-direction batches
+- 🟢 Intentional scope-trim — 8× consecutive single-direction batches
 - 🟢 Helper-extract refactor pattern — protected→public dual-caller surfaces extract to src/lib/
 - 🟢 RED-phase Zod-enum tightening — assert specific mock-side error marker + mock was-called
 - 🟢 Atomicity through in-transaction external calls — external HTTP inside DB tx acceptable for payment surfaces
-- 🟢 As-any cast cleanup post-GREEN — grep `as any` after implementation; remove dead casts before lint flags them
+- 🟢 As-any cast cleanup post-GREEN — grep `as any` after implementation
 - 🟢 BUILT-IN NODE:CRYPTO SUFFICES — node:crypto + aes-256-gcm is FIPS-approved AEAD
 - 🟢 AES-256-GCM FORMAT — {iv}.{authTag}.{ciphertext} dot-separated base64url
 - 🟢 LAZY ENV READ FOR TESTABILITY — getKey() reads process.env at CALL time
 - 🟢 FILE-LEVEL RED — test file import of not-yet-created module fails entire file at load
-- 🟢 NEW (Batch 23): writeAuditLog inside $transaction — single atomic unit for order + stock movement + audit attribution. systemActor reuse for AuditLog.userId NOT NULL when ctx.userId is null on publicProcedure.
-- 🟢 NEW (Batch 23): Server Component chip-row filter pattern — Link-based filters with hrefFor URL serialization preserves all filters across pagination. No client-side state. Avoids needing react-query / useState for admin filter UI.
-- 🟢 NEW (Batch 23): Hoisted vi.mock pattern for new module export — when adding a new export to @orqafy/db (e.g. writeAuditLog), add vi.hoisted({mockX: vi.fn()}) + extend the existing vi.mock("@orqafy/db") block to expose it as a sibling to prisma. Mirrors the existing mockCreateInvoice pattern.
+- 🟢 (Batch 23): writeAuditLog inside $transaction — single atomic unit for order + stock movement + audit
+- 🟢 (Batch 23): Server Component chip-row filter pattern — Link-based filters with hrefFor URL serialization
+- 🟢 (Batch 23): Hoisted vi.mock pattern for new module export
+- 🟢 NEW (Batch 24): Sibling-model tenantId backfill — UPDATE FROM parent table (ecommerce_order_items.tenant_id from ecommerce_orders.tenant_id via order_id JOIN) is cleaner than re-sourcing from tenants table. Works when parent already has NOT NULL tenant_id from a prior migration.

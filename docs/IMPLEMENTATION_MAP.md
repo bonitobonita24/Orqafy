@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-29 by CLAUDE_CODE (Phase 8 Batch 23 ✅ COMPLETE — Direction D quickwin bundle: guest order tracking + AuditLog on guest checkout + admin payment filters. 735/735 GREEN.)
+# Last updated: 2026-05-29 by CLAUDE_CODE (Phase 8 Batch 24 ✅ COMPLETE — Direction G: EcommerceOrderItem.tenantId parity. Per-tenant gap on ecommerce surface fully closed. 737/737 GREEN.)
 # Note: Batch 6+ batch detail lives in docs/CHANGELOG_AI.md and .cline/STATE.md — see those files for per-batch records since this file's structured snapshot section was last refreshed at Batch 5.
 # ---
 
@@ -579,9 +579,17 @@ Schema-vs-spec drift remained the biggest source of post-write fixes despite exp
 
 ## Next Action
 
-**CURRENT STATE: Phase 8 Batch 23 ✅ COMPLETE (Direction D: quickwin bundle). Web storefront public surface feature-complete for v1.0. Next: Batch 24 planning — candidates from .whatsnext Direction G/B/H.**
+**CURRENT STATE: Phase 8 Batch 24 ✅ COMPLETE (Direction G: EcommerceOrderItem.tenantId parity). Per-tenant gap on ecommerce surface fully closed. 737/737 GREEN. Next: Batch 25 — Direction H (observability) / Direction I (PurchaseOrderItem tenantId) / Direction B (Mobile).**
 
-1. **Phase 8 Batch 23 ✅ COMPLETE (Direction D: Quickwin Bundle) — 2026-05-29:**
+1. **Phase 8 Batch 24 ✅ COMPLETE (Direction G: EcommerceOrderItem.tenantId parity) — 2026-05-29:**
+   - 2026-05-29 — Direction G shipped — EcommerceOrderItem.tenantId column + Tenant back-pointer + 3-stage backfill migration. Per-tenant gap on ecommerce surface fully closed. 737/737 GREEN.
+   - G1 ✅ RED tests: 2 tests asserting tenantId passed to ecommerceOrderItem.create (publicProcedure placeOrderAsCustomer + protectedProcedure placeOrder)
+   - G2a ✅ Schema + migration: EcommerceOrderItem.tenantId NOT NULL + Tenant relation + migration 20260529080000 (5-step: ADD nullable → UPDATE FROM parent → SET NOT NULL → FK → INDEX)
+   - G2b ✅ Router GREEN: both ecommerceOrderItem.create call-sites pass tenantId from parent order
+   - Tests: 735 → 737 GREEN (+2). Typecheck 0 errors. Lint 0 errors (removed unnecessary `as any` cast).
+   - Deploy gates: (1) APP_ENCRYPTION_KEY, (2) THREE migrations now: 21c + 22 + 20260529080000. See `docs/deployment-direction-f.md`.
+
+2. **Phase 8 Batch 23 ✅ COMPLETE (Direction D: Quickwin Bundle) — 2026-05-29:**
    - D1a ✅ `storefront.ts` trackGuestOrder publicProcedure ({tenantSlug, orderNumber, phoneLast4} → status/paymentStatus/trackingNumber/totalAmount/currency) + 4 tests
    - D1b ✅ `app/(tenant)/[slug]/store/orders/track/page.tsx` guest tracking page UI (128 lines client component)
    - D2 ✅ `storefront.ts` placeOrderAsCustomer now writes AuditLog inside $transaction — closes guest-checkout audit gap. systemActor (webmaster) attribution. +1 test.
