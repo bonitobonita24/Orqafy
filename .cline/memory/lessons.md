@@ -1209,4 +1209,22 @@
   lines, single Sonnet dispatch per sub-task, ~700K subagent total). Same discipline applied Batches 24/26.
   Counter-pattern (what NOT to do): widen scope to include grandchild + all update/findMany sites in same batch
   → tier-2 minimum, multi-dispatch coordination required, harder to verify completeness against PRODUCT.md spec.
+
+## 2026-05-29 — 🟢 Three-generation tenant chain CLOSED via JOIN-backfill cascade (Batch 28)
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 28 Direction I-3 (PurchaseOrderItemAllocation.tenantId parity)
+- Files:     packages/db/prisma/migrations/20260529120000_add_tenant_id_to_purchase_order_item_allocations/migration.sql
+- Concepts:  parent-backfill, join-update, tenant-parity, grandchild-model, migration-pattern, three-generation-chain
+- Narrative: Batch 28 closed the third generation of the purchasing chain — PurchaseOrderItemAllocation
+  (grandchild of PurchaseOrder via PurchaseOrderItem). Same JOIN-backfill pattern from Batch 27
+  reapplied one level deeper: `UPDATE allocations SET tenant_id = items.tenant_id FROM items WHERE
+  allocations.item_id = items.id`. No new pattern invention, no orphan handling, no manual reseeding —
+  just clone the Batch 27 migration with table/JOIN-source/FK substituted. Race-free, deterministic,
+  FK-integrity guaranteed by the cascade of NOT NULL parent FKs from Batch 26 → Batch 27 → Batch 28.
+  PROVEN AT 3 GENERATIONS DEEP: the JOIN-backfill cascade is the canonical pattern for any
+  arbitrarily-deep parent-scoped tenancy backfill. Direction I-5 sibling wave
+  (ShippingCost/ShippingCostDistribution/GoodsReceipt/GoodsReceiptItem/PurchaseInvoice) all reuse
+  this shape — most have PurchaseOrder as direct parent (JOIN on purchase_order_id), GoodsReceiptItem
+  uses GoodsReceipt as parent (which JOINs from PO). Tier-1 ceiling per sub-batch achievable for
+  every remaining model. Pattern complete — no further migration design needed for the purchasing surface.
   Banking this as an explicit decision so future batches don't get talked into "while we're here" scope creep.

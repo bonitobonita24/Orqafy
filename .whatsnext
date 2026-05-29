@@ -1,4 +1,4 @@
-# Next Session — ★ DIRECTION I-2 (Batch 27) COMPLETE ★. Pick the next direction.
+# Next Session — ★ DIRECTION I-3 (Batch 28) COMPLETE ★. Pick the next direction.
 
 Last close: Batch 27 — Direction I-2 (PurchaseOrderItem.tenantId parity). 748/748 GREEN.
 
@@ -8,13 +8,14 @@ ShippingCostDistribution, GoodsReceipt, GoodsReceiptItem, PurchaseInvoice) all h
 `@@schema("public")` + no tenantId column. Batch 26 closed PurchaseOrder (parent-most).
 Eight models remain.
 
-## 🔴 BLOCKING — Deploy gates (UPDATED — now SIX migrations)
+## 🔴 BLOCKING — Deploy gates (UPDATED — now SEVEN migrations)
 1. APP_ENCRYPTION_KEY in .env.staging + .env.prod + Komodo restart.
 2. prisma migrate deploy of 21c (ecommerce_orders.tenantId).
 3. prisma migrate deploy of 22 (webhookProcessedAt).
 4. prisma migrate deploy of 24 (ecommerce_order_items.tenantId).
 5. prisma migrate deploy of 26 (20260529100000_add_tenant_id_to_purchase_orders).
-6. NEW — prisma migrate deploy of 27 (20260529110000_add_tenant_id_to_purchase_order_items).
+6. prisma migrate deploy of 27 (20260529110000_add_tenant_id_to_purchase_order_items).
+7. NEW — prisma migrate deploy of 28 (20260529120000_add_tenant_id_to_purchase_order_item_allocations).
 See docs/deployment-direction-f.md for full procedure.
 
 ## Recommended next directions
@@ -22,13 +23,10 @@ See docs/deployment-direction-f.md for full procedure.
 ### Direction I-2 — PurchaseOrderItem.tenantId parity (T1 ~7K) ✅ COMPLETE (Batch 27)
    - Shipped 2026-05-29. JOIN-backfill from parent purchase_orders. 1 migration + 1 schema edit + 1 router line + 1 RED→GREEN test. 748/748.
 
-### Direction I-3 — PurchaseOrderItemAllocation.tenantId parity (T1 ~6K) ★ recommended next
-   - Grandchild — JOIN-backfill UPDATE FROM purchase_order_items ON item_id (now that poi.tenantId is NOT NULL from Batch 27).
-   - 1 migration + 1 schema edit + 1-2 router edits at `tx.purchaseOrderItemAllocation.create` sites (L362 in po.create txn, plus any GR-driven allocation updates). 1-2 RED→GREEN tests.
-   - Same shape as Direction I-2 — lowest-risk, highest-ROI next step.
-   - Completes the PO → POI → POIA three-generation chain.
+### Direction I-3 — PurchaseOrderItemAllocation.tenantId parity (T1 ~6K) ✅ COMPLETE (Batch 28)
+   - Shipped 2026-05-29. Grandchild JOIN-backfill from purchase_order_items.tenant_id on item_id. 1 migration + 1 schema edit + 1 router line + 1 RED→GREEN test. 749/749. PO → POI → POIA three-generation chain CLOSED.
 
-### Direction I-4 — PurchaseOrder status-transition guards (T1 ~6K)
+### Direction I-4 — PurchaseOrder status-transition guards (T1 ~6K) ★ recommended next
    - Add tenant-mismatch NOT_FOUND guards to submit/approve/markOrdered/cancel mutations (lines 391-460).
    - REQUIRES RED tests FIRST per Rule 25 TDD — deferred from Batch 26 explicitly.
    - 4 RED tests asserting each mutation throws on tenantId mismatch; then 4 guard inserts.

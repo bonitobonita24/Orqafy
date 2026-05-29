@@ -363,6 +363,7 @@ export const poRouter = createTRPCRouter({
               await tx.purchaseOrderItemAllocation.create({
                 data: {
                   itemId: created.id,
+                  tenantId: ctx.tenantId,
                   type: alloc.type,
                   quantity: alloc.quantity,
                   ...(alloc.projectId !== undefined ? { projectId: alloc.projectId } : {}),

@@ -807,3 +807,37 @@ describe("purchasing.po — Direction I-2 PurchaseOrderItem tenantId scoping (RE
     );
   });
 });
+
+describe("purchasing.po — Direction I-3 PurchaseOrderItemAllocation tenantId scoping (RED)", () => {
+  it("passes ctx.tenantId on purchaseOrderItemAllocation.create inside po.create transaction", async () => {
+    mockDb.vendor.findUnique.mockResolvedValue({ id: "vendor-1", isActive: true });
+    mockDb.purchaseOrder.findFirst.mockResolvedValue(null);
+    mockDb.purchaseOrder.create.mockResolvedValue({ ...fakePoBase });
+    mockDb.purchaseOrderItem.create.mockResolvedValue({ id: "poi-1" });
+    mockDb.purchaseOrderItemAllocation.create.mockResolvedValue({});
+    mockDb.purchaseOrder.findUnique.mockResolvedValue({
+      ...fakePoBase,
+      items: [],
+      vendor: fakeVendor,
+    });
+    mockDb.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(mockDb));
+
+    await createCaller(adminCtx()).purchasing.po.create({
+      vendorId: "vendor-1",
+      items: [
+        {
+          description: "Widget A",
+          quantity: 10,
+          unitPrice: 100,
+          allocations: [{ type: "company_expense", quantity: 10 }],
+        },
+      ],
+    });
+    expect(mockDb.purchaseOrderItemAllocation.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ tenantId: "tenant-acme" }),
+      }),
+    );
+  });
+});
+

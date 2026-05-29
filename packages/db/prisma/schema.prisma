@@ -49,6 +49,7 @@ model Tenant {
   ecommerceOrderItems EcommerceOrderItem[]
   purchaseOrders   PurchaseOrder[]
   purchaseOrderItems PurchaseOrderItem[]
+  purchaseOrderItemAllocations PurchaseOrderItemAllocation[]
 
   @@map("tenants")
   @@schema("public")
@@ -805,6 +806,8 @@ model PurchaseOrderItemAllocation {
   id              String   @id @default(cuid())
   itemId          String   @map("item_id")
   item            PurchaseOrderItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  tenantId        String   @map("tenant_id")
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   type            String   // stock | project_expense | company_expense
   quantity        Decimal  @db.Decimal(12, 4)
   projectId       String?  @map("project_id")
@@ -816,6 +819,7 @@ model PurchaseOrderItemAllocation {
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@index([itemId])
+  @@index([tenantId])
   @@map("purchase_order_item_allocations")
   @@schema("public")
 }
