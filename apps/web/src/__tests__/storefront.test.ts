@@ -468,6 +468,43 @@ describe("storefront router", () => {
         TRPCError,
       );
     });
+
+    // ─── Batch 24 Direction G — RED ──────────────────────────────────────────
+    it("passes tenantId to ecommerceOrderItem.create from authenticated tenant context", async () => {
+      mockStockAvailable();
+      let orderItemCreate: ReturnType<typeof vi.fn> = vi.fn();
+      mockDb.$transaction.mockImplementation(async (fn: any) => {
+        orderItemCreate = vi.fn().mockResolvedValue({});
+        const tx = {
+          ecommerceOrder: {
+            create: vi.fn().mockResolvedValue({
+              id: "order-456",
+              orderNumber: "EC-2605-0001",
+              customerId: CUSTOMER_ID,
+              status: "pending",
+              subtotal: 250,
+              totalAmount: 250,
+              tenantId: "tenant-ctx-id",
+            }),
+          },
+          ecommerceOrderItem: { create: orderItemCreate },
+          warehouseStock: { update: vi.fn() },
+          stockMovement: { create: vi.fn() },
+        };
+        return fn(tx);
+      });
+
+      const caller = createCaller(
+        authenticatedCtx(),
+      );
+      await caller.storefront.placeOrder(validInput);
+
+      expect(orderItemCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ tenantId: "tenant-ctx-id" }),
+        }),
+      );
+    });
   });
 
   // ─── placeOrderAsCustomer (guest publicProcedure) ────────────────────────
@@ -816,6 +853,45 @@ describe("storefront router", () => {
       });
       expect((res as any).invoiceUrl).toBeUndefined();
       expect(mockCreateInvoice).not.toHaveBeenCalled();
+    });
+
+    // ─── Batch 24 Direction G — RED ──────────────────────────────────────────
+    it("passes tenantId to ecommerceOrderItem.create from resolved tenant", async () => {
+      mockGuestHappyPath();
+      let orderItemCreate: ReturnType<typeof vi.fn> = vi.fn();
+      mockDb.$transaction.mockImplementation(async (fn: any) => {
+        orderItemCreate = vi.fn().mockResolvedValue({});
+        const tx = {
+          customer: {
+            create: vi.fn().mockResolvedValue({ id: NEW_CUSTOMER_ID }),
+          },
+          ecommerceOrder: {
+            create: vi.fn().mockResolvedValue({
+              id: ORDER_ID,
+              orderNumber: "EC-2605-0001",
+              customerId: NEW_CUSTOMER_ID,
+              status: "pending",
+              subtotal: 250,
+              totalAmount: 250,
+              tenantId: "tenant-fixture-id",
+            }),
+          },
+          ecommerceOrderItem: { create: orderItemCreate },
+          warehouseStock: { update: vi.fn() },
+          stockMovement: { create: vi.fn() },
+          auditLog: { create: vi.fn() },
+        };
+        return fn(tx);
+      });
+
+      const caller = createCaller(unauthenticatedCtx());
+      await caller.storefront.placeOrderAsCustomer(validGuestInput);
+
+      expect(orderItemCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ tenantId: "tenant-fixture-id" }),
+        }),
+      );
     });
   });
 

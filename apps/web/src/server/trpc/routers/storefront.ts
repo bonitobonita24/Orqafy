@@ -243,6 +243,7 @@ export const storefrontRouter = createTRPCRouter({
           await tx.ecommerceOrderItem.create({
             data: {
               orderId: created.id,
+              tenantId: created.tenantId,
               productId: item.productId,
               description: productNameById.get(item.productId) ?? "",
               quantity: item.quantity,
@@ -431,6 +432,7 @@ export const storefrontRouter = createTRPCRouter({
           await tx.ecommerceOrderItem.create({
             data: {
               orderId: created.id,
+              tenantId: created.tenantId,
               productId: item.productId,
               description: productNameById.get(item.productId) ?? "",
               quantity: item.quantity,

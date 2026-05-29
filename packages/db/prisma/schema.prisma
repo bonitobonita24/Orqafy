@@ -46,6 +46,7 @@ model Tenant {
   smtpConfig       TenantSmtpConfig?
   xenditConfig     TenantXenditConfig?
   ecommerceOrders  EcommerceOrder[]
+  ecommerceOrderItems EcommerceOrderItem[]
 
   @@map("tenants")
   @@schema("public")
@@ -2010,6 +2011,8 @@ model EcommerceOrderItem {
   id              String   @id @default(cuid())
   orderId         String   @map("order_id")
   order           EcommerceOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  tenantId        String   @map("tenant_id")
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
   productId       String   @map("product_id")
   product         Product  @relation(fields: [productId], references: [id])
   description     String
@@ -2020,6 +2023,7 @@ model EcommerceOrderItem {
   createdAt       DateTime @default(now()) @map("created_at")
 
   @@index([orderId])
+  @@index([tenantId])
   @@map("ecommerce_order_items")
   @@schema("public")
 }
