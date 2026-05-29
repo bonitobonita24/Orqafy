@@ -39,6 +39,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  transpilePackages: ["@orqafy/jobs", "@orqafy/db"],
   serverExternalPackages: [
     "@blocknote/core",
     "@react-pdf/renderer",
@@ -59,6 +60,15 @@ const nextConfig: NextConfig = {
   // CORS handled in middleware.ts and tRPC context
   env: {
     ALLOWED_ORIGINS: allowedOrigins.join(","),
+  },
+  webpack: (config) => {
+    // Workspace packages with "type": "module" use ESM .js extensions in source.
+    // Map .js imports to .ts files so webpack resolves them in TS workspace packages.
+    config.resolve.extensionAlias = {
+      ".js": [".ts", ".tsx", ".js"],
+      ".mjs": [".mts", ".mjs"],
+    };
+    return config;
   },
 };
 
