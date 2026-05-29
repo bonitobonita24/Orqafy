@@ -37,6 +37,19 @@ async function generateGrNumber(): Promise<string> {
   return `${prefix}${String(seq).padStart(4, "0")}`;
 }
 
+// ── Tenant-scoped PO loader ───────────────────────────────────────────────────
+
+async function loadPoForTenant(
+  id: string,
+  ctx: { tenantId: string },
+): Promise<NonNullable<Awaited<ReturnType<typeof db.purchaseOrder.findUnique>>>> {
+  const po = await db.purchaseOrder.findUnique({ where: { id } });
+  if (!po || po.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Purchase order not found" });
+  }
+  return po;
+}
+
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
 const allocationSchema = z.object({
@@ -391,9 +404,8 @@ export const poRouter = createTRPCRouter({
         notes: z.string().max(2000).optional(),
       })
     )
-    .mutation(async ({ input }) => {
-      const po = await db.purchaseOrder.findUnique({ where: { id: input.id } });
-      if (po === null) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ ctx, input }) => {
+      const po = await loadPoForTenant(input.id, ctx);
       if (po.status !== "draft") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft POs can be edited" });
       }
@@ -412,9 +424,8 @@ export const poRouter = createTRPCRouter({
 
   submit: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const po = await db.purchaseOrder.findUnique({ where: { id: input.id } });
-      if (po === null) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ ctx, input }) => {
+      const po = await loadPoForTenant(input.id, ctx);
       if (po.status !== "draft") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft POs can be submitted" });
       }
@@ -431,8 +442,7 @@ export const poRouter = createTRPCRouter({
       if (!ctx.roles.some((r) => allowedRoles.includes(r))) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient role to approve POs" });
       }
-      const po = await db.purchaseOrder.findUnique({ where: { id: input.id } });
-      if (po === null) throw new TRPCError({ code: "NOT_FOUND" });
+      const po = await loadPoForTenant(input.id, ctx);
       if (po.status !== "pending_approval") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only pending_approval POs can be approved" });
       }
@@ -448,9 +458,8 @@ export const poRouter = createTRPCRouter({
 
   markOrdered: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const po = await db.purchaseOrder.findUnique({ where: { id: input.id } });
-      if (po === null) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ ctx, input }) => {
+      const po = await loadPoForTenant(input.id, ctx);
       if (po.status !== "approved") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only approved POs can be marked as ordered" });
       }
@@ -462,9 +471,8 @@ export const poRouter = createTRPCRouter({
 
   cancel: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const po = await db.purchaseOrder.findUnique({ where: { id: input.id } });
-      if (po === null) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ ctx, input }) => {
+      const po = await loadPoForTenant(input.id, ctx);
       const cancellable = ["draft", "pending_approval", "approved"];
       if (!cancellable.includes(po.status)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "PO cannot be cancelled in its current status" });

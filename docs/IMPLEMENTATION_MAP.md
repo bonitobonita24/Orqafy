@@ -1,6 +1,6 @@
 # Implementation Map — Orqafy
 # Current build state snapshot. Rewritten after every task.
-# Last updated: 2026-05-29 by CLAUDE_CODE (Phase 8 Batch 28 ✅ COMPLETE — Direction I-3: PurchaseOrderItemAllocation.tenantId parity. Grandchild JOIN-backfill from PurchaseOrderItem.tenant_id on item_id. PO → POI → POIA three-generation chain CLOSED. 749/749 GREEN.)
+# Last updated: 2026-05-29 by CLAUDE_CODE (Phase 8 Batch 29 ✅ COMPLETE — Direction I-4: PurchaseOrder status-transition tenant guards. loadPoForTenant helper extracted; 5 mutations (update/submit/approve/markOrdered/cancel) guarded against cross-tenant id. Zero schema, zero migration. 754/754 GREEN.)
 # Note: Batch 6+ batch detail lives in docs/CHANGELOG_AI.md and .cline/STATE.md — see those files for per-batch records since this file's structured snapshot section was last refreshed at Batch 5.
 # ---
 

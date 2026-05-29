@@ -1,4 +1,4 @@
-# Next Session — ★ DIRECTION I-3 (Batch 28) COMPLETE ★. Pick the next direction.
+# Next Session — ★ DIRECTION I-4 (Batch 29) COMPLETE ★. Pick the next direction.
 
 Last close: Batch 27 — Direction I-2 (PurchaseOrderItem.tenantId parity). 748/748 GREEN.
 
@@ -8,7 +8,7 @@ ShippingCostDistribution, GoodsReceipt, GoodsReceiptItem, PurchaseInvoice) all h
 `@@schema("public")` + no tenantId column. Batch 26 closed PurchaseOrder (parent-most).
 Eight models remain.
 
-## 🔴 BLOCKING — Deploy gates (UPDATED — now SEVEN migrations)
+## 🔴 BLOCKING — Deploy gates (unchanged at SEVEN — Batch 29 added no migration)
 1. APP_ENCRYPTION_KEY in .env.staging + .env.prod + Komodo restart.
 2. prisma migrate deploy of 21c (ecommerce_orders.tenantId).
 3. prisma migrate deploy of 22 (webhookProcessedAt).
@@ -26,15 +26,18 @@ See docs/deployment-direction-f.md for full procedure.
 ### Direction I-3 — PurchaseOrderItemAllocation.tenantId parity (T1 ~6K) ✅ COMPLETE (Batch 28)
    - Shipped 2026-05-29. Grandchild JOIN-backfill from purchase_order_items.tenant_id on item_id. 1 migration + 1 schema edit + 1 router line + 1 RED→GREEN test. 749/749. PO → POI → POIA three-generation chain CLOSED.
 
-### Direction I-4 — PurchaseOrder status-transition guards (T1 ~6K) ★ recommended next
-   - Add tenant-mismatch NOT_FOUND guards to submit/approve/markOrdered/cancel mutations (lines 391-460).
-   - REQUIRES RED tests FIRST per Rule 25 TDD — deferred from Batch 26 explicitly.
-   - 4 RED tests asserting each mutation throws on tenantId mismatch; then 4 guard inserts.
+### Direction I-4 — PurchaseOrder status-transition guards (T1 ~6K) ✅ COMPLETE (Batch 29)
+   - Shipped 2026-05-29. `loadPoForTenant(id, ctx)` helper extracted (banked from Batch 26 security review); 5 mutations guarded (update/submit/approve/markOrdered/cancel) against cross-tenant id; 5 RED→GREEN tests; zero schema, zero migration. 754/754 GREEN. Helper shape canonical for I-5 sibling-model guards.
 
-### Direction I-5 — Sibling wave (T2 ~20-25K, may need 2 sub-batches)
-   - ShippingCost + ShippingCostDistribution + GoodsReceipt + GoodsReceiptItem + PurchaseInvoice.
-   - Either one big batch (T2) or 2 sub-batches (T1 each).
-   - Suggest splitting: I-5a = ShippingCost + ShippingCostDistribution + GoodsReceipt; I-5b = GoodsReceiptItem + PurchaseInvoice.
+### Direction I-5a — Sibling wave Q1 (ShippingCost + ShippingCostDistribution + GoodsReceipt) (T2 ~12K) ★ recommended next
+   - ShippingCost + ShippingCostDistribution: parent-backfill JOIN from PurchaseOrder.tenantId via purchase_order_id FK. GoodsReceipt: 2-level cascade GR→PO (JOIN from purchase_orders.tenant_id on purchase_order_id).
+   - Each model: 1 migration + 1 schema edit + 1 router create-site guard + 1 RED→GREEN test.
+   - Use `loadPoForTenant` shape to define `loadGoodsReceiptForTenant` for any GR status-transition mutations once GR has tenantId.
+
+### Direction I-5b — Sibling wave Q2 (GoodsReceiptItem + PurchaseInvoice) (T2 ~10K)
+   - GoodsReceiptItem: child-of-GoodsReceipt, JOIN-backfill via goods_receipt_id once GoodsReceipt has tenantId (I-5a must ship first).
+   - PurchaseInvoice: standalone with purchase_order_id FK — JOIN-backfill from purchase_orders.tenant_id.
+   - Depends on I-5a completing GoodsReceipt migration.
 
 ### Direction B — Mobile Expo scaffold (T3 ~50K, multi-session)
    - apps/mobile/ doesn't exist yet. Different track entirely.

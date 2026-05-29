@@ -1228,3 +1228,22 @@
   uses GoodsReceipt as parent (which JOINs from PO). Tier-1 ceiling per sub-batch achievable for
   every remaining model. Pattern complete — no further migration design needed for the purchasing surface.
   Banking this as an explicit decision so future batches don't get talked into "while we're here" scope creep.
+
+## 2026-05-29 — 🟢 Helper-extraction pattern locks cross-cutting tenant guards (Batch 29)
+- Type:      🟢 change
+- Phase:     Phase 8 Batch 29 Direction I-4 BUILD BATCH PROPOSAL design + I-4-2 GREEN dispatch
+- Files:     apps/web/src/server/trpc/routers/purchasing.ts (helper at ~L40-50; 5 call sites at update/submit/approve/markOrdered/cancel)
+- Concepts:  helper-extraction, dry, tenant-guard, write-path-tenancy, security-review-bank-realization
+- Narrative: Batch 26 byId resolver inlined the tenant guard at L272: `if (!po || po.tenantId !== ctx.tenantId) throw NOT_FOUND`.
+  Batch 26 security review then banked `loadPoForTenant(id, ctx)` as a helper for the 5 status-transition mutations
+  that also load PO-by-id but had been left tenant-blind. Batch 29 realized the helper: structural ctx type
+  `{ tenantId: string }` avoids importing TRPCContext, return type `Promise<NonNullable<Awaited<ReturnType<...>>>>`
+  derives from Prisma's findUnique signature so no manual model-type maintenance is needed. Each of the 5 call
+  sites collapsed from 2 lines (findUnique + null-check) to 1 line. update/submit/markOrdered/cancel signatures
+  gained `ctx` param (approve already had it for role-check). Pattern is now CANONICAL for any future PO
+  touchpoint; same shape transfers directly to `loadGoodsReceiptForTenant`, `loadPurchaseInvoiceForTenant`,
+  `loadShippingCostForTenant` in Direction I-5. Cost: 5 sites refactored, ~25 net router lines, 1 test
+  fixture line (fakePoBase.tenantId), 5 new RED→GREEN tests. Benefit: future I-5 batches save the
+  inline-guard duplication tax. Counter-pattern avoided: copy-paste the inline guard at each new site as
+  features grow — leads to drift (one site says `NOT_FOUND` with a custom message, another with no message,
+  a third forgets the `!po` branch and crashes on null).

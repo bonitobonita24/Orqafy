@@ -136,6 +136,7 @@ const fakeVendor = {
 
 const fakePoBase = {
   id: "po-1",
+  tenantId: "tenant-acme",
   poNumber: "PO-2401-0001",
   vendorId: "vendor-1",
   createdById: "user-admin",
@@ -838,6 +839,64 @@ describe("purchasing.po — Direction I-3 PurchaseOrderItemAllocation tenantId s
         data: expect.objectContaining({ tenantId: "tenant-acme" }),
       }),
     );
+  });
+});
+
+describe("purchasing.po — Direction I-4 PurchaseOrder tenant-scoped status guards (RED)", () => {
+  const otherTenantPo = {
+    id: "po-cross",
+    tenantId: "tenant-other",
+    status: "draft" as const,
+    poNumber: "PO-CROSS-0001",
+    vendorId: "vendor-1",
+    createdById: "user-admin",
+    approvedById: null,
+    subtotal: 100,
+    taxAmount: 0,
+    totalAmount: 100,
+    currency: "PHP",
+    expectedDelivery: null,
+    approvedAt: null,
+    orderedAt: null,
+    notes: null,
+    metadata: null,
+    createdAt: new Date("2024-01-01"),
+    updatedAt: new Date("2024-01-01"),
+  };
+
+  it("update throws NOT_FOUND when po.tenantId !== ctx.tenantId", async () => {
+    mockDb.purchaseOrder.findUnique.mockResolvedValue(otherTenantPo);
+    await expect(
+      createCaller(adminCtx()).purchasing.po.update({ id: "po-cross", notes: "hijack" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("submit throws NOT_FOUND when po.tenantId !== ctx.tenantId", async () => {
+    mockDb.purchaseOrder.findUnique.mockResolvedValue(otherTenantPo);
+    await expect(
+      createCaller(adminCtx()).purchasing.po.submit({ id: "po-cross" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("approve throws NOT_FOUND when po.tenantId !== ctx.tenantId", async () => {
+    mockDb.purchaseOrder.findUnique.mockResolvedValue({ ...otherTenantPo, status: "pending_approval" as const });
+    await expect(
+      createCaller(adminCtx()).purchasing.po.approve({ id: "po-cross" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("markOrdered throws NOT_FOUND when po.tenantId !== ctx.tenantId", async () => {
+    mockDb.purchaseOrder.findUnique.mockResolvedValue({ ...otherTenantPo, status: "approved" as const });
+    await expect(
+      createCaller(adminCtx()).purchasing.po.markOrdered({ id: "po-cross" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("cancel throws NOT_FOUND when po.tenantId !== ctx.tenantId", async () => {
+    mockDb.purchaseOrder.findUnique.mockResolvedValue(otherTenantPo);
+    await expect(
+      createCaller(adminCtx()).purchasing.po.cancel({ id: "po-cross" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });
 
