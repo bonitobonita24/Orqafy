@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DOCKER_IMAGE_NAME }}
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/orqafy
 
 jobs:
   build-and-push:
