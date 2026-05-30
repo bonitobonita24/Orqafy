@@ -1967,6 +1967,17 @@
 - Errors resolved:     sourced .env.dev via `set -a && . ./.env.dev && set +a` to pick up correct DB_USER; test ran cleanly (1/1 GREEN, 1.59s)
 - Result:              tenant-provisioning.test.ts PASSES — processor creates t_inttest_worker_co schema, clones parent tables (ecommerce_order_items, ecommerce_orders, job_order_service_lines, purchase_orders, etc.), schema_exists assertion returns true, cleanup drops schema. Direction J fully validated end-to-end.
 
+## 2026-05-30 — Task #15 — typescript.ignoreBuildErrors removal via React 19 portal augmentation (commit 428acf4)
+- Agent:               CLAUDE_CODE (Opus 4.7 architect + Sonnet 4.6 executor)
+- Why:                 Task #15 — remove typescript.ignoreBuildErrors: true from next.config.ts to surface real type errors and enforce strict TypeScript across the web app. Flag had been masking 71 type errors introduced by React 19's stricter @types/react surface.
+- Files added:         apps/web/src/types/react-19-portal-fix.d.ts (module augmentation widening ReactPortal.children back to optional, restoring compatibility with Radix UI ForwardRef components)
+- Files modified:      apps/web/next.config.ts (removed typescript.ignoreBuildErrors block; added @ts-expect-error suppression for nodeMiddleware — Next 16 canary feature absent from 15.5.15 stable types), package.json (pnpm.overrides pinning @types/react@19.2.14 + @types/react-dom@19.2.3 globally across all workspace packages), pnpm-lock.yaml (lockfile updated for overrides)
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  71 type errors visible after flag removal: 67× TS2786 (Radix UI ForwardRef components returning ReactPortal with children now required), 2× TS2344 (Next.js App Router async page/layout return type mismatch), 1× TS2353 (nodeMiddleware in next.config.ts), 1× TS2322 (async Server Component return type)
+- Errors resolved:     All 71 → 0 via single root cause fix: React 19 made ReactPortal.children required, breaking Radix ForwardRef + Next.js async Server Component return types. Module augmentation in react-19-portal-fix.d.ts widens children back to optional; pnpm.overrides pins consistent @types/react@19.2.14 globally. Surprise: apps/mobile typecheck unaffected — its restrictive tsconfig types[] insulates it from cross-version React surface.
+- Tests:               761/761 GREEN (no regressions)
+
 ## 2026-05-30 — GH Actions Node 20 → 24 version bump (commit 2e1a148)
 - Agent:               CLAUDE_CODE (Opus 4.7 architect → Sonnet 4.6 executor dispatch)
 - Why:                 GitHub forcing all Actions runners to Node 24 by 2026-06-16. All action versions across ci.yml + docker-publish.yml pinned to Node 20-era releases; deprecation warnings appeared in CI run 26676233344 logs.

@@ -1,6 +1,6 @@
-# Next Session — ★ DIRECTION I FULLY COMPLETE (Batch 32) ★. Pick the next direction.
+# Next Session — Task #15 CLOSED. Pick Direction L module or push 4 unpushed commits.
 
-Last close: Batch 32 — Direction I close-out: Vendor.tenantId parity (commit ecc9b41). 761/761 GREEN.
+Last close: Task #15 — typescript.ignoreBuildErrors removed via React 19 portal augmentation (commit 428acf4). 0 typecheck errors. 761/761 GREEN. Direction I fully complete (Batches 26-32). Next: pick Direction L module OR run `git push origin main` to push 4 unpushed commits (ecc9b41, 2e1a148, 2feb177, 428acf4).
 
 🔴 STRATEGIC FINDING (banked 2026-05-30): Q2 surface is 70+ models app-wide — purchasing was a 9-model slice.
 Full-schema grep during Batch 32 pre-flight revealed the tenant isolation gap extends far beyond purchasing.
@@ -41,11 +41,6 @@ Full gate list was in the prior .whatsnext — see git history or docs/deploymen
      @orqafy/jobs from transpilePackages and removed extensionAlias workaround.
    - Worker integration test (tenant-provisioning.test.ts) verified PASSING (1/1 GREEN) 2026-05-30. Direction J
      fully validated end-to-end.
-
-### Task #15 — next.config.ts ignoreBuildErrors removal
-   - typescript.ignoreBuildErrors is currently ON. Task #15 removes it (tech-debt cleanup).
-   - Not a hidden blocker (CI passes with it on). Low risk, high hygiene value.
-   - Suggested branch: fix/remove-ignore-build-errors.
 
 ### Direction L — Broader Q2 tenant parity (70+ models, multi-batch)
    - The Batch 32 pre-flight revealed the full scope of Q2 gaps app-wide (see STRATEGIC FINDING above).
