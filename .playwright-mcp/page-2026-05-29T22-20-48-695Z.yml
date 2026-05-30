@@ -1,0 +1,17 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]: O
+      - heading "Explore Orqafy" [level=1] [ref=e7]
+      - paragraph [ref=e8]: Jump into a live demo workspace — no account needed.
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - generic [ref=e11]: Pre-loaded with sample data
+        - generic [ref=e13]: Full access to all modules
+        - generic [ref=e15]: Resets automatically each day
+      - button "Enter demo workspace →" [ref=e18] [cursor=pointer]
+    - paragraph [ref=e19]:
+      - text: Ready to use your own workspace?
+      - link "Create one free" [ref=e20] [cursor=pointer]:
+        - /url: /register
+  - alert [ref=e21]

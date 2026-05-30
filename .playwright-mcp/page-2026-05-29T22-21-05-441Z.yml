@@ -1,0 +1,74 @@
+- generic [active] [ref=e1]:
+  - alert [ref=e21]: Dashboard
+  - generic [ref=e22]:
+    - complementary [ref=e23]:
+      - generic [ref=e24]:
+        - generic [ref=e25]: O
+        - generic [ref=e26]: Orqafy
+      - navigation [ref=e27]:
+        - list [ref=e28]:
+          - listitem [ref=e29]:
+            - link "Dashboard" [ref=e30] [cursor=pointer]:
+              - /url: /demo/dashboard
+              - img [ref=e31]
+              - text: Dashboard
+          - listitem [ref=e36]:
+            - link "Clients" [ref=e37] [cursor=pointer]:
+              - /url: /demo/clients
+              - img [ref=e38]
+              - text: Clients
+          - listitem [ref=e43]:
+            - link "Projects" [ref=e44] [cursor=pointer]:
+              - /url: /demo/projects
+              - img [ref=e45]
+              - text: Projects
+          - listitem [ref=e47]:
+            - link "Invoices" [ref=e48] [cursor=pointer]:
+              - /url: /demo/invoices
+              - img [ref=e49]
+              - text: Invoices
+          - listitem [ref=e52]:
+            - link "Expenses" [ref=e53] [cursor=pointer]:
+              - /url: /demo/expenses
+              - img [ref=e54]
+              - text: Expenses
+          - listitem [ref=e57]:
+            - link "Employees" [ref=e58] [cursor=pointer]:
+              - /url: /demo/employees
+              - img [ref=e59]
+              - text: Employees
+          - listitem [ref=e63]:
+            - link "Payroll" [ref=e64] [cursor=pointer]:
+              - /url: /demo/payroll
+              - img [ref=e65]
+              - text: Payroll
+          - listitem [ref=e67]:
+            - link "Job Orders" [ref=e68] [cursor=pointer]:
+              - /url: /demo/job-orders
+              - img [ref=e69]
+              - text: Job Orders
+          - listitem [ref=e72]:
+            - link "Inventory" [ref=e73] [cursor=pointer]:
+              - /url: /demo/inventory
+              - img [ref=e74]
+              - text: Inventory
+          - listitem [ref=e78]:
+            - link "Reports" [ref=e79] [cursor=pointer]:
+              - /url: /demo/reports
+              - img [ref=e80]
+              - text: Reports
+          - listitem [ref=e82]:
+            - link "Settings" [ref=e83] [cursor=pointer]:
+              - /url: /demo/settings
+              - img [ref=e84]
+              - text: Settings
+      - paragraph [ref=e88]: demo
+    - generic [ref=e89]:
+      - banner [ref=e90]:
+        - button "Notifications" [ref=e92] [cursor=pointer]:
+          - img
+          - generic [ref=e93]: Notifications
+      - main [ref=e94]:
+        - generic [ref=e95]:
+          - heading "Dashboard" [level=1] [ref=e96]
+          - paragraph [ref=e97]: Overview cards — Phase 8
