@@ -1,65 +1,67 @@
-# Next Session — ★ DIRECTION I-5b (Batch 31) COMPLETE ★. Pick the next direction.
+# Next Session — ★ DIRECTION I FULLY COMPLETE (Batch 32) ★. Pick the next direction.
 
-Last close: Batch 27 — Direction I-2 (PurchaseOrderItem.tenantId parity). 748/748 GREEN.
+Last close: Batch 32 — Direction I close-out: Vendor.tenantId parity (commit ecc9b41). 761/761 GREEN.
 
-🔴 PRE-FLIGHT FINDING NOW BANKED: the purchasing surface is FULLY Q2 NO TENANT ISOLATION.
-9 models (Vendor, PurchaseOrder, PurchaseOrderItem, PurchaseOrderItemAllocation, ShippingCost,
-ShippingCostDistribution, GoodsReceipt, GoodsReceiptItem, PurchaseInvoice) all have
-`@@schema("public")` + no tenantId column. Batch 26 closed PurchaseOrder (parent-most).
-Eight models remain.
+🔴 STRATEGIC FINDING (banked 2026-05-30): Q2 surface is 70+ models app-wide — purchasing was a 9-model slice.
+Full-schema grep during Batch 32 pre-flight revealed the tenant isolation gap extends far beyond purchasing.
+Rough categories (all `@@schema("public")` + no tenantId — verified by grep):
+  - Catalog:     Product, ProductSerialNumber, Category, ProductPurchaseHistory, Warehouse, WarehouseStock, StockMovement
+  - HR:          Employee, AttendanceRecord, LeaveRequest, CashAdvance, CashAdvanceRecovery, Payroll, Payslip
+  - Accounting:  Account, JournalEntry, JournalLine, TaxRate, FiscalYear, Expense, ExpenseCategory
+  - Projects:    Project, ProjectExpense, ProjectNote, Milestone, TimeLog, Task, TaskAssignment, ToDo
+  - CRM:         Customer, CustomerContact, CustomerCreditAccount, CustomerCreditTransaction, Proposal, Quotation
+  - POS:         POSSession, POSSale, POSSaleItem
+  - Support:     SupportTicket, TicketComment
+  - Job Orders:  JobOrder, JobOrderPart, JobOrderServiceLine
+  - Finance:     FundSource, FundTransaction, FundTransfer, FundRequest, CreditCardTransaction, CreditCardPayment, Invoice, Payment, Subscription
+System tables (Tenant, Plan, User, Role, AuditLog) are intentionally tenant-agnostic — correct as-is.
+All others above are Q2 business data lacking isolation. Tests pass only because fixtures don't exercise
+cross-tenant access. Recommend treating as Direction L (multi-batch, module-by-module) when dev is further along.
 
-## 🔴 BLOCKING — Deploy gates (UPDATED — now TWELVE migrations)
-1. APP_ENCRYPTION_KEY in .env.staging + .env.prod + Komodo restart.
-2. prisma migrate deploy of 21c (ecommerce_orders.tenantId).
-3. prisma migrate deploy of 22 (webhookProcessedAt).
-4. prisma migrate deploy of 24 (ecommerce_order_items.tenantId).
-5. prisma migrate deploy of 26 (20260529100000_add_tenant_id_to_purchase_orders).
-6. prisma migrate deploy of 27 (20260529110000_add_tenant_id_to_purchase_order_items).
-7. prisma migrate deploy of 28 (20260529120000_add_tenant_id_to_purchase_order_item_allocations).
-8. prisma migrate deploy of 20260529130000_add_tenant_id_to_shipping_costs.
-9. prisma migrate deploy of 20260529130100_add_tenant_id_to_shipping_cost_distributions.
-10. prisma migrate deploy of 20260529130200_add_tenant_id_to_goods_receipts.
-11. NEW — prisma migrate deploy of 20260529140000_add_tenant_id_to_goods_receipt_items.
-12. NEW — prisma migrate deploy of 20260529140100_add_tenant_id_to_purchase_invoices.
-See docs/deployment-direction-f.md for full procedure.
+## 🟡 DEFERRED — Direction K (12 staging/prod migration gates)
+User call: dev is not feature-complete yet; staging-deploy before dev close-out optimizes for the wrong thing.
+Direction K (running `prisma migrate deploy` for all 12 accumulated migrations on staging + prod) is deferred
+until dev reaches a natural feature milestone. The 12 gates remain valid; just not the highest-priority next step.
+Full gate list was in the prior .whatsnext — see git history or docs/deployment-direction-f.md.
 
 ## Recommended next directions
 
-### Direction I-2 — PurchaseOrderItem.tenantId parity (T1 ~7K) ✅ COMPLETE (Batch 27)
-   - Shipped 2026-05-29. JOIN-backfill from parent purchase_orders. 1 migration + 1 schema edit + 1 router line + 1 RED→GREEN test. 748/748.
-
-### Direction I-3 — PurchaseOrderItemAllocation.tenantId parity (T1 ~6K) ✅ COMPLETE (Batch 28)
-   - Shipped 2026-05-29. Grandchild JOIN-backfill from purchase_order_items.tenant_id on item_id. 1 migration + 1 schema edit + 1 router line + 1 RED→GREEN test. 749/749. PO → POI → POIA three-generation chain CLOSED.
-
-### Direction I-4 — PurchaseOrder status-transition guards (T1 ~6K) ✅ COMPLETE (Batch 29)
-   - Shipped 2026-05-29. `loadPoForTenant(id, ctx)` helper extracted (banked from Batch 26 security review); 5 mutations guarded (update/submit/approve/markOrdered/cancel) against cross-tenant id; 5 RED→GREEN tests; zero schema, zero migration. 754/754 GREEN. Helper shape canonical for I-5 sibling-model guards.
-
-### Direction I-5a — Sibling wave Q1: ShippingCost + ShippingCostDistribution + GoodsReceipt (T2 ~12K) ✅ COMPLETE (Batch 30)
-   - Shipped 2026-05-29. SC + SCD + GR tenantId NOT NULL via JOIN-backfill (SC+GR from PO, SCD from POI on item_id). loadGrForTenant helper mirrors loadPoForTenant. Mixed-treatment pattern: schema-only for unwired SC+SCD (no router/UI), full I-3+I-4-style for wired GR (byId + create guards + 3 RED→GREEN tests). 757/757. Dual-helper pattern now canonical for purchasing surface.
-
-### Direction I-5b — Sibling wave Q2 (GoodsReceiptItem + PurchaseInvoice) (T2 ~10K) ✅ COMPLETE (Batch 31)
-   - Shipped 2026-05-29. GoodsReceiptItem (wired — full I-3-style) + PurchaseInvoice (unwired — schema-only). Both JOIN-backfill from parents (GRI from GR; PI from PO). 1 RED→GREEN test on GRI. 758/758. Mixed-treatment pattern iterated cleanly from Batch 30.
-
-### Direction I purchasing-surface tenant parity — ✅ FULLY COMPLETE (Batches 26-31)
-   - All 9 purchasing models now have tenantId NOT NULL: PurchaseOrder (B26), PurchaseOrderItem (B27), PurchaseOrderItemAllocation (B28), PurchaseOrder status guards (B29), ShippingCost + ShippingCostDistribution + GoodsReceipt (B30), GoodsReceiptItem + PurchaseInvoice (B31).
-   - Direction I purchasing-surface tenant parity COMPLETE — pick next from Vendor Q2 catalogue, Direction B Mobile Expo scaffold, or deploy 12 staging/prod migration gates.
+### Direction I — purchasing-surface tenant parity — ✅ FULLY COMPLETE (Batches 26-32)
+   - All 9 purchasing models now have tenantId NOT NULL:
+     PurchaseOrder (B26), PurchaseOrderItem (B27), PurchaseOrderItemAllocation (B28),
+     PurchaseOrder status guards (B29), ShippingCost + ShippingCostDistribution + GoodsReceipt (B30),
+     GoodsReceiptItem + PurchaseInvoice (B31), Vendor (B32).
+   - Canonical patterns established: tenants-table backfill (top-level entities), JOIN-from-parent backfill
+     (child entities), dual-helper pattern (loadPoForTenant + loadGrForTenant), mixed-treatment batch
+     (schema-only for unwired models, full guards + tests for wired models).
 
 ### Direction J — @orqafy/jobs build pipeline ✅ COMPLETE (commit 79df191, 2026-05-29)
-   - Surfaced 2026-05-29 by staging compose dry-run (PR fix/web-transpile-workspace-packages, commit 997d1a5). Web fix shipped via that branch; worker still crash-loops at runtime.
-   - Root cause: `packages/jobs/package.json` `exports` points at `./src/*.ts` instead of built `./dist/*.js`. Node 22 type-stripper rejects `.ts` files under `node_modules/` in the worker runner stage.
-   - Scope: add `tsconfig.build.json` + `build` script to `packages/jobs`; rewrite `exports` to `./dist/*.js` paths; add `RUN pnpm --filter @orqafy/jobs build` to `apps/worker/Dockerfile` (and possibly `apps/web/Dockerfile`) before downstream builds; verify `pnpm --filter @orqafy/jobs build && pnpm --filter @orqafy/web test && pnpm --filter @orqafy/worker test` all clean; rebuild worker image and confirm boot via local dry-run.
-   - Note: BullMQ is already non-functional on current main, so this is not a regression — but it is a hard blocker on the first real Komodo deploy if the worker is expected to process queues.
-   - Suggested branch: `feat/jobs-build-pipeline`. May also need to revisit `apps/web/next.config.ts` transpilePackages once jobs ships built `.js` (the extensionAlias workaround may become unnecessary).
-   - Full handoff in `.cline/handoffs/2026-05-29-staging-dryrun-session.md` (committed alongside the web fix).
-   - SHIPPED 2026-05-29 via squash-merge 79df191. tsconfig.build.json + build script added to packages/jobs; exports rewritten to ./dist/*.js conditional form; apps/worker + apps/web Dockerfiles insert `RUN pnpm --filter @orqafy/jobs build` before downstream builds; next.config.ts dropped @orqafy/jobs from transpilePackages and removed extensionAlias workaround (db/src has zero .js ESM imports — verified). Worker runtime blocker for first Komodo deploy now CLEARED.
+   - tsconfig.build.json + build script added to packages/jobs; exports rewritten to ./dist/*.js conditional form;
+     apps/worker + apps/web Dockerfiles insert `RUN pnpm --filter @orqafy/jobs build`; next.config.ts dropped
+     @orqafy/jobs from transpilePackages and removed extensionAlias workaround.
+   - Worker integration test (tenant-provisioning.test.ts) verified PASSING (1/1 GREEN) 2026-05-30. Direction J
+     fully validated end-to-end.
+
+### Task #15 — next.config.ts ignoreBuildErrors removal
+   - typescript.ignoreBuildErrors is currently ON. Task #15 removes it (tech-debt cleanup).
+   - Not a hidden blocker (CI passes with it on). Low risk, high hygiene value.
+   - Suggested branch: fix/remove-ignore-build-errors.
+
+### Direction L — Broader Q2 tenant parity (70+ models, multi-batch)
+   - The Batch 32 pre-flight revealed the full scope of Q2 gaps app-wide (see STRATEGIC FINDING above).
+   - Recommended approach: tackle module-by-module using the now-canonical patterns from Batches 26-32.
+   - Prioritize by blast-radius and feature-completeness: start with whichever module is about to ship a
+     user-facing feature (catalog, CRM, POS are likely candidates for next dev iteration).
+   - Each module batch is T1-T2 (same as purchasing batches). No new patterns needed.
 
 ### Direction B — Mobile Expo scaffold (T3 ~50K, multi-session)
    - apps/mobile/ doesn't exist yet. Different track entirely.
+   - Pre-condition: web feature set should be reasonably complete before mobile scaffold begins.
 
 ## Standing 9-point pre-flight (run before any code on any batch — REINFORCED)
 
 1. `git status` + `git log -1` — confirm tree state.
-2. `pnpm --filter @orqafy/web test` — confirm 747/747 GREEN baseline.
+2. `pnpm --filter @orqafy/web test` — confirm 761/761 GREEN baseline.
 3. Read input Zod schema of any router procedure the batch claims to reuse.
 4. If router newly READS a field, verify all existing tests on that path mock the field.
 5. Grep schema.prisma for any model in scope; **emit four-quadrant verdict per model** (public+tid / public-only / no-schema+tid / no-schema-only). Never trust .whatsnext premise alone.
@@ -92,3 +94,4 @@ See docs/deployment-direction-f.md for full procedure.
 - 🟢 (Batch 23): Hoisted vi.mock pattern for new module export
 - 🟢 NEW (Batch 24): Sibling-model tenantId backfill — UPDATE FROM parent table (ecommerce_order_items.tenant_id from ecommerce_orders.tenant_id via order_id JOIN) is cleaner than re-sourcing from tenants table. Works when parent already has NOT NULL tenant_id from a prior migration.
 - 🟢 NEW (Batch 25): admin router ctx has no session.user — admin log lines omit actor; revisit when admin audit-log work surfaces
+- 🟢 NEW (Batch 32): top-level entity tenant parity uses tenants-table backfill (UPDATE SET tenant_id = (SELECT id FROM tenants ORDER BY created_at ASC LIMIT 1)), mirroring Batch 21c/26. Child entities use JOIN-from-parent backfill. Pattern fully canonical at all hierarchy depths.

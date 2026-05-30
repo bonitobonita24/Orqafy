@@ -1941,3 +1941,40 @@
     `curl https://hub.docker.com/v2/repositories/bonitobonita24/orqafy/tags/?page_size=20` (tag inventory + per-tag platform manifest)
 - Strategic impact:    UNBLOCKED — 12 staging/prod migration gates (Direction K) can now exercise end-to-end against real Komodo Core. Komodo staging Stack with `auto_update: true` will auto-detect new `:staging-latest` digests and redeploy. Production Stack uses manual deploy from Komodo UI on `:latest` (or pinned `:sha-{hash}`).
 - Branch:              no commits (verification-only task).
+
+---
+
+## 2026-05-30 — Phase 8 Batch 32 — Direction I close-out — Vendor.tenantId parity (commit ecc9b41)
+- Agent:               CLAUDE_CODE (Opus 4.7 architect → Sonnet 4.6 executor dispatch)
+- Why:                 Close the 9th and final purchasing-surface Q2 model flagged in Batch 26 pre-flight. Vendor was the only one of the original 9 not closed by Batches 26-31. Canonical Batch 26-style backfill from tenants table (top-level entity — no parent to JOIN from; tenants-table backfill path used).
+- Files added:         packages/db/prisma/migrations/20260530070000_add_tenant_id_to_vendors/migration.sql (5-stage: nullable ADD → backfill from tenants → SET NOT NULL → FK → INDEX), apps/web/src/server/trpc/routers/__tests__/vendor-tenant-parity.test.ts (3 RED→GREEN isolation tests)
+- Files modified:      packages/db/prisma/schema.prisma (Vendor model + Tenant.vendors back-relation added), apps/web/src/server/trpc/routers/purchasing.ts (loadVendorForTenant helper + 5 procedures scoped: createVendor, updateVendor, deleteVendor, getVendors, getVendorById), apps/web/src/__tests__/purchasing.test.ts (3 fixture tenantId fixes — incidental regression healing on fakeVendor missing tenantId)
+- Files deleted:       none
+- Schema/migrations:   20260530070000_add_tenant_id_to_vendors — adds tenant_id TEXT to vendors table, FK to tenants(id) ON DELETE RESTRICT ON UPDATE CASCADE, index on tenant_id
+- Errors encountered:  existing purchasing.test.ts fixture had fakeVendor without tenantId — surfaced 3 test failures after schema change
+- Errors resolved:     added tenantId to fakeVendor fixture in purchasing.test.ts
+- Tests:               758/758 baseline + 3 new vendor-tenant-parity tests + 3 healed purchasing.test.ts regressions = 761/761 GREEN
+- Strategic:           Direction I purchasing-surface tenant parity FULLY COMPLETE (9/9 models now tenant-isolated). Vendor is the 9th and final model.
+
+## 2026-05-30 — Worker integration test reactivation (verification only — no commit)
+- Agent:               CLAUDE_CODE (Opus 4.7 direct verification)
+- Why:                 STATE.md NEXT #4 from prior session — confirm Direction J's @orqafy/db dist compile fix unblocked apps/worker/src/__tests__/tenant-provisioning.test.ts which had been skipped pending Direction J shipping.
+- Files added:         none
+- Files modified:      none (verification only)
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  initial run with constructed DATABASE_URL failed auth (wrong username — Rule 22 generates ${app_slug}_dev_<11hex>, not bare orqafy_dev); .env.dev line 55 produced minor non-fatal bash sourcing warning ("command not found: Dev" from a comment token)
+- Errors resolved:     sourced .env.dev via `set -a && . ./.env.dev && set +a` to pick up correct DB_USER; test ran cleanly (1/1 GREEN, 1.59s)
+- Result:              tenant-provisioning.test.ts PASSES — processor creates t_inttest_worker_co schema, clones parent tables (ecommerce_order_items, ecommerce_orders, job_order_service_lines, purchase_orders, etc.), schema_exists assertion returns true, cleanup drops schema. Direction J fully validated end-to-end.
+
+## 2026-05-30 — GH Actions Node 20 → 24 version bump (commit 2e1a148)
+- Agent:               CLAUDE_CODE (Opus 4.7 architect → Sonnet 4.6 executor dispatch)
+- Why:                 GitHub forcing all Actions runners to Node 24 by 2026-06-16. All action versions across ci.yml + docker-publish.yml pinned to Node 20-era releases; deprecation warnings appeared in CI run 26676233344 logs.
+- Files added:         none
+- Files modified:      .github/workflows/ci.yml (8 action version bumps), .github/workflows/docker-publish.yml (overlapping docker/* action bumps)
+- Files deleted:       none
+- Schema/migrations:   none
+- Bumps applied:       actions/checkout v4→v6, actions/setup-node v4→v6, actions/cache v4→v5, pnpm/action-setup v4→v6, docker/setup-buildx-action v3→v4, docker/login-action v3→v4, docker/metadata-action v5→v6, docker/build-push-action v5→v7
+- Held back:           docker/setup-qemu-action stays at v3 — no v4 released yet; thin QEMU installer; monitor for future release
+- Errors encountered:  none
+- Errors resolved:     n/a
