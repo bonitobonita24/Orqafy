@@ -41,10 +41,10 @@ const nextConfig: NextConfig = {
   output: "standalone",
   transpilePackages: ["@orqafy/db"],
   experimental: {
+    // nodeMiddleware is a Next.js canary/16 feature not yet in 15.x stable types.
+    // Remove suppression when Next.js types include nodeMiddleware.
+    // @ts-expect-error -- TS2353: nodeMiddleware not in ExperimentalConfig until Next.js 16
     nodeMiddleware: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
