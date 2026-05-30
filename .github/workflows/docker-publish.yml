@@ -10,11 +10,12 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/orqafy
+  WEB_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/orqafy
+  WORKER_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/orqafy-worker
 
 jobs:
   build-and-push:
-    name: Build & push image
+    name: Build & push images
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -37,25 +38,48 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract metadata (tags + labels)
-        id: meta
+      - name: Extract metadata (web)
+        id: meta-web
         uses: docker/metadata-action@v6
         with:
-          images: ${{ env.IMAGE_NAME }}
+          images: ${{ env.WEB_IMAGE_NAME }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=staging-latest,enable={{is_default_branch}}
             type=sha,prefix=sha-,format=short
             type=ref,event=branch
 
-      - name: Build and push
+      - name: Build and push (web)
         uses: docker/build-push-action@v7
         with:
           context: .
           file: ./apps/web/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ${{ steps.meta-web.outputs.tags }}
+          labels: ${{ steps.meta-web.outputs.labels }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+      - name: Extract metadata (worker)
+        id: meta-worker
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.WORKER_IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=staging-latest,enable={{is_default_branch}}
+            type=sha,prefix=sha-,format=short
+            type=ref,event=branch
+
+      - name: Build and push (worker)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./apps/worker/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta-worker.outputs.tags }}
+          labels: ${{ steps.meta-worker.outputs.labels }}
+          cache-from: type=gha,scope=worker
+          cache-to: type=gha,mode=max,scope=worker
