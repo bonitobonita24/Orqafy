@@ -1900,3 +1900,44 @@
 - Errors encountered: pre-existing TS2786 React 19/shadcn ReactPortal type errors in apps/web (confirmed identical on main baseline — not introduced by this change)
 - Errors resolved:    worker runtime cannot import @orqafy/jobs at runtime (compiled JS now ships via dist/)
 - Verification:       jobs build emits 4 .js + 4 .d.ts with sourcemaps; web test 758/758 GREEN preserved; worker typecheck 0; worker build 0; web/worker tests run identically to baseline.
+
+## 2026-05-30 — Task #3 — CI/CD Docker Hub secrets configured + workflow image name hardcoded
+- Agent:               CLAUDE_CODE (Opus 4.7 — V32 R1 minor deviation accepted on 1-line workflow Edit per user Option A; STATE.md write is the canonical Opus exception)
+- Why:                 Unblock Task #4 (verify staging-latest image rebuild) and downstream 12 staging/prod migration gates. docker-publish.yml runs on every push to main but the prior two runs (26671908084 from commit 02afc67 + 26667147227 from caf6f33) both failed in 17-30s at "Log in to Docker Hub" with "Username and password required". Root cause: DOCKERHUB_USERNAME + DOCKERHUB_TOKEN secrets never configured on the GitHub repo. CREDENTIALS.md had ⏳ placeholders for both Docker Hub + GH Actions Secrets sections.
+- Files added:         none
+- Files modified:      .github/workflows/docker-publish.yml (1 line — env.IMAGE_NAME changed from `${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DOCKER_IMAGE_NAME }}` to `${{ secrets.DOCKERHUB_USERNAME }}/orqafy`; aligns with CREDENTIALS.md template which keeps image name under Docker Hub section, not as a separate GH Variable section; image name was already locked in inputs.yml docker.image_name=orqafy)
+- Files deleted:       none
+- External GitHub state (not in git):
+    DOCKERHUB_USERNAME secret set (value from CREDENTIALS.md Docker Hub section)
+    DOCKERHUB_TOKEN secret set (Docker Hub access token named `orqafy-github-ci`, perms Read+Write+Delete, created by human at hub.docker.com — never entered AI context; user ran `gh secret set` locally in their own terminal so the token value bypassed the chat entirely)
+    DOCKER_IMAGE_NAME variable initially set then deleted (Fix A — workflow no longer references it; CREDENTIALS.md template stays canonical with only 2 GH Actions Secrets documented)
+- Schema/migrations:   none
+- Errors encountered:  none this session. Prior failures: runs 26671908084 + 26667147227 both failed at "Log in to Docker Hub" step in 17-30s with "Username and password required" — root cause confirmed as missing secrets, not Dockerfile or workflow logic.
+- Errors resolved:     Missing GH Actions secrets. Verified by docker-publish run 26676233344 (this session's push) passing Set up job, Checkout, Set up QEMU, Set up Docker Buildx, Log in to Docker Hub, Extract metadata — all 6 steps that include the prior failure point.
+- Branch:              pushed directly to main (no feature branch — single 1-line config edit). Commit 2feb177 ci(docker): hardcode orqafy image name, drop DOCKER_IMAGE_NAME var. Push automatically triggered docker-publish run 26676233344.
+- CREDENTIALS.md alignment: human filled 🐳 Docker Hub section + ⚙️ GitHub Actions Secrets section. Framework template inconsistency (workflow needed `vars.DOCKER_IMAGE_NAME` but CREDENTIALS.md template only documents 2 secrets, not a Variable section) resolved by hardcoding the image name in the workflow per user-confirmed Fix A.
+- Verification:        ✅ gh secret list shows DOCKERHUB_USERNAME + DOCKERHUB_TOKEN (names only, no values exposed in any output). ✅ gh variable list empty. ✅ Workflow run 26676233344 passed all steps prior to "Build and push" (Build and push still in progress at governance write time — Task #4 verification pending). Task #3 functionally proven: secrets work, login passes.
+- Open follow-on:      Task #4 closed in the same session (see next entry). Side-note flagged: GitHub Actions Node 20 deprecation effective ~June 2026 (actions/checkout@v4 + docker/login-action@v3 + docker/setup-buildx-action@v3 + docker/setup-qemu-action@v3 + docker/metadata-action@v5 + docker/build-push-action@v5 all on Node 20) — added to deferred queue as Task #7.
+
+## 2026-05-30 — Task #4 — Verify staging-latest Docker image rebuild reaches Docker Hub
+- Agent:               CLAUDE_CODE (Opus 4.7 — direct Opus verification via gh CLI + curl Docker Hub API; no Sonnet dispatch needed for read-only verification)
+- Why:                 Final validation that Task #3's GH Actions secrets fix actually produces a published, pullable, multi-platform image — the strategic unblocker for the 12 staging/prod migration gates queued from Direction K. Without this proof, downstream Komodo auto-update (staging) + manual deploy (prod) can't fire because Docker Hub has no image to pull.
+- Files added:         none
+- Files modified:      none (verification only — Task #3 was the code change)
+- Files deleted:       none
+- Schema/migrations:   none
+- Workflow run:        26676233344 (triggered by Task #3's commit 2feb177 push to main). All 12 steps ✅ GREEN in 24m19s. Build & push step alone took ~24 min (normal for multi-platform Next.js + pnpm + Prisma + monorepo build under ARM64 QEMU emulation).
+- Tags verified on hub.docker.com/r/bonitobonita24/orqafy:
+    ✅ latest          (pushed 2026-05-30T06:13:54 UTC, multi-arch manifest)
+    ✅ staging-latest  (pushed 2026-05-30T06:13:57 UTC, multi-arch manifest) — this is the tag Komodo auto-update polls for staging redeploy
+    ✅ sha-2feb177     (pushed 2026-05-30T06:13:59 UTC, multi-arch manifest) — immutable per-commit tag for pinned rollback
+    ✅ main            (pushed 2026-05-30T06:13:52 UTC, multi-arch manifest) — bonus from `type=ref,event=branch` rule in workflow metadata
+- Platform coverage:  Each tag carries a multi-arch manifest pointing at linux/amd64 + linux/arm64 image manifests (verified via Docker Hub /v2/repositories/.../tags API). The "unknown/unknown" entry per tag is the manifest list itself, normal for multi-platform images.
+- Errors encountered: none. Run completed cleanly. Annotation flagged Node 20 deprecation (informational, not blocking).
+- Errors resolved:    Task #3's secrets configuration validated end-to-end. The workflow chain that previously failed at step 5 now completes all 13 steps.
+- Verification queries used:
+    `gh run view 26676233344 --repo bonitobonita24/Orqafy` (step status)
+    `gh run watch 26676233344 --exit-status` (background watcher returned exit 0)
+    `curl https://hub.docker.com/v2/repositories/bonitobonita24/orqafy/tags/?page_size=20` (tag inventory + per-tag platform manifest)
+- Strategic impact:    UNBLOCKED — 12 staging/prod migration gates (Direction K) can now exercise end-to-end against real Komodo Core. Komodo staging Stack with `auto_update: true` will auto-detect new `:staging-latest` digests and redeploy. Production Stack uses manual deploy from Komodo UI on `:latest` (or pinned `:sha-{hash}`).
+- Branch:              no commits (verification-only task).

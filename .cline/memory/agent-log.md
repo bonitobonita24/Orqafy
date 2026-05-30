@@ -78,3 +78,41 @@ CLAUDE_CODE Opus 4.7 | Phase 8 Batch 4 Item 3 COMPLETE 2026-05-11 | User said "s
   Governance: STATE.md (full rewrite) + .whatsnext (full rewrite — Direction G promoted to next-recommended) + CHANGELOG_AI.md (Batch 23 entry) + IMPLEMENTATION_MAP.md (header line 3 + CURRENT STATE + numbered Batch 23 entry inserted) + lessons.md (3 new typed entries banking AuditLog-in-tx pattern, Server Component chip filter pattern, hoisted vi.mock for new module exports) + agent-log.md (this entry).
   🔴 OPEN deployment gates: UNCHANGED from Batch 22 close — (1) APP_ENCRYPTION_KEY missing from .env.staging + .env.prod (carries from 21a). (2) Both migrations (21c tenantId + 22 webhookProcessedAt) must apply via `prisma migrate deploy` on each env. See docs/deployment-direction-f.md.
   Next session: pick Direction G (T1 ~8K, EcommerceOrderItem.tenantId parity — recommended) or Direction B (T3 ~50K mobile scaffold) or Direction H (T2 ~25K observability, NEW suggestion).
+
+## 2026-05-30 — Tasks #3 + #4 — Docker Hub CI/CD unblocked end-to-end
+  User started new session → "resume session" → STATE.md showed 6 queued tasks from prior session → user asked "which is your suggested first?" → I recommended Task #3 (unblocks #4 → unblocks 12 staging/prod migration gates) → "ok i start with Task #3" → "yes do apply A" → "yes commit and push" → background watcher reported success → "ok so whats next?" → "i go with option 1 but is it really safe?" → "A" (direct Opus governance writes, accepted minor V32 R1 deviation for tiny scope).
+
+  TASK #3 EXECUTION:
+  Pre-flight: gh CLI 2.45.0 authenticated as bonitobonita24, repo bonitobonita24/Orqafy, 0 secrets + 0 variables initially.
+  Locked from inputs.yml: docker.hub_repo=bonitobonita24/orqafy, image_name=orqafy.
+  Step 3a (safe, no secrets): `gh variable set DOCKER_IMAGE_NAME --body "orqafy" --repo bonitobonita24/Orqafy`. Verified via gh variable list.
+  Step 3b (human action, zero AI context exposure): user created Docker Hub access token at hub.docker.com (named `orqafy-github-ci`, perms Read+Write+Delete) → ran 2 `gh secret set` commands locally in their own terminal → token never entered chat. Verified by name only via `gh secret list`: DOCKERHUB_USERNAME + DOCKERHUB_TOKEN visible, zero values shown anywhere in any tool output.
+
+  USER OBSERVATION TRIGGERED FIX A:
+  User noted CREDENTIALS.md keeps image name under Docker Hub section, NOT as a separate Variable section. Framework template (docker-publish.yml from Phase 4 Part 8) used `vars.DOCKER_IMAGE_NAME` indirection — inconsistent with CREDENTIALS.md template's 2-secrets-only model. Fix A applied: Edit docker-publish.yml line 13 to hardcode `${{ secrets.DOCKERHUB_USERNAME }}/orqafy` (1-line change) + `gh variable delete DOCKER_IMAGE_NAME`. Single source: inputs.yml + workflow. No GH UI moving part. CREDENTIALS.md template stays canonical.
+  V32 R1 minor deviation: Opus 4.7 directly Edited workflow file instead of dispatching Sonnet, for a 1-line scope where Sonnet dispatch overhead (~30-50K context per V32.1 operational note) would exceed work cost. Same call accepted for 3 governance writes this batch (CHANGELOG_AI + agent-log + STATE.md). User explicitly approved Option A.
+
+  COMMIT + PUSH:
+  Committed 2feb177 ci(docker): hardcode orqafy image name, drop DOCKER_IMAGE_NAME var. Pushed to main. Push automatically triggered docker-publish workflow run 26676233344.
+
+  TASK #4 VERIFICATION:
+  Background `gh run watch 26676233344 --exit-status` returned exit 0 (task ID bhx769ac6, ~25 min wall clock). All 13 steps green including the previously failing "Log in to Docker Hub" step. Build & push step alone: 24m19s (normal for multi-platform amd64+arm64 with ARM64 QEMU emulation on a Next.js + pnpm + Prisma + monorepo Dockerfile).
+  Hub tag verification via `curl https://hub.docker.com/v2/repositories/bonitobonita24/orqafy/tags/?page_size=20`:
+    ✅ latest          (multi-arch manifest, pushed 2026-05-30T06:13:54 UTC)
+    ✅ staging-latest  (multi-arch manifest, pushed 2026-05-30T06:13:57 UTC) — the tag Komodo auto-update polls
+    ✅ sha-2feb177     (multi-arch manifest, pushed 2026-05-30T06:13:59 UTC) — immutable rollback target
+    ✅ main            (multi-arch manifest, pushed 2026-05-30T06:13:52 UTC) — bonus from `type=ref,event=branch`
+  Each tag's manifest list points at linux/amd64 + linux/arm64 image manifests.
+
+  PRIOR FAILURE ROOT CAUSE CONFIRMED:
+  Runs 26671908084 (02afc67 push) + 26667147227 (caf6f33 push) both failed in 17-30s at "Log in to Docker Hub" with annotation "Username and password required" — confirmed root cause was missing GH Actions secrets, not Dockerfile or workflow logic. Today's run passed this step in normal time.
+
+  STRATEGIC IMPACT:
+  12 staging/prod migration gates (Direction K) UNBLOCKED. The full Komodo deployment path (staging auto-update on `:staging-latest` + prod manual deploy on `:latest`) is now exercise-ready end-to-end.
+
+  SIDE-NOTE FROM WORKFLOW LOG:
+  Node 20 deprecation effective ~June 2026 (annotations on actions/checkout@v4, docker/login-action@v3, docker/setup-buildx-action@v3, docker/setup-qemu-action@v3, docker/metadata-action@v5, docker/build-push-action@v5). Added as Task #7 to deferred queue.
+
+  GOVERNANCE: CHANGELOG_AI.md (2 entries — Task #3 + Task #4) + STATE.md (full rewrite) + agent-log.md (this entry). All 3 direct Opus writes — Option A discipline for this small infra-config + verification batch.
+
+  🟢 CLOSED: Tasks #3 + #4. Queue advances; next priority candidate is the 12 staging/prod migration gates exercise (now actually possible) or Task #15 (next.config.ts ignoreBuildErrors removal). Worth noting: today's CI build passed despite typescript.ignoreBuildErrors being on — meaning Task #15 is a tech-debt cleanup, not a hidden blocker.
