@@ -113,6 +113,7 @@ function purchasingMgrCtx() {
 
 const fakeVendor = {
   id: "vendor-1",
+  tenantId: "tenant-acme",
   type: "direct",
   companyName: "Acme Supplies Co.",
   contactName: "John Doe",

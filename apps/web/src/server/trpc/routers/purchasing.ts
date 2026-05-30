@@ -63,6 +63,19 @@ async function loadGrForTenant(
   return gr;
 }
 
+// ── Tenant-scoped Vendor loader ───────────────────────────────────────────────
+
+async function loadVendorForTenant(
+  id: string,
+  ctx: { tenantId: string },
+): Promise<NonNullable<Awaited<ReturnType<typeof db.vendor.findUnique>>>> {
+  const vendor = await db.vendor.findUnique({ where: { id } });
+  if (!vendor || vendor.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Vendor not found" });
+  }
+  return vendor;
+}
+
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
 const allocationSchema = z.object({
@@ -95,8 +108,9 @@ export const vendorRouter = createTRPCRouter({
         isActive: z.boolean().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const where = {
+        tenantId: ctx.tenantId!,
         ...(input.type !== undefined ? { type: input.type } : {}),
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
         ...(input.search !== undefined && input.search !== ""
@@ -123,10 +137,8 @@ export const vendorRouter = createTRPCRouter({
 
   byId: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .query(async ({ input }) => {
-      const vendor = await db.vendor.findUnique({ where: { id: input.id } });
-      if (vendor === null) throw new TRPCError({ code: "NOT_FOUND" });
-      return vendor;
+    .query(async ({ input, ctx }) => {
+      return loadVendorForTenant(input.id, ctx);
     }),
 
   create: writeProcedure
@@ -149,9 +161,10 @@ export const vendorRouter = createTRPCRouter({
         notes: z.string().max(2000).optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       return db.vendor.create({
         data: {
+          tenantId: ctx.tenantId!,
           type: input.type,
           companyName: input.companyName,
           ...(input.contactName !== undefined ? { contactName: input.contactName } : {}),
@@ -193,10 +206,9 @@ export const vendorRouter = createTRPCRouter({
         isActive: z.boolean().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { id, ...rest } = input;
-      const vendor = await db.vendor.findUnique({ where: { id } });
-      if (vendor === null) throw new TRPCError({ code: "NOT_FOUND" });
+      await loadVendorForTenant(id, ctx);
       return db.vendor.update({
         where: { id },
         data: {
@@ -222,9 +234,8 @@ export const vendorRouter = createTRPCRouter({
 
   deactivate: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const vendor = await db.vendor.findUnique({ where: { id: input.id } });
-      if (vendor === null) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      await loadVendorForTenant(input.id, ctx);
       return db.vendor.update({ where: { id: input.id }, data: { isActive: false } });
     }),
 });
