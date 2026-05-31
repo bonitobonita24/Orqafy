@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 import {
   FileText,
@@ -36,26 +37,32 @@ function formatDate(d: Date): string {
 }
 
 async function getDashboardData(slug: string) {
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug },
+    select: { id: true, name: true, slug: true },
+  });
+  if (!tenant) {
+    return null;
+  }
+  const tenantId = tenant.id;
   const [
-    tenant,
     invoices,
     expenses,
     activeCustomers,
     recentInvoices,
     recentExpenses,
   ] = await Promise.all([
-    prisma.tenant.findUnique({
-      where: { slug },
-      select: { id: true, name: true, slug: true },
-    }),
     prisma.invoice.findMany({
+      where: { tenantId },
       select: { status: true, balance: true, totalAmount: true, currency: true },
     }),
     prisma.expense.findMany({
+      where: { tenantId },
       select: { status: true, amount: true, currency: true },
     }),
-    prisma.customer.count({ where: { isActive: true } }),
+    prisma.customer.count({ where: { tenantId, isActive: true } }),
     prisma.invoice.findMany({
+      where: { tenantId },
       orderBy: { createdAt: "desc" },
       take: 5,
       select: {
@@ -71,6 +78,7 @@ async function getDashboardData(slug: string) {
       },
     }),
     prisma.expense.findMany({
+      where: { tenantId },
       orderBy: { createdAt: "desc" },
       take: 5,
       select: {
@@ -148,6 +156,7 @@ export default async function DashboardPage({
 }) {
   const { slug } = await params;
   const data = await getDashboardData(slug);
+  if (!data) notFound();
 
   const kpis = [
     {

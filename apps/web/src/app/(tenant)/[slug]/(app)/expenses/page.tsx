@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 
 export const metadata: Metadata = { title: "Expenses" };
 
 export const dynamic = "force-dynamic";
 
-async function getExpenses() {
+async function getExpenses(tenantId: string) {
   return prisma.expense.findMany({
+    where: { tenantId },
     orderBy: { date: "desc" },
     take: 200,
     select: {
@@ -60,8 +62,18 @@ function formatDate(d: Date): string {
   }).format(d);
 }
 
-export default async function ExpensesPage() {
-  const expenses = await getExpenses();
+export default async function ExpensesPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (!tenant) notFound();
+  const expenses = await getExpenses(tenant.id);
 
   const pending = expenses.filter((e) => e.status === "pending");
   const pendingTotal = pending.reduce((sum, e) => sum + Number(e.amount), 0);

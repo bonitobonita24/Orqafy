@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 
 export const metadata: Metadata = { title: "Customers" };
 
 export const dynamic = "force-dynamic";
 
-async function getCustomers() {
+async function getCustomers(tenantId: string) {
   return prisma.customer.findMany({
+    where: { tenantId },
     orderBy: { companyName: "asc" },
     select: {
       id: true,
@@ -35,8 +37,18 @@ const TIER_COLORS: Record<string, string> = {
   authorized_dealer: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
 };
 
-export default async function CustomersPage() {
-  const customers = await getCustomers();
+export default async function CustomersPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (!tenant) notFound();
+  const customers = await getCustomers(tenant.id);
   const active = customers.filter((c) => c.isActive);
 
   return (
