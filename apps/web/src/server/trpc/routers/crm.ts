@@ -45,6 +45,31 @@ async function loadCustomerCreditAccountForTenant(
   return cca;
 }
 
+async function loadQuotationForTenant(
+  id: string,
+  ctx: { tenantId: string },
+) {
+  const q = await db.quotation.findUnique({ where: { id } });
+  if (!q || q.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Quotation not found" });
+  }
+  return q;
+}
+
+async function loadContactLogForTenant(
+  id: string,
+  ctx: { tenantId: string },
+) {
+  const cl = await db.contactLog.findUnique({ where: { id } });
+  if (!cl || cl.tenantId !== ctx.tenantId) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Contact log not found",
+    });
+  }
+  return cl;
+}
+
 async function generateQuotationNumber(): Promise<string> {
   const now = new Date();
   const yy = String(now.getFullYear()).slice(-2);
@@ -341,8 +366,9 @@ export const crmRouter = createTRPCRouter({
         customerId: z.string().min(1).optional(),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.status !== undefined ? { status: input.status } : {}),
         ...(input.customerId !== undefined ? { customerId: input.customerId } : {}),
       };
@@ -378,9 +404,9 @@ export const crmRouter = createTRPCRouter({
 
   quotationById: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .query(async ({ input }) => {
-      const quotation = await db.quotation.findUnique({
-        where: { id: input.id },
+    .query(async ({ ctx, input }) => {
+      const quotation = await db.quotation.findFirst({
+        where: { id: input.id, tenantId: ctx.tenantId },
         include: {
           customer: true,
           createdBy: {
@@ -485,9 +511,11 @@ export const crmRouter = createTRPCRouter({
       const quotationNumber = await generateQuotationNumber();
       const userId = ctx.userId;
 
+      const tenantId = ctx.tenantId;
       return db.$transaction(async (tx) => {
         const quotation = await tx.quotation.create({
           data: {
+            tenantId,
             quotationNumber,
             customerId: input.customerId,
             createdById: userId,
@@ -510,6 +538,7 @@ export const crmRouter = createTRPCRouter({
         for (const col of input.markupColumns) {
           const created = await tx.quotationMarkupColumn.create({
             data: {
+              tenantId,
               quotationId: quotation.id,
               name: col.name,
               tier: col.tier,
@@ -525,6 +554,7 @@ export const crmRouter = createTRPCRouter({
         for (const section of input.sections) {
           const createdSection = await tx.quotationSection.create({
             data: {
+              tenantId,
               quotationId: quotation.id,
               name: section.name,
               sortOrder: section.sortOrder,
@@ -537,6 +567,7 @@ export const crmRouter = createTRPCRouter({
           for (const lineItem of section.lineItems) {
             const createdItem = await tx.quotationLineItem.create({
               data: {
+                tenantId,
                 sectionId: createdSection.id,
                 description: lineItem.description,
                 unit: lineItem.unit,
@@ -559,6 +590,7 @@ export const crmRouter = createTRPCRouter({
               }
               await tx.quotationLineItemMarkup.create({
                 data: {
+                  tenantId,
                   lineItemId: createdItem.id,
                   markupColumnId: colId,
                   markedUpPrice: markup.markedUpPrice,
@@ -571,6 +603,7 @@ export const crmRouter = createTRPCRouter({
         // Initial revision snapshot at draft creation (revisionNumber=1).
         await tx.quotationRevision.create({
           data: {
+            tenantId,
             quotationId: quotation.id,
             revisionNumber: 1,
             snapshot: {
@@ -636,12 +669,10 @@ export const crmRouter = createTRPCRouter({
           .optional(),
       }),
     )
-    .mutation(async ({ input }) => {
-      const existing = await db.quotation.findUnique({
-        where: { id: input.id },
-        select: { id: true, status: true },
+    .mutation(async ({ ctx, input }) => {
+      const existing = await loadQuotationForTenant(input.id, {
+        tenantId: ctx.tenantId,
       });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
       if (existing.status !== "draft") {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -687,6 +718,7 @@ export const crmRouter = createTRPCRouter({
         );
       }, 0);
       const totalAmount = subtotal + taxAmount;
+      const tenantId = ctx.tenantId;
 
       return db.$transaction(async (tx) => {
         await tx.quotationSection.deleteMany({ where: { quotationId: input.id } });
@@ -696,6 +728,7 @@ export const crmRouter = createTRPCRouter({
         for (const col of markupColumnsInput) {
           const created = await tx.quotationMarkupColumn.create({
             data: {
+              tenantId,
               quotationId: input.id,
               name: col.name,
               tier: col.tier,
@@ -710,6 +743,7 @@ export const crmRouter = createTRPCRouter({
         for (const section of sectionsInput) {
           const createdSection = await tx.quotationSection.create({
             data: {
+              tenantId,
               quotationId: input.id,
               name: section.name,
               sortOrder: section.sortOrder,
@@ -721,6 +755,7 @@ export const crmRouter = createTRPCRouter({
           for (const lineItem of section.lineItems) {
             const createdItem = await tx.quotationLineItem.create({
               data: {
+                tenantId,
                 sectionId: createdSection.id,
                 description: lineItem.description,
                 unit: lineItem.unit,
@@ -742,6 +777,7 @@ export const crmRouter = createTRPCRouter({
               }
               await tx.quotationLineItemMarkup.create({
                 data: {
+                  tenantId,
                   lineItemId: createdItem.id,
                   markupColumnId: colId,
                   markedUpPrice: markup.markedUpPrice,
@@ -770,12 +806,10 @@ export const crmRouter = createTRPCRouter({
 
   quotationSend: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const existing = await db.quotation.findUnique({
-        where: { id: input.id },
-        select: { id: true, status: true },
+    .mutation(async ({ ctx, input }) => {
+      const existing = await loadQuotationForTenant(input.id, {
+        tenantId: ctx.tenantId,
       });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
       if (existing.status !== "draft") {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -790,12 +824,10 @@ export const crmRouter = createTRPCRouter({
 
   quotationAccept: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const existing = await db.quotation.findUnique({
-        where: { id: input.id },
-        select: { id: true, status: true },
+    .mutation(async ({ ctx, input }) => {
+      const existing = await loadQuotationForTenant(input.id, {
+        tenantId: ctx.tenantId,
       });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
       if (existing.status !== "sent") {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -810,12 +842,10 @@ export const crmRouter = createTRPCRouter({
 
   quotationReject: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const existing = await db.quotation.findUnique({
-        where: { id: input.id },
-        select: { id: true, status: true },
+    .mutation(async ({ ctx, input }) => {
+      const existing = await loadQuotationForTenant(input.id, {
+        tenantId: ctx.tenantId,
       });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
       if (existing.status !== "sent") {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -830,9 +860,9 @@ export const crmRouter = createTRPCRouter({
 
   quotationCreateRevision: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const existing = await db.quotation.findUnique({
-        where: { id: input.id },
+    .mutation(async ({ ctx, input }) => {
+      const existing = await db.quotation.findFirst({
+        where: { id: input.id, tenantId: ctx.tenantId },
         include: {
           markupColumns: true,
           sections: { include: { lineItems: { include: { markups: true } } } },
@@ -851,10 +881,12 @@ export const crmRouter = createTRPCRouter({
         });
       }
       const nextNumber = (existing.revisions[0]?.revisionNumber ?? 0) + 1;
+      const tenantId = ctx.tenantId;
 
       return db.$transaction(async (tx) => {
         await tx.quotationRevision.create({
           data: {
+            tenantId,
             quotationId: existing.id,
             revisionNumber: nextNumber,
             snapshot: {
@@ -913,8 +945,8 @@ export const crmRouter = createTRPCRouter({
       if (ctx.userId === null) {
         throw new TRPCError({ code: "UNAUTHORIZED" });
       }
-      const existing = await db.quotation.findUnique({
-        where: { id: input.id },
+      const existing = await db.quotation.findFirst({
+        where: { id: input.id, tenantId: ctx.tenantId },
         include: {
           markupColumns: { orderBy: { sortOrder: "asc" } },
           sections: {
@@ -929,10 +961,6 @@ export const crmRouter = createTRPCRouter({
         },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      // Quotation is gated by its customer's tenant (Quotation lacks own tenantId in Phase 3a schema).
-      await loadCustomerForTenant(existing.customerId, {
-        tenantId: ctx.tenantId,
-      });
       if (existing.status !== "accepted") {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -1043,8 +1071,9 @@ export const crmRouter = createTRPCRouter({
         type: z.enum(CONTACT_LOG_TYPES).optional(),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.customerId !== undefined ? { customerId: input.customerId } : {}),
         ...(input.type !== undefined ? { type: input.type } : {}),
       };
@@ -1080,9 +1109,9 @@ export const crmRouter = createTRPCRouter({
 
   contactLogById: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .query(async ({ input }) => {
-      const log = await db.contactLog.findUnique({
-        where: { id: input.id },
+    .query(async ({ ctx, input }) => {
+      const log = await db.contactLog.findFirst({
+        where: { id: input.id, tenantId: ctx.tenantId },
         include: {
           customer: {
             select: {
@@ -1113,9 +1142,9 @@ export const crmRouter = createTRPCRouter({
         limit: z.number().int().min(1).max(200).default(50),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       return db.contactLog.findMany({
-        where: { customerId: input.customerId },
+        where: { customerId: input.customerId, tenantId: ctx.tenantId },
         take: input.limit,
         orderBy: { occurredAt: "desc" },
         include: {
@@ -1150,6 +1179,7 @@ export const crmRouter = createTRPCRouter({
       });
       return db.contactLog.create({
         data: {
+          tenantId: ctx.tenantId,
           customerId: input.customerId,
           createdById: ctx.userId,
           type: input.type,
@@ -1170,12 +1200,8 @@ export const crmRouter = createTRPCRouter({
         occurredAt: z.date().optional(),
       }),
     )
-    .mutation(async ({ input }) => {
-      const existing = await db.contactLog.findUnique({
-        where: { id: input.id },
-        select: { id: true },
-      });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ ctx, input }) => {
+      await loadContactLogForTenant(input.id, { tenantId: ctx.tenantId });
       return db.contactLog.update({
         where: { id: input.id },
         data: {
@@ -1189,12 +1215,8 @@ export const crmRouter = createTRPCRouter({
 
   contactLogDelete: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const existing = await db.contactLog.findUnique({
-        where: { id: input.id },
-        select: { id: true },
-      });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ ctx, input }) => {
+      await loadContactLogForTenant(input.id, { tenantId: ctx.tenantId });
       await db.contactLog.delete({ where: { id: input.id } });
       return { id: input.id };
     }),

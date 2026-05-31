@@ -58,6 +58,7 @@ vi.mock("@orqafy/db", () => ({
     quotationRevision: { create: vi.fn() },
     contactLog: {
       findMany: vi.fn(),
+      findFirst: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
@@ -156,6 +157,7 @@ const mockDb = db as unknown as {
 
 const sampleCustomer = {
   id: "cust-1",
+  tenantId: "acme-tenant-id",
   companyName: "Acme Corp",
   firstName: "Juan",
   lastName: "dela Cruz",
@@ -192,6 +194,7 @@ const sampleContact = {
 
 const sampleCreditAccount = {
   id: "credit-1",
+  tenantId: "acme-tenant-id",
   customerId: "cust-1",
   creditLimit: "50000.00",
   currentBalance: "0.00",
@@ -539,6 +542,7 @@ const CUSTOMER_ID = "ck1234567890123456789012c";
 
 const sampleQuotation = {
   id: QUOTATION_ID,
+  tenantId: "acme-tenant-id",
   quotationNumber: "QT-2605-0001",
   customerId: CUSTOMER_ID,
   createdById: "user-1",
@@ -606,7 +610,7 @@ describe("crm.quotationById", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it("returns a quotation with nested sections + markups + revisions", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue({
+    mockDb.quotation.findFirst.mockResolvedValue({
       ...sampleQuotation,
       customer: sampleCustomer,
       createdBy: { id: "user-1", firstName: "Bo", lastName: "N", displayName: null },
@@ -623,7 +627,7 @@ describe("crm.quotationById", () => {
   });
 
   it("throws NOT_FOUND when quotation does not exist", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue(null);
+    mockDb.quotation.findFirst.mockResolvedValue(null);
 
     const caller = createCaller(authenticatedCtx());
     await expect(
@@ -639,7 +643,7 @@ describe("crm.quotationCreate", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   function setupHappyPath() {
-    mockDb.customer.findUnique.mockResolvedValue({ id: CUSTOMER_ID });
+    mockDb.customer.findUnique.mockResolvedValue({ id: CUSTOMER_ID, tenantId: "acme-tenant-id" });
     mockDb.quotation.findFirst.mockResolvedValue(null); // generateQuotationNumber
     mockDb.$transaction.mockImplementation(async (fn: (tx: typeof mockDb) => Promise<unknown>) =>
       fn(mockDb),
@@ -778,7 +782,7 @@ describe("crm.quotationCreate", () => {
     });
 
     const created = mockDb.quotation.create.mock.calls[0] as [{ data: { quotationNumber: string } }];
-    expect(created[0].data.quotationNumber).toBe("QT-2605-0043");
+    expect(created[0].data.quotationNumber).toMatch(/^QT-\d{4}-0043$/);
   });
 
   it("throws NOT_FOUND when customer does not exist", async () => {
@@ -845,7 +849,7 @@ describe("crm.quotationUpdate", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it("updates a draft quotation", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "draft" });
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, tenantId: "acme-tenant-id", status: "draft" });
     mockDb.quotation.update.mockResolvedValue({ ...sampleQuotation, title: "Updated Title" });
 
     const caller = createCaller(authenticatedCtx());
@@ -860,7 +864,7 @@ describe("crm.quotationUpdate", () => {
   });
 
   it("rejects edits on non-draft quotations", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "sent" });
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, tenantId: "acme-tenant-id", status: "sent" });
 
     const caller = createCaller(authenticatedCtx());
     await expect(
@@ -879,7 +883,7 @@ describe("crm.quotationUpdate", () => {
   });
 
   it("replaces sections + markupColumns and recomputes totals on full-payload edit", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "draft" });
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, tenantId: "acme-tenant-id", status: "draft" });
     mockDb.$transaction.mockImplementation(
       async (fn: (tx: typeof mockDb) => Promise<unknown>) => fn(mockDb),
     );
@@ -951,7 +955,7 @@ describe("crm.quotationUpdate", () => {
   });
 
   it("rejects partial full-payload (sections without markupColumns)", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "draft" });
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, tenantId: "acme-tenant-id", status: "draft" });
     const caller = createCaller(authenticatedCtx());
     await expect(
       caller.crm.quotationUpdate({
@@ -972,7 +976,7 @@ describe("crm.quotationSend", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it("flips status draft → sent and sets sentAt", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "draft" });
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, tenantId: "acme-tenant-id", status: "draft" });
     mockDb.quotation.update.mockResolvedValue({
       ...sampleQuotation,
       status: "sent",
@@ -989,7 +993,7 @@ describe("crm.quotationSend", () => {
   });
 
   it("rejects non-draft quotations", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "sent" });
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, tenantId: "acme-tenant-id", status: "sent" });
 
     const caller = createCaller(authenticatedCtx());
     await expect(
@@ -1005,7 +1009,7 @@ describe("crm.quotationAccept", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it("flips status sent → accepted and sets acceptedAt", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "sent" });
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, tenantId: "acme-tenant-id", status: "sent" });
     mockDb.quotation.update.mockResolvedValue({
       ...sampleQuotation,
       status: "accepted",
@@ -1022,7 +1026,7 @@ describe("crm.quotationAccept", () => {
   });
 
   it("rejects accept on non-sent quotations", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "draft" });
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, tenantId: "acme-tenant-id", status: "draft" });
 
     const caller = createCaller(authenticatedCtx());
     await expect(
@@ -1035,7 +1039,7 @@ describe("crm.quotationReject", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it("flips status sent → rejected", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "sent" });
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, tenantId: "acme-tenant-id", status: "sent" });
     mockDb.quotation.update.mockResolvedValue({ ...sampleQuotation, status: "rejected" });
 
     const caller = createCaller(authenticatedCtx());
@@ -1045,7 +1049,7 @@ describe("crm.quotationReject", () => {
   });
 
   it("rejects reject on non-sent quotations", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, status: "draft" });
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, tenantId: "acme-tenant-id", status: "draft" });
 
     const caller = createCaller(authenticatedCtx());
     await expect(
@@ -1061,8 +1065,9 @@ describe("crm.quotationCreateRevision", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it("snapshots current state, increments revisionNumber, and resets to draft", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue({
+    mockDb.quotation.findFirst.mockResolvedValue({
       id: QUOTATION_ID,
+      tenantId: "acme-tenant-id",
       status: "sent",
       subtotal: { toString: () => "1500.00" },
       taxAmount: { toString: () => "180.00" },
@@ -1095,8 +1100,9 @@ describe("crm.quotationCreateRevision", () => {
   });
 
   it("rejects revision on converted quotations", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue({
+    mockDb.quotation.findFirst.mockResolvedValue({
       id: QUOTATION_ID,
+      tenantId: "acme-tenant-id",
       status: "converted",
       subtotal: { toString: () => "0" },
       taxAmount: { toString: () => "0" },
@@ -1169,6 +1175,7 @@ describe("crm.quotation* demo tenant blocking", () => {
 const CONTACT_LOG_ID = "log-1";
 const sampleContactLog = {
   id: CONTACT_LOG_ID,
+  tenantId: "acme-tenant-id",
   customerId: "cust-1",
   createdById: "user-1",
   type: "call",
@@ -1233,7 +1240,7 @@ describe("crm.contactLog.byId", () => {
   });
 
   it("returns the log when found", async () => {
-    mockDb.contactLog.findUnique.mockResolvedValue(sampleContactLog);
+    mockDb.contactLog.findFirst.mockResolvedValue(sampleContactLog);
 
     const caller = createCaller(authenticatedCtx());
     const result = await caller.crm.contactLogById({ id: CONTACT_LOG_ID });
@@ -1243,7 +1250,7 @@ describe("crm.contactLog.byId", () => {
   });
 
   it("throws NOT_FOUND when log does not exist", async () => {
-    mockDb.contactLog.findUnique.mockResolvedValue(null);
+    mockDb.contactLog.findFirst.mockResolvedValue(null);
 
     const caller = createCaller(authenticatedCtx());
     await expect(
@@ -1281,7 +1288,7 @@ describe("crm.contactLog.create", () => {
   });
 
   it("creates a log with default occurredAt when not provided", async () => {
-    mockDb.customer.findUnique.mockResolvedValue({ id: "cust-1" });
+    mockDb.customer.findUnique.mockResolvedValue({ id: "cust-1", tenantId: "acme-tenant-id" });
     mockDb.contactLog.create.mockResolvedValue(sampleContactLog);
 
     const caller = createCaller(authenticatedCtx());
@@ -1300,7 +1307,7 @@ describe("crm.contactLog.create", () => {
   });
 
   it("uses the provided occurredAt when supplied", async () => {
-    mockDb.customer.findUnique.mockResolvedValue({ id: "cust-1" });
+    mockDb.customer.findUnique.mockResolvedValue({ id: "cust-1", tenantId: "acme-tenant-id" });
     mockDb.contactLog.create.mockResolvedValue(sampleContactLog);
 
     const specific = new Date("2026-04-01T10:00:00Z");
@@ -1338,7 +1345,7 @@ describe("crm.contactLog.update", () => {
   });
 
   it("updates only provided fields", async () => {
-    mockDb.contactLog.findUnique.mockResolvedValue({ id: CONTACT_LOG_ID });
+    mockDb.contactLog.findUnique.mockResolvedValue({ id: CONTACT_LOG_ID, tenantId: "acme-tenant-id" });
     mockDb.contactLog.update.mockResolvedValue({
       ...sampleContactLog,
       subject: "Updated subject",
@@ -1374,7 +1381,7 @@ describe("crm.contactLog.delete", () => {
   });
 
   it("deletes the log and returns its id", async () => {
-    mockDb.contactLog.findUnique.mockResolvedValue({ id: CONTACT_LOG_ID });
+    mockDb.contactLog.findUnique.mockResolvedValue({ id: CONTACT_LOG_ID, tenantId: "acme-tenant-id" });
     mockDb.contactLog.delete.mockResolvedValue(sampleContactLog);
 
     const caller = createCaller(authenticatedCtx());
@@ -1438,6 +1445,7 @@ describe("crm.quotationConvertToInvoice", () => {
   function acceptedQuotationFixture(overrides: Record<string, unknown> = {}) {
     return {
       id: QUOTATION_ID,
+      tenantId: "acme-tenant-id",
       status: "accepted",
       convertedToInvoiceId: null,
       customerId: "cust-1",
@@ -1482,7 +1490,7 @@ describe("crm.quotationConvertToInvoice", () => {
   }
 
   it("creates invoice from accepted quotation and flips status to converted", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue(acceptedQuotationFixture());
+    mockDb.quotation.findFirst.mockResolvedValue(acceptedQuotationFixture());
     mockDb.$transaction.mockImplementation(
       async (fn: (tx: typeof mockDb) => Promise<unknown>) => fn(mockDb),
     );
@@ -1547,7 +1555,7 @@ describe("crm.quotationConvertToInvoice", () => {
   });
 
   it("uses explicit markupColumnId when provided", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue(
+    mockDb.quotation.findFirst.mockResolvedValue(
       acceptedQuotationFixture({
         markupColumns: [
           { id: "col-1", sortOrder: 0, name: "Tier 1", tier: "tier1" },
@@ -1603,7 +1611,7 @@ describe("crm.quotationConvertToInvoice", () => {
   });
 
   it("blocks conversion when quotation is not accepted", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue(
+    mockDb.quotation.findFirst.mockResolvedValue(
       acceptedQuotationFixture({ status: "draft" }),
     );
 
@@ -1614,7 +1622,7 @@ describe("crm.quotationConvertToInvoice", () => {
   });
 
   it("blocks conversion when quotation is already converted", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue(
+    mockDb.quotation.findFirst.mockResolvedValue(
       acceptedQuotationFixture({ convertedToInvoiceId: "inv-existing" }),
     );
 
@@ -1625,7 +1633,7 @@ describe("crm.quotationConvertToInvoice", () => {
   });
 
   it("throws NOT_FOUND when quotation does not exist", async () => {
-    mockDb.quotation.findUnique.mockResolvedValue(null);
+    mockDb.quotation.findFirst.mockResolvedValue(null);
 
     const caller = createCaller(authenticatedCtx());
     await expect(
