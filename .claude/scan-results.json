@@ -1,6 +1,7 @@
 {
-  "scannedAt": "2026-05-31",
-  "previousScan": "2026-05-29",
+  "scannedAt": "2026-05-31T22:04+08:00",
+  "previousScan": "2026-05-31",
+  "deltaSinceLastScanLate2026-05-31": "Re-scan at 22:04 GMT+8 (mid-P1, 4/6 stubs shipped same day): no drift. All 17 project skills + 2 plugins (context-mode + claude-mem) + 3 MCPs (socraticode/context7/shadcn) + memory-governance.md rules file all confirmed present. Zero install actions. Two optional domain packs (spec-driven-payments + spec-driven-erp) surfaced as MEDIUM, user chose 'skip optional' — defer to greenfield module batch. Vercel bootstrap/next-upgrade auto-suggestions ignored (Komodo+Traefik deploy, not Vercel). Global skills clean (none).",
   "techStack": [
     "TypeScript (strict)",
     "Next.js 15 (App Router)",
