@@ -1,0 +1,45 @@
+# Hot-reload dev variant — mounts source into container; runs Next.js dev server.
+# Saves ~2.5 min per UI change vs rebuilding the production image.
+# Conflicts with regular app service on ${APP_PORT} — stop one before starting the other:
+#   docker compose -f deploy/compose/dev/docker-compose.app.yml down
+# Then: docker compose --env-file .env.dev -f deploy/compose/dev/docker-compose.app.hot.yml up -d
+
+networks:
+  app_network:
+    name: ${COMPOSE_PROJECT_NAME}_network
+    external: true
+
+volumes:
+  app_hot_node_modules:
+    name: ${COMPOSE_PROJECT_NAME}_app_hot_node_modules
+  app_hot_next:
+    name: ${COMPOSE_PROJECT_NAME}_app_hot_next
+  app_hot_turbo:
+    name: ${COMPOSE_PROJECT_NAME}_app_hot_turbo
+
+services:
+  app:
+    image: node:22-alpine
+    container_name: ${COMPOSE_PROJECT_NAME}_app_hot
+    hostname: ${COMPOSE_PROJECT_NAME}_app_hot
+    working_dir: /workspace
+    env_file: ../../../.env.dev
+    environment:
+      - NODE_ENV=development
+      - PORT=${APP_PORT}
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${COMPOSE_PROJECT_NAME}_pgbouncer:5432/${DB_NAME}?schema=public&pgbouncer=true
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@${COMPOSE_PROJECT_NAME}_valkey:6379
+      - STORAGE_ENDPOINT=http://${COMPOSE_PROJECT_NAME}_minio:9000
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+    volumes:
+      - ../../..:/workspace
+      - app_hot_node_modules:/workspace/node_modules
+      - app_hot_next:/workspace/apps/web/.next
+      - app_hot_turbo:/workspace/.turbo
+    command: ["sh", "-c", "npm install -g pnpm@10 && pnpm install --frozen-lockfile && pnpm --filter @orqafy/db db:generate && pnpm --filter @orqafy/web dev"]
+    networks: [app_network]
+    restart: unless-stopped
+    # depends_on not set — postgres/valkey live in separate compose files.
+    # Start backing services first via: bash deploy/compose/start.sh dev up -d
+    # (excluding the regular app service) before launching this hot variant.

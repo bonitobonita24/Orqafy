@@ -22,13 +22,11 @@ import {
   ShoppingBag,
   ShoppingCart,
   UserCheck,
-  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "dashboard", icon: LayoutDashboard },
-  { label: "Clients", href: "clients", icon: Users },
   { label: "CRM", href: "crm/customers", icon: HeartHandshake },
   { label: "Projects", href: "projects", icon: FolderOpen },
   { label: "Job Orders", href: "job-orders", icon: ClipboardList },

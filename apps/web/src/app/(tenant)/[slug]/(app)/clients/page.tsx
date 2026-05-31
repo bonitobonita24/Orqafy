@@ -1,12 +1,10 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Clients" };
-
-export default function ClientsPage() {
-  return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Clients</h1>
-      <p className="text-muted-foreground">Client list — Phase 8</p>
-    </div>
-  );
+export default async function ClientsPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  redirect(`/${slug}/crm/customers`);
 }

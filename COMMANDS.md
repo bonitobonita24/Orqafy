@@ -19,6 +19,22 @@ ENV = dev | stage | prod
 | `docker compose -f deploy/compose/dev/docker-compose.app.yml ps` | Check service health status |
 | `docker compose -f deploy/compose/dev/docker-compose.db.yml ps` | Check DB + PgBouncer health |
 
+### Hot-Reload Dev Mode (NEW)
+
+For UI/page work: bind-mounts source instead of rebuilding the production image. Saves ~2.5 min per change.
+
+| Command | What it does |
+|---|---|
+| `bash deploy/compose/start.sh dev up -d` | First, start backing services (db/cache/storage/pgadmin). |
+| `docker compose --env-file .env.dev -f deploy/compose/dev/docker-compose.app.hot.yml up -d` | Then, start app in hot-reload mode (Next dev server, bind-mounted source). |
+| `docker compose --env-file .env.dev -f deploy/compose/dev/docker-compose.app.hot.yml logs -f` | Tail hot app logs. |
+| `docker compose --env-file .env.dev -f deploy/compose/dev/docker-compose.app.hot.yml down` | Stop the hot app (backing services keep running). |
+
+**Caveats:**
+- First boot is slow (~90s — pnpm install runs inside the container). Subsequent restarts are fast.
+- Cannot run production-mode app AND hot-mode app at the same time — they share port `${APP_PORT}`. Stop one before starting the other: `docker compose -f deploy/compose/dev/docker-compose.app.yml down` before `up` on the hot file.
+- Hot mode runs `pnpm dev` on `node:22-alpine` directly — does NOT use `apps/web/Dockerfile`.
+
 ---
 
 ## Docker — Clean / Clear / Reset
