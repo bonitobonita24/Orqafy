@@ -64,6 +64,13 @@ model Tenant {
   customerSubscriptions        Subscription[]
   expenseCategories            ExpenseCategory[]
   expenses                     Expense[]
+  quotations                   Quotation[]
+  quotationSections            QuotationSection[]
+  quotationMarkupColumns       QuotationMarkupColumn[]
+  quotationLineItems           QuotationLineItem[]
+  quotationLineItemMarkups     QuotationLineItemMarkup[]
+  quotationRevisions           QuotationRevision[]
+  contactLogs                  ContactLog[]
 
   @@map("tenants")
   @@schema("public")
@@ -515,6 +522,8 @@ model ProposalRevision {
 
 model Quotation {
   id                   String    @id @default(cuid())
+  tenantId             String    @map("tenant_id")
+  tenant               Tenant    @relation(fields: [tenantId], references: [id])
   quotationNumber      String    @unique @map("quotation_number")
   customerId           String    @map("customer_id")
   customer             Customer  @relation(fields: [customerId], references: [id])
@@ -540,12 +549,15 @@ model Quotation {
   markupColumns QuotationMarkupColumn[]
   revisions     QuotationRevision[]
 
+  @@index([tenantId])
   @@map("quotations")
   @@schema("public")
 }
 
 model QuotationSection {
   id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
   quotationId String    @map("quotation_id")
   quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
   name        String
@@ -556,6 +568,7 @@ model QuotationSection {
 
   lineItems QuotationLineItem[]
 
+  @@index([tenantId])
   @@index([quotationId])
   @@map("quotation_sections")
   @@schema("public")
@@ -563,6 +576,8 @@ model QuotationSection {
 
 model QuotationMarkupColumn {
   id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
   quotationId String    @map("quotation_id")
   quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
   name        String
@@ -575,6 +590,7 @@ model QuotationMarkupColumn {
 
   lineItemMarkups QuotationLineItemMarkup[]
 
+  @@index([tenantId])
   @@index([quotationId])
   @@map("quotation_markup_columns")
   @@schema("public")
@@ -582,6 +598,8 @@ model QuotationMarkupColumn {
 
 model QuotationLineItem {
   id          String           @id @default(cuid())
+  tenantId    String           @map("tenant_id")
+  tenant      Tenant           @relation(fields: [tenantId], references: [id])
   sectionId   String           @map("section_id")
   section     QuotationSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   productId   String?          @map("product_id")
@@ -596,6 +614,7 @@ model QuotationLineItem {
 
   markups QuotationLineItemMarkup[]
 
+  @@index([tenantId])
   @@index([sectionId])
   @@map("quotation_line_items")
   @@schema("public")
@@ -603,6 +622,8 @@ model QuotationLineItem {
 
 model QuotationLineItemMarkup {
   id             String                @id @default(cuid())
+  tenantId       String                @map("tenant_id")
+  tenant         Tenant                @relation(fields: [tenantId], references: [id])
   lineItemId     String                @map("line_item_id")
   lineItem       QuotationLineItem     @relation(fields: [lineItemId], references: [id], onDelete: Cascade)
   markupColumnId String                @map("markup_column_id")
@@ -612,18 +633,22 @@ model QuotationLineItemMarkup {
   updatedAt      DateTime              @updatedAt @map("updated_at")
 
   @@unique([lineItemId, markupColumnId])
+  @@index([tenantId])
   @@map("quotation_line_item_markups")
   @@schema("public")
 }
 
 model QuotationRevision {
   id             String    @id @default(cuid())
+  tenantId       String    @map("tenant_id")
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
   quotationId    String    @map("quotation_id")
   quotation      Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
   revisionNumber Int       @map("revision_number")
   snapshot       Json
   createdAt      DateTime  @default(now()) @map("created_at")
 
+  @@index([tenantId])
   @@index([quotationId])
   @@map("quotation_revisions")
   @@schema("public")
@@ -631,6 +656,8 @@ model QuotationRevision {
 
 model ContactLog {
   id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
   customerId  String   @map("customer_id")
   customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   createdById String   @map("created_by_id")
@@ -642,6 +669,7 @@ model ContactLog {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  @@index([tenantId])
   @@index([customerId])
   @@index([createdById])
   @@index([occurredAt])
