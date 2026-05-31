@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 import { formatCurrency } from "@/lib/quotation-build";
 
@@ -59,7 +60,16 @@ export default async function QuotationsPage({ params, searchParams }: PageProps
   const { status: rawStatus } = await searchParams;
   const status = isStatus(rawStatus) ? rawStatus : undefined;
 
-  const where = status !== undefined ? { status } : {};
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (!tenant) notFound();
+
+  const where = {
+    tenantId: tenant.id,
+    ...(status !== undefined ? { status } : {}),
+  };
   const [items, total] = await Promise.all([
     prisma.quotation.findMany({
       where,

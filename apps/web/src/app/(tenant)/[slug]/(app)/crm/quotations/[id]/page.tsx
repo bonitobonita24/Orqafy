@@ -43,8 +43,13 @@ interface PageProps {
 
 export default async function QuotationDetailPage({ params }: PageProps) {
   const { slug, id } = await params;
-  const quotation = await prisma.quotation.findUnique({
-    where: { id },
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (!tenant) notFound();
+  const quotation = await prisma.quotation.findFirst({
+    where: { id, tenantId: tenant.id },
     include: {
       customer: true,
       createdBy: {

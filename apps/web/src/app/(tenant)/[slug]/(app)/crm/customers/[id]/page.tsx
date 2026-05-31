@@ -11,9 +11,9 @@ export const metadata: Metadata = { title: "Customer Detail" };
 
 export const dynamic = "force-dynamic";
 
-async function getCustomer(id: string) {
-  return prisma.customer.findUnique({
-    where: { id },
+async function getCustomer(id: string, tenantId: string) {
+  return prisma.customer.findFirst({
+    where: { id, tenantId },
     include: {
       contacts: { orderBy: { isPrimary: "desc" } },
       creditAccount: true,
@@ -21,9 +21,12 @@ async function getCustomer(id: string) {
   });
 }
 
-async function getContactLogs(customerId: string): Promise<ContactLogEntry[]> {
+async function getContactLogs(
+  customerId: string,
+  tenantId: string,
+): Promise<ContactLogEntry[]> {
   return prisma.contactLog.findMany({
-    where: { customerId },
+    where: { customerId, tenantId },
     orderBy: { occurredAt: "desc" },
     take: 20,
     include: {
@@ -52,16 +55,21 @@ const TIER_COLORS: Record<string, string> = {
 };
 
 interface Props {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string; id: string }>;
 }
 
 export default async function CustomerDetailPage({ params }: Props) {
-  const { id } = await params;
-  const customer = await getCustomer(id);
+  const { slug, id } = await params;
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (!tenant) notFound();
+  const customer = await getCustomer(id, tenant.id);
 
   if (customer === null) notFound();
 
-  const contactLogs = await getContactLogs(customer.id);
+  const contactLogs = await getContactLogs(customer.id, tenant.id);
 
   const tierClass =
     TIER_COLORS[customer.tier] ??

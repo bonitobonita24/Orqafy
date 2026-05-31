@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 import { QuotationBuilder } from "./quotation-builder";
 
@@ -13,8 +14,13 @@ interface PageProps {
 
 export default async function NewQuotationPage({ params }: PageProps) {
   const { slug } = await params;
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (!tenant) notFound();
   const customers = await prisma.customer.findMany({
-    where: { isActive: true },
+    where: { isActive: true, tenantId: tenant.id },
     orderBy: { companyName: "asc" },
     select: {
       id: true,

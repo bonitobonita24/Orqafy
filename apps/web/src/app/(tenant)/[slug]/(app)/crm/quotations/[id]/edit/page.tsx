@@ -25,8 +25,14 @@ interface CustomerOption {
 export default async function EditQuotationPage({ params }: PageProps) {
   const { slug, id } = await params;
 
-  const quotation = await prisma.quotation.findUnique({
-    where: { id },
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (!tenant) notFound();
+
+  const quotation = await prisma.quotation.findFirst({
+    where: { id, tenantId: tenant.id },
     include: {
       markupColumns: { orderBy: { sortOrder: "asc" } },
       sections: {
@@ -41,7 +47,7 @@ export default async function EditQuotationPage({ params }: PageProps) {
   }
 
   const activeCustomers = await prisma.customer.findMany({
-    where: { isActive: true },
+    where: { isActive: true, tenantId: tenant.id },
     select: { id: true, firstName: true, lastName: true, companyName: true },
     orderBy: [{ companyName: "asc" }, { lastName: "asc" }],
   });
@@ -49,8 +55,8 @@ export default async function EditQuotationPage({ params }: PageProps) {
   // Ensure the quotation's customer is always selectable, even if inactive.
   let customers: CustomerOption[] = activeCustomers;
   if (!activeCustomers.some((c) => c.id === quotation.customerId)) {
-    const owner = await prisma.customer.findUnique({
-      where: { id: quotation.customerId },
+    const owner = await prisma.customer.findFirst({
+      where: { id: quotation.customerId, tenantId: tenant.id },
       select: { id: true, firstName: true, lastName: true, companyName: true },
     });
     if (owner !== null) customers = [owner, ...activeCustomers];

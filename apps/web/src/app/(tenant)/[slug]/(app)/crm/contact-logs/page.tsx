@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 
 export const metadata: Metadata = { title: "Contact logs" };
@@ -80,7 +81,14 @@ export default async function ContactLogsPage({ params, searchParams }: PageProp
   const parsedPage = typeof rawPage === "string" ? Number.parseInt(rawPage, 10) : 1;
   const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
 
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (!tenant) notFound();
+
   const where = {
+    tenantId: tenant.id,
     ...(customerId !== undefined ? { customerId } : {}),
     ...(type !== undefined ? { type } : {}),
   };
@@ -102,8 +110,8 @@ export default async function ContactLogsPage({ params, searchParams }: PageProp
     }),
     prisma.contactLog.count({ where }),
     customerId !== undefined
-      ? prisma.customer.findUnique({
-          where: { id: customerId },
+      ? prisma.customer.findFirst({
+          where: { id: customerId, tenantId: tenant.id },
           select: { id: true, firstName: true, lastName: true, companyName: true },
         })
       : Promise.resolve(null),
