@@ -4,6 +4,13 @@
 # READ ORDER: 🔴 first → 🟤 second → rest by relevance
 # ---
 
+## 2026-05-31 — 🟤 decision docker-publish.yml builds amd64-only by default
+- Type:      🟤 decision
+- Phase:     Phase 8 deferred-task batch (Tasks #3 + #4 closure)
+- Files:     .github/workflows/docker-publish.yml
+- Concepts:  docker-publish, github-actions, qemu, multi-platform, arm64, amd64, komodo, build-time
+- Narrative: (1) arm64 emulation via QEMU on GitHub Actions amd64 runners is 3–6× slower than native amd64 builds. (2) Komodo staging/prod VPS is amd64 in this project's deployment topology — arm64 layers waste ~70% of wall-clock for a platform that no current consumer pulls. (3) Default platform list set to `linux/amd64` only for both web and worker builds. (4) **How to add arm64 back:** add `linux/arm64` per-image (not globally) only when a real consumer emerges — e.g. M-series Mac dev needs to pull the image natively, or Komodo migrates to ARM nodes. Single-line revert per `build-push-action` step. (5) Removal trigger: when an M-series Mac dev workflow appears in PRODUCT.md or Komodo VPS migrates to ARM. Verify build-time cost first — cold-cache arm64 build adds ~20 min wall-clock.
+
 ## 2026-05-29 — 🟢 change Helper-extract dual-caller pattern confirmed (verifyTurnstile)
 - Type:      🟢 change
 - Phase:     Phase 8 Batch 22 (Direction C, Sub-task A1)

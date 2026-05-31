@@ -1,6 +1,6 @@
-# Next Session — Task #15 CLOSED. Pick Direction L module or push 4 unpushed commits.
+# Next Session — Direction K unblocked. Begin gate 1 of 12.
 
-Last close: Task #15 — typescript.ignoreBuildErrors removed via React 19 portal augmentation (commit 428acf4). 0 typecheck errors. 761/761 GREEN. Direction I fully complete (Batches 26-32). Next: pick Direction L module OR run `git push origin main` to push 4 unpushed commits (ecc9b41, 2e1a148, 2feb177, 428acf4).
+Last close: Tasks #3 + #4 closed 2026-05-31 (commits 6df0324 + 08a1a09). docker-publish.yml now builds both `orqafy:staging-latest` + `orqafy-worker:staging-latest` (amd64-only; arm64 dropped — see lessons.md 🟤 decision). Workflow run 26689984984 SUCCESS in 4m 47s. Komodo staging Stack should auto-pull both images on next poll (auto_update: true). Verify staging app is reachable at orqafy-staging.powerbyte.app, then begin Direction K gate 1 of 12 (run `prisma migrate deploy` against staging for the 12 accumulated dev migrations).
 
 🔴 STRATEGIC FINDING (banked 2026-05-30): Q2 surface is 70+ models app-wide — purchasing was a 9-model slice.
 Full-schema grep during Batch 32 pre-flight revealed the tenant isolation gap extends far beyond purchasing.
@@ -18,11 +18,11 @@ System tables (Tenant, Plan, User, Role, AuditLog) are intentionally tenant-agno
 All others above are Q2 business data lacking isolation. Tests pass only because fixtures don't exercise
 cross-tenant access. Recommend treating as Direction L (multi-batch, module-by-module) when dev is further along.
 
-## 🟡 DEFERRED — Direction K (12 staging/prod migration gates)
-User call: dev is not feature-complete yet; staging-deploy before dev close-out optimizes for the wrong thing.
-Direction K (running `prisma migrate deploy` for all 12 accumulated migrations on staging + prod) is deferred
-until dev reaches a natural feature milestone. The 12 gates remain valid; just not the highest-priority next step.
-Full gate list was in the prior .whatsnext — see git history or docs/deployment-direction-f.md.
+## Direction K (12 staging/prod migration gates) — UNBLOCKED 2026-05-31
+Tasks #3 + #4 closed (commits 6df0324 + 08a1a09). Both Docker images now on Docker Hub.
+Komodo staging Stack with auto_update: true will auto-pull staging-latest on next poll.
+Run `prisma migrate deploy` against staging for all 12 accumulated dev migrations.
+Full gate list: see docs/deployment-direction-f.md or git history of prior .whatsnext.
 
 ## Recommended next directions
 

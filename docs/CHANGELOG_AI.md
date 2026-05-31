@@ -3,6 +3,19 @@
 # Append-only — newest entries at the bottom.
 # ---
 
+## 2026-05-31 — Docker publish hardened — worker image added, arm64 dropped, timeout 30→60m
+- Agent:               CLAUDE_CODE
+- Why:                 Closes deferred Tasks #3 + #4 (GH Actions secrets + staging-latest verification) and the worker-build gap they surfaced. Komodo staging stack expects both `orqafy:staging-latest` AND `orqafy-worker:staging-latest`; previously only the web image was built by docker-publish.yml. Prior run 26687368923 was cancelled at 30-min timeout — web amd64+arm64 via QEMU consumed 25 min, leaving the worker build only 5 min before timeout fired.
+- Files added:         none
+- Files modified:      .github/workflows/docker-publish.yml (added worker build job; dropped linux/arm64 from both web and worker platforms lists; raised timeout-minutes 30→60), .env.staging (APP_IMAGE_WORKER_TAG + DOCKERHUB_IMAGE_WORKER vars), .env.prod (same), .env.example (worker image tag placeholders)
+- Files deleted:       none
+- Schema/migrations:   none
+- Commits:             6df0324 (feat: build worker image alongside web in docker-publish), 08a1a09 (fix: drop arm64 from docker-publish, raise timeout to 60m) — both squash-merged to main
+- Errors encountered:  Workflow run 26687368923 cancelled at 30-min timeout. Web build alone (amd64+arm64 via QEMU) consumed ~25 min; worker had only ~5 min before timeout fired and was killed mid-build.
+- Errors resolved:     Dropped linux/arm64 from both platforms lists (Komodo VPS is amd64; arm64 QEMU emulation adds ~70% wall-clock for a platform nothing currently pulls). Raised timeout-minutes 30→60. Re-run 26689984984 SUCCESS in 4m 47s (web 2m 26s cache-warm, worker 1m 55s cold cache, amd64-only).
+- Result:              Both images live on Docker Hub: bonitobonita24/orqafy:staging-latest + bonitobonita24/orqafy-worker:staging-latest. Komodo staging Stack (auto_update: true) will auto-pull on next poll.
+- Strategic impact:    Direction K (12 staging/prod migration gates) is now unblocked — was blocked on Tasks #3 + #4.
+
 ## 2026-05-01 — Phase 0 Bootstrap
 - Agent:               CLAUDE_CODE
 - Why:                 Initial project bootstrap — Spec-Driven Platform V31
