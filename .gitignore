@@ -39,6 +39,12 @@ skills-lock.json
 .augment/
 .roo/
 
+# ─── Playwright MCP + ad-hoc audit artifacts (never commit) ───
+# Auto-generated when agents drive the browser via Playwright MCP
+.playwright-mcp/
+# Ad-hoc audit screenshots captured during dev sweeps
+dev-*.png
+
 # ─── Automation Handoff Docs (consumed by framework, not committed) ───
 n8n-handoff.md
 openclaw-handoff.md
