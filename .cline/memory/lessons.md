@@ -1304,3 +1304,24 @@
 - Files:     apps/web/src/types/react-19-portal-fix.d.ts, apps/web/next.config.ts, package.json, pnpm-lock.yaml
 - Concepts:  react-19, types-react, radix-ui, next-app-router, pnpm-overrides, module-augmentation, task-15
 - Narrative: React 19 made ReactPortal.children required (previously optional), breaking 67 Radix UI ForwardRef components (TS2786) + Next.js async Server Component / page return types (TS2344, TS2322) — 71 errors total, all masked by typescript.ignoreBuildErrors: true. Fix: (a) apps/web/src/types/react-19-portal-fix.d.ts module augmentation widens ReactPortal.children back to `React.ReactNode | undefined` globally for the web app, (b) pnpm.overrides in root package.json pins @types/react@19.2.14 + @types/react-dom@19.2.3 across all packages to ensure consistent React 19 types. One additional @ts-expect-error suppression covers nodeMiddleware in next.config.ts (Next 16 canary feature not yet typed in 15.5.15 stable). Surprise finding: apps/mobile typecheck is completely unaffected — RN 0.76.9 + React 18.3.1 is insulated by its restrictive tsconfig `types: ["nativewind/types", "@nozbe/watermelondb/types"]`, which excludes the global React namespace entirely. Removal trigger: delete react-19-portal-fix.d.ts when Radix UI updates their ForwardRef signatures and Next.js stable types expose nodeMiddleware; verify with pnpm typecheck after deletion.
+
+## 2026-05-31 — 🟤 decision Tenant back-relation namespacing for customer-domain models
+- Type:      🟤 decision
+- Phase:     Direction K-prime (commit 9e77e7c)
+- Files:    packages/db/prisma/schema.prisma
+- Concepts: tenant-namespacing, multi-tenancy, k-prime, schema-collision, back-relations
+- Narrative: Customer-facing Invoice/Payment/Subscription back-relations on Tenant were namespaced `customerInvoices`/`customerPayments`/`customerSubscriptions` to disambiguate from existing platform-billing TenantInvoice/TenantPayment/TenantSubscription (which use Tenant.invoices/payments/subscriptions). Without the prefix Prisma rejects the schema with duplicate-relation-name errors. Reusable pattern when adding customer-domain models whose names collide with platform tenant-billing infra. Apply same `customer*` prefix to future invoicing-adjacent additions (CustomerStatement, CustomerLedger, etc.).
+
+## 2026-05-31 — 🟤 decision Customer-children scoped via parent loader rather than direct tenantId
+- Type:      🟤 decision
+- Phase:     Direction K-prime (commit d9aa13f)
+- Files:    apps/web/src/server/trpc/routers/crm.ts
+- Concepts: tenant-isolation, parent-loader, quotation, contactlog, trade-off, yagni, k-prime
+- Narrative: Quotation + ContactLog models lack their own tenantId column. K-prime guards them via loadCustomerForTenant on the parent Customer FK rather than adding direct tenantId. Trade-off: defends all current routes via parent FK integrity (every Quotation/ContactLog has a customerId → load that customer scoped to ctx.tenantId → query is implicitly scoped), but cross-customer queries (e.g. "all quotations across customers, filtered by tenant") cannot filter directly — they would need a JOIN. Defer adding direct tenantId until product needs cross-customer reporting. If/when added, ~5 lines per create path to inject tenantId from ctx + canonical JOIN-backfill migration from parent Customer.
+
+## 2026-05-31 — 🔴 gotcha Tightening package.json pin without lockfile resync crashes frozen-lockfile boot
+- Type:      🔴 gotcha
+- Phase:     Direction K-prime mid-session (2026-05-31)
+- Files:    pnpm-lock.yaml, apps/web/package.json
+- Concepts: pnpm, frozen-lockfile, docker, hot-reload, lockfile-drift, phantom-ui
+- Narrative: phantom-ui was pinned to exact `0.10.1` in apps/web/package.json (per ui-rules.md pre-1.0 pin policy from commit c05b1a5) but pnpm-lock.yaml retained the original `^0.10.1` specifier. Hot container with `pnpm install --frozen-lockfile` boot command went into restart-loop with ERR_PNPM_OUTDATED_LOCKFILE. Fix: `pnpm install --lockfile-only` from host WSL2 (8.7s, -107L in lockfile, simpler resolver tree). Commit the resynced lockfile in the SAME commit that tightens the pin. RULE: ANY package.json pin change (caret→exact or version bump) MUST be followed by `pnpm install --lockfile-only` and the resynced lockfile committed in the same commit, or hot containers crash on next restart.

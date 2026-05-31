@@ -2015,3 +2015,115 @@
 - Code-review-graph:   refreshed 2026-05-29 → 2026-05-31 (commit 5ce57b79 → a182533c, incremental: 3 files, 0 new nodes/edges).
 - Errors encountered:  none
 - Errors resolved:     n/a
+
+## 2026-05-31 — Dev audit P1 #1 — sidebar nav surfaces 9 missing modules (commit ef621e3)
+- Agent:               CLAUDE_CODE Opus 4.7
+- Why:                 Dev audit (2026-05-31) flagged 9 implemented modules unreachable from sidebar. Nav grew 11 → 20 items covering every built surface (CRM, Tasks, Support, Accounting, Banking, DTR, Purchasing, POS, Ecommerce).
+- Files added:         none
+- Files modified:      apps/web/src/components/layout/app-sidebar.tsx
+- Files deleted:       none
+- Schema/migrations:   none
+- Tests:               typecheck clean.
+- Errors encountered:  none
+- Errors resolved:     n/a
+
+## 2026-05-31 — Dev DX — hot-reload compose variant + /clients retired (commit 8ac919b)
+- Agent:               CLAUDE_CODE Opus 4.7
+- Why:                 Dev audit no-hot-reload pain point: every code change rebuilt the Dockerfile. New compose variant bind-mounts project root and runs `next dev` for instant reload. Also retired vestigial /clients stub — PRODUCT.md declares Customer as canonical entity; "client" only appears as Project-payments shorthand (line 641).
+- Files added:         deploy/compose/dev/docker-compose.app.hot.yml (45L; node:22-alpine, bind-mount + named volumes for node_modules/.next/.turbo, command = pnpm install + db:generate + next dev)
+- Files modified:      COMMANDS.md (+16L Hot-Reload Dev Mode section), apps/web/src/app/(tenant)/[slug]/(app)/clients/page.tsx (stub → async redirect to /{slug}/crm/customers), apps/web/src/components/layout/app-sidebar.tsx (-Clients item, -Users icon, 20→19 items)
+- Files deleted:       apps/web/src/app/(tenant)/[slug]/(app)/clients/{error,loading}.tsx
+- Schema/migrations:   none
+- Tests:               docker compose config -q clean; hot boot /api/health 200 in ~60s (first install); next dev ready in 1.9s; typecheck clean.
+- Errors encountered:  none
+- Errors resolved:     n/a
+
+## 2026-05-31 — P1 stub 1 — real settings landing (commit 82c0e48)
+- Agent:               CLAUDE_CODE Opus 4.7
+- Why:                 PRODUCT.md lines 1623-1627 + 1764-1765: /settings is the tenant config hub (admin-only). Stub replaced with 155L landing. Only /settings/xendit is wired (Batch 21b); other 5 areas are inert "Coming soon" cards (no fabricated routes that would 404).
+- Files added:         none
+- Files modified:      apps/web/src/app/(tenant)/[slug]/(app)/settings/page.tsx (+146L)
+- Files deleted:       none
+- Schema/migrations:   none
+- Tests:               tsc --noEmit clean. Live hot-reload smoke /demo/settings → 307 to /login?callbackUrl=/demo/settings (middleware auth gate firing as expected).
+- Errors encountered:  none
+- Errors resolved:     n/a
+
+## 2026-05-31 — P1 stub 2 — real invoices list (commit 745413e)
+- Agent:               CLAUDE_CODE Opus 4.7
+- Why:                 SSR invoices list replaces stub: status pills, outstanding-balance summary, PHP currency. Mirrors customers list pattern.
+- Files added:         none
+- Files modified:      apps/web/src/app/(tenant)/[slug]/(app)/invoices/page.tsx (+150L)
+- Files deleted:       none
+- Schema/migrations:   none
+- Tests:               typecheck clean.
+- Errors encountered:  none
+- Errors resolved:     n/a
+
+## 2026-05-31 — P1 stub 3 — real expenses list (commit 4c36a7d)
+- Agent:               CLAUDE_CODE Opus 4.7
+- Why:                 SSR expenses list with status pills (pending/approved/rejected/reimbursed), pending-total summary, PHP currency.
+- Files added:         none
+- Files modified:      apps/web/src/app/(tenant)/[slug]/(app)/expenses/page.tsx (+138L)
+- Files deleted:       apps/web/src/app/(tenant)/[slug]/(app)/expenses/{error,loading}.tsx (unused stubs)
+- Schema/migrations:   none
+- Tests:               typecheck clean.
+- Errors encountered:  none
+- Errors resolved:     n/a
+
+## 2026-05-31 — P1 stub 4 — real dashboard (commit b43ea7f)
+- Agent:               CLAUDE_CODE Opus 4.7
+- Why:                 Dashboard stub → 4 KPI tiles (outstanding, pending expenses, active customers, paid) linking to detail routes + recent invoices/expenses lists. Mirrors currency + status-pill patterns from invoices/expenses pages. STATE.md updated with P1 progress (4/6) + Direction K-prime entry capturing multi-tenant tenantId-parity workstream surfaced by auto-security-review.
+- Files added:         none
+- Files modified:      apps/web/src/app/(tenant)/[slug]/(app)/dashboard/page.tsx (+316L), .cline/STATE.md
+- Files deleted:       none
+- Schema/migrations:   none
+- Tests:               typecheck clean.
+- Errors encountered:  none
+- Errors resolved:     n/a
+
+## 2026-05-31 — P1 stub 6 — real demo workspace landing (commit 3e11b07)
+- Agent:               CLAUDE_CODE Opus 4.7
+- Why:                 Final P1 stub. 18L stub → 181L pure-SSR demo hub: tenant workspace card, 6 seeded-data count tiles, 6-link module tour grid, 5-item demo restrictions disclosure, 6-hour reset cadence footer. isDemoTenant guard gracefully degrades for non-demo tenants.
+- Files added:         none
+- Files modified:      apps/web/src/app/(tenant)/[slug]/(app)/demo/page.tsx (+172L)
+- Files deleted:       none
+- Schema/migrations:   none
+- Tests:               typecheck clean. P1 punch list 6/6 closed.
+- Errors encountered:  none
+- Errors resolved:     n/a
+
+## 2026-05-31 — Direction K-prime DB — invoicing-surface tenantId parity (commit 9e77e7c)
+- Agent:               CLAUDE_CODE Opus 4.7 architect → Sonnet 4.6 executor
+- Why:                 P1 dashboard/invoices/expenses pages exposed an IDOR class — list queries had no tenant scope. K-prime adds tenant_id column + index + Tenant relation across 8 invoicing-surface models, applying the canonical Batch 26-30 JOIN-backfill cascade. Closes auto-flagged IDOR findings.
+- Files added:         packages/db/prisma/migrations/20260531_add_tenant_id_to_invoicing_surface/migration.sql (131L; 5-stage per model: ADD nullable → backfill → SET NOT NULL → FK → INDEX)
+- Files modified:      packages/db/prisma/schema.prisma (+32L: tenantId fields on 8 models + 8 Tenant back-relations)
+- Files deleted:       none
+- Schema/migrations:   8 models — Direct-tenant: Customer, Invoice, Subscription, Expense, ExpenseCategory. JOIN-backfill children: Payment (via Invoice), CustomerCreditAccount (via Customer), CustomerCreditTransaction (via CCA, 2-hop).
+- Decision:            Customer-facing back-relations on Tenant prefixed `customer*` (customerInvoices/customerPayments/customerSubscriptions) to avoid collision with platform-billing TenantInvoice/TenantPayment/TenantSubscription. See lessons.md 2026-05-31 🟤 namespacing entry.
+- Verification:        Applied + verified row counts: invoices 3/3, customers 1/1, expenses 4/4, expense_categories 2/2 (payments + subscriptions 0 rows — no backfill needed).
+- Errors encountered:  none
+- Errors resolved:     n/a
+
+## 2026-05-31 — Direction K-prime web — list pages enforce tenantId filter (commit 780a3b4)
+- Agent:               CLAUDE_CODE Opus 4.7 architect → Sonnet 4.6 executor
+- Why:                 With tenantId now populated on invoicing-surface models (commit 9e77e7c), close IDOR class at the page boundary. All 4 P1 list pages now derive tenantId from slug via prisma.tenant.findUnique and apply where:{tenantId} to every findMany/count/aggregate. notFound() on missing tenant.
+- Files added:         none
+- Files modified:      apps/web/src/app/(tenant)/[slug]/(app)/{invoices,expenses,dashboard,crm/customers}/page.tsx, pnpm-lock.yaml
+- Files deleted:       none
+- Schema/migrations:   none
+- Sub-fix:             pnpm-lock.yaml resynced against package.json — phantom-ui pin was exact 0.10.1 in package.json vs ^0.10.1 in lockfile (preexisting drift from c05b1a5 phantom-ui install commit). Lockfile drift blocked frozen-lockfile container boot on restart. See lessons.md 2026-05-31 🔴 lockfile-drift entry.
+- Tests:               typecheck clean. Live hot-reload smoke: pages load + scoped to demo tenant.
+- Errors encountered:  hot container went into restart-loop with ERR_PNPM_OUTDATED_LOCKFILE after phantom-ui pin tightened
+- Errors resolved:     pnpm install --lockfile-only from host WSL2 (8.7s, -107L lockfile, simpler resolver tree); committed resynced lockfile.
+
+## 2026-05-31 — Direction K-prime API — routers load helpers + create-time tenantId (commit d9aa13f)
+- Agent:               CLAUDE_CODE Opus 4.7 architect → Sonnet 4.6 executor
+- Why:                 Close K-prime at the API layer. Tenant-scoped all byId/update/status paths via load* helpers (pattern from loadPoForTenant, Batch 29). Inject tenantId on every create path. Direct-tenant models (Invoice, Expense, ExpenseCategory, Customer, CustomerCreditAccount) get their own load helper; Quotation + ContactLog (lack own tenantId column) guarded via parent Customer loader — see lessons.md 2026-05-31 🟤 parent-loader entry.
+- Files added:         none
+- Files modified:      apps/web/src/server/trpc/routers/{invoice.ts (+loadInvoiceForTenant; list/byId/update/markSent/markPaid/void use loader; create validates customer tenant + writes tenantId; publicView retains publicToken-as-secret), expense.ts (+loadExpenseForTenant; list/byId/approve/reject; create validates category tenant + writes tenantId), crm.ts (+loadCustomerForTenant + loadCustomerCreditAccountForTenant; 13 touch points; Quotation/ContactLog guarded via parent Customer loader), client.ts (legacy customer router fully scoped), storefront.ts (customer lookup filters by tenantId; new customer create writes tenantId from input.tenantSlug; EcommerceOrder paths already scoped from Batch 21c)}
+- Files deleted:       none
+- Schema/migrations:   none
+- Tests:               typecheck clean. K-prime trio (DB + Web + API) closes IDOR surface end-to-end for invoicing.
+- Errors encountered:  none
+- Errors resolved:     n/a
