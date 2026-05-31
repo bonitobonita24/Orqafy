@@ -381,7 +381,7 @@ export const storefrontRouter = createTRPCRouter({
       const existingCustomer =
         input.customer.email !== undefined
           ? await db.customer.findFirst({
-              where: { email: input.customer.email },
+              where: { email: input.customer.email, tenantId: tenant.id },
             })
           : null;
 
@@ -395,6 +395,7 @@ export const storefrontRouter = createTRPCRouter({
         } else {
           const newCustomer = await tx.customer.create({
             data: {
+              tenantId: tenant.id,
               firstName,
               lastName,
               email: input.customer.email ?? null,

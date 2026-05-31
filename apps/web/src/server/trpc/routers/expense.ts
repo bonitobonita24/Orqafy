@@ -3,6 +3,14 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
 import { prisma as db } from "@orqafy/db";
 
+async function loadExpenseForTenant(id: string, ctx: { tenantId: string }) {
+  const exp = await db.expense.findUnique({ where: { id } });
+  if (!exp || exp.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found" });
+  }
+  return exp;
+}
+
 const expenseInput = z.object({
   expenseCategoryId: z.string().cuid(),
   projectId: z.string().cuid().optional(),
@@ -25,8 +33,10 @@ export const expenseRouter = createTRPCRouter({
         categoryId: z.string().cuid().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.status !== undefined && input.status !== "" ? { status: input.status } : {}),
         ...(input.projectId !== undefined ? { projectId: input.projectId } : {}),
         ...(input.categoryId !== undefined ? { expenseCategoryId: input.categoryId } : {}),
@@ -50,7 +60,9 @@ export const expenseRouter = createTRPCRouter({
 
   byId: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+      await loadExpenseForTenant(input.id, { tenantId: ctx.tenantId });
       const item = await db.expense.findUnique({
         where: { id: input.id },
         include: {
@@ -66,9 +78,14 @@ export const expenseRouter = createTRPCRouter({
   create: writeProcedure
     .input(expenseInput)
     .mutation(async ({ input, ctx }) => {
+      const cat = await db.expenseCategory.findUnique({ where: { id: input.expenseCategoryId } });
+      if (!cat || cat.tenantId !== ctx.tenantId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Category not found." });
+      }
       const expenseNumber = `EXP-${Date.now()}`;
       return db.expense.create({
         data: {
+          tenantId: ctx.tenantId,
           expenseCategoryId: input.expenseCategoryId,
           projectId: input.projectId ?? null,
           description: input.description,
@@ -87,8 +104,7 @@ export const expenseRouter = createTRPCRouter({
   approve: writeProcedure
     .input(z.object({ id: z.string().cuid() }))
     .mutation(async ({ input, ctx }) => {
-      const existing = await db.expense.findUnique({ where: { id: input.id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      const existing = await loadExpenseForTenant(input.id, ctx);
       if (existing.status !== "pending") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only pending expenses can be approved." });
       }
@@ -100,9 +116,8 @@ export const expenseRouter = createTRPCRouter({
 
   reject: writeProcedure
     .input(z.object({ id: z.string().cuid(), notes: z.string().max(500).optional() }))
-    .mutation(async ({ input }) => {
-      const existing = await db.expense.findUnique({ where: { id: input.id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      const existing = await loadExpenseForTenant(input.id, ctx);
       if (existing.status !== "pending") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only pending expenses can be rejected." });
       }
@@ -112,9 +127,10 @@ export const expenseRouter = createTRPCRouter({
       });
     }),
 
-  categories: protectedProcedure.query(async () => {
+  categories: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
     return db.expenseCategory.findMany({
-      where: { isActive: true },
+      where: { tenantId: ctx.tenantId, isActive: true },
       orderBy: { sortOrder: "asc" },
     });
   }),

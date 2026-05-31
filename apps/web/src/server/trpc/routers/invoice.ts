@@ -5,6 +5,14 @@ import { prisma as db } from "@orqafy/db";
 import { rateLimiters } from "@/server/lib/rate-limit";
 import { sanitizePlainText } from "@/server/lib/sanitize";
 
+async function loadInvoiceForTenant(id: string, ctx: { tenantId: string }) {
+  const invoice = await db.invoice.findUnique({ where: { id } });
+  if (!invoice || invoice.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+  }
+  return invoice;
+}
+
 const lineItemInput = z.object({
   description: z.string().min(1).max(500),
   quantity: z.number().positive(),
@@ -29,8 +37,10 @@ export const invoiceRouter = createTRPCRouter({
         customerId: z.string().cuid().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.status !== undefined && input.status !== "" ? { status: input.status } : {}),
         ...(input.customerId !== undefined ? { customerId: input.customerId } : {}),
       };
@@ -52,7 +62,9 @@ export const invoiceRouter = createTRPCRouter({
 
   byId: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+      await loadInvoiceForTenant(input.id, { tenantId: ctx.tenantId });
       const item = await db.invoice.findUnique({
         where: { id: input.id },
         include: {
@@ -66,6 +78,7 @@ export const invoiceRouter = createTRPCRouter({
     }),
 
   // Public page — viewed by client without login via unique token
+  // publicToken is unique secret — no tenant check needed
   publicView: publicProcedure
     .input(z.object({ token: z.string().min(1) }))
     .query(async ({ input, ctx }) => {
@@ -98,7 +111,9 @@ export const invoiceRouter = createTRPCRouter({
     .input(invoiceInput)
     .mutation(async ({ input, ctx }) => {
       const customer = await db.customer.findUnique({ where: { id: input.customerId } });
-      if (!customer) throw new TRPCError({ code: "BAD_REQUEST", message: "Customer not found." });
+      if (!customer || customer.tenantId !== ctx.tenantId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Customer not found." });
+      }
 
       const subtotal = input.lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
       const invoiceNumber = `INV-${Date.now()}`;
@@ -107,6 +122,7 @@ export const invoiceRouter = createTRPCRouter({
       return db.invoice.create({
         data: {
           invoiceNumber,
+          tenantId: ctx.tenantId,
           customerId: input.customerId,
           ...(input.projectId !== undefined ? { projectId: input.projectId ?? null } : {}),
           dueDate: input.dueDate,
@@ -123,10 +139,9 @@ export const invoiceRouter = createTRPCRouter({
 
   update: writeProcedure
     .input(invoiceInput.partial().extend({ id: z.string().cuid() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { id, ...rest } = input;
-      const existing = await db.invoice.findUnique({ where: { id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      const existing = await loadInvoiceForTenant(id, ctx);
       if (existing.status !== "draft") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft invoices can be edited." });
       }
@@ -154,9 +169,8 @@ export const invoiceRouter = createTRPCRouter({
 
   markSent: writeProcedure
     .input(z.object({ id: z.string().cuid() }))
-    .mutation(async ({ input }) => {
-      const existing = await db.invoice.findUnique({ where: { id: input.id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      const existing = await loadInvoiceForTenant(input.id, ctx);
       if (existing.status !== "draft") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft invoices can be marked as sent." });
       }
@@ -168,9 +182,8 @@ export const invoiceRouter = createTRPCRouter({
 
   markPaid: writeProcedure
     .input(z.object({ id: z.string().cuid(), paidAt: z.date().optional() }))
-    .mutation(async ({ input }) => {
-      const existing = await db.invoice.findUnique({ where: { id: input.id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      const existing = await loadInvoiceForTenant(input.id, ctx);
       if (existing.status !== "sent") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only sent invoices can be marked as paid." });
       }
@@ -182,9 +195,8 @@ export const invoiceRouter = createTRPCRouter({
 
   void: writeProcedure
     .input(z.object({ id: z.string().cuid() }))
-    .mutation(async ({ input }) => {
-      const existing = await db.invoice.findUnique({ where: { id: input.id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      const existing = await loadInvoiceForTenant(input.id, ctx);
       if (existing.status === "paid") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Paid invoices cannot be voided." });
       }

@@ -18,6 +18,33 @@ const MARKUP_TIERS = ["tier1", "tier2", "tier3"] as const;
 
 const CONTACT_LOG_TYPES = ["call", "email", "meeting", "note"] as const;
 
+async function loadCustomerForTenant(
+  id: string,
+  ctx: { tenantId: string },
+) {
+  const c = await db.customer.findUnique({ where: { id } });
+  if (!c || c.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Customer not found" });
+  }
+  return c;
+}
+
+async function loadCustomerCreditAccountForTenant(
+  customerId: string,
+  ctx: { tenantId: string },
+) {
+  const cca = await db.customerCreditAccount.findUnique({
+    where: { customerId },
+  });
+  if (!cca || cca.tenantId !== ctx.tenantId) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Credit account not found",
+    });
+  }
+  return cca;
+}
+
 async function generateQuotationNumber(): Promise<string> {
   const now = new Date();
   const yy = String(now.getFullYear()).slice(-2);
@@ -46,8 +73,12 @@ export const crmRouter = createTRPCRouter({
         tier: z.enum(CUSTOMER_TIERS).optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
         ...(input.tier !== undefined ? { tier: input.tier } : {}),
       };
@@ -65,10 +96,11 @@ export const crmRouter = createTRPCRouter({
 
   customerById: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .query(async ({ input }) => {
-      const customer = await db.customer.findUnique({ where: { id: input.id } });
-      if (!customer) throw new TRPCError({ code: "NOT_FOUND" });
-      return customer;
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
+      return loadCustomerForTenant(input.id, { tenantId: ctx.tenantId });
     }),
 
   customerCreate: writeProcedure
@@ -89,9 +121,10 @@ export const crmRouter = createTRPCRouter({
         notes: z.string().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       return db.customer.create({
         data: {
+          tenantId: ctx.tenantId,
           firstName: input.firstName,
           lastName: input.lastName,
           companyName: input.companyName ?? null,
@@ -129,10 +162,9 @@ export const crmRouter = createTRPCRouter({
         notes: z.string().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
-      const existing = await db.customer.findUnique({ where: { id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await loadCustomerForTenant(id, { tenantId: ctx.tenantId });
       return db.customer.update({
         where: { id },
         data: {
@@ -154,9 +186,10 @@ export const crmRouter = createTRPCRouter({
 
   customerToggleActive: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const existing = await db.customer.findUnique({ where: { id: input.id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ ctx, input }) => {
+      const existing = await loadCustomerForTenant(input.id, {
+        tenantId: ctx.tenantId,
+      });
       return db.customer.update({
         where: { id: input.id },
         data: { isActive: !existing.isActive },
@@ -237,7 +270,13 @@ export const crmRouter = createTRPCRouter({
 
   creditGet: protectedProcedure
     .input(z.object({ customerId: z.string().min(1) }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
+      await loadCustomerForTenant(input.customerId, {
+        tenantId: ctx.tenantId,
+      });
       return db.customerCreditAccount.findUnique({
         where: { customerId: input.customerId },
       });
@@ -251,10 +290,14 @@ export const crmRouter = createTRPCRouter({
         isActive: z.boolean().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      await loadCustomerForTenant(input.customerId, {
+        tenantId: ctx.tenantId,
+      });
       return db.customerCreditAccount.upsert({
         where: { customerId: input.customerId },
         create: {
+          tenantId: ctx.tenantId,
           customerId: input.customerId,
           creditLimit: input.creditLimit,
           isActive: input.isActive ?? true,
@@ -268,11 +311,11 @@ export const crmRouter = createTRPCRouter({
 
   creditToggleActive: writeProcedure
     .input(z.object({ customerId: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const existing = await db.customerCreditAccount.findUnique({
-        where: { customerId: input.customerId },
-      });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ ctx, input }) => {
+      const existing = await loadCustomerCreditAccountForTenant(
+        input.customerId,
+        { tenantId: ctx.tenantId },
+      );
       return db.customerCreditAccount.update({
         where: { customerId: input.customerId },
         data: { isActive: !existing.isActive },
@@ -423,13 +466,9 @@ export const crmRouter = createTRPCRouter({
       if (ctx.userId === null) {
         throw new TRPCError({ code: "UNAUTHORIZED" });
       }
-      const customer = await db.customer.findUnique({
-        where: { id: input.customerId },
-        select: { id: true },
+      await loadCustomerForTenant(input.customerId, {
+        tenantId: ctx.tenantId,
       });
-      if (!customer) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Customer not found." });
-      }
 
       // Compute totals — subtotal locks at create time.
       const subtotal = input.sections.reduce((acc, section) => {
@@ -890,6 +929,10 @@ export const crmRouter = createTRPCRouter({
         },
       });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      // Quotation is gated by its customer's tenant (Quotation lacks own tenantId in Phase 3a schema).
+      await loadCustomerForTenant(existing.customerId, {
+        tenantId: ctx.tenantId,
+      });
       if (existing.status !== "accepted") {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -957,6 +1000,7 @@ export const crmRouter = createTRPCRouter({
       return db.$transaction(async (tx) => {
         const invoice = await tx.invoice.create({
           data: {
+            tenantId: ctx.tenantId,
             invoiceNumber,
             customerId: existing.customerId,
             createdById: userId,
@@ -1101,13 +1145,9 @@ export const crmRouter = createTRPCRouter({
       if (ctx.userId === null) {
         throw new TRPCError({ code: "UNAUTHORIZED" });
       }
-      const customer = await db.customer.findUnique({
-        where: { id: input.customerId },
-        select: { id: true },
+      await loadCustomerForTenant(input.customerId, {
+        tenantId: ctx.tenantId,
       });
-      if (!customer) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Customer not found." });
-      }
       return db.contactLog.create({
         data: {
           customerId: input.customerId,

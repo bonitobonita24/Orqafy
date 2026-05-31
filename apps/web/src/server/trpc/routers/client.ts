@@ -21,8 +21,9 @@ const customerInput = z.object({
 export const clientRouter = createTRPCRouter({
   list: protectedProcedure
     .input(z.object({ page: z.number().int().min(1).default(1), limit: z.number().int().min(1).max(200).default(50), search: z.string().optional() }))
-    .query(async ({ input }) => {
-      const where = input.search !== undefined && input.search !== ""
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+      const searchClause = input.search !== undefined && input.search !== ""
         ? {
             OR: [
               { firstName: { contains: input.search, mode: "insensitive" as const } },
@@ -32,6 +33,7 @@ export const clientRouter = createTRPCRouter({
             ],
           }
         : {};
+      const where = { tenantId: ctx.tenantId, ...searchClause };
       const [items, total] = await Promise.all([
         db.customer.findMany({ where, skip: (input.page - 1) * input.limit, take: input.limit, orderBy: { lastName: "asc" } }),
         db.customer.count({ where }),
@@ -41,17 +43,20 @@ export const clientRouter = createTRPCRouter({
 
   byId: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
-    .query(async ({ input }) => {
-      const item = await db.customer.findUnique({ where: { id: input.id } });
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+      const item = await db.customer.findFirst({ where: { id: input.id, tenantId: ctx.tenantId } });
       if (!item) throw new TRPCError({ code: "NOT_FOUND" });
       return item;
     }),
 
   create: writeProcedure
     .input(customerInput)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
       return db.customer.create({
         data: {
+          tenantId: ctx.tenantId,
           firstName: sanitizePlainText(input.firstName),
           lastName: sanitizePlainText(input.lastName),
           companyName: input.companyName !== undefined ? sanitizePlainText(input.companyName) : null,
@@ -69,9 +74,10 @@ export const clientRouter = createTRPCRouter({
 
   update: writeProcedure
     .input(customerInput.partial().extend({ id: z.string().cuid() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
       const { id, ...rest } = input;
-      const existing = await db.customer.findUnique({ where: { id } });
+      const existing = await db.customer.findFirst({ where: { id, tenantId: ctx.tenantId } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
       return db.customer.update({
         where: { id },
@@ -93,8 +99,9 @@ export const clientRouter = createTRPCRouter({
 
   delete: writeProcedure
     .input(z.object({ id: z.string().cuid() }))
-    .mutation(async ({ input }) => {
-      const existing = await db.customer.findUnique({ where: { id: input.id } });
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+      const existing = await db.customer.findFirst({ where: { id: input.id, tenantId: ctx.tenantId } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
       return db.customer.delete({ where: { id: input.id } });
     }),
