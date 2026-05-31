@@ -1,6 +1,6 @@
 {
-  "scannedAt": "2026-05-29",
-  "previousScan": "2026-05-11",
+  "scannedAt": "2026-05-31",
+  "previousScan": "2026-05-29",
   "techStack": [
     "TypeScript (strict)",
     "Next.js 15 (App Router)",
@@ -32,8 +32,8 @@
     "pnpm monorepo + Turborepo"
   ],
   "projectType": "full-stack monorepo (web + mobile + worker, multi-tenant SaaS)",
-  "phaseAtScan": "Phase 8 Batch 21c COMPLETE — Direction F SHIPPED end-to-end (per-tenant Xendit refactor). 719/719 GREEN. Next: Direction C/D/B/G per .whatsnext.",
-  "deltaSinceLastScan": "Framework upgraded V31 → V32.1.4 (Zero Opus Execution, 500-line dispatch gate, Sonnet subagent overhead note). Batches 21a + 21b + 21c shipped (encryption infra → TenantXenditConfig CRUD + admin UI → per-tenant consumer refactor). Test baseline 714 → 719 GREEN, +5 new xendit-per-tenant tests. EcommerceOrder.tenantId migration added. crypto.ts module added with 9 unit tests. Zero dependency changes in package.json. Skill folders unchanged from 2026-05-11.",
+  "phaseAtScan": "Dev-first pivot active — P0 sidebar nav fix shipped (commit ef621e3), P1 stub-replacement underway (2/6 done: clients→/crm/customers redirect, settings landing). Phase 8 Direction K (12 staging/prod migration gates) deferred until dev punch list cleared. Direction F still shipped end-to-end (per-tenant Xendit). Test baseline 719+ GREEN.",
+  "deltaSinceLastScan": "2026-05-31 re-scan: no skill drift, no plugin drift, no tech-stack drift. Added phantom-ui@0.10.1 (exact-pinned) to apps/web per Bootstrap Step 19 Loading Library Lock — required for P1 stub replacements (dashboard/invoices/expenses/demo are bespoke surfaces). Refreshed code-review-graph 2026-05-29 → 2026-05-31 (incremental: 3 files touched, commit 5ce57b79 → a182533c). Confirmed all 17 project skills + foundation plugins (superpowers, claude-mem, context-mode, context7, frontend-design, planning-with-files, playwright, ui-ux-pro-max, karpathy-skills) still installed at user/project scope. socraticode wired MCP-only (correct). Vercel/n8n/AWS/Anthropic-SDK skills correctly absent.",
   "specDriven": {
     "detected": true,
     "version": "V32.1.4",
@@ -85,7 +85,7 @@
   "recommendedPlugins": [
     { "name": "context-mode", "purpose": "98% token reduction on tool outputs — strong protection for Phase 8 SAFE zone", "installCommand": "/plugin marketplace add mksglu/context-mode && /plugin install context-mode@context-mode", "priority": "INSTALLED", "asOf": "settings.local.json enabledPlugins" },
     { "name": "claude-mem", "purpose": "Compressed cross-session memory — alternative path to memory-governance §2 Smart Checkpoint", "installCommand": "/plugin marketplace add thedotmack/claude-mem && /plugin install claude-mem@claude-mem", "priority": "INSTALLED", "asOf": "settings.local.json enabledPlugins" },
-    { "name": "code-review-graph", "purpose": "Tree-sitter graph + SQLite — blast radius before Phase 7 Feature Updates. 28 MCP tools.", "installCommand": "uv tool install code-review-graph && code-review-graph install --platform claude-code", "priority": "INSTALLED (uv tool v2.3.3, graph refreshed 2026-05-29 commit 5ce57b79)", "postInstall": "Graph refreshed: 1037 nodes, 10412 edges, 263 files, branch=main, commit=5ce57b79df9e. Run `code-review-graph watch` in background WSL2 terminal to keep live." },
+    { "name": "code-review-graph", "purpose": "Tree-sitter graph + SQLite — blast radius before Phase 7 Feature Updates. 28 MCP tools.", "installCommand": "uv tool install code-review-graph && code-review-graph install --platform claude-code", "priority": "INSTALLED (uv tool v2.3.3, graph refreshed 2026-05-31 commit a182533c)", "postInstall": "Graph refreshed 2026-05-31T20:54:57: 1037 nodes, 10412 edges, 263 files, 57 flows, 12 communities, branch=main, commit=a182533ca2ee (incremental update — 3 files changed since 2026-05-29). Run `code-review-graph watch` in background WSL2 terminal to keep live." },
     { "name": "superpowers", "purpose": "Bundle: TDD + systematic-debugging + root-cause-tracing + brainstorming + git-worktrees + finishing-branch + parallel-agents + code-review + defense-in-depth", "installCommand": "/plugin marketplace add anthropics/superpowers && /plugin install superpowers@superpowers", "priority": "NEEDS USER ACTION — slash command must be run inside Claude Code CLI" },
     { "name": "karpathy-guidelines", "purpose": "Universal behavioral advisory — Think Before Coding, Simplicity First, Surgical Changes, Goal-Driven Execution. 2.3KB CLAUDE.md merge.", "installCommand": "/plugin marketplace add forrestchang/karpathy-guidelines && /plugin install karpathy-guidelines@karpathy-guidelines", "priority": "NEEDS USER ACTION — slash command must be run inside Claude Code CLI" }
   ],
@@ -95,6 +95,18 @@
     { "name": "vercel-agent-skills", "reason": "Honored deliberate removal from 2026-05-03. Komodo + Traefik deployment, not Vercel." },
     { "name": "claude-api", "reason": "No Anthropic SDK in deps. Re-affirmed 2026-05-29." },
     { "name": "mcp-builder", "reason": "Project consumes 4 MCP servers but builds none." }
+  ],
+  "libraries": [
+    {
+      "name": "@aejkatappaja/phantom-ui",
+      "version": "0.10.1",
+      "pinExact": true,
+      "scope": "apps/web",
+      "addedAt": "2026-05-31",
+      "reason": "Bootstrap Step 19 Loading Library Lock (V31.3+ / V32.1.4). ui-rules.md Rule 11 PATH B for non-shadcn custom components. Will be used for P1 stub replacements (dashboard, invoices, expenses, demo) — bespoke surfaces that should NOT have hand-rolled *Skeleton.tsx twins.",
+      "installCmd": "pnpm --filter @orqafy/web add @aejkatappaja/phantom-ui",
+      "pinNote": "Pre-1.0 — pinned to exact 0.10.1 in apps/web/package.json. Bump only via explicit Phase 7 Feature Update with DECISIONS_LOG entry."
+    }
   ],
   "globalCleanupAdvised": true,
   "mcpServers": {

@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@aejkatappaja/phantom-ui": "0.10.1",
     "@auth/prisma-adapter": "^2.7.4",
     "@blocknote/core": "^0.49.0",
     "@blocknote/react": "^0.49.0",

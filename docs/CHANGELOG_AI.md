@@ -2002,3 +2002,16 @@
 - Held back:           docker/setup-qemu-action stays at v3 — no v4 released yet; thin QEMU installer; monitor for future release
 - Errors encountered:  none
 - Errors resolved:     n/a
+
+## 2026-05-31 — phantom-ui installed in apps/web (Bootstrap Step 19 Loading Library Lock)
+- Agent:               CLAUDE_CODE Opus 4.7 (/scan-project re-scan Phase 4 — user approval "yes both")
+- Why:                 Bootstrap Step 19 (V31.3+) locks dual-path loading: shadcn `<Skeleton>` for shadcn-composed UI (PATH A) + `@aejkatappaja/phantom-ui` for bespoke / non-shadcn custom UI (PATH B). DECISIONS_LOG already records the lock. P1 stub replacements (dashboard, invoices, expenses, demo) land in coming sessions and are bespoke surfaces — Rule 11 PATH B forbids hand-rolled `*Skeleton.tsx` twins, so the library must exist before those Feature Updates start. Pin pre-1.0 to exact resolved version per ui-rules.md.
+- Files added:         none
+- Files modified:      apps/web/package.json (+1 dep `@aejkatappaja/phantom-ui` at exact 0.10.1 — no caret), pnpm-lock.yaml (regenerated), .claude/scan-results.json (rescannedAt 2026-05-31 + libraries[] + code-review-graph refresh metadata)
+- Files deleted:       none
+- Schema/migrations:   none
+- Tests:               not run — dependency add only, no source touched. Next Feature Update that uses phantom-ui will follow TDD per Rule 25.
+- Side effects:        none in source code yet. Postinstall hook auto-wires SSR pre-hydration CSS in app/layout.tsx on first import; not yet imported.
+- Code-review-graph:   refreshed 2026-05-29 → 2026-05-31 (commit 5ce57b79 → a182533c, incremental: 3 files, 0 new nodes/edges).
+- Errors encountered:  none
+- Errors resolved:     n/a
