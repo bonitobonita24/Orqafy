@@ -83,6 +83,12 @@ model Tenant {
   posSessions                  POSSession[]                 @relation("TenantPOSSessions")
   posSales                     POSSale[]                    @relation("TenantPOSSales")
   posSaleItems                 POSSaleItem[]                @relation("TenantPOSSaleItems")
+  customerContacts             CustomerContact[]            @relation("TenantCustomerContacts")
+  proposals                    Proposal[]                   @relation("TenantProposals")
+  proposalAttachments          ProposalAttachment[]         @relation("TenantProposalAttachments")
+  proposalLinks                ProposalLink[]               @relation("TenantProposalLinks")
+  proposalRevisions            ProposalRevision[]           @relation("TenantProposalRevisions")
+  customerDocuments            CustomerDocument[]           @relation("TenantCustomerDocuments")
 
   @@map("tenants")
   @@schema("public")
@@ -403,6 +409,8 @@ model Customer {
 
 model CustomerContact {
   id         String   @id @default(cuid())
+  tenantId   String   @map("tenant_id")
+  tenant     Tenant   @relation("TenantCustomerContacts", fields: [tenantId], references: [id])
   customerId String   @map("customer_id")
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   name       String
@@ -414,6 +422,7 @@ model CustomerContact {
   updatedAt  DateTime @updatedAt @map("updated_at")
 
   @@index([customerId])
+  @@index([tenantId])
   @@map("customer_contacts")
   @@schema("public")
 }
@@ -464,6 +473,8 @@ model CustomerCreditTransaction {
 
 model Proposal {
   id             String    @id @default(cuid())
+  tenantId       String    @map("tenant_id")
+  tenant         Tenant    @relation("TenantProposals", fields: [tenantId], references: [id])
   proposalNumber String    @unique @map("proposal_number")
   customerId     String    @map("customer_id")
   customer       Customer  @relation(fields: [customerId], references: [id])
@@ -487,12 +498,15 @@ model Proposal {
   links       ProposalLink[]
   revisions   ProposalRevision[]
 
+  @@index([tenantId])
   @@map("proposals")
   @@schema("public")
 }
 
 model ProposalAttachment {
   id            String   @id @default(cuid())
+  tenantId      String   @map("tenant_id")
+  tenant        Tenant   @relation("TenantProposalAttachments", fields: [tenantId], references: [id])
   proposalId    String   @map("proposal_id")
   proposal      Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
   fileName      String   @map("file_name")
@@ -502,12 +516,15 @@ model ProposalAttachment {
   createdAt     DateTime @default(now()) @map("created_at")
 
   @@index([proposalId])
+  @@index([tenantId])
   @@map("proposal_attachments")
   @@schema("public")
 }
 
 model ProposalLink {
   id         String   @id @default(cuid())
+  tenantId   String   @map("tenant_id")
+  tenant     Tenant   @relation("TenantProposalLinks", fields: [tenantId], references: [id])
   proposalId String   @map("proposal_id")
   proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
   title      String
@@ -515,12 +532,15 @@ model ProposalLink {
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@index([proposalId])
+  @@index([tenantId])
   @@map("proposal_links")
   @@schema("public")
 }
 
 model ProposalRevision {
   id             String   @id @default(cuid())
+  tenantId       String   @map("tenant_id")
+  tenant         Tenant   @relation("TenantProposalRevisions", fields: [tenantId], references: [id])
   proposalId     String   @map("proposal_id")
   proposal       Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
   revisionNumber Int      @map("revision_number")
@@ -528,6 +548,7 @@ model ProposalRevision {
   createdAt      DateTime @default(now()) @map("created_at")
 
   @@index([proposalId])
+  @@index([tenantId])
   @@map("proposal_revisions")
   @@schema("public")
 }
@@ -2262,6 +2283,8 @@ model JobOrderServiceLine {
 
 model CustomerDocument {
   id            String   @id @default(cuid())
+  tenantId      String   @map("tenant_id")
+  tenant        Tenant   @relation("TenantCustomerDocuments", fields: [tenantId], references: [id])
   customerId    String   @map("customer_id")
   customer      Customer @relation(fields: [customerId], references: [id])
   title         String
@@ -2274,6 +2297,7 @@ model CustomerDocument {
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@index([customerId])
+  @@index([tenantId])
   @@map("customer_documents")
   @@schema("public")
 }

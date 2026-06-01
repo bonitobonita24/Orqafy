@@ -225,7 +225,8 @@ export const crmRouter = createTRPCRouter({
 
   contactList: protectedProcedure
     .input(z.object({ customerId: z.string().min(1) }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      await loadCustomerForTenant(input.customerId, ctx);
       return db.customerContact.findMany({
         where: { customerId: input.customerId },
         orderBy: { isPrimary: "desc" },
@@ -243,9 +244,11 @@ export const crmRouter = createTRPCRouter({
         isPrimary: z.boolean().default(false),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      await loadCustomerForTenant(input.customerId, ctx);
       return db.customerContact.create({
         data: {
+          tenantId: ctx.tenantId,
           customerId: input.customerId,
           name: input.name,
           email: input.email ?? null,
@@ -267,10 +270,11 @@ export const crmRouter = createTRPCRouter({
         isPrimary: z.boolean().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
       const existing = await db.customerContact.findUnique({ where: { id } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await loadCustomerForTenant(existing.customerId, ctx);
       return db.customerContact.update({
         where: { id },
         data: {
@@ -285,9 +289,10 @@ export const crmRouter = createTRPCRouter({
 
   contactDelete: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const existing = await db.customerContact.findUnique({ where: { id: input.id } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await loadCustomerForTenant(existing.customerId, ctx);
       return db.customerContact.delete({ where: { id: input.id } });
     }),
 
