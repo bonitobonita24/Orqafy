@@ -13,6 +13,14 @@ import { sanitizePlainText } from "@/server/lib/sanitize";
 import { rateLimiters } from "@/server/lib/rate-limit";
 import { verifyTurnstile } from "@/lib/turnstile";
 
+async function loadOrderForTenant(id: string, ctx: { tenantId: string }) {
+  const order = await db.ecommerceOrder.findUnique({ where: { id } });
+  if (!order || order.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+  }
+  return order;
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const ADMIN_ROLES = new Set(["Administrator", "Platform Owner"]);
@@ -167,7 +175,11 @@ export const storefrontRouter = createTRPCRouter({
       const customer = await db.customer.findUnique({
         where: { id: input.customerId },
       });
-      if (customer === null || customer.isActive === false) {
+      if (
+        customer === null ||
+        customer.isActive === false ||
+        customer.tenantId !== ctx.tenantId
+      ) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Customer not found or inactive",
@@ -510,9 +522,9 @@ export const storefrontRouter = createTRPCRouter({
 
   getOrderById: protectedProcedure
     .input(z.object({ id: cuid }))
-    .query(async ({ input }) => {
-      const order = await db.ecommerceOrder.findUnique({
-        where: { id: input.id },
+    .query(async ({ ctx, input }) => {
+      const order = await db.ecommerceOrder.findFirst({
+        where: { id: input.id, tenantId: ctx.tenantId },
         include: {
           items: { include: { product: { select: { id: true, name: true, sku: true } } } },
           customer: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -533,8 +545,18 @@ export const storefrontRouter = createTRPCRouter({
         take: z.number().int().min(1).max(100).default(20),
       }),
     )
-    .query(async ({ input }) => {
-      const where: Record<string, unknown> = { customerId: input.customerId };
+    .query(async ({ ctx, input }) => {
+      const customer = await db.customer.findFirst({
+        where: { id: input.customerId, tenantId: ctx.tenantId },
+        select: { id: true },
+      });
+      if (customer === null) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Customer not found" });
+      }
+      const where: Record<string, unknown> = {
+        customerId: input.customerId,
+        tenantId: ctx.tenantId,
+      };
       if (input.status !== undefined) where.status = input.status;
       const [items, total] = await Promise.all([
         db.ecommerceOrder.findMany({
@@ -567,7 +589,7 @@ export const storefrontRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       requireAdmin(ctx.roles);
-      const where: Record<string, unknown> = {};
+      const where: Record<string, unknown> = { tenantId: ctx.tenantId };
       if (input.status !== undefined) where.status = input.status;
       if (input.paymentStatus !== undefined)
         where.paymentStatus = input.paymentStatus;
@@ -689,13 +711,7 @@ export const storefrontRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       requireAdmin(ctx.roles);
-      const current = await db.ecommerceOrder.findUnique({
-        where: { id: input.id },
-        select: { id: true },
-      });
-      if (current === null) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
-      }
+      await loadOrderForTenant(input.id, ctx);
       return db.ecommerceOrder.update({
         where: { id: input.id },
         data: {
@@ -719,13 +735,7 @@ export const storefrontRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       requireAdmin(ctx.roles);
-      const current = await db.ecommerceOrder.findUnique({
-        where: { id: input.id },
-        select: { status: true },
-      });
-      if (current === null) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
-      }
+      const current = await loadOrderForTenant(input.id, ctx);
       const allowed = STATUS_TRANSITIONS[current.status as OrderStatus] ?? [];
       if (!allowed.includes(input.status)) {
         throw new TRPCError({

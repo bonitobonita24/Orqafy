@@ -82,13 +82,15 @@ function makeReq(): NextRequest {
     headers: { get: (_h: string): string | null => null },
   } as unknown as NextRequest;
 }
+const TENANT_ID = "ck1234567890123456789012b";
+
 function authenticatedCtx(roles: string[] = ["Administrator"], isDemoTenant = false) {
   return {
     req: makeReq(),
     userId: "ck1234567890123456789012a",
     roles,
     tenantSlug: "test-tenant",
-    tenantId: "ck1234567890123456789012b",
+    tenantId: TENANT_ID,
     securityVersion: 0,
     isDemoTenant,
     session: null,
@@ -244,7 +246,7 @@ describe("storefront router", () => {
     };
 
     function mockStockAvailable() {
-      mockDb.customer.findUnique.mockResolvedValue({ id: CUSTOMER_ID, isActive: true });
+      mockDb.customer.findUnique.mockResolvedValue({ id: CUSTOMER_ID, isActive: true, tenantId: TENANT_ID });
       mockDb.product.findMany.mockResolvedValue([
         { id: PRODUCT_A, name: "A", isActive: true },
         { id: PRODUCT_B, name: "B", isActive: true },
@@ -346,7 +348,7 @@ describe("storefront router", () => {
     });
 
     it("rejects when stock quantity insufficient", async () => {
-      mockDb.customer.findUnique.mockResolvedValue({ id: CUSTOMER_ID, isActive: true });
+      mockDb.customer.findUnique.mockResolvedValue({ id: CUSTOMER_ID, isActive: true, tenantId: TENANT_ID });
       mockDb.product.findMany.mockResolvedValue([
         { id: PRODUCT_A, name: "A", isActive: true },
         { id: PRODUCT_B, name: "B", isActive: true },
@@ -363,7 +365,7 @@ describe("storefront router", () => {
     });
 
     it("rejects when productId not found", async () => {
-      mockDb.customer.findUnique.mockResolvedValue({ id: CUSTOMER_ID, isActive: true });
+      mockDb.customer.findUnique.mockResolvedValue({ id: CUSTOMER_ID, isActive: true, tenantId: TENANT_ID });
       mockDb.product.findMany.mockResolvedValue([
         { id: PRODUCT_A, name: "A", isActive: true },
         // PRODUCT_B missing
@@ -897,24 +899,25 @@ describe("storefront router", () => {
 
   // ─── getOrderById ────────────────────────────────────────────────────────
   describe("getOrderById", () => {
-    it("returns order with items for admin", async () => {
-      mockDb.ecommerceOrder.findUnique.mockResolvedValue({
+    it("returns order with items and customer when found", async () => {
+      mockDb.ecommerceOrder.findFirst.mockResolvedValue({
         id: ORDER_ID,
-        orderNumber: "EC-2605-0001",
-        customerId: CUSTOMER_ID,
+        tenantId: TENANT_ID,
+        orderNumber: "ORD-1",
         items: [],
+        customer: { id: CUSTOMER_ID, firstName: "Test", lastName: "Customer", email: "test@example.com" },
       });
 
       const caller = createCaller(authenticatedCtx());
       const res = await caller.storefront.getOrderById({ id: ORDER_ID });
 
       expect(res.id).toBe(ORDER_ID);
-      const call = mockDb.ecommerceOrder.findUnique.mock.calls[0][0];
-      expect(call.include.items).toBeTruthy();
+      const call = mockDb.ecommerceOrder.findFirst.mock.calls[0][0];
+      expect(call.where).toEqual({ id: ORDER_ID, tenantId: TENANT_ID });
     });
 
     it("throws NOT_FOUND when order missing", async () => {
-      mockDb.ecommerceOrder.findUnique.mockResolvedValue(null);
+      mockDb.ecommerceOrder.findFirst.mockResolvedValue(null);
 
       const caller = createCaller(authenticatedCtx());
       await expect(
@@ -982,6 +985,7 @@ describe("storefront router", () => {
     it("transitions pending → confirmed", async () => {
       mockDb.ecommerceOrder.findUnique.mockResolvedValue({
         id: ORDER_ID,
+        tenantId: TENANT_ID,
         status: "pending",
       });
       mockDb.ecommerceOrder.update.mockResolvedValue({
@@ -1001,6 +1005,7 @@ describe("storefront router", () => {
     it("rejects invalid transition (delivered → pending)", async () => {
       mockDb.ecommerceOrder.findUnique.mockResolvedValue({
         id: ORDER_ID,
+        tenantId: TENANT_ID,
         status: "delivered",
       });
 
@@ -1024,6 +1029,7 @@ describe("storefront router", () => {
     it("releases held stock on pending → cancelled (reversing StockMovement + WarehouseStock increment per item)", async () => {
       mockDb.ecommerceOrder.findUnique.mockResolvedValue({
         id: ORDER_ID,
+        tenantId: TENANT_ID,
         status: "pending",
       });
       mockDb.stockMovement.findMany.mockResolvedValue([
@@ -1073,6 +1079,7 @@ describe("storefront router", () => {
     it("does NOT release stock on pending → confirmed (non-cancel transition stays simple update)", async () => {
       mockDb.ecommerceOrder.findUnique.mockResolvedValue({
         id: ORDER_ID,
+        tenantId: TENANT_ID,
         status: "pending",
       });
       mockDb.ecommerceOrder.update.mockResolvedValue({
@@ -1093,6 +1100,7 @@ describe("storefront router", () => {
     it("releases held stock on confirmed → cancelled (proves disjunction in release gate)", async () => {
       mockDb.ecommerceOrder.findUnique.mockResolvedValue({
         id: ORDER_ID,
+        tenantId: TENANT_ID,
         status: "confirmed",
       });
       mockDb.stockMovement.findMany.mockResolvedValue([
@@ -1283,6 +1291,7 @@ describe("storefront router", () => {
     it("updates trackingNumber when provided", async () => {
       mockDb.ecommerceOrder.findUnique.mockResolvedValue({
         id: ORDER_ID,
+        tenantId: TENANT_ID,
         status: "processing",
       });
       mockDb.ecommerceOrder.update.mockResolvedValue({
@@ -1307,6 +1316,7 @@ describe("storefront router", () => {
     it("updates paymentMethod when provided", async () => {
       mockDb.ecommerceOrder.findUnique.mockResolvedValue({
         id: ORDER_ID,
+        tenantId: TENANT_ID,
         status: "confirmed",
       });
       mockDb.ecommerceOrder.update.mockResolvedValue({
@@ -1330,6 +1340,7 @@ describe("storefront router", () => {
     it("updates both trackingNumber and paymentMethod when both provided", async () => {
       mockDb.ecommerceOrder.findUnique.mockResolvedValue({
         id: ORDER_ID,
+        tenantId: TENANT_ID,
         status: "processing",
       });
       mockDb.ecommerceOrder.update.mockResolvedValue({
