@@ -58,6 +58,9 @@ const accountRouter = createTRPCRouter({
       })
     )
     .query(async ({ input, ctx }) => {
+      if (input.parentId) {
+        await loadAccountForTenant(input.parentId, ctx);
+      }
       const where = {
         tenantId: ctx.tenantId,
         ...(input.type !== undefined ? { type: input.type } : {}),
@@ -119,18 +122,23 @@ const accountRouter = createTRPCRouter({
         id: z.string().min(1),
         name: z.string().min(1).max(255).optional(),
         subtype: z.string().max(100).optional(),
+        parentId: z.string().min(1).nullable().optional(),
         description: z.string().max(1000).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const { id, ...data } = input;
+      const { id, parentId, ...data } = input;
       await loadAccountForTenant(id, ctx);
+      if (parentId) {
+        await loadAccountForTenant(parentId, ctx);
+      }
       return db.account.update({
         where: { id },
         data: {
           ...(data.name !== undefined ? { name: data.name } : {}),
           ...(data.subtype !== undefined ? { subtype: data.subtype } : {}),
           ...(data.description !== undefined ? { description: data.description } : {}),
+          ...(parentId !== undefined ? { parentId } : {}),
         },
       });
     }),

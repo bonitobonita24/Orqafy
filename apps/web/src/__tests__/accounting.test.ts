@@ -252,6 +252,29 @@ describe("accounting.account.list", () => {
     const caller = createCaller(unauthenticatedCtx());
     await expect(caller.accounting.account.list({ page: 1, limit: 50 })).rejects.toThrow();
   });
+
+  it("rejects parentId filter pointing to another tenant", async () => {
+    const foreignParent = { ...sampleAccount, id: "cuid-foreign-parent", tenantId: "other-tenant" };
+    mockDb.account.findUnique.mockResolvedValue(foreignParent);
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.accounting.account.list({ page: 1, limit: 50, parentId: "cuid-foreign-parent" })
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("allows parentId filter within same tenant", async () => {
+    const sameParent = { ...sampleAccount, id: "cuid-parent-ok" };
+    mockDb.account.findUnique.mockResolvedValue(sameParent);
+    mockDb.account.findMany.mockResolvedValue([]);
+    mockDb.account.count.mockResolvedValue(0);
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.accounting.account.list({ page: 1, limit: 50, parentId: "cuid-parent-ok" });
+
+    expect(result.items).toHaveLength(0);
+    expect(mockDb.account.findUnique).toHaveBeenCalledWith({ where: { id: "cuid-parent-ok" } });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -351,6 +374,48 @@ describe("accounting.account.update", () => {
     await expect(
       caller.accounting.account.update({ id: "cuid-nonexistent", name: "New Name" })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("rejects re-parenting to an account in another tenant", async () => {
+    const existing = { ...sampleAccount };
+    const foreignParent = { ...sampleAccount, id: "cuid-foreign-parent", tenantId: "other-tenant" };
+    mockDb.account.findUnique
+      .mockResolvedValueOnce(existing)
+      .mockResolvedValueOnce(foreignParent);
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.accounting.account.update({ id: "cuid-acc-1", parentId: "cuid-foreign-parent" })
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("allows re-parenting to an account in the same tenant", async () => {
+    const existing = { ...sampleAccount };
+    const sameParent = { ...sampleAccount, id: "cuid-parent-ok" };
+    const updated = { ...existing, parentId: "cuid-parent-ok" };
+    mockDb.account.findUnique
+      .mockResolvedValueOnce(existing)
+      .mockResolvedValueOnce(sameParent);
+    mockDb.account.update.mockResolvedValue(updated);
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.accounting.account.update({ id: "cuid-acc-1", parentId: "cuid-parent-ok" });
+
+    expect(result.parentId).toBe("cuid-parent-ok");
+    const updateCall = mockDb.account.update.mock.calls[0] as [{ data: Record<string, unknown> }];
+    expect(updateCall[0].data).toMatchObject({ parentId: "cuid-parent-ok" });
+  });
+
+  it("allows clearing parentId by setting null", async () => {
+    const existing = { ...sampleAccount, parentId: "cuid-parent-ok" };
+    const updated = { ...existing, parentId: null };
+    mockDb.account.findUnique.mockResolvedValue(existing);
+    mockDb.account.update.mockResolvedValue(updated);
+
+    const caller = createCaller(authenticatedCtx());
+    const result = await caller.accounting.account.update({ id: "cuid-acc-1", parentId: null });
+
+    expect(result.parentId).toBeNull();
   });
 });
 
