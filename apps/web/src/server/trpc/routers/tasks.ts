@@ -33,9 +33,9 @@ async function loadTaskForTenant(id: string, ctx: { tenantId: string }) {
   return t;
 }
 
-async function loadToDoForTenant(id: string, ctx: { tenantId: string }) {
+async function loadToDoForUser(id: string, ctx: { tenantId: string; userId: string }) {
   const td = await db.toDo.findUnique({ where: { id } });
-  if (!td || td.tenantId !== ctx.tenantId) {
+  if (!td || td.tenantId !== ctx.tenantId || td.userId !== ctx.userId) {
     throw new TRPCError({ code: "NOT_FOUND", message: "To-do not found" });
   }
   return td;
@@ -216,7 +216,7 @@ export const tasksRouter = createTRPCRouter({
       priority: TODO_PRIORITY.optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      await loadToDoForTenant(input.id, ctx);
+      await loadToDoForUser(input.id, ctx);
       return db.toDo.update({
         where: { id: input.id },
         data: {
@@ -230,7 +230,7 @@ export const tasksRouter = createTRPCRouter({
   todoDelete: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
-      await loadToDoForTenant(input.id, ctx);
+      await loadToDoForUser(input.id, ctx);
       await db.toDo.delete({ where: { id: input.id } });
       return { success: true };
     }),
@@ -238,7 +238,7 @@ export const tasksRouter = createTRPCRouter({
   todoComplete: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
-      await loadToDoForTenant(input.id, ctx);
+      await loadToDoForUser(input.id, ctx);
       return db.toDo.update({ where: { id: input.id }, data: { isCompleted: true } });
     }),
 
@@ -251,7 +251,7 @@ export const tasksRouter = createTRPCRouter({
       mimeType: z.string().min(1),
     }))
     .mutation(async ({ input, ctx }) => {
-      const todo = await loadToDoForTenant(input.toDoId, ctx);
+      const todo = await loadToDoForUser(input.toDoId, ctx);
       const tenant = await db.tenant.findFirst({ where: { id: ctx.tenantId } });
       if (!tenant) throw new TRPCError({ code: "NOT_FOUND", message: "Tenant not found." });
       const plan = await db.plan.findFirst({ where: { id: (tenant as { planId: string }).planId } });
