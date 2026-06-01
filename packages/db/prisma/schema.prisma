@@ -115,6 +115,11 @@ model Tenant {
   fundRequests                 FundRequest[]                @relation("TenantFundRequests")
   creditCardTransactions       CreditCardTransaction[]      @relation("TenantCreditCardTransactions")
   creditCardPayments           CreditCardPayment[]          @relation("TenantCreditCardPayments")
+  accounts                     Account[]                    @relation("TenantAccounts")
+  journalEntries               JournalEntry[]               @relation("TenantJournalEntries")
+  journalLines                 JournalLine[]                @relation("TenantJournalLines")
+  taxRates                     TaxRate[]                    @relation("TenantTaxRates")
+  fiscalYears                  FiscalYear[]                 @relation("TenantFiscalYears")
 
   @@map("tenants")
   @@schema("public")
@@ -1962,6 +1967,8 @@ model CreditCardPayment {
 
 model Account {
   id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  tenant      Tenant    @relation("TenantAccounts", fields: [tenantId], references: [id])
   code        String    @unique
   name        String
   type        String // asset | liability | equity | revenue | expense
@@ -1977,12 +1984,15 @@ model Account {
 
   journalLines JournalLine[]
 
+  @@index([tenantId])
   @@map("accounts")
   @@schema("public")
 }
 
 model JournalEntry {
   id            String     @id @default(cuid())
+  tenantId      String     @map("tenant_id")
+  tenant        Tenant     @relation("TenantJournalEntries", fields: [tenantId], references: [id])
   entryNumber   String     @unique @map("entry_number")
   fiscalYearId  String     @map("fiscal_year_id")
   fiscalYear    FiscalYear @relation(fields: [fiscalYearId], references: [id])
@@ -1999,6 +2009,7 @@ model JournalEntry {
 
   lines JournalLine[]
 
+  @@index([tenantId])
   @@index([fiscalYearId])
   @@index([date])
   @@map("journal_entries")
@@ -2007,6 +2018,8 @@ model JournalEntry {
 
 model JournalLine {
   id             String       @id @default(cuid())
+  tenantId       String       @map("tenant_id")
+  tenant         Tenant       @relation("TenantJournalLines", fields: [tenantId], references: [id])
   journalEntryId String       @map("journal_entry_id")
   journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   accountId      String       @map("account_id")
@@ -2016,6 +2029,7 @@ model JournalLine {
   description    String?
   createdAt      DateTime     @default(now()) @map("created_at")
 
+  @@index([tenantId])
   @@index([journalEntryId])
   @@index([accountId])
   @@map("journal_lines")
@@ -2024,6 +2038,8 @@ model JournalLine {
 
 model TaxRate {
   id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  tenant    Tenant   @relation("TenantTaxRates", fields: [tenantId], references: [id])
   name      String
   code      String   @unique
   rate      Decimal  @db.Decimal(5, 2)
@@ -2033,12 +2049,15 @@ model TaxRate {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  @@index([tenantId])
   @@map("tax_rates")
   @@schema("public")
 }
 
 model FiscalYear {
   id        String    @id @default(cuid())
+  tenantId  String    @map("tenant_id")
+  tenant    Tenant    @relation("TenantFiscalYears", fields: [tenantId], references: [id])
   name      String
   startDate DateTime  @map("start_date") @db.Date
   endDate   DateTime  @map("end_date") @db.Date
@@ -2049,6 +2068,7 @@ model FiscalYear {
 
   journalEntries JournalEntry[]
 
+  @@index([tenantId])
   @@map("fiscal_years")
   @@schema("public")
 }

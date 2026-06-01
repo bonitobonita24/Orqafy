@@ -3,6 +3,45 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
 import { prisma as db } from "@orqafy/db";
 
+async function loadAccountForTenant(id: string, ctx: { tenantId: string }) {
+  const a = await db.account.findUnique({ where: { id } });
+  if (!a || a.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Account not found" });
+  }
+  return a;
+}
+
+async function loadJournalEntryForTenant(
+  id: string,
+  ctx: { tenantId: string },
+  includeLines = false
+) {
+  const je = await db.journalEntry.findUnique({
+    where: { id },
+    ...(includeLines ? { include: { lines: true } } : {}),
+  });
+  if (!je || je.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Journal entry not found" });
+  }
+  return je;
+}
+
+async function loadFiscalYearForTenant(id: string, ctx: { tenantId: string }) {
+  const fy = await db.fiscalYear.findUnique({ where: { id } });
+  if (!fy || fy.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Fiscal year not found" });
+  }
+  return fy;
+}
+
+async function loadTaxRateForTenant(id: string, ctx: { tenantId: string }) {
+  const tr = await db.taxRate.findUnique({ where: { id } });
+  if (!tr || tr.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Tax rate not found" });
+  }
+  return tr;
+}
+
 const ACCOUNT_TYPES = ["asset", "liability", "equity", "revenue", "expense"] as const;
 const JOURNAL_ENTRY_STATUSES = ["draft", "posted", "void"] as const;
 const TAX_RATE_TYPES = ["percentage", "fixed"] as const;
@@ -18,8 +57,9 @@ const accountRouter = createTRPCRouter({
         parentId: z.string().min(1).optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.type !== undefined ? { type: input.type } : {}),
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
         ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
@@ -38,10 +78,8 @@ const accountRouter = createTRPCRouter({
 
   byId: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .query(async ({ input }) => {
-      const item = await db.account.findUnique({ where: { id: input.id } });
-      if (!item) throw new TRPCError({ code: "NOT_FOUND" });
-      return item;
+    .query(async ({ input, ctx }) => {
+      return loadAccountForTenant(input.id, ctx);
     }),
 
   create: writeProcedure
@@ -56,9 +94,10 @@ const accountRouter = createTRPCRouter({
         isSystem: z.boolean().default(false),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       return db.account.create({
         data: {
+          tenantId: ctx.tenantId,
           code: input.code,
           name: input.name,
           type: input.type,
@@ -80,10 +119,9 @@ const accountRouter = createTRPCRouter({
         description: z.string().max(1000).optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { id, ...data } = input;
-      const existing = await db.account.findUnique({ where: { id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await loadAccountForTenant(id, ctx);
       return db.account.update({
         where: { id },
         data: {
@@ -96,9 +134,8 @@ const accountRouter = createTRPCRouter({
 
   toggleActive: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const existing = await db.account.findUnique({ where: { id: input.id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      const existing = await loadAccountForTenant(input.id, ctx);
       return db.account.update({
         where: { id: input.id },
         data: { isActive: !existing.isActive },
@@ -123,8 +160,9 @@ const journalEntryRouter = createTRPCRouter({
         status: z.enum(JOURNAL_ENTRY_STATUSES).optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.fiscalYearId !== undefined ? { fiscalYearId: input.fiscalYearId } : {}),
         ...(input.status !== undefined ? { status: input.status } : {}),
       };
@@ -143,12 +181,12 @@ const journalEntryRouter = createTRPCRouter({
 
   byId: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const item = await db.journalEntry.findUnique({
         where: { id: input.id },
         include: { lines: true },
       });
-      if (!item) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!item || item.tenantId !== ctx.tenantId) throw new TRPCError({ code: "NOT_FOUND" });
       return item;
     }),
 
@@ -164,11 +202,12 @@ const journalEntryRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const entryCount = await db.journalEntry.count();
+      const entryCount = await db.journalEntry.count({ where: { tenantId: ctx.tenantId } });
       const entryNumber = `JE-${String(entryCount + 1).padStart(4, "0")}`;
 
       return db.journalEntry.create({
         data: {
+          tenantId: ctx.tenantId,
           entryNumber,
           fiscalYearId: input.fiscalYearId,
           date: new Date(input.date),
@@ -179,6 +218,7 @@ const journalEntryRouter = createTRPCRouter({
           createdById: ctx.userId ?? "system",
           lines: {
             create: input.lines.map((line) => ({
+              tenantId: ctx.tenantId,
               accountId: line.accountId,
               debit: line.debit,
               credit: line.credit,
@@ -192,9 +232,8 @@ const journalEntryRouter = createTRPCRouter({
 
   post: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const existing = await db.journalEntry.findUnique({ where: { id: input.id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      const existing = await loadJournalEntryForTenant(input.id, ctx);
       if (existing.status !== "draft") {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -217,7 +256,9 @@ const journalEntryRouter = createTRPCRouter({
         where: { id: input.id },
         include: { lines: true },
       });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!existing || existing.tenantId !== ctx.tenantId) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
       if (existing.status !== "posted") {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -225,11 +266,12 @@ const journalEntryRouter = createTRPCRouter({
         });
       }
 
-      const entryCount = await db.journalEntry.count();
+      const entryCount = await db.journalEntry.count({ where: { tenantId: ctx.tenantId } });
       const entryNumber = `JE-${String(entryCount + 1).padStart(4, "0")}`;
 
       const reversal = await db.journalEntry.create({
         data: {
+          tenantId: ctx.tenantId,
           entryNumber,
           fiscalYearId: existing.fiscalYearId,
           date: new Date(),
@@ -241,6 +283,7 @@ const journalEntryRouter = createTRPCRouter({
           createdById: ctx.userId ?? "system",
           lines: {
             create: existing.lines.map((line) => ({
+              tenantId: ctx.tenantId,
               accountId: line.accountId,
               debit: Number(line.credit),
               credit: Number(line.debit),
@@ -269,8 +312,9 @@ const fiscalYearRouter = createTRPCRouter({
         isClosed: z.boolean().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.isClosed !== undefined ? { isClosed: input.isClosed } : {}),
       };
       const [items, total] = await Promise.all([
@@ -287,10 +331,8 @@ const fiscalYearRouter = createTRPCRouter({
 
   byId: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .query(async ({ input }) => {
-      const item = await db.fiscalYear.findUnique({ where: { id: input.id } });
-      if (!item) throw new TRPCError({ code: "NOT_FOUND" });
-      return item;
+    .query(async ({ input, ctx }) => {
+      return loadFiscalYearForTenant(input.id, ctx);
     }),
 
   create: writeProcedure
@@ -301,9 +343,10 @@ const fiscalYearRouter = createTRPCRouter({
         endDate: z.string().min(1),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       return db.fiscalYear.create({
         data: {
+          tenantId: ctx.tenantId,
           name: input.name,
           startDate: new Date(input.startDate),
           endDate: new Date(input.endDate),
@@ -322,8 +365,9 @@ const taxRateRouter = createTRPCRouter({
         isActive: z.boolean().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
       };
       const [items, total] = await Promise.all([
@@ -340,10 +384,8 @@ const taxRateRouter = createTRPCRouter({
 
   byId: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .query(async ({ input }) => {
-      const item = await db.taxRate.findUnique({ where: { id: input.id } });
-      if (!item) throw new TRPCError({ code: "NOT_FOUND" });
-      return item;
+    .query(async ({ input, ctx }) => {
+      return loadTaxRateForTenant(input.id, ctx);
     }),
 
   create: writeProcedure
@@ -356,9 +398,10 @@ const taxRateRouter = createTRPCRouter({
         isDefault: z.boolean().default(false),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       return db.taxRate.create({
         data: {
+          tenantId: ctx.tenantId,
           name: input.name,
           code: input.code,
           rate: input.rate,

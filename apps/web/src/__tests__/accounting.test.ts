@@ -140,6 +140,7 @@ const mockDb = db as unknown as {
 // ---------------------------------------------------------------------------
 const sampleAccount = {
   id: "cuid-acc-1",
+  tenantId: "acme-tenant-id",
   code: "1000",
   name: "Cash",
   type: "asset",
@@ -154,6 +155,7 @@ const sampleAccount = {
 
 const sampleFiscalYear = {
   id: "cuid-fy-1",
+  tenantId: "acme-tenant-id",
   name: "FY 2026",
   startDate: new Date("2026-01-01"),
   endDate: new Date("2026-12-31"),
@@ -174,6 +176,7 @@ const sampleJournalLine = {
 
 const sampleJournalEntry = {
   id: "cuid-je-1",
+  tenantId: "acme-tenant-id",
   entryNumber: "JE-0001",
   fiscalYearId: "cuid-fy-1",
   date: new Date("2026-01-15"),
@@ -190,6 +193,7 @@ const sampleJournalEntry = {
 
 const sampleTaxRate = {
   id: "cuid-tr-1",
+  tenantId: "acme-tenant-id",
   name: "VAT 12%",
   code: "VAT12",
   rate: "12.00",
