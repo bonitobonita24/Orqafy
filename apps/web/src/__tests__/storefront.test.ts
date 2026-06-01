@@ -10,6 +10,7 @@ vi.mock("@orqafy/db", () => ({
     product: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       count: vi.fn(),
     },
     ecommerceOrder: {
@@ -114,7 +115,7 @@ const createCaller = createCallerFactory(testRouter);
 
 import { prisma as db } from "@orqafy/db";
 const mockDb = db as unknown as {
-  product: { findMany: any; findUnique: any; count: any };
+  product: { findMany: any; findUnique: any; findFirst: any; count: any };
   ecommerceOrder: {
     findFirst: any;
     findUnique: any;
@@ -216,7 +217,7 @@ describe("storefront router", () => {
   // ─── getProductById ──────────────────────────────────────────────────────
   describe("getProductById", () => {
     it("returns the product when found", async () => {
-      mockDb.product.findUnique.mockResolvedValue({ id: PRODUCT_A, name: "Widget" });
+      mockDb.product.findFirst.mockResolvedValue({ id: PRODUCT_A, name: "Widget", tenantId: TENANT_ID });
 
       const caller = createCaller(authenticatedCtx());
       const res = await caller.storefront.getProductById({ id: PRODUCT_A });
@@ -225,7 +226,7 @@ describe("storefront router", () => {
     });
 
     it("throws NOT_FOUND when product missing", async () => {
-      mockDb.product.findUnique.mockResolvedValue(null);
+      mockDb.product.findFirst.mockResolvedValue(null);
 
       const caller = createCaller(authenticatedCtx());
       await expect(

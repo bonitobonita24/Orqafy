@@ -21,6 +21,14 @@ async function loadOrderForTenant(id: string, ctx: { tenantId: string }) {
   return order;
 }
 
+async function loadProductForTenant(id: string, ctx: { tenantId: string }) {
+  const product = await db.product.findFirst({ where: { id, tenantId: ctx.tenantId } });
+  if (!product) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
+  }
+  return product;
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const ADMIN_ROLES = new Set(["Administrator", "Platform Owner"]);
@@ -138,8 +146,8 @@ export const storefrontRouter = createTRPCRouter({
         })
         .default({}),
     )
-    .query(async ({ input }) => {
-      const where: Record<string, unknown> = { isActive: input.isActive };
+    .query(async ({ ctx, input }) => {
+      const where: Record<string, unknown> = { isActive: input.isActive, tenantId: ctx.tenantId };
       if (input.categoryId !== undefined) where.categoryId = input.categoryId;
       if (input.search !== undefined) {
         where.OR = [
@@ -161,12 +169,8 @@ export const storefrontRouter = createTRPCRouter({
 
   getProductById: protectedProcedure
     .input(z.object({ id: cuid }))
-    .query(async ({ input }) => {
-      const product = await db.product.findUnique({ where: { id: input.id } });
-      if (product === null) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
-      }
-      return product;
+    .query(async ({ ctx, input }) => {
+      return loadProductForTenant(input.id, ctx);
     }),
 
   placeOrder: writeProcedure
@@ -188,7 +192,7 @@ export const storefrontRouter = createTRPCRouter({
 
       const productIds = input.items.map((i) => i.productId);
       const products = await db.product.findMany({
-        where: { id: { in: productIds }, isActive: true },
+        where: { id: { in: productIds }, isActive: true, tenantId: ctx.tenantId },
         select: { id: true, name: true },
       });
       if (products.length !== productIds.length) {
@@ -325,7 +329,7 @@ export const storefrontRouter = createTRPCRouter({
       }
 
       const warehouse = await db.warehouse.findFirst({
-        where: { isDefault: true, isActive: true },
+        where: { isDefault: true, isActive: true, tenantId: tenant.id },
       });
       if (warehouse === null) {
         throw new TRPCError({
@@ -336,7 +340,7 @@ export const storefrontRouter = createTRPCRouter({
 
       const productIds = input.items.map((i) => i.productId);
       const products = await db.product.findMany({
-        where: { id: { in: productIds }, isActive: true },
+        where: { id: { in: productIds }, isActive: true, tenantId: tenant.id },
         select: { id: true, name: true },
       });
       if (products.length !== productIds.length) {

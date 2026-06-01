@@ -64,9 +64,10 @@ export const inventoryRouter = createTRPCRouter({
         isSerialTracked: z.boolean().default(false),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       return db.product.create({
         data: {
+          tenantId: ctx.tenantId,
           name: input.name,
           sku: input.sku ?? null,
           barcode: input.barcode ?? null,
@@ -204,9 +205,10 @@ export const inventoryRouter = createTRPCRouter({
   // ── Warehouses ────────────────────────────────────────────────────────────
   warehouseList: protectedProcedure
     .input(z.object({ isActive: z.boolean().optional() }).default({}))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       return db.warehouse.findMany({
         where: {
+          tenantId: ctx.tenantId,
           ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
         },
         orderBy: { name: "asc" },
@@ -222,9 +224,10 @@ export const inventoryRouter = createTRPCRouter({
         isDefault: z.boolean().default(false),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       return db.warehouse.create({
         data: {
+          tenantId: ctx.tenantId,
           name: input.name,
           code: input.code,
           address: input.address ?? null,
@@ -244,9 +247,9 @@ export const inventoryRouter = createTRPCRouter({
         isActive: z.boolean().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
-      const existing = await db.warehouse.findUnique({ where: { id } });
+      const existing = await db.warehouse.findFirst({ where: { id, tenantId: ctx.tenantId } });
       if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
       return db.warehouse.update({
         where: { id },
@@ -262,8 +265,8 @@ export const inventoryRouter = createTRPCRouter({
 
   warehouseToggleActive: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const existing = await db.warehouse.findUnique({ where: { id: input.id } });
+    .mutation(async ({ ctx, input }) => {
+      const existing = await db.warehouse.findFirst({ where: { id: input.id, tenantId: ctx.tenantId } });
       if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
       return db.warehouse.update({
         where: { id: input.id },
@@ -279,9 +282,10 @@ export const inventoryRouter = createTRPCRouter({
         productId: z.string().min(1).optional(),
       }).default({})
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       return db.warehouseStock.findMany({
         where: {
+          tenantId: ctx.tenantId,
           ...(input.warehouseId !== undefined ? { warehouseId: input.warehouseId } : {}),
           ...(input.productId !== undefined ? { productId: input.productId } : {}),
         },

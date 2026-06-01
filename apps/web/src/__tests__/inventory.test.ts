@@ -40,6 +40,7 @@ vi.mock("@orqafy/db", () => ({
     warehouse: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
     },
@@ -108,6 +109,7 @@ const mockDb = db as unknown as {
   warehouse: {
     findMany: ReturnType<typeof vi.fn>;
     findUnique: ReturnType<typeof vi.fn>;
+    findFirst: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
   };
@@ -544,7 +546,7 @@ describe("inventory.warehouseUpdate", () => {
 
   it("updates warehouse name", async () => {
     const updated = { ...sampleWarehouse, name: "Updated Warehouse" };
-    mockDb.warehouse.findUnique.mockResolvedValue(sampleWarehouse);
+    mockDb.warehouse.findFirst.mockResolvedValue(sampleWarehouse);
     mockDb.warehouse.update.mockResolvedValue(updated);
 
     const caller = createCaller(authenticatedCtx());
@@ -555,7 +557,7 @@ describe("inventory.warehouseUpdate", () => {
   });
 
   it("throws NOT_FOUND for nonexistent warehouse", async () => {
-    mockDb.warehouse.findUnique.mockResolvedValue(null);
+    mockDb.warehouse.findFirst.mockResolvedValue(null);
 
     const caller = createCaller(authenticatedCtx());
     await expect(
@@ -573,7 +575,7 @@ describe("inventory.warehouseToggleActive", () => {
   it("flips isActive from true to false", async () => {
     const existing = { ...sampleWarehouse, isActive: true };
     const updated = { ...existing, isActive: false };
-    mockDb.warehouse.findUnique.mockResolvedValue(existing);
+    mockDb.warehouse.findFirst.mockResolvedValue(existing);
     mockDb.warehouse.update.mockResolvedValue(updated);
 
     const caller = createCaller(authenticatedCtx());
@@ -585,7 +587,7 @@ describe("inventory.warehouseToggleActive", () => {
   });
 
   it("throws NOT_FOUND for nonexistent warehouse", async () => {
-    mockDb.warehouse.findUnique.mockResolvedValue(null);
+    mockDb.warehouse.findFirst.mockResolvedValue(null);
 
     const caller = createCaller(authenticatedCtx());
     await expect(

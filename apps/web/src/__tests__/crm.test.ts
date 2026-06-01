@@ -143,6 +143,7 @@ const mockDb = db as unknown as {
   quotationRevision: { create: ReturnType<typeof vi.fn> };
   contactLog: {
     findMany: ReturnType<typeof vi.fn>;
+    findFirst: ReturnType<typeof vi.fn>;
     findUnique: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
