@@ -130,6 +130,7 @@ const fakeProject = {
   targetEndDate: null,
   actualEndDate: null,
   budget: null,
+  tenantId: "acme-tenant-id",
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -314,6 +315,7 @@ describe("project.budgetSummary", () => {
 
 describe("expense.listByProject", () => {
   it("returns paginated expenses", async () => {
+    mockDb.project.findUnique.mockResolvedValueOnce({ ...fakeProject });
     const expenses = [
       { id: "exp-1", projectId: "proj-1", amount: 500, type: "direct", description: "Paint", date: new Date() },
     ];
@@ -500,12 +502,13 @@ describe("milestone.create", () => {
 
 describe("milestone.complete", () => {
   it("sets completedAt and progress=100", async () => {
-    mockDb.milestone.findUnique.mockResolvedValue({
+    mockDb.milestone.findUnique.mockResolvedValueOnce({
       id: "ms-1",
       projectId: "proj-1",
       name: "Foundation",
       completedAt: null,
     });
+    mockDb.project.findUnique.mockResolvedValueOnce({ ...fakeProject });
     mockDb.milestone.update.mockResolvedValue({
       id: "ms-1",
       completedAt: new Date(),
@@ -518,8 +521,9 @@ describe("milestone.complete", () => {
   });
 
   it("throws BAD_REQUEST if already completed", async () => {
-    mockDb.milestone.findUnique.mockResolvedValue({
+    mockDb.milestone.findUnique.mockResolvedValueOnce({
       id: "ms-1",
+      projectId: "proj-1",
       completedAt: new Date(),
     });
     const caller = createCaller(authenticatedCtx());
@@ -529,7 +533,7 @@ describe("milestone.complete", () => {
   });
 
   it("NOT_FOUND when milestone missing", async () => {
-    mockDb.milestone.findUnique.mockResolvedValue(null);
+    mockDb.milestone.findUnique.mockResolvedValueOnce(null);
     const caller = createCaller(authenticatedCtx());
     await expect(
       caller.project.milestone.complete({ milestoneId: "ms-missing" })
@@ -541,11 +545,13 @@ describe("milestone.complete", () => {
 
 describe("milestone.update", () => {
   it("partial update succeeds", async () => {
-    mockDb.milestone.findUnique.mockResolvedValue({
+    mockDb.milestone.findUnique.mockResolvedValueOnce({
       id: "ms-1",
+      projectId: "proj-1",
       name: "Old Name",
       sortOrder: 0,
     });
+    mockDb.project.findUnique.mockResolvedValueOnce({ ...fakeProject });
     mockDb.milestone.update.mockResolvedValue({
       id: "ms-1",
       name: "New Name",
@@ -562,7 +568,7 @@ describe("milestone.update", () => {
   });
 
   it("NOT_FOUND when milestone missing", async () => {
-    mockDb.milestone.findUnique.mockResolvedValue(null);
+    mockDb.milestone.findUnique.mockResolvedValueOnce(null);
     const caller = createCaller(authenticatedCtx());
     await expect(
       caller.project.milestone.update({ milestoneId: "ms-missing", name: "X" })

@@ -10,9 +10,13 @@ import { TRPCError } from "@trpc/server";
 
 vi.mock("@orqafy/db", () => ({
   prisma: {
+    project: {
+      findUnique: vi.fn(),
+    },
     task: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
     },
@@ -27,6 +31,7 @@ vi.mock("@orqafy/db", () => ({
     toDo: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -77,9 +82,13 @@ const createCaller = createCallerFactory(testRouter);
 
 import { prisma as db } from "@orqafy/db";
 const mockDb = db as unknown as {
+  project: {
+    findUnique: ReturnType<typeof vi.fn>;
+  };
   task: {
     findMany: ReturnType<typeof vi.fn>;
     findFirst: ReturnType<typeof vi.fn>;
+    findUnique: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
   };
@@ -94,6 +103,7 @@ const mockDb = db as unknown as {
   toDo: {
     findMany: ReturnType<typeof vi.fn>;
     findFirst: ReturnType<typeof vi.fn>;
+    findUnique: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
     delete: ReturnType<typeof vi.fn>;
@@ -118,6 +128,7 @@ describe("tasks.taskList", () => {
       { id: "task-1", title: "Build feature", status: "todo", priority: "medium" },
       { id: "task-2", title: "Write tests", status: "in_progress", priority: "high" },
     ];
+    mockDb.project.findUnique.mockResolvedValueOnce({ id: "proj-1", tenantId: "acme-tenant-id" });
     mockDb.task.findMany.mockResolvedValueOnce(tasks);
 
     const caller = createCaller(authenticatedCtx());
@@ -133,6 +144,7 @@ describe("tasks.taskList", () => {
   });
 
   it("filters by status when provided", async () => {
+    mockDb.project.findUnique.mockResolvedValueOnce({ id: "proj-1", tenantId: "acme-tenant-id" });
     mockDb.task.findMany.mockResolvedValueOnce([]);
     const caller = createCaller(authenticatedCtx());
     await caller.tasks.taskList({ projectId: "proj-1", status: "in_progress" });
@@ -142,6 +154,7 @@ describe("tasks.taskList", () => {
   });
 
   it("filters by priority when provided", async () => {
+    mockDb.project.findUnique.mockResolvedValueOnce({ id: "proj-1", tenantId: "acme-tenant-id" });
     mockDb.task.findMany.mockResolvedValueOnce([]);
     const caller = createCaller(authenticatedCtx());
     await caller.tasks.taskList({ projectId: "proj-1", priority: "high" });
@@ -151,6 +164,7 @@ describe("tasks.taskList", () => {
   });
 
   it("filters by parentTaskId when provided (subtasks lookup)", async () => {
+    mockDb.project.findUnique.mockResolvedValueOnce({ id: "proj-1", tenantId: "acme-tenant-id" });
     mockDb.task.findMany.mockResolvedValueOnce([]);
     const caller = createCaller(authenticatedCtx());
     await caller.tasks.taskList({ projectId: "proj-1", parentTaskId: "task-parent" });
@@ -160,6 +174,7 @@ describe("tasks.taskList", () => {
   });
 
   it("filters by assigneeId via TaskAssignment join", async () => {
+    mockDb.project.findUnique.mockResolvedValueOnce({ id: "proj-1", tenantId: "acme-tenant-id" });
     mockDb.task.findMany.mockResolvedValueOnce([]);
     const caller = createCaller(authenticatedCtx());
     await caller.tasks.taskList({ projectId: "proj-1", assigneeId: "user-7" });
@@ -185,6 +200,7 @@ describe("tasks.taskGetById", () => {
       attachments: [{ id: "att-1", fileName: "spec.pdf" }],
       subtasks: [{ id: "task-2", title: "Subtask 1" }],
     };
+    mockDb.task.findUnique.mockResolvedValueOnce({ id: "task-1", tenantId: "acme-tenant-id" });
     mockDb.task.findFirst.mockResolvedValueOnce(task);
 
     const caller = createCaller(authenticatedCtx());
@@ -200,7 +216,7 @@ describe("tasks.taskGetById", () => {
   });
 
   it("throws NOT_FOUND when task does not exist", async () => {
-    mockDb.task.findFirst.mockResolvedValueOnce(null);
+    mockDb.task.findUnique.mockResolvedValueOnce(null);
 
     const caller = createCaller(authenticatedCtx());
     await expect(caller.tasks.taskGetById({ id: "missing" })).rejects.toThrow(
@@ -221,6 +237,7 @@ describe("tasks.taskCreate", () => {
       priority: "medium",
       tenantId: "acme-tenant-id",
     };
+    mockDb.project.findUnique.mockResolvedValueOnce({ id: "proj-1", tenantId: "acme-tenant-id" });
     mockDb.task.create.mockResolvedValueOnce(created);
 
     const caller = createCaller(authenticatedCtx());
@@ -231,6 +248,7 @@ describe("tasks.taskCreate", () => {
   });
 
   it("forwards optional priority, description, and parentTaskId to Prisma", async () => {
+    mockDb.project.findUnique.mockResolvedValueOnce({ id: "proj-1", tenantId: "acme-tenant-id" });
     mockDb.task.create.mockResolvedValueOnce({ id: "task-new" });
 
     const caller = createCaller(authenticatedCtx());
@@ -269,7 +287,7 @@ describe("tasks.taskUpdate", () => {
   it("updates a task title", async () => {
     const existing = { id: "task-1", title: "Old title", status: "todo", tenantId: "acme-tenant-id" };
     const updated = { ...existing, title: "New title" };
-    mockDb.task.findFirst.mockResolvedValueOnce(existing);
+    mockDb.task.findUnique.mockResolvedValueOnce(existing);
     mockDb.task.update.mockResolvedValueOnce(updated);
 
     const caller = createCaller(authenticatedCtx());
@@ -280,8 +298,8 @@ describe("tasks.taskUpdate", () => {
   });
 
   it("updates description and priority partially", async () => {
-    const existing = { id: "task-1", title: "Existing", description: null, priority: "medium" };
-    mockDb.task.findFirst.mockResolvedValueOnce(existing);
+    const existing = { id: "task-1", title: "Existing", description: null, priority: "medium", tenantId: "acme-tenant-id" };
+    mockDb.task.findUnique.mockResolvedValueOnce(existing);
     mockDb.task.update.mockResolvedValueOnce({ ...existing, description: "New desc", priority: "high" });
 
     const caller = createCaller(authenticatedCtx());
@@ -300,7 +318,7 @@ describe("tasks.taskUpdate", () => {
   });
 
   it("throws NOT_FOUND when task does not exist", async () => {
-    mockDb.task.findFirst.mockResolvedValueOnce(null);
+    mockDb.task.findUnique.mockResolvedValueOnce(null);
 
     const caller = createCaller(authenticatedCtx());
     await expect(caller.tasks.taskUpdate({ id: "missing", title: "X" })).rejects.toThrow(
@@ -316,7 +334,7 @@ describe("tasks.taskUpdateStatus", () => {
   it("transitions todo → in_progress", async () => {
     const existing = { id: "task-1", status: "todo", tenantId: "acme-tenant-id", milestoneId: null };
     const updated = { ...existing, status: "in_progress" };
-    mockDb.task.findFirst.mockResolvedValueOnce(existing);
+    mockDb.task.findUnique.mockResolvedValueOnce(existing);
     mockDb.task.update.mockResolvedValueOnce(updated);
 
     const caller = createCaller(authenticatedCtx());
@@ -328,7 +346,7 @@ describe("tasks.taskUpdateStatus", () => {
   it("transitions in_progress → review", async () => {
     const existing = { id: "task-1", status: "in_progress", tenantId: "acme-tenant-id", milestoneId: null };
     const updated = { ...existing, status: "review" };
-    mockDb.task.findFirst.mockResolvedValueOnce(existing);
+    mockDb.task.findUnique.mockResolvedValueOnce(existing);
     mockDb.task.update.mockResolvedValueOnce(updated);
 
     const caller = createCaller(authenticatedCtx());
@@ -339,7 +357,7 @@ describe("tasks.taskUpdateStatus", () => {
 
   it("rejects invalid status transition (done → in_progress)", async () => {
     const existing = { id: "task-1", status: "done", tenantId: "acme-tenant-id", milestoneId: null };
-    mockDb.task.findFirst.mockResolvedValueOnce(existing);
+    mockDb.task.findUnique.mockResolvedValueOnce(existing);
 
     const caller = createCaller(authenticatedCtx());
     await expect(
@@ -356,7 +374,7 @@ describe("tasks.taskUpdateStatus", () => {
 
   it("rejects skipping todo → done (must go through in_progress / review)", async () => {
     const existing = { id: "task-1", status: "todo", tenantId: "acme-tenant-id" };
-    mockDb.task.findFirst.mockResolvedValueOnce(existing);
+    mockDb.task.findUnique.mockResolvedValueOnce(existing);
 
     const caller = createCaller(authenticatedCtx());
     await expect(
@@ -366,7 +384,7 @@ describe("tasks.taskUpdateStatus", () => {
 
   it("allows blocked → in_progress (recovery transition)", async () => {
     const existing = { id: "task-1", status: "blocked", tenantId: "acme-tenant-id" };
-    mockDb.task.findFirst.mockResolvedValueOnce(existing);
+    mockDb.task.findUnique.mockResolvedValueOnce(existing);
     mockDb.task.update.mockResolvedValueOnce({ ...existing, status: "in_progress" });
 
     const caller = createCaller(authenticatedCtx());
@@ -382,7 +400,7 @@ describe("tasks.taskAssign", () => {
   it("assigns a user to a task", async () => {
     const existing = { id: "task-1", status: "todo", tenantId: "acme-tenant-id" };
     const assignment = { id: "assign-1", taskId: "task-1", userId: "user-2" };
-    mockDb.task.findFirst.mockResolvedValueOnce(existing);
+    mockDb.task.findUnique.mockResolvedValueOnce(existing);
     mockDb.taskAssignment.findFirst.mockResolvedValueOnce(null);
     mockDb.taskAssignment.create.mockResolvedValueOnce(assignment);
 
@@ -395,7 +413,7 @@ describe("tasks.taskAssign", () => {
 
   it("throws CONFLICT when user is already assigned", async () => {
     const existing = { id: "task-1", status: "todo", tenantId: "acme-tenant-id" };
-    mockDb.task.findFirst.mockResolvedValueOnce(existing);
+    mockDb.task.findUnique.mockResolvedValueOnce(existing);
     mockDb.taskAssignment.findFirst.mockResolvedValueOnce({ id: "assign-existing" });
 
     const caller = createCaller(authenticatedCtx());
@@ -412,7 +430,7 @@ describe("tasks.taskUnassign", () => {
   it("removes a user assignment from a task", async () => {
     const existing = { id: "task-1", status: "todo", tenantId: "acme-tenant-id" };
     const assignment = { id: "assign-1", taskId: "task-1", userId: "user-2" };
-    mockDb.task.findFirst.mockResolvedValueOnce(existing);
+    mockDb.task.findUnique.mockResolvedValueOnce(existing);
     mockDb.taskAssignment.findFirst.mockResolvedValueOnce(assignment);
     mockDb.taskAssignment.delete.mockResolvedValueOnce(assignment);
 
@@ -425,7 +443,7 @@ describe("tasks.taskUnassign", () => {
 
   it("throws NOT_FOUND when assignment does not exist", async () => {
     const existing = { id: "task-1", status: "todo", tenantId: "acme-tenant-id" };
-    mockDb.task.findFirst.mockResolvedValueOnce(existing);
+    mockDb.task.findUnique.mockResolvedValueOnce(existing);
     mockDb.taskAssignment.findFirst.mockResolvedValueOnce(null);
 
     const caller = createCaller(authenticatedCtx());
@@ -448,7 +466,7 @@ describe("tasks.taskAddStatusReport", () => {
       status: "in_progress",
       note: "Progress made",
     };
-    mockDb.task.findFirst.mockResolvedValueOnce(existing);
+    mockDb.task.findUnique.mockResolvedValueOnce(existing);
     mockDb.taskStatusReport.create.mockResolvedValueOnce(report);
 
     const caller = createCaller(authenticatedCtx());
@@ -463,7 +481,7 @@ describe("tasks.taskAddStatusReport", () => {
   });
 
   it("throws NOT_FOUND when task does not exist", async () => {
-    mockDb.task.findFirst.mockResolvedValueOnce(null);
+    mockDb.task.findUnique.mockResolvedValueOnce(null);
 
     const caller = createCaller(authenticatedCtx());
     await expect(
@@ -522,9 +540,9 @@ describe("tasks.todoComplete", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it("marks a todo as completed", async () => {
-    const existing = { id: "todo-1", isCompleted: false, userId: "user-1" };
+    const existing = { id: "todo-1", isCompleted: false, userId: "user-1", tenantId: "acme-tenant-id" };
     const updated = { ...existing, isCompleted: true, completedAt: new Date() };
-    mockDb.toDo.findFirst.mockResolvedValueOnce(existing);
+    mockDb.toDo.findUnique.mockResolvedValueOnce(existing);
     mockDb.toDo.update.mockResolvedValueOnce(updated);
 
     const caller = createCaller(authenticatedCtx());
@@ -535,7 +553,7 @@ describe("tasks.todoComplete", () => {
   });
 
   it("throws NOT_FOUND if todo does not belong to current user", async () => {
-    mockDb.toDo.findFirst.mockResolvedValueOnce(null);
+    mockDb.toDo.findUnique.mockResolvedValueOnce(null);
 
     const caller = createCaller(authenticatedCtx());
     await expect(caller.tasks.todoComplete({ id: "todo-other" })).rejects.toThrow(
@@ -549,9 +567,9 @@ describe("tasks.todoUpdate", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it("updates a todo's title and priority for the owning user", async () => {
-    const existing = { id: "todo-1", title: "Old", priority: "medium", userId: "user-1" };
+    const existing = { id: "todo-1", title: "Old", priority: "medium", userId: "user-1", tenantId: "acme-tenant-id" };
     const updated = { ...existing, title: "New", priority: "high" };
-    mockDb.toDo.findFirst.mockResolvedValueOnce(existing);
+    mockDb.toDo.findUnique.mockResolvedValueOnce(existing);
     mockDb.toDo.update.mockResolvedValueOnce(updated);
 
     const caller = createCaller(authenticatedCtx());
@@ -567,7 +585,7 @@ describe("tasks.todoUpdate", () => {
   });
 
   it("throws NOT_FOUND when todo does not belong to current user", async () => {
-    mockDb.toDo.findFirst.mockResolvedValueOnce(null);
+    mockDb.toDo.findUnique.mockResolvedValueOnce(null);
 
     const caller = createCaller(authenticatedCtx());
     await expect(
@@ -581,8 +599,8 @@ describe("tasks.todoDelete", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it("deletes a todo for the owning user", async () => {
-    const existing = { id: "todo-1", userId: "user-1" };
-    mockDb.toDo.findFirst.mockResolvedValueOnce(existing);
+    const existing = { id: "todo-1", userId: "user-1", tenantId: "acme-tenant-id" };
+    mockDb.toDo.findUnique.mockResolvedValueOnce(existing);
     mockDb.toDo.delete.mockResolvedValueOnce(existing);
 
     const caller = createCaller(authenticatedCtx());
@@ -593,7 +611,7 @@ describe("tasks.todoDelete", () => {
   });
 
   it("throws NOT_FOUND when todo does not belong to current user", async () => {
-    mockDb.toDo.findFirst.mockResolvedValueOnce(null);
+    mockDb.toDo.findUnique.mockResolvedValueOnce(null);
 
     const caller = createCaller(authenticatedCtx());
     await expect(
@@ -607,8 +625,8 @@ describe("tasks.taskAddStatusReport — Prisma field mapping", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it("writes ctx.userId into the userId field (NOT reportedById — schema field is userId)", async () => {
-    const existing = { id: "task-1", status: "in_progress" };
-    mockDb.task.findFirst.mockResolvedValueOnce(existing);
+    const existing = { id: "task-1", status: "in_progress", tenantId: "acme-tenant-id" };
+    mockDb.task.findUnique.mockResolvedValueOnce(existing);
     mockDb.taskStatusReport.create.mockResolvedValueOnce({ id: "report-1" });
 
     const caller = createCaller(authenticatedCtx());
@@ -631,12 +649,12 @@ describe("tasks.todoAddAttachment", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it("adds attachment on paid plan", async () => {
-    const existing = { id: "todo-1", isCompleted: false, userId: "user-1" };
+    const existing = { id: "todo-1", isCompleted: false, userId: "user-1", tenantId: "acme-tenant-id" };
     const tenant = { id: "acme-tenant-id", planId: "plan-pro" };
     const plan = { id: "plan-pro", slug: "pro" };
     const attachment = { id: "att-1", toDoId: "todo-1", fileName: "file.pdf" };
 
-    mockDb.toDo.findFirst.mockResolvedValueOnce(existing);
+    mockDb.toDo.findUnique.mockResolvedValueOnce(existing);
     mockDb.tenant.findFirst.mockResolvedValueOnce(tenant);
     mockDb.plan.findFirst.mockResolvedValueOnce(plan);
     mockDb.toDoAttachment.create.mockResolvedValueOnce(attachment);
@@ -655,11 +673,11 @@ describe("tasks.todoAddAttachment", () => {
   });
 
   it("throws FORBIDDEN on free plan", async () => {
-    const existing = { id: "todo-1", isCompleted: false, userId: "user-1" };
+    const existing = { id: "todo-1", isCompleted: false, userId: "user-1", tenantId: "acme-tenant-id" };
     const tenant = { id: "acme-tenant-id", planId: "plan-free" };
     const plan = { id: "plan-free", slug: "free" };
 
-    mockDb.toDo.findFirst.mockResolvedValueOnce(existing);
+    mockDb.toDo.findUnique.mockResolvedValueOnce(existing);
     mockDb.tenant.findFirst.mockResolvedValueOnce(tenant);
     mockDb.plan.findFirst.mockResolvedValueOnce(plan);
 

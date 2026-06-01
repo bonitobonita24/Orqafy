@@ -83,6 +83,18 @@ model Tenant {
   posSessions                  POSSession[]                 @relation("TenantPOSSessions")
   posSales                     POSSale[]                    @relation("TenantPOSSales")
   posSaleItems                 POSSaleItem[]                @relation("TenantPOSSaleItems")
+  projects                     Project[]                    @relation("TenantProjects")
+  projectExpenses              ProjectExpense[]             @relation("TenantProjectExpenses")
+  projectNotes                 ProjectNote[]                @relation("TenantProjectNotes")
+  projectNoteAttachments       ProjectNoteAttachment[]      @relation("TenantProjectNoteAttachments")
+  milestones                   Milestone[]                  @relation("TenantMilestones")
+  timeLogs                     TimeLog[]                    @relation("TenantTimeLogs")
+  tasks                        Task[]                       @relation("TenantTasks")
+  taskAssignments              TaskAssignment[]             @relation("TenantTaskAssignments")
+  taskAttachments              TaskAttachment[]             @relation("TenantTaskAttachments")
+  taskStatusReports            TaskStatusReport[]           @relation("TenantTaskStatusReports")
+  toDos                        ToDo[]                       @relation("TenantToDos")
+  toDoAttachments              ToDoAttachment[]             @relation("TenantToDoAttachments")
   customerContacts             CustomerContact[]            @relation("TenantCustomerContacts")
   proposals                    Proposal[]                   @relation("TenantProposals")
   proposalAttachments          ProposalAttachment[]         @relation("TenantProposalAttachments")
@@ -1280,6 +1292,8 @@ model InventoryDisbursementItem {
 
 model Project {
   id            String    @id @default(cuid())
+  tenantId      String    @map("tenant_id")
+  tenant        Tenant    @relation("TenantProjects", fields: [tenantId], references: [id])
   projectNumber String    @unique @map("project_number")
   name          String
   description   String?
@@ -1310,12 +1324,15 @@ model Project {
   allocations   PurchaseOrderItemAllocation[]
   disbursements InventoryDisbursement[]
 
+  @@index([tenantId])
   @@map("projects")
   @@schema("public")
 }
 
 model ProjectExpense {
   id            String   @id @default(cuid())
+  tenantId      String   @map("tenant_id")
+  tenant        Tenant   @relation("TenantProjectExpenses", fields: [tenantId], references: [id])
   projectId     String   @map("project_id")
   project       Project  @relation(fields: [projectId], references: [id])
   type          String // direct | inventory_consumed
@@ -1328,6 +1345,7 @@ model ProjectExpense {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
+  @@index([tenantId])
   @@index([projectId])
   @@map("project_expenses")
   @@schema("public")
@@ -1335,6 +1353,8 @@ model ProjectExpense {
 
 model ProjectNote {
   id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  tenant      Tenant   @relation("TenantProjectNotes", fields: [tenantId], references: [id])
   projectId   String   @map("project_id")
   project     Project  @relation(fields: [projectId], references: [id])
   createdById String   @map("created_by_id")
@@ -1347,6 +1367,7 @@ model ProjectNote {
 
   attachments ProjectNoteAttachment[]
 
+  @@index([tenantId])
   @@index([projectId])
   @@map("project_notes")
   @@schema("public")
@@ -1354,6 +1375,8 @@ model ProjectNote {
 
 model ProjectNoteAttachment {
   id            String      @id @default(cuid())
+  tenantId      String      @map("tenant_id")
+  tenant        Tenant      @relation("TenantProjectNoteAttachments", fields: [tenantId], references: [id])
   noteId        String      @map("note_id")
   note          ProjectNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
   fileName      String      @map("file_name")
@@ -1362,6 +1385,7 @@ model ProjectNoteAttachment {
   mimeType      String      @map("mime_type")
   createdAt     DateTime    @default(now()) @map("created_at")
 
+  @@index([tenantId])
   @@index([noteId])
   @@map("project_note_attachments")
   @@schema("public")
@@ -1369,6 +1393,8 @@ model ProjectNoteAttachment {
 
 model Milestone {
   id             String    @id @default(cuid())
+  tenantId       String    @map("tenant_id")
+  tenant         Tenant    @relation("TenantMilestones", fields: [tenantId], references: [id])
   projectId      String    @map("project_id")
   project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   name           String
@@ -1383,6 +1409,7 @@ model Milestone {
 
   tasks Task[]
 
+  @@index([tenantId])
   @@index([projectId])
   @@map("milestones")
   @@schema("public")
@@ -1390,6 +1417,8 @@ model Milestone {
 
 model TimeLog {
   id              String    @id @default(cuid())
+  tenantId        String    @map("tenant_id")
+  tenant          Tenant    @relation("TenantTimeLogs", fields: [tenantId], references: [id])
   userId          String    @map("user_id")
   user            User      @relation(fields: [userId], references: [id])
   projectId       String    @map("project_id")
@@ -1404,6 +1433,7 @@ model TimeLog {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
+  @@index([tenantId])
   @@index([userId])
   @@index([projectId])
   @@map("time_logs")
@@ -1416,6 +1446,8 @@ model TimeLog {
 
 model Task {
   id             String     @id @default(cuid())
+  tenantId       String     @map("tenant_id")
+  tenant         Tenant     @relation("TenantTasks", fields: [tenantId], references: [id])
   projectId      String     @map("project_id")
   project        Project    @relation(fields: [projectId], references: [id])
   milestoneId    String?    @map("milestone_id")
@@ -1439,6 +1471,7 @@ model Task {
   statusReports TaskStatusReport[]
   timeLogs      TimeLog[]
 
+  @@index([tenantId])
   @@index([projectId])
   @@index([milestoneId])
   @@index([status])
@@ -1448,12 +1481,15 @@ model Task {
 
 model TaskAssignment {
   id         String   @id @default(cuid())
+  tenantId   String   @map("tenant_id")
+  tenant     Tenant   @relation("TenantTaskAssignments", fields: [tenantId], references: [id])
   taskId     String   @map("task_id")
   task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   userId     String   @map("user_id")
   user       User     @relation(fields: [userId], references: [id])
   assignedAt DateTime @default(now()) @map("assigned_at")
 
+  @@index([tenantId])
   @@unique([taskId, userId])
   @@map("task_assignments")
   @@schema("public")
@@ -1461,6 +1497,8 @@ model TaskAssignment {
 
 model TaskAttachment {
   id            String   @id @default(cuid())
+  tenantId      String   @map("tenant_id")
+  tenant        Tenant   @relation("TenantTaskAttachments", fields: [tenantId], references: [id])
   taskId        String   @map("task_id")
   task          Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   fileName      String   @map("file_name")
@@ -1469,6 +1507,7 @@ model TaskAttachment {
   mimeType      String   @map("mime_type")
   createdAt     DateTime @default(now()) @map("created_at")
 
+  @@index([tenantId])
   @@index([taskId])
   @@map("task_attachments")
   @@schema("public")
@@ -1476,6 +1515,8 @@ model TaskAttachment {
 
 model TaskStatusReport {
   id             String   @id @default(cuid())
+  tenantId       String   @map("tenant_id")
+  tenant         Tenant   @relation("TenantTaskStatusReports", fields: [tenantId], references: [id])
   taskId         String   @map("task_id")
   task           Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   userId         String   @map("user_id")
@@ -1485,6 +1526,7 @@ model TaskStatusReport {
   attachmentUrls Json?    @map("attachment_urls")
   createdAt      DateTime @default(now()) @map("created_at")
 
+  @@index([tenantId])
   @@index([taskId])
   @@map("task_status_reports")
   @@schema("public")
@@ -1492,6 +1534,8 @@ model TaskStatusReport {
 
 model ToDo {
   id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  tenant      Tenant    @relation("TenantToDos", fields: [tenantId], references: [id])
   userId      String    @map("user_id")
   user        User      @relation(fields: [userId], references: [id])
   title       String
@@ -1505,6 +1549,7 @@ model ToDo {
 
   attachments ToDoAttachment[]
 
+  @@index([tenantId])
   @@index([userId])
   @@map("todos")
   @@schema("public")
@@ -1512,6 +1557,8 @@ model ToDo {
 
 model ToDoAttachment {
   id            String   @id @default(cuid())
+  tenantId      String   @map("tenant_id")
+  tenant        Tenant   @relation("TenantToDoAttachments", fields: [tenantId], references: [id])
   toDoId        String   @map("todo_id")
   toDo          ToDo     @relation(fields: [toDoId], references: [id], onDelete: Cascade)
   fileName      String   @map("file_name")
@@ -1520,6 +1567,7 @@ model ToDoAttachment {
   mimeType      String   @map("mime_type")
   createdAt     DateTime @default(now()) @map("created_at")
 
+  @@index([tenantId])
   @@index([toDoId])
   @@map("todo_attachments")
   @@schema("public")

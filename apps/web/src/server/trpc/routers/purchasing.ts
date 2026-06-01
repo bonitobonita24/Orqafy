@@ -684,6 +684,7 @@ export const goodsReceiptRouter = createTRPCRouter({
 
               await tx.projectExpense.create({
                 data: {
+                  tenantId: ctx.tenantId,
                   projectId: alloc.projectId,
                   type: "inventory_consumed",
                   description: grItem.description,

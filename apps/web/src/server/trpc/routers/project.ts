@@ -17,6 +17,14 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   cancelled: [],
 };
 
+async function loadProjectForTenant(id: string, ctx: { tenantId: string }) {
+  const p = await db.project.findUnique({ where: { id } });
+  if (!p || p.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+  }
+  return p;
+}
+
 const projectInput = z.object({
   name: z.string().min(1).max(200),
   customerId: z.string().cuid().optional(),
@@ -36,7 +44,8 @@ const expenseRouter = createTRPCRouter({
         limit: z.number().int().min(1).max(200).default(50),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      await loadProjectForTenant(input.projectId, ctx);
       const where = { projectId: input.projectId };
       const [items, total] = await Promise.all([
         db.projectExpense.findMany({
@@ -69,8 +78,7 @@ const expenseRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const project = await db.project.findUnique({ where: { id: input.projectId } });
-      if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found." });
+      await loadProjectForTenant(input.projectId, ctx);
 
       const fundSource = await db.fundSource.findUnique({ where: { id: input.fundSourceId } });
       if (!fundSource) throw new TRPCError({ code: "NOT_FOUND", message: "Fund source not found." });
@@ -87,6 +95,7 @@ const expenseRouter = createTRPCRouter({
         const expense = await tx.projectExpense.create({
           data: {
             projectId: input.projectId,
+            tenantId: ctx.tenantId,
             type: input.type,
             description: cleanDescription,
             amount: input.amount,
@@ -131,7 +140,8 @@ const expenseRouter = createTRPCRouter({
 const milestoneRouter = createTRPCRouter({
   listByProject: protectedProcedure
     .input(z.object({ projectId: z.string().min(1) }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      await loadProjectForTenant(input.projectId, ctx);
       return db.milestone.findMany({
         where: { projectId: input.projectId },
         orderBy: { sortOrder: "asc" },
@@ -148,13 +158,13 @@ const milestoneRouter = createTRPCRouter({
         sortOrder: z.number().int().min(0).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
-      const project = await db.project.findUnique({ where: { id: input.projectId } });
-      if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found." });
+    .mutation(async ({ ctx, input }) => {
+      await loadProjectForTenant(input.projectId, ctx);
 
       return db.milestone.create({
         data: {
           projectId: input.projectId,
+          tenantId: ctx.tenantId,
           name: sanitizePlainText(input.name),
           dueDate: input.dueDate ?? null,
           description: input.description !== undefined ? sanitizePlainText(input.description) : null,
@@ -176,10 +186,11 @@ const milestoneRouter = createTRPCRouter({
         sortOrder: z.number().int().min(0).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const { milestoneId, ...rest } = input;
       const existing = await db.milestone.findUnique({ where: { id: milestoneId } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await loadProjectForTenant(existing.projectId, ctx);
 
       return db.milestone.update({
         where: { id: milestoneId },
@@ -195,9 +206,10 @@ const milestoneRouter = createTRPCRouter({
 
   complete: writeProcedure
     .input(z.object({ milestoneId: z.string().min(1) }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const existing = await db.milestone.findUnique({ where: { id: input.milestoneId } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await loadProjectForTenant(existing.projectId, ctx);
       if (existing.completedAt !== null) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Milestone already completed." });
       }
@@ -219,8 +231,9 @@ export const projectRouter = createTRPCRouter({
         status: z.string().optional(),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.customerId !== undefined ? { customerId: input.customerId } : {}),
         ...(input.status !== undefined && input.status !== "" ? { status: input.status } : {}),
       };
@@ -238,7 +251,8 @@ export const projectRouter = createTRPCRouter({
 
   byId: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      await loadProjectForTenant(input.id, ctx);
       const item = await db.project.findUnique({
         where: { id: input.id },
         include: { expenses: true },
@@ -252,11 +266,13 @@ export const projectRouter = createTRPCRouter({
     .mutation(async ({ input, ctx }) => {
       if (input.customerId !== undefined) {
         const customer = await db.customer.findUnique({ where: { id: input.customerId } });
-        if (!customer) throw new TRPCError({ code: "BAD_REQUEST", message: "Customer not found." });
+        if (!customer || customer.tenantId !== ctx.tenantId)
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Customer not found." });
       }
       const projectNumber = `PRJ-${Date.now()}`;
       return db.project.create({
         data: {
+          tenantId: ctx.tenantId,
           name: sanitizePlainText(input.name),
           customerId: input.customerId ?? null,
           description: input.description !== undefined ? sanitizePlainText(input.description) : null,
@@ -272,10 +288,9 @@ export const projectRouter = createTRPCRouter({
 
   update: writeProcedure
     .input(projectInput.partial().extend({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
-      const existing = await db.project.findUnique({ where: { id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      const existing = await loadProjectForTenant(id, ctx);
 
       if (rest.status !== undefined && rest.status !== existing.status) {
         const allowed = VALID_TRANSITIONS[existing.status] ?? [];
@@ -305,9 +320,8 @@ export const projectRouter = createTRPCRouter({
 
   archive: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const existing = await db.project.findUnique({ where: { id: input.id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ ctx, input }) => {
+      await loadProjectForTenant(input.id, ctx);
 
       const expenseCount = await db.projectExpense.count({ where: { projectId: input.id } });
       if (expenseCount > 0) {
@@ -325,9 +339,8 @@ export const projectRouter = createTRPCRouter({
 
   budgetSummary: protectedProcedure
     .input(z.object({ projectId: z.string().min(1) }))
-    .query(async ({ input }) => {
-      const project = await db.project.findUnique({ where: { id: input.projectId } });
-      if (!project) throw new TRPCError({ code: "NOT_FOUND" });
+    .query(async ({ ctx, input }) => {
+      const project = await loadProjectForTenant(input.projectId, ctx);
 
       const agg = await db.projectExpense.aggregate({
         where: { projectId: input.projectId },

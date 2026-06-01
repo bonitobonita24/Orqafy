@@ -17,6 +17,30 @@ const TASK_STATUS_TRANSITIONS: Record<string, ReadonlyArray<string>> = {
   done: [],
 };
 
+async function loadProjectForTenant(id: string, ctx: { tenantId: string }) {
+  const p = await db.project.findUnique({ where: { id } });
+  if (!p || p.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+  }
+  return p;
+}
+
+async function loadTaskForTenant(id: string, ctx: { tenantId: string }) {
+  const t = await db.task.findUnique({ where: { id } });
+  if (!t || t.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
+  }
+  return t;
+}
+
+async function loadToDoForTenant(id: string, ctx: { tenantId: string }) {
+  const td = await db.toDo.findUnique({ where: { id } });
+  if (!td || td.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "To-do not found" });
+  }
+  return td;
+}
+
 export const tasksRouter = createTRPCRouter({
   taskList: protectedProcedure
     .input(z.object({
@@ -26,7 +50,8 @@ export const tasksRouter = createTRPCRouter({
       parentTaskId: z.string().min(1).optional(),
       assigneeId: z.string().min(1).optional(),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await loadProjectForTenant(input.projectId, ctx);
       const where: Record<string, unknown> = { projectId: input.projectId };
       if (input.status !== undefined) where["status"] = input.status;
       if (input.priority !== undefined) where["priority"] = input.priority;
@@ -39,7 +64,8 @@ export const tasksRouter = createTRPCRouter({
 
   taskGetById: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await loadTaskForTenant(input.id, ctx);
       const task = await db.task.findFirst({
         where: { id: input.id },
         include: {
@@ -60,11 +86,13 @@ export const tasksRouter = createTRPCRouter({
       priority: TASK_PRIORITY.optional(),
       parentTaskId: z.string().min(1).optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await loadProjectForTenant(input.projectId, ctx);
       return db.task.create({
         data: {
           projectId: input.projectId,
           title: input.title,
+          tenantId: ctx.tenantId,
           ...(input.description !== undefined && { description: input.description }),
           ...(input.priority !== undefined && { priority: input.priority }),
           ...(input.parentTaskId !== undefined && { parentTaskId: input.parentTaskId }),
@@ -79,9 +107,8 @@ export const tasksRouter = createTRPCRouter({
       description: z.string().min(1).optional(),
       priority: TASK_PRIORITY.optional(),
     }))
-    .mutation(async ({ input }) => {
-      const task = await db.task.findFirst({ where: { id: input.id } });
-      if (!task) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      await loadTaskForTenant(input.id, ctx);
       return db.task.update({
         where: { id: input.id },
         data: {
@@ -97,9 +124,8 @@ export const tasksRouter = createTRPCRouter({
       id: z.string().min(1),
       status: TASK_STATUS,
     }))
-    .mutation(async ({ input }) => {
-      const task = await db.task.findFirst({ where: { id: input.id } });
-      if (!task) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      const task = await loadTaskForTenant(input.id, ctx);
       const current = (task as { status: string }).status;
       const allowed = TASK_STATUS_TRANSITIONS[current] ?? [];
       if (!allowed.includes(input.status)) {
@@ -113,21 +139,25 @@ export const tasksRouter = createTRPCRouter({
 
   taskAssign: writeProcedure
     .input(z.object({ taskId: z.string().min(1), userId: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const task = await db.task.findFirst({ where: { id: input.taskId } });
-      if (!task) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      const task = await loadTaskForTenant(input.taskId, ctx);
       const existing = await db.taskAssignment.findFirst({
         where: { taskId: input.taskId, userId: input.userId },
       });
       if (existing) throw new TRPCError({ code: "CONFLICT", message: "User already assigned to this task." });
-      return db.taskAssignment.create({ data: { taskId: input.taskId, userId: input.userId } });
+      return db.taskAssignment.create({
+        data: {
+          taskId: input.taskId,
+          userId: input.userId,
+          tenantId: task.tenantId,
+        },
+      });
     }),
 
   taskUnassign: writeProcedure
     .input(z.object({ taskId: z.string().min(1), userId: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const task = await db.task.findFirst({ where: { id: input.taskId } });
-      if (!task) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      await loadTaskForTenant(input.taskId, ctx);
       const assignment = await db.taskAssignment.findFirst({
         where: { taskId: input.taskId, userId: input.userId },
       });
@@ -143,13 +173,13 @@ export const tasksRouter = createTRPCRouter({
       note: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const task = await db.task.findFirst({ where: { id: input.taskId } });
-      if (!task) throw new TRPCError({ code: "NOT_FOUND" });
+      const task = await loadTaskForTenant(input.taskId, ctx);
       return db.taskStatusReport.create({
         data: {
           taskId: input.taskId,
           status: input.status,
           userId: ctx.userId,
+          tenantId: task.tenantId,
           ...(input.note !== undefined && { note: input.note }),
         },
       });
@@ -157,7 +187,7 @@ export const tasksRouter = createTRPCRouter({
 
   todoList: protectedProcedure
     .query(async ({ ctx }) => {
-      return db.toDo.findMany({ where: { userId: ctx.userId } });
+      return db.toDo.findMany({ where: { userId: ctx.userId, tenantId: ctx.tenantId } });
     }),
 
   todoCreate: writeProcedure
@@ -171,6 +201,7 @@ export const tasksRouter = createTRPCRouter({
         data: {
           title: input.title,
           userId: ctx.userId,
+          tenantId: ctx.tenantId,
           ...(input.description !== undefined && { description: input.description }),
           ...(input.priority !== undefined && { priority: input.priority }),
         },
@@ -185,8 +216,7 @@ export const tasksRouter = createTRPCRouter({
       priority: TODO_PRIORITY.optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const todo = await db.toDo.findFirst({ where: { id: input.id, userId: ctx.userId } });
-      if (!todo) throw new TRPCError({ code: "NOT_FOUND" });
+      await loadToDoForTenant(input.id, ctx);
       return db.toDo.update({
         where: { id: input.id },
         data: {
@@ -200,8 +230,7 @@ export const tasksRouter = createTRPCRouter({
   todoDelete: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
-      const todo = await db.toDo.findFirst({ where: { id: input.id, userId: ctx.userId } });
-      if (!todo) throw new TRPCError({ code: "NOT_FOUND" });
+      await loadToDoForTenant(input.id, ctx);
       await db.toDo.delete({ where: { id: input.id } });
       return { success: true };
     }),
@@ -209,8 +238,7 @@ export const tasksRouter = createTRPCRouter({
   todoComplete: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
-      const todo = await db.toDo.findFirst({ where: { id: input.id, userId: ctx.userId } });
-      if (!todo) throw new TRPCError({ code: "NOT_FOUND" });
+      await loadToDoForTenant(input.id, ctx);
       return db.toDo.update({ where: { id: input.id }, data: { isCompleted: true } });
     }),
 
@@ -223,8 +251,7 @@ export const tasksRouter = createTRPCRouter({
       mimeType: z.string().min(1),
     }))
     .mutation(async ({ input, ctx }) => {
-      const todo = await db.toDo.findFirst({ where: { id: input.toDoId } });
-      if (!todo) throw new TRPCError({ code: "NOT_FOUND" });
+      const todo = await loadToDoForTenant(input.toDoId, ctx);
       const tenant = await db.tenant.findFirst({ where: { id: ctx.tenantId } });
       if (!tenant) throw new TRPCError({ code: "NOT_FOUND", message: "Tenant not found." });
       const plan = await db.plan.findFirst({ where: { id: (tenant as { planId: string }).planId } });
@@ -238,6 +265,7 @@ export const tasksRouter = createTRPCRouter({
           fileUrl: input.fileUrl,
           fileSizeBytes: input.fileSizeBytes,
           mimeType: input.mimeType,
+          tenantId: todo.tenantId,
         },
       });
     }),
