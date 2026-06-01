@@ -3,6 +3,14 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
 import { prisma as db } from "@orqafy/db";
 
+async function loadPayrollForTenant(id: string, ctx: { tenantId: string }) {
+  const p = await db.payroll.findUnique({ where: { id } });
+  if (!p || p.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Payroll not found" });
+  }
+  return p;
+}
+
 export const payrollRouter = createTRPCRouter({
   list: protectedProcedure
     .input(
@@ -12,8 +20,9 @@ export const payrollRouter = createTRPCRouter({
         status: z.string().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.status !== undefined && input.status !== "" ? { status: input.status } : {}),
       };
       const [items, total] = await Promise.all([
@@ -31,7 +40,8 @@ export const payrollRouter = createTRPCRouter({
 
   byId: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await loadPayrollForTenant(input.id, ctx);
       const item = await db.payroll.findUnique({
         where: { id: input.id },
         include: {
@@ -59,10 +69,11 @@ export const payrollRouter = createTRPCRouter({
         notes: z.string().max(1000).optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const payrollNumber = `PAY-${Date.now()}`;
       return db.payroll.create({
         data: {
+          tenantId: ctx.tenantId,
           periodStart: input.periodStart,
           periodEnd: input.periodEnd,
           currency: input.currency,
@@ -75,9 +86,8 @@ export const payrollRouter = createTRPCRouter({
 
   process: writeProcedure
     .input(z.object({ id: z.string().cuid() }))
-    .mutation(async ({ input }) => {
-      const existing = await db.payroll.findUnique({ where: { id: input.id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      const existing = await loadPayrollForTenant(input.id, ctx);
       if (existing.status !== "draft") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft payrolls can be processed." });
       }
@@ -89,9 +99,8 @@ export const payrollRouter = createTRPCRouter({
 
   approve: writeProcedure
     .input(z.object({ id: z.string().cuid() }))
-    .mutation(async ({ input }) => {
-      const existing = await db.payroll.findUnique({ where: { id: input.id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      const existing = await loadPayrollForTenant(input.id, ctx);
       if (existing.status !== "processing") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only processing payrolls can be approved." });
       }
@@ -103,9 +112,8 @@ export const payrollRouter = createTRPCRouter({
 
   markPaid: writeProcedure
     .input(z.object({ id: z.string().cuid(), paidAt: z.date().optional() }))
-    .mutation(async ({ input }) => {
-      const existing = await db.payroll.findUnique({ where: { id: input.id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      const existing = await loadPayrollForTenant(input.id, ctx);
       if (existing.status !== "approved") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only approved payrolls can be marked as paid." });
       }

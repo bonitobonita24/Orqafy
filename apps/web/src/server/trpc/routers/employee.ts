@@ -3,6 +3,14 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
 import { prisma as db } from "@orqafy/db";
 
+async function loadEmployeeForTenant(id: string, ctx: { tenantId: string }) {
+  const e = await db.employee.findUnique({ where: { id } });
+  if (!e || e.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Employee not found" });
+  }
+  return e;
+}
+
 const employeeInput = z.object({
   userId: z.string().cuid(),
   departmentId: z.string().cuid().optional(),
@@ -33,7 +41,7 @@ export const employeeRouter = createTRPCRouter({
         search: z.string().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const searchWhere = input.search !== undefined && input.search !== ""
         ? {
             user: {
@@ -46,6 +54,7 @@ export const employeeRouter = createTRPCRouter({
           }
         : {};
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.departmentId !== undefined ? { departmentId: input.departmentId } : {}),
         ...(input.employmentType !== undefined && input.employmentType !== "" ? { employmentType: input.employmentType } : {}),
         ...searchWhere,
@@ -68,7 +77,8 @@ export const employeeRouter = createTRPCRouter({
 
   byId: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await loadEmployeeForTenant(input.id, ctx);
       const item = await db.employee.findUnique({
         where: { id: input.id },
         include: {
@@ -82,12 +92,13 @@ export const employeeRouter = createTRPCRouter({
 
   create: writeProcedure
     .input(employeeInput)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const user = await db.user.findUnique({ where: { id: input.userId } });
       if (!user) throw new TRPCError({ code: "BAD_REQUEST", message: "User not found." });
       const employeeNumber = `EMP-${Date.now()}`;
       return db.employee.create({
         data: {
+          tenantId: ctx.tenantId,
           userId: input.userId,
           departmentId: input.departmentId ?? null,
           position: input.position ?? null,
@@ -111,8 +122,9 @@ export const employeeRouter = createTRPCRouter({
 
   update: writeProcedure
     .input(employeeInput.partial().extend({ id: z.string().cuid() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { id, userId: _userId, ...rest } = input;
+      await loadEmployeeForTenant(id, ctx);
       const existing = await db.employee.findUnique({ where: { id } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
       return db.employee.update({
@@ -139,9 +151,8 @@ export const employeeRouter = createTRPCRouter({
 
   terminate: writeProcedure
     .input(z.object({ id: z.string().cuid(), dateTerminated: z.date() }))
-    .mutation(async ({ input }) => {
-      const existing = await db.employee.findUnique({ where: { id: input.id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      await loadEmployeeForTenant(input.id, ctx);
       return db.employee.update({
         where: { id: input.id },
         data: { dateTerminated: input.dateTerminated },

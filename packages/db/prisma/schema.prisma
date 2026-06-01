@@ -101,6 +101,13 @@ model Tenant {
   proposalLinks                ProposalLink[]               @relation("TenantProposalLinks")
   proposalRevisions            ProposalRevision[]           @relation("TenantProposalRevisions")
   customerDocuments            CustomerDocument[]           @relation("TenantCustomerDocuments")
+  employees                    Employee[]                   @relation("TenantEmployees")
+  attendanceRecords            AttendanceRecord[]           @relation("TenantAttendanceRecords")
+  leaveRequests                LeaveRequest[]               @relation("TenantLeaveRequests")
+  cashAdvances                 CashAdvance[]                @relation("TenantCashAdvances")
+  cashAdvanceRecoveries        CashAdvanceRecovery[]        @relation("TenantCashAdvanceRecoveries")
+  payrolls                     Payroll[]                    @relation("TenantPayrolls")
+  payslips                     Payslip[]                    @relation("TenantPayslips")
 
   @@map("tenants")
   @@schema("public")
@@ -1579,6 +1586,8 @@ model ToDoAttachment {
 
 model Employee {
   id                    String      @id @default(cuid())
+  tenantId              String      @map("tenant_id")
+  tenant                Tenant      @relation("TenantEmployees", fields: [tenantId], references: [id])
   userId                String      @unique @map("user_id")
   user                  User        @relation(fields: [userId], references: [id])
   employeeNumber        String      @unique @map("employee_number")
@@ -1609,12 +1618,15 @@ model Employee {
   cashAdvances      CashAdvance[]
   payslips          Payslip[]
 
+  @@index([tenantId])
   @@map("employees")
   @@schema("public")
 }
 
 model AttendanceRecord {
   id               String    @id @default(cuid())
+  tenantId         String    @map("tenant_id")
+  tenant           Tenant    @relation("TenantAttendanceRecords", fields: [tenantId], references: [id])
   employeeId       String    @map("employee_id")
   employee         Employee  @relation(fields: [employeeId], references: [id])
   date             DateTime  @db.Date
@@ -1633,6 +1645,7 @@ model AttendanceRecord {
   updatedAt        DateTime  @updatedAt @map("updated_at")
 
   @@unique([employeeId, date])
+  @@index([tenantId])
   @@index([employeeId])
   @@index([date])
   @@map("attendance_records")
@@ -1641,6 +1654,8 @@ model AttendanceRecord {
 
 model LeaveRequest {
   id         String    @id @default(cuid())
+  tenantId   String    @map("tenant_id")
+  tenant     Tenant    @relation("TenantLeaveRequests", fields: [tenantId], references: [id])
   employeeId String    @map("employee_id")
   employee   Employee  @relation(fields: [employeeId], references: [id])
   type       String // vacation | sick | emergency | maternity | paternity | unpaid
@@ -1653,6 +1668,7 @@ model LeaveRequest {
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
+  @@index([tenantId])
   @@index([employeeId])
   @@map("leave_requests")
   @@schema("public")
@@ -1660,6 +1676,8 @@ model LeaveRequest {
 
 model CashAdvance {
   id             String    @id @default(cuid())
+  tenantId       String    @map("tenant_id")
+  tenant         Tenant    @relation("TenantCashAdvances", fields: [tenantId], references: [id])
   employeeId     String    @map("employee_id")
   employee       Employee  @relation(fields: [employeeId], references: [id])
   createdById    String    @map("created_by_id")
@@ -1678,6 +1696,7 @@ model CashAdvance {
 
   recoveries CashAdvanceRecovery[]
 
+  @@index([tenantId])
   @@index([employeeId])
   @@map("cash_advances")
   @@schema("public")
@@ -1685,6 +1704,8 @@ model CashAdvance {
 
 model CashAdvanceRecovery {
   id            String      @id @default(cuid())
+  tenantId      String      @map("tenant_id")
+  tenant        Tenant      @relation("TenantCashAdvanceRecoveries", fields: [tenantId], references: [id])
   cashAdvanceId String      @map("cash_advance_id")
   cashAdvance   CashAdvance @relation(fields: [cashAdvanceId], references: [id])
   payslipId     String?     @map("payslip_id")
@@ -1693,6 +1714,7 @@ model CashAdvanceRecovery {
   recoveredAt   DateTime    @default(now()) @map("recovered_at")
   createdAt     DateTime    @default(now()) @map("created_at")
 
+  @@index([tenantId])
   @@index([cashAdvanceId])
   @@map("cash_advance_recoveries")
   @@schema("public")
@@ -1700,6 +1722,8 @@ model CashAdvanceRecovery {
 
 model Payroll {
   id              String    @id @default(cuid())
+  tenantId        String    @map("tenant_id")
+  tenant          Tenant    @relation("TenantPayrolls", fields: [tenantId], references: [id])
   payrollNumber   String    @unique @map("payroll_number")
   periodStart     DateTime  @map("period_start") @db.Date
   periodEnd       DateTime  @map("period_end") @db.Date
@@ -1716,12 +1740,15 @@ model Payroll {
 
   payslips Payslip[]
 
+  @@index([tenantId])
   @@map("payrolls")
   @@schema("public")
 }
 
 model Payslip {
   id                   String   @id @default(cuid())
+  tenantId             String   @map("tenant_id")
+  tenant               Tenant   @relation("TenantPayslips", fields: [tenantId], references: [id])
   payrollId            String   @map("payroll_id")
   payroll              Payroll  @relation(fields: [payrollId], references: [id])
   employeeId           String   @map("employee_id")
@@ -1745,6 +1772,7 @@ model Payslip {
   cashAdvanceRecoveries CashAdvanceRecovery[]
 
   @@unique([payrollId, employeeId])
+  @@index([tenantId])
   @@index([employeeId])
   @@map("payslips")
   @@schema("public")

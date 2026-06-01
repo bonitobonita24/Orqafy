@@ -3,6 +3,30 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
 import { prisma as db } from "@orqafy/db";
 
+async function loadEmployeeForTenant(id: string, ctx: { tenantId: string }) {
+  const e = await db.employee.findUnique({ where: { id } });
+  if (!e || e.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Employee not found" });
+  }
+  return e;
+}
+
+async function loadAttendanceForTenant(id: string, ctx: { tenantId: string }) {
+  const a = await db.attendanceRecord.findUnique({ where: { id } });
+  if (!a || a.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Attendance record not found" });
+  }
+  return a;
+}
+
+async function loadLeaveRequestForTenant(id: string, ctx: { tenantId: string }) {
+  const lr = await db.leaveRequest.findUnique({ where: { id } });
+  if (!lr || lr.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Leave request not found" });
+  }
+  return lr;
+}
+
 const LEAVE_TYPE = z.enum(["vacation", "sick", "emergency", "maternity", "paternity", "unpaid"]);
 
 // Roles permitted to approve/reject attendance + leave requests.
@@ -42,8 +66,9 @@ export const dtrRouter = createTRPCRouter({
       from: z.string().min(1).optional(),
       to: z.string().min(1).optional(),
     }))
-    .query(async ({ input }) => {
-      const where: Record<string, unknown> = { employeeId: input.employeeId };
+    .query(async ({ input, ctx }) => {
+      await loadEmployeeForTenant(input.employeeId, ctx);
+      const where: Record<string, unknown> = { employeeId: input.employeeId, tenantId: ctx.tenantId };
       if (input.status !== undefined) where["status"] = input.status;
       if (input.from !== undefined || input.to !== undefined) {
         const range: Record<string, Date> = {};
@@ -56,9 +81,8 @@ export const dtrRouter = createTRPCRouter({
 
   attendanceById: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .query(async ({ input }) => {
-      const record = await db.attendanceRecord.findFirst({ where: { id: input.id } });
-      if (!record) throw new TRPCError({ code: "NOT_FOUND" });
+    .query(async ({ input, ctx }) => {
+      const record = await loadAttendanceForTenant(input.id, ctx);
       return record;
     }),
 
@@ -68,7 +92,8 @@ export const dtrRouter = createTRPCRouter({
       lat: z.number(),
       lng: z.number(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await loadEmployeeForTenant(input.employeeId, ctx);
       const today = startOfTodayUtc();
       const existing = await db.attendanceRecord.findFirst({
         where: { employeeId: input.employeeId, date: today },
@@ -81,6 +106,7 @@ export const dtrRouter = createTRPCRouter({
       }
       return db.attendanceRecord.create({
         data: {
+          tenantId: ctx.tenantId,
           employeeId: input.employeeId,
           date: today,
           clockIn: new Date(),
@@ -97,11 +123,8 @@ export const dtrRouter = createTRPCRouter({
       lat: z.number(),
       lng: z.number(),
     }))
-    .mutation(async ({ input }) => {
-      const existing = await db.attendanceRecord.findFirst({
-        where: { id: input.attendanceId },
-      });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      await loadAttendanceForTenant(input.attendanceId, ctx);
       return db.attendanceRecord.update({
         where: { id: input.attendanceId },
         data: {
@@ -116,10 +139,7 @@ export const dtrRouter = createTRPCRouter({
     .input(z.object({ attendanceId: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
       requireApproverRole(ctx.roles);
-      const existing = await db.attendanceRecord.findFirst({
-        where: { id: input.attendanceId },
-      });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await loadAttendanceForTenant(input.attendanceId, ctx);
       return db.attendanceRecord.update({
         where: { id: input.attendanceId },
         data: { status: "approved" },
@@ -133,10 +153,7 @@ export const dtrRouter = createTRPCRouter({
     }))
     .mutation(async ({ input, ctx }) => {
       requireApproverRole(ctx.roles);
-      const existing = await db.attendanceRecord.findFirst({
-        where: { id: input.attendanceId },
-      });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await loadAttendanceForTenant(input.attendanceId, ctx);
       // AttendanceRecord schema has no rejectionReason field — store the supplied
       // reason in the existing `notes` field so it's not silently discarded.
       return db.attendanceRecord.update({
@@ -155,8 +172,9 @@ export const dtrRouter = createTRPCRouter({
       type: LEAVE_TYPE.optional(),
       status: z.string().min(1).optional(),
     }))
-    .query(async ({ input }) => {
-      const where: Record<string, unknown> = { employeeId: input.employeeId };
+    .query(async ({ input, ctx }) => {
+      await loadEmployeeForTenant(input.employeeId, ctx);
+      const where: Record<string, unknown> = { employeeId: input.employeeId, tenantId: ctx.tenantId };
       if (input.type !== undefined) where["type"] = input.type;
       if (input.status !== undefined) where["status"] = input.status;
       return db.leaveRequest.findMany({ where, orderBy: { startDate: "desc" } });
@@ -170,11 +188,11 @@ export const dtrRouter = createTRPCRouter({
       endDate: z.string().min(1),
       reason: z.string().min(1).optional(),
     }))
-    .mutation(async ({ input }) => {
-      const employee = await db.employee.findFirst({ where: { id: input.employeeId } });
-      if (!employee) throw new TRPCError({ code: "NOT_FOUND", message: "Employee not found." });
+    .mutation(async ({ input, ctx }) => {
+      await loadEmployeeForTenant(input.employeeId, ctx);
       return db.leaveRequest.create({
         data: {
+          tenantId: ctx.tenantId,
           employeeId: input.employeeId,
           type: input.type,
           startDate: new Date(input.startDate),
@@ -190,10 +208,7 @@ export const dtrRouter = createTRPCRouter({
     .input(z.object({ leaveRequestId: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
       requireApproverRole(ctx.roles);
-      const existing = await db.leaveRequest.findFirst({
-        where: { id: input.leaveRequestId },
-      });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await loadLeaveRequestForTenant(input.leaveRequestId, ctx);
       return db.leaveRequest.update({
         where: { id: input.leaveRequestId },
         data: { status: "approved", approvedAt: new Date() },
@@ -207,10 +222,7 @@ export const dtrRouter = createTRPCRouter({
     }))
     .mutation(async ({ input, ctx }) => {
       requireApproverRole(ctx.roles);
-      const existing = await db.leaveRequest.findFirst({
-        where: { id: input.leaveRequestId },
-      });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      const existing = await loadLeaveRequestForTenant(input.leaveRequestId, ctx);
       if ((existing as { status: string }).status !== "pending") {
         throw new TRPCError({
           code: "BAD_REQUEST",

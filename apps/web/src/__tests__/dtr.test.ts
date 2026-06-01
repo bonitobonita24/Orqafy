@@ -12,17 +12,20 @@ vi.mock("@orqafy/db", () => ({
     attendanceRecord: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
     },
     leaveRequest: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
     },
     employee: {
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
     },
   },
 }));
@@ -64,17 +67,20 @@ const mockDb = db as unknown as {
   attendanceRecord: {
     findMany: ReturnType<typeof vi.fn>;
     findFirst: ReturnType<typeof vi.fn>;
+    findUnique: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
   };
   leaveRequest: {
     findMany: ReturnType<typeof vi.fn>;
     findFirst: ReturnType<typeof vi.fn>;
+    findUnique: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
   };
   employee: {
     findFirst: ReturnType<typeof vi.fn>;
+    findUnique: ReturnType<typeof vi.fn>;
   };
 };
 
@@ -84,6 +90,7 @@ beforeEach(() => {
 
 const fakeAttendance = {
   id: "att-1",
+  tenantId: "acme-tenant-id",
   employeeId: "emp-1",
   date: new Date("2025-01-15"),
   clockIn: new Date("2025-01-15T08:00:00Z"),
@@ -103,6 +110,7 @@ const fakeAttendance = {
 
 const fakeLeave = {
   id: "leave-1",
+  tenantId: "acme-tenant-id",
   employeeId: "emp-1",
   type: "sick",
   startDate: new Date("2025-01-20"),
@@ -124,6 +132,7 @@ const fakeEmployee = {
 describe("dtrRouter", () => {
   describe("dtr.attendanceList", () => {
     it("returns attendance records for an employee", async () => {
+      mockDb.employee.findUnique.mockResolvedValue(fakeEmployee);
       mockDb.attendanceRecord.findMany.mockResolvedValue([fakeAttendance]);
       const caller = createCaller(authenticatedCtx());
       const result = await caller.dtr.attendanceList({ employeeId: "emp-1" });
@@ -141,6 +150,7 @@ describe("dtrRouter", () => {
 
   describe("dtr.attendanceClockIn", () => {
     it("creates a clock-in record with GPS coordinates", async () => {
+      mockDb.employee.findUnique.mockResolvedValue(fakeEmployee);
       mockDb.attendanceRecord.findFirst.mockResolvedValue(null); // no duplicate
       mockDb.attendanceRecord.create.mockResolvedValue({
         ...fakeAttendance,
@@ -158,6 +168,7 @@ describe("dtrRouter", () => {
     });
 
     it("throws CONFLICT if employee already clocked in today", async () => {
+      mockDb.employee.findUnique.mockResolvedValue(fakeEmployee);
       mockDb.attendanceRecord.findFirst.mockResolvedValue(fakeAttendance);
       const caller = createCaller(authenticatedCtx());
       await expect(
@@ -183,14 +194,14 @@ describe("dtrRouter", () => {
 
   describe("dtr.attendanceById", () => {
     it("returns an attendance record by id", async () => {
-      mockDb.attendanceRecord.findFirst.mockResolvedValue(fakeAttendance);
+      mockDb.attendanceRecord.findUnique.mockResolvedValue(fakeAttendance);
       const caller = createCaller(authenticatedCtx());
       const result = await caller.dtr.attendanceById({ id: "att-1" });
       expect(result.id).toBe("att-1");
     });
 
     it("throws NOT_FOUND when attendance record does not exist", async () => {
-      mockDb.attendanceRecord.findFirst.mockResolvedValue(null);
+      mockDb.attendanceRecord.findUnique.mockResolvedValue(null);
       const caller = createCaller(authenticatedCtx());
       await expect(
         caller.dtr.attendanceById({ id: "missing" })
@@ -207,7 +218,7 @@ describe("dtrRouter", () => {
 
   describe("dtr.attendanceApprove", () => {
     it("approves a present attendance record when called by HR/Manager", async () => {
-      mockDb.attendanceRecord.findFirst.mockResolvedValue(fakeAttendance);
+      mockDb.attendanceRecord.findUnique.mockResolvedValue(fakeAttendance);
       mockDb.attendanceRecord.update.mockResolvedValue({
         ...fakeAttendance,
         status: "approved",
@@ -225,7 +236,7 @@ describe("dtrRouter", () => {
     });
 
     it("throws NOT_FOUND if attendance record does not exist", async () => {
-      mockDb.attendanceRecord.findFirst.mockResolvedValue(null);
+      mockDb.attendanceRecord.findUnique.mockResolvedValue(null);
       const caller = createCaller(authenticatedCtx("HR Manager"));
       await expect(
         caller.dtr.attendanceApprove({ attendanceId: "att-999" })
@@ -235,7 +246,7 @@ describe("dtrRouter", () => {
 
   describe("dtr.attendanceReject", () => {
     it("rejects an attendance record when called by HR/Manager", async () => {
-      mockDb.attendanceRecord.findFirst.mockResolvedValue(fakeAttendance);
+      mockDb.attendanceRecord.findUnique.mockResolvedValue(fakeAttendance);
       mockDb.attendanceRecord.update.mockResolvedValue({
         ...fakeAttendance,
         status: "rejected",
@@ -258,7 +269,7 @@ describe("dtrRouter", () => {
 
   describe("dtr.attendanceClockOut", () => {
     it("updates an existing attendance record with clock-out time", async () => {
-      mockDb.attendanceRecord.findFirst.mockResolvedValue(fakeAttendance);
+      mockDb.attendanceRecord.findUnique.mockResolvedValue(fakeAttendance);
       mockDb.attendanceRecord.update.mockResolvedValue({
         ...fakeAttendance,
         clockOut: new Date("2025-01-15T17:00:00Z"),
@@ -276,7 +287,7 @@ describe("dtrRouter", () => {
     });
 
     it("throws NOT_FOUND if attendance record does not exist", async () => {
-      mockDb.attendanceRecord.findFirst.mockResolvedValue(null);
+      mockDb.attendanceRecord.findUnique.mockResolvedValue(null);
       const caller = createCaller(authenticatedCtx());
       await expect(
         caller.dtr.attendanceClockOut({
@@ -290,7 +301,7 @@ describe("dtrRouter", () => {
 
   describe("dtr.leaveRequestCreate", () => {
     it("creates a leave request", async () => {
-      mockDb.employee.findFirst.mockResolvedValue(fakeEmployee);
+      mockDb.employee.findUnique.mockResolvedValue(fakeEmployee);
       mockDb.leaveRequest.create.mockResolvedValue(fakeLeave);
       const caller = createCaller(authenticatedCtx());
       const result = await caller.dtr.leaveRequestCreate({
@@ -305,7 +316,7 @@ describe("dtrRouter", () => {
     });
 
     it("throws NOT_FOUND if employee does not exist", async () => {
-      mockDb.employee.findFirst.mockResolvedValue(null);
+      mockDb.employee.findUnique.mockResolvedValue(null);
       const caller = createCaller(authenticatedCtx());
       await expect(
         caller.dtr.leaveRequestCreate({
@@ -332,6 +343,7 @@ describe("dtrRouter", () => {
 
   describe("dtr.leaveRequestList", () => {
     it("returns leave requests for an employee", async () => {
+      mockDb.employee.findUnique.mockResolvedValue(fakeEmployee);
       mockDb.leaveRequest.findMany.mockResolvedValue([fakeLeave]);
       const caller = createCaller(authenticatedCtx());
       const result = await caller.dtr.leaveRequestList({ employeeId: "emp-1" });
@@ -342,7 +354,7 @@ describe("dtrRouter", () => {
 
   describe("dtr.leaveRequestApprove", () => {
     it("approves a pending leave request when called by HR/Manager", async () => {
-      mockDb.leaveRequest.findFirst.mockResolvedValue(fakeLeave);
+      mockDb.leaveRequest.findUnique.mockResolvedValue(fakeLeave);
       mockDb.leaveRequest.update.mockResolvedValue({
         ...fakeLeave,
         status: "approved",
@@ -363,7 +375,7 @@ describe("dtrRouter", () => {
     });
 
     it("throws NOT_FOUND if leave request does not exist", async () => {
-      mockDb.leaveRequest.findFirst.mockResolvedValue(null);
+      mockDb.leaveRequest.findUnique.mockResolvedValue(null);
       const caller = createCaller(authenticatedCtx("HR Manager"));
       await expect(
         caller.dtr.leaveRequestApprove({ leaveRequestId: "leave-999" })
@@ -373,7 +385,7 @@ describe("dtrRouter", () => {
 
   describe("dtr.leaveRequestReject", () => {
     it("rejects a pending leave request when called by HR/Manager", async () => {
-      mockDb.leaveRequest.findFirst.mockResolvedValue(fakeLeave);
+      mockDb.leaveRequest.findUnique.mockResolvedValue(fakeLeave);
       mockDb.leaveRequest.update.mockResolvedValue({
         ...fakeLeave,
         status: "rejected",
@@ -394,7 +406,7 @@ describe("dtrRouter", () => {
     });
 
     it("throws BAD_REQUEST if leave request is not in pending status", async () => {
-      mockDb.leaveRequest.findFirst.mockResolvedValue({
+      mockDb.leaveRequest.findUnique.mockResolvedValue({
         ...fakeLeave,
         status: "approved",
       });

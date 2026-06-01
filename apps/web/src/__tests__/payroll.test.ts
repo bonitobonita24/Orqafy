@@ -88,7 +88,7 @@ describe("payroll router", () => {
       const caller = createCaller(authenticatedCtx());
       await caller.payroll.list({ status: "approved" });
       expect(mockDb.payroll.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { status: "approved" } })
+        expect.objectContaining({ where: { tenantId: "acme-tenant-id", status: "approved" } })
       );
     });
 
@@ -102,14 +102,20 @@ describe("payroll router", () => {
     it("returns payroll with payslip relations", async () => {
       const payroll = {
         id: PAYROLL_CUID,
+        tenantId: "acme-tenant-id",
         payrollNumber: "PAY-1",
         payslips: [],
       };
-      mockDb.payroll.findUnique.mockResolvedValue(payroll);
+      // First call: guard (bare object with tenantId)
+      // Second call: full fetch with includes
+      mockDb.payroll.findUnique
+        .mockResolvedValueOnce({ id: PAYROLL_CUID, tenantId: "acme-tenant-id" })
+        .mockResolvedValueOnce(payroll);
       const caller = createCaller(authenticatedCtx());
       const result = await caller.payroll.byId({ id: PAYROLL_CUID });
       expect(result).toEqual(payroll);
-      const callArgs = mockDb.payroll.findUnique.mock.calls[0][0];
+      // The second findUnique call (index 1) has the includes
+      const callArgs = mockDb.payroll.findUnique.mock.calls[1][0];
       expect(callArgs.include.payslips.include.employee.include.user.select).toEqual({
         firstName: true,
         lastName: true,
@@ -133,6 +139,7 @@ describe("payroll router", () => {
         periodEnd: new Date("2026-05-15"),
       });
       const callArgs = mockDb.payroll.create.mock.calls[0][0];
+      expect(callArgs.data.tenantId).toBe("acme-tenant-id");
       expect(callArgs.data.status).toBe("draft");
       expect(callArgs.data.currency).toBe("PHP");
       expect(callArgs.data.payrollNumber).toMatch(/^PAY-\d+$/);
@@ -173,7 +180,7 @@ describe("payroll router", () => {
 
   describe("state machine: process → approve → markPaid", () => {
     it("process: draft → processing succeeds and sets processedAt", async () => {
-      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, status: "draft" });
+      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, tenantId: "acme-tenant-id", status: "draft" });
       mockDb.payroll.update.mockResolvedValue({ id: PAYROLL_CUID, status: "processing" });
       const caller = createCaller(authenticatedCtx());
       await caller.payroll.process({ id: PAYROLL_CUID });
@@ -183,7 +190,7 @@ describe("payroll router", () => {
     });
 
     it("process: rejects when not in draft status", async () => {
-      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, status: "approved" });
+      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, tenantId: "acme-tenant-id", status: "approved" });
       const caller = createCaller(authenticatedCtx());
       await expect(caller.payroll.process({ id: PAYROLL_CUID })).rejects.toMatchObject({
         code: "BAD_REQUEST",
@@ -199,7 +206,7 @@ describe("payroll router", () => {
     });
 
     it("approve: processing → approved succeeds", async () => {
-      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, status: "processing" });
+      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, tenantId: "acme-tenant-id", status: "processing" });
       mockDb.payroll.update.mockResolvedValue({ id: PAYROLL_CUID, status: "approved" });
       const caller = createCaller(authenticatedCtx());
       await caller.payroll.approve({ id: PAYROLL_CUID });
@@ -210,7 +217,7 @@ describe("payroll router", () => {
     });
 
     it("approve: rejects when not in processing status", async () => {
-      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, status: "draft" });
+      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, tenantId: "acme-tenant-id", status: "draft" });
       const caller = createCaller(authenticatedCtx());
       await expect(caller.payroll.approve({ id: PAYROLL_CUID })).rejects.toMatchObject({
         code: "BAD_REQUEST",
@@ -218,7 +225,7 @@ describe("payroll router", () => {
     });
 
     it("markPaid: approved → paid succeeds and sets paidAt", async () => {
-      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, status: "approved" });
+      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, tenantId: "acme-tenant-id", status: "approved" });
       mockDb.payroll.update.mockResolvedValue({ id: PAYROLL_CUID, status: "paid" });
       const caller = createCaller(authenticatedCtx());
       await caller.payroll.markPaid({ id: PAYROLL_CUID });
@@ -228,7 +235,7 @@ describe("payroll router", () => {
     });
 
     it("markPaid: rejects when not approved", async () => {
-      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, status: "processing" });
+      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, tenantId: "acme-tenant-id", status: "processing" });
       const caller = createCaller(authenticatedCtx());
       await expect(caller.payroll.markPaid({ id: PAYROLL_CUID })).rejects.toMatchObject({
         code: "BAD_REQUEST",
@@ -236,7 +243,7 @@ describe("payroll router", () => {
     });
 
     it("markPaid: uses provided paidAt when given", async () => {
-      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, status: "approved" });
+      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, tenantId: "acme-tenant-id", status: "approved" });
       mockDb.payroll.update.mockResolvedValue({ id: PAYROLL_CUID });
       const caller = createCaller(authenticatedCtx());
       const customDate = new Date("2026-06-01");
@@ -245,7 +252,7 @@ describe("payroll router", () => {
     });
 
     it("forbids skipping states: draft cannot go directly to approved", async () => {
-      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, status: "draft" });
+      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, tenantId: "acme-tenant-id", status: "draft" });
       const caller = createCaller(authenticatedCtx());
       await expect(caller.payroll.approve({ id: PAYROLL_CUID })).rejects.toMatchObject({
         code: "BAD_REQUEST",
@@ -253,7 +260,7 @@ describe("payroll router", () => {
     });
 
     it("forbids reversing states: paid cannot be processed again", async () => {
-      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, status: "paid" });
+      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, tenantId: "acme-tenant-id", status: "paid" });
       const caller = createCaller(authenticatedCtx());
       await expect(caller.payroll.process({ id: PAYROLL_CUID })).rejects.toMatchObject({
         code: "BAD_REQUEST",

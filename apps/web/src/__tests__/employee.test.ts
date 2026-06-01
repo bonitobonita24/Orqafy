@@ -146,11 +146,16 @@ describe("employee router", () => {
     it("returns employee when found", async () => {
       const employee = {
         id: VALID_CUID,
+        tenantId: "acme-tenant-id",
         employeeNumber: "EMP-1",
         user: { firstName: "Alice", lastName: "Cruz", displayName: null, email: "a@example.com", isActive: true },
         department: null,
       };
-      mockDb.employee.findUnique.mockResolvedValue(employee);
+      // First call: guard (returns bare object with tenantId)
+      // Second call: full fetch with includes
+      mockDb.employee.findUnique
+        .mockResolvedValueOnce({ id: VALID_CUID, tenantId: "acme-tenant-id" })
+        .mockResolvedValueOnce(employee);
       const caller = createCaller(authenticatedCtx());
       const result = await caller.employee.byId({ id: VALID_CUID });
       expect(result).toEqual(employee);
@@ -175,6 +180,7 @@ describe("employee router", () => {
       });
       expect(result.id).toBe(VALID_CUID);
       const callArgs = mockDb.employee.create.mock.calls[0][0];
+      expect(callArgs.data.tenantId).toBe("acme-tenant-id");
       expect(callArgs.data.userId).toBe(USER_CUID);
       expect(callArgs.data.employmentType).toBe("full_time");
       expect(callArgs.data.employeeNumber).toMatch(/^EMP-\d+$/);
@@ -238,7 +244,10 @@ describe("employee router", () => {
 
   describe("update", () => {
     it("updates allowed fields and ignores userId", async () => {
-      mockDb.employee.findUnique.mockResolvedValue({ id: VALID_CUID });
+      // update: loadEmployeeForTenant (findUnique #1) then findUnique #2 for existing check
+      mockDb.employee.findUnique
+        .mockResolvedValueOnce({ id: VALID_CUID, tenantId: "acme-tenant-id" })
+        .mockResolvedValueOnce({ id: VALID_CUID, tenantId: "acme-tenant-id" });
       mockDb.employee.update.mockResolvedValue({ id: VALID_CUID, position: "Manager" });
       const caller = createCaller(authenticatedCtx());
       await caller.employee.update({ id: VALID_CUID, position: "Manager" });
@@ -257,7 +266,7 @@ describe("employee router", () => {
 
   describe("terminate", () => {
     it("sets dateTerminated", async () => {
-      mockDb.employee.findUnique.mockResolvedValue({ id: VALID_CUID });
+      mockDb.employee.findUnique.mockResolvedValue({ id: VALID_CUID, tenantId: "acme-tenant-id" });
       const terminationDate = new Date("2026-06-01");
       mockDb.employee.update.mockResolvedValue({ id: VALID_CUID, dateTerminated: terminationDate });
       const caller = createCaller(authenticatedCtx());
