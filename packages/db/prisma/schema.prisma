@@ -108,6 +108,13 @@ model Tenant {
   cashAdvanceRecoveries        CashAdvanceRecovery[]        @relation("TenantCashAdvanceRecoveries")
   payrolls                     Payroll[]                    @relation("TenantPayrolls")
   payslips                     Payslip[]                    @relation("TenantPayslips")
+  fundSources                  FundSource[]                 @relation("TenantFundSources")
+  fundTransactions             FundTransaction[]            @relation("TenantFundTransactions")
+  fundTransactionAttachments   FundTransactionAttachment[]  @relation("TenantFundTransactionAttachments")
+  fundTransfers                FundTransfer[]               @relation("TenantFundTransfers")
+  fundRequests                 FundRequest[]                @relation("TenantFundRequests")
+  creditCardTransactions       CreditCardTransaction[]      @relation("TenantCreditCardTransactions")
+  creditCardPayments           CreditCardPayment[]          @relation("TenantCreditCardPayments")
 
   @@map("tenants")
   @@schema("public")
@@ -1784,6 +1791,8 @@ model Payslip {
 
 model FundSource {
   id                 String   @id @default(cuid())
+  tenantId           String   @map("tenant_id")
+  tenant             Tenant   @relation("TenantFundSources", fields: [tenantId], references: [id])
   name               String
   type               String // cash_on_hand | e_wallet | bank | credit_card | loan
   bankName           String?  @map("bank_name")
@@ -1807,12 +1816,15 @@ model FundSource {
   creditCardTransactions CreditCardTransaction[]
   creditCardPayments     CreditCardPayment[]     @relation("CreditCardPaymentFundSource")
 
+  @@index([tenantId])
   @@map("fund_sources")
   @@schema("public")
 }
 
 model FundTransaction {
   id              String     @id @default(cuid())
+  tenantId        String     @map("tenant_id")
+  tenant          Tenant     @relation("TenantFundTransactions", fields: [tenantId], references: [id])
   fundSourceId    String     @map("fund_source_id")
   fundSource      FundSource @relation(fields: [fundSourceId], references: [id])
   type            String // deposit | withdrawal | transfer_in | transfer_out | expense | income | refund | adjustment | loan_disbursement | loan_repayment | loan_payback | credit_card_charge | credit_card_payment
@@ -1829,6 +1841,7 @@ model FundTransaction {
 
   attachments FundTransactionAttachment[]
 
+  @@index([tenantId])
   @@index([fundSourceId])
   @@index([type])
   @@index([transactionDate])
@@ -1838,6 +1851,8 @@ model FundTransaction {
 
 model FundTransactionAttachment {
   id            String          @id @default(cuid())
+  tenantId      String          @map("tenant_id")
+  tenant        Tenant          @relation("TenantFundTransactionAttachments", fields: [tenantId], references: [id])
   transactionId String          @map("transaction_id")
   transaction   FundTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   fileName      String          @map("file_name")
@@ -1846,6 +1861,7 @@ model FundTransactionAttachment {
   mimeType      String          @map("mime_type")
   createdAt     DateTime        @default(now()) @map("created_at")
 
+  @@index([tenantId])
   @@index([transactionId])
   @@map("fund_transaction_attachments")
   @@schema("public")
@@ -1853,6 +1869,8 @@ model FundTransactionAttachment {
 
 model FundTransfer {
   id                String   @id @default(cuid())
+  tenantId          String   @map("tenant_id")
+  tenant            Tenant   @relation("TenantFundTransfers", fields: [tenantId], references: [id])
   fromTransactionId String   @map("from_transaction_id")
   toTransactionId   String   @map("to_transaction_id")
   amount            Decimal  @db.Decimal(12, 2)
@@ -1861,12 +1879,15 @@ model FundTransfer {
   createdBy         User     @relation("FundTransferCreatedBy", fields: [createdById], references: [id])
   createdAt         DateTime @default(now()) @map("created_at")
 
+  @@index([tenantId])
   @@map("fund_transfers")
   @@schema("public")
 }
 
 model FundRequest {
   id            String    @id @default(cuid())
+  tenantId      String    @map("tenant_id")
+  tenant        Tenant    @relation("TenantFundRequests", fields: [tenantId], references: [id])
   requestNumber String    @unique @map("request_number")
   createdById   String    @map("created_by_id")
   createdBy     User      @relation("FundRequestCreatedBy", fields: [createdById], references: [id])
@@ -1882,12 +1903,15 @@ model FundRequest {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  @@index([tenantId])
   @@map("fund_requests")
   @@schema("public")
 }
 
 model CreditCardTransaction {
   id              String     @id @default(cuid())
+  tenantId        String     @map("tenant_id")
+  tenant          Tenant     @relation("TenantCreditCardTransactions", fields: [tenantId], references: [id])
   fundSourceId    String     @map("fund_source_id")
   fundSource      FundSource @relation(fields: [fundSourceId], references: [id])
   description     String
@@ -1902,6 +1926,7 @@ model CreditCardTransaction {
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
+  @@index([tenantId])
   @@index([fundSourceId])
   @@index([isPaid])
   @@map("credit_card_transactions")
@@ -1910,6 +1935,8 @@ model CreditCardTransaction {
 
 model CreditCardPayment {
   id                       String     @id @default(cuid())
+  tenantId                 String     @map("tenant_id")
+  tenant                   Tenant     @relation("TenantCreditCardPayments", fields: [tenantId], references: [id])
   creditCardFundSourceId   String     @map("credit_card_fund_source_id")
   creditCardFundSource     FundSource @relation("CreditCardPaymentFundSource", fields: [creditCardFundSourceId], references: [id])
   paymentType              String     @map("payment_type") // selective | bulk_statement | installment
@@ -1924,6 +1951,7 @@ model CreditCardPayment {
   createdAt                DateTime   @default(now()) @map("created_at")
   updatedAt                DateTime   @updatedAt @map("updated_at")
 
+  @@index([tenantId])
   @@map("credit_card_payments")
   @@schema("public")
 }

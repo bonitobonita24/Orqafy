@@ -125,6 +125,7 @@ const mockDb = db as unknown as {
 // ---------------------------------------------------------------------------
 const sampleFundSource = {
   id: "cuid-fs-1",
+  tenantId: "acme-tenant-id",
   name: "BDO Checking Account",
   type: "bank",
   bankName: "Banco de Oro",
@@ -174,6 +175,7 @@ const sampleCashSource = {
 
 const sampleTransaction = {
   id: "cuid-tx-1",
+  tenantId: "acme-tenant-id",
   fundSourceId: "cuid-fs-1",
   type: "deposit",
   amount: "1000.00",

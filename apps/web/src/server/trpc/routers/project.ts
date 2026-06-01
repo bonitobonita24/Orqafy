@@ -105,6 +105,7 @@ const expenseRouter = createTRPCRouter({
 
         const transaction = await tx.fundTransaction.create({
           data: {
+            tenantId: ctx.tenantId,
             fundSourceId: input.fundSourceId,
             type: "expense",
             amount: input.amount,

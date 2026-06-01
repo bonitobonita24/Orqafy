@@ -35,14 +35,22 @@ function isRealCashType(type: string): type is RealCashType {
   return (REAL_CASH_TYPES as readonly string[]).includes(type);
 }
 
+async function loadFundSourceForTenant(id: string, ctx: { tenantId: string }) {
+  const fs = await db.fundSource.findUnique({ where: { id } });
+  if (!fs || fs.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Fund source not found" });
+  }
+  return fs;
+}
+
 const transactionRouter = createTRPCRouter({
   // Phase 2b: aggregate dashboard data for the banking overview.
   // Sums real-cash sources (cash_on_hand + bank + e_wallet), credit-card
   // outstanding, loan balances, plus this-month income/expense and the most
   // recent 10 transactions across all sources.
-  summary: protectedProcedure.query(async () => {
+  summary: protectedProcedure.query(async ({ ctx }) => {
     const allSources = await db.fundSource.findMany({
-      where: { isActive: true },
+      where: { isActive: true, tenantId: ctx.tenantId },
       select: {
         id: true,
         type: true,
@@ -73,7 +81,7 @@ const transactionRouter = createTRPCRouter({
     monthStart.setHours(0, 0, 0, 0);
 
     const monthTxs = await db.fundTransaction.findMany({
-      where: { transactionDate: { gte: monthStart } },
+      where: { tenantId: ctx.tenantId, transactionDate: { gte: monthStart } },
       select: { type: true, amount: true },
     });
 
@@ -89,6 +97,7 @@ const transactionRouter = createTRPCRouter({
     }
 
     const recentTransactions = await db.fundTransaction.findMany({
+      where: { tenantId: ctx.tenantId },
       orderBy: { transactionDate: "desc" },
       take: 10,
       include: {
@@ -117,8 +126,9 @@ const transactionRouter = createTRPCRouter({
         dateTo: z.string().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.fundSourceId !== undefined ? { fundSourceId: input.fundSourceId } : {}),
         ...(input.type !== undefined ? { type: input.type } : {}),
         ...(input.dateFrom !== undefined || input.dateTo !== undefined
@@ -144,9 +154,9 @@ const transactionRouter = createTRPCRouter({
 
   byId: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const item = await db.fundTransaction.findUnique({ where: { id: input.id } });
-      if (!item) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!item || item.tenantId !== ctx.tenantId) throw new TRPCError({ code: "NOT_FOUND" });
       return item;
     }),
 
@@ -163,14 +173,14 @@ const transactionRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const source = await db.fundSource.findUnique({ where: { id: input.fundSourceId } });
-      if (!source) throw new TRPCError({ code: "NOT_FOUND" });
+      const source = await loadFundSourceForTenant(input.fundSourceId, ctx);
 
       const newBalance = parseFloat(source.currentBalance.toString()) + input.amount;
 
       return db.$transaction(async (tx) => {
         const transaction = await tx.fundTransaction.create({
           data: {
+            tenantId: ctx.tenantId,
             fundSourceId: input.fundSourceId,
             type: "income",
             amount: input.amount,
@@ -204,8 +214,7 @@ const transactionRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const source = await db.fundSource.findUnique({ where: { id: input.fundSourceId } });
-      if (!source) throw new TRPCError({ code: "NOT_FOUND" });
+      const source = await loadFundSourceForTenant(input.fundSourceId, ctx);
 
       if (isRealCashType(source.type)) {
         const currentBalance = parseFloat(source.currentBalance.toString());
@@ -222,6 +231,7 @@ const transactionRouter = createTRPCRouter({
       return db.$transaction(async (tx) => {
         const transaction = await tx.fundTransaction.create({
           data: {
+            tenantId: ctx.tenantId,
             fundSourceId: input.fundSourceId,
             type: "expense",
             amount: input.amount,
@@ -261,10 +271,9 @@ const transactionRouter = createTRPCRouter({
       }
 
       const [fromSource, toSource] = await Promise.all([
-        db.fundSource.findUnique({ where: { id: input.fromFundSourceId } }),
-        db.fundSource.findUnique({ where: { id: input.toFundSourceId } }),
+        loadFundSourceForTenant(input.fromFundSourceId, ctx),
+        loadFundSourceForTenant(input.toFundSourceId, ctx),
       ]);
-      if (!fromSource || !toSource) throw new TRPCError({ code: "NOT_FOUND" });
 
       if (isRealCashType(fromSource.type)) {
         const currentBalance = parseFloat(fromSource.currentBalance.toString());
@@ -283,6 +292,7 @@ const transactionRouter = createTRPCRouter({
       return db.$transaction(async (tx) => {
         const outTx = await tx.fundTransaction.create({
           data: {
+            tenantId: ctx.tenantId,
             fundSourceId: input.fromFundSourceId,
             type: "transfer_out",
             amount: input.amount,
@@ -297,6 +307,7 @@ const transactionRouter = createTRPCRouter({
         });
         const inTx = await tx.fundTransaction.create({
           data: {
+            tenantId: ctx.tenantId,
             fundSourceId: input.toFundSourceId,
             type: "transfer_in",
             amount: input.amount,
@@ -311,6 +322,7 @@ const transactionRouter = createTRPCRouter({
         });
         const transfer = await tx.fundTransfer.create({
           data: {
+            tenantId: ctx.tenantId,
             fromTransactionId: outTx.id,
             toTransactionId: inTx.id,
             amount: input.amount,
@@ -341,8 +353,7 @@ const transactionRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const source = await db.fundSource.findUnique({ where: { id: input.fundSourceId } });
-      if (!source) throw new TRPCError({ code: "NOT_FOUND" });
+      const source = await loadFundSourceForTenant(input.fundSourceId, ctx);
 
       if (source.type !== "credit_card") {
         throw new TRPCError({
@@ -359,6 +370,7 @@ const transactionRouter = createTRPCRouter({
       return db.$transaction(async (tx) => {
         const transaction = await tx.fundTransaction.create({
           data: {
+            tenantId: ctx.tenantId,
             fundSourceId: input.fundSourceId,
             type: "credit_card_charge",
             amount: input.amount,
@@ -391,10 +403,9 @@ const transactionRouter = createTRPCRouter({
     )
     .mutation(async ({ input, ctx }) => {
       const [payer, creditCard] = await Promise.all([
-        db.fundSource.findUnique({ where: { id: input.payerFundSourceId } }),
-        db.fundSource.findUnique({ where: { id: input.creditCardFundSourceId } }),
+        loadFundSourceForTenant(input.payerFundSourceId, ctx),
+        loadFundSourceForTenant(input.creditCardFundSourceId, ctx),
       ]);
-      if (!payer || !creditCard) throw new TRPCError({ code: "NOT_FOUND" });
 
       if (creditCard.type !== "credit_card") {
         throw new TRPCError({
@@ -423,6 +434,7 @@ const transactionRouter = createTRPCRouter({
       return db.$transaction(async (tx) => {
         const payerTx = await tx.fundTransaction.create({
           data: {
+            tenantId: ctx.tenantId,
             fundSourceId: input.payerFundSourceId,
             type: "expense",
             amount: input.amount,
@@ -437,6 +449,7 @@ const transactionRouter = createTRPCRouter({
         });
         const ccTx = await tx.fundTransaction.create({
           data: {
+            tenantId: ctx.tenantId,
             fundSourceId: input.creditCardFundSourceId,
             type: "credit_card_payment",
             amount: input.amount,
@@ -473,10 +486,9 @@ const transactionRouter = createTRPCRouter({
     )
     .mutation(async ({ input, ctx }) => {
       const [loanSource, receiverSource] = await Promise.all([
-        db.fundSource.findUnique({ where: { id: input.loanFundSourceId } }),
-        db.fundSource.findUnique({ where: { id: input.receiverFundSourceId } }),
+        loadFundSourceForTenant(input.loanFundSourceId, ctx),
+        loadFundSourceForTenant(input.receiverFundSourceId, ctx),
       ]);
-      if (!loanSource || !receiverSource) throw new TRPCError({ code: "NOT_FOUND" });
 
       if (loanSource.type !== "loan") {
         throw new TRPCError({
@@ -495,6 +507,7 @@ const transactionRouter = createTRPCRouter({
       return db.$transaction(async (tx) => {
         const loanTx = await tx.fundTransaction.create({
           data: {
+            tenantId: ctx.tenantId,
             fundSourceId: input.loanFundSourceId,
             type: "loan_disbursement",
             amount: input.amount,
@@ -509,6 +522,7 @@ const transactionRouter = createTRPCRouter({
         });
         const receiverTx = await tx.fundTransaction.create({
           data: {
+            tenantId: ctx.tenantId,
             fundSourceId: input.receiverFundSourceId,
             type: "income",
             amount: input.amount,
@@ -541,10 +555,9 @@ const transactionRouter = createTRPCRouter({
     )
     .mutation(async ({ input, ctx }) => {
       const [payer, loanSource] = await Promise.all([
-        db.fundSource.findUnique({ where: { id: input.payerFundSourceId } }),
-        db.fundSource.findUnique({ where: { id: input.loanFundSourceId } }),
+        loadFundSourceForTenant(input.payerFundSourceId, ctx),
+        loadFundSourceForTenant(input.loanFundSourceId, ctx),
       ]);
-      if (!payer || !loanSource) throw new TRPCError({ code: "NOT_FOUND" });
 
       if (loanSource.type !== "loan") {
         throw new TRPCError({
@@ -573,6 +586,7 @@ const transactionRouter = createTRPCRouter({
       return db.$transaction(async (tx) => {
         const payerTx = await tx.fundTransaction.create({
           data: {
+            tenantId: ctx.tenantId,
             fundSourceId: input.payerFundSourceId,
             type: "expense",
             amount: input.amount,
@@ -587,6 +601,7 @@ const transactionRouter = createTRPCRouter({
         });
         const loanTx = await tx.fundTransaction.create({
           data: {
+            tenantId: ctx.tenantId,
             fundSourceId: input.loanFundSourceId,
             type: "loan_repayment",
             amount: input.amount,
@@ -625,14 +640,14 @@ const transactionRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const source = await db.fundSource.findUnique({ where: { id: input.fundSourceId } });
-      if (!source) throw new TRPCError({ code: "NOT_FOUND" });
+      const source = await loadFundSourceForTenant(input.fundSourceId, ctx);
 
       const newBalance = parseFloat(source.currentBalance.toString()) + input.amount;
 
       return db.$transaction(async (tx) => {
         const transaction = await tx.fundTransaction.create({
           data: {
+            tenantId: ctx.tenantId,
             fundSourceId: input.fundSourceId,
             type: "refund",
             amount: input.amount,
@@ -669,8 +684,7 @@ const transactionRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const source = await db.fundSource.findUnique({ where: { id: input.fundSourceId } });
-      if (!source) throw new TRPCError({ code: "NOT_FOUND" });
+      const source = await loadFundSourceForTenant(input.fundSourceId, ctx);
 
       if (!isRealCashType(source.type)) {
         throw new TRPCError({
@@ -692,6 +706,7 @@ const transactionRouter = createTRPCRouter({
       return db.$transaction(async (tx) => {
         const transaction = await tx.fundTransaction.create({
           data: {
+            tenantId: ctx.tenantId,
             fundSourceId: input.fundSourceId,
             type: "adjustment",
             amount: Math.abs(input.delta),
@@ -723,8 +738,9 @@ export const bankingRouter = createTRPCRouter({
         type: z.enum(FUND_SOURCE_TYPES).optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
         ...(input.type !== undefined ? { type: input.type } : {}),
       };
@@ -742,9 +758,9 @@ export const bankingRouter = createTRPCRouter({
 
   byId: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const item = await db.fundSource.findUnique({ where: { id: input.id } });
-      if (!item) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!item || item.tenantId !== ctx.tenantId) throw new TRPCError({ code: "NOT_FOUND" });
       return item;
     }),
 
@@ -763,9 +779,10 @@ export const bankingRouter = createTRPCRouter({
         loanInterestRate: z.number().min(0).max(100).optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       return db.fundSource.create({
         data: {
+          tenantId: ctx.tenantId,
           name: input.name,
           type: input.type,
           currentBalance: input.initialBalance,
@@ -794,10 +811,9 @@ export const bankingRouter = createTRPCRouter({
         loanInterestRate: z.number().min(0).max(100).optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { id, ...data } = input;
-      const existing = await db.fundSource.findUnique({ where: { id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await loadFundSourceForTenant(id, ctx);
       return db.fundSource.update({
         where: { id },
         data: {
@@ -814,9 +830,8 @@ export const bankingRouter = createTRPCRouter({
 
   toggleActive: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const existing = await db.fundSource.findUnique({ where: { id: input.id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      const existing = await loadFundSourceForTenant(input.id, ctx);
       return db.fundSource.update({
         where: { id: input.id },
         data: { isActive: !existing.isActive },
