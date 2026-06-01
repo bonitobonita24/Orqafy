@@ -99,6 +99,7 @@ const fakeAdmin = {
 
 const fakeTicket = {
   id: "ticket-1",
+  tenantId: "tenant-acme",
   ticketNumber: "TK-2605-0001",
   createdById: "user-staff",
   assignedToId: null as string | null,
@@ -179,11 +180,11 @@ describe("support.ticket.list", () => {
 
     expect(mockDb.supportTicket.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
+        where: expect.objectContaining({
           status: "in_progress",
           priority: "high",
           assignedToId: "user-mgr",
-        },
+        }),
       })
     );
   });
@@ -210,6 +211,8 @@ describe("support.ticket.byId", () => {
       comments: [{ ...fakeComment, user: fakeUser }],
       attachments: [fakeAttachment],
     };
+    // loadTicketForTenant guard call, then the full include call
+    mockDb.supportTicket.findUnique.mockResolvedValueOnce(fakeTicket);
     mockDb.supportTicket.findUnique.mockResolvedValueOnce(ticketWithRelations);
 
     const caller = createCaller(staffCtx());
@@ -301,6 +304,7 @@ describe("support.ticket.update", () => {
   it("allows the creator to update their own ticket", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({
       id: "ticket-1",
+      tenantId: "tenant-acme",
       createdById: "user-staff",
     });
     mockDb.supportTicket.update.mockResolvedValueOnce(fakeTicket);
@@ -322,6 +326,7 @@ describe("support.ticket.update", () => {
   it("allows an Administrator to update another user's ticket", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({
       id: "ticket-1",
+      tenantId: "tenant-acme",
       createdById: "user-other",
     });
     mockDb.supportTicket.update.mockResolvedValueOnce(fakeTicket);
@@ -335,6 +340,7 @@ describe("support.ticket.update", () => {
   it("blocks non-creator non-admin staff with FORBIDDEN", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({
       id: "ticket-1",
+      tenantId: "tenant-acme",
       createdById: "user-other",
     });
 
@@ -356,6 +362,7 @@ describe("support.ticket.update", () => {
   it("allows clearing category by passing null", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({
       id: "ticket-1",
+      tenantId: "tenant-acme",
       createdById: "user-staff",
     });
     mockDb.supportTicket.update.mockResolvedValueOnce(fakeTicket);
@@ -382,6 +389,7 @@ describe("support.ticket.assign", () => {
   it("allows Manager to assign and auto-progresses open → in_progress", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({
       id: "ticket-1",
+      tenantId: "tenant-acme",
       status: "open",
     });
     mockDb.supportTicket.update.mockResolvedValueOnce({
@@ -406,6 +414,7 @@ describe("support.ticket.assign", () => {
   it("preserves status when assigning a non-open ticket", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({
       id: "ticket-1",
+      tenantId: "tenant-acme",
       status: "waiting",
     });
     mockDb.supportTicket.update.mockResolvedValueOnce(fakeTicket);
@@ -426,6 +435,7 @@ describe("support.ticket.assign", () => {
   it("allows unassignment (assignedToId = null) without forcing status", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({
       id: "ticket-1",
+      tenantId: "tenant-acme",
       status: "open",
     });
     mockDb.supportTicket.update.mockResolvedValueOnce(fakeTicket);
@@ -460,6 +470,7 @@ describe("support.ticket.changeStatus (state machine)", () => {
   it("allows open → in_progress", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({
       id: "ticket-1",
+      tenantId: "tenant-acme",
       status: "open",
     });
     mockDb.supportTicket.update.mockResolvedValueOnce(fakeTicket);
@@ -476,6 +487,7 @@ describe("support.ticket.changeStatus (state machine)", () => {
   it("rejects open → resolved (skipping in_progress)", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({
       id: "ticket-1",
+      tenantId: "tenant-acme",
       status: "open",
     });
 
@@ -491,6 +503,7 @@ describe("support.ticket.changeStatus (state machine)", () => {
   it("rejects any transition out of closed (terminal)", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({
       id: "ticket-1",
+      tenantId: "tenant-acme",
       status: "closed",
     });
 
@@ -506,6 +519,7 @@ describe("support.ticket.changeStatus (state machine)", () => {
   it("sets resolvedAt when transitioning in_progress → resolved", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({
       id: "ticket-1",
+      tenantId: "tenant-acme",
       status: "in_progress",
     });
     mockDb.supportTicket.update.mockResolvedValueOnce(fakeTicket);
@@ -524,6 +538,7 @@ describe("support.ticket.changeStatus (state machine)", () => {
   it("sets closedAt when transitioning resolved → closed", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({
       id: "ticket-1",
+      tenantId: "tenant-acme",
       status: "resolved",
     });
     mockDb.supportTicket.update.mockResolvedValueOnce(fakeTicket);
@@ -542,6 +557,7 @@ describe("support.ticket.changeStatus (state machine)", () => {
   it("clears resolvedAt when transitioning resolved → in_progress (reopen)", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({
       id: "ticket-1",
+      tenantId: "tenant-acme",
       status: "resolved",
     });
     mockDb.supportTicket.update.mockResolvedValueOnce(fakeTicket);
@@ -574,6 +590,7 @@ describe("support.ticket.close", () => {
   it("closes a resolved ticket and stamps closedAt", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({
       id: "ticket-1",
+      tenantId: "tenant-acme",
       status: "resolved",
     });
     mockDb.supportTicket.update.mockResolvedValueOnce(fakeTicket);
@@ -589,6 +606,7 @@ describe("support.ticket.close", () => {
   it("rejects closing an open ticket", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({
       id: "ticket-1",
+      tenantId: "tenant-acme",
       status: "open",
     });
 
@@ -614,7 +632,7 @@ describe("support.ticket.close", () => {
 
 describe("support.comment.list", () => {
   it("filters out internal comments for non-privileged staff", async () => {
-    mockDb.supportTicket.findUnique.mockResolvedValueOnce({ id: "ticket-1" });
+    mockDb.supportTicket.findUnique.mockResolvedValueOnce({ id: "ticket-1", tenantId: "tenant-acme" });
     mockDb.ticketComment.findMany.mockResolvedValueOnce([
       { ...fakeComment, user: fakeUser },
     ]);
@@ -630,7 +648,7 @@ describe("support.comment.list", () => {
   });
 
   it("includes internal comments for Administrator", async () => {
-    mockDb.supportTicket.findUnique.mockResolvedValueOnce({ id: "ticket-1" });
+    mockDb.supportTicket.findUnique.mockResolvedValueOnce({ id: "ticket-1", tenantId: "tenant-acme" });
     mockDb.ticketComment.findMany.mockResolvedValueOnce([
       { ...fakeComment, user: fakeUser },
       { ...fakeInternalComment, user: fakeAdmin },
@@ -648,7 +666,7 @@ describe("support.comment.list", () => {
   });
 
   it("includes internal comments for Manager", async () => {
-    mockDb.supportTicket.findUnique.mockResolvedValueOnce({ id: "ticket-1" });
+    mockDb.supportTicket.findUnique.mockResolvedValueOnce({ id: "ticket-1", tenantId: "tenant-acme" });
     mockDb.ticketComment.findMany.mockResolvedValueOnce([]);
 
     const caller = createCaller(managerCtx());
@@ -670,7 +688,7 @@ describe("support.comment.list", () => {
 
 describe("support.comment.create", () => {
   it("creates a public comment from any authenticated user", async () => {
-    mockDb.supportTicket.findUnique.mockResolvedValueOnce({ id: "ticket-1" });
+    mockDb.supportTicket.findUnique.mockResolvedValueOnce({ id: "ticket-1", tenantId: "tenant-acme" });
     mockDb.ticketComment.create.mockResolvedValueOnce(fakeComment);
 
     const caller = createCaller(staffCtx());
@@ -682,6 +700,7 @@ describe("support.comment.create", () => {
     expect(mockDb.ticketComment.create).toHaveBeenCalledWith({
       data: {
         ticketId: "ticket-1",
+        tenantId: "tenant-acme",
         userId: "user-staff",
         content: "Update: still down.",
         isInternal: false,
@@ -690,7 +709,7 @@ describe("support.comment.create", () => {
   });
 
   it("downgrades isInternal=true to false for non-privileged Staff", async () => {
-    mockDb.supportTicket.findUnique.mockResolvedValueOnce({ id: "ticket-1" });
+    mockDb.supportTicket.findUnique.mockResolvedValueOnce({ id: "ticket-1", tenantId: "tenant-acme" });
     mockDb.ticketComment.create.mockResolvedValueOnce(fakeComment);
 
     const caller = createCaller(staffCtx());
@@ -705,7 +724,7 @@ describe("support.comment.create", () => {
   });
 
   it("honors isInternal=true for Administrator", async () => {
-    mockDb.supportTicket.findUnique.mockResolvedValueOnce({ id: "ticket-1" });
+    mockDb.supportTicket.findUnique.mockResolvedValueOnce({ id: "ticket-1", tenantId: "tenant-acme" });
     mockDb.ticketComment.create.mockResolvedValueOnce(fakeInternalComment);
 
     const caller = createCaller(adminCtx());
@@ -738,7 +757,7 @@ describe("support.comment.create", () => {
 
 describe("support.attachment.list", () => {
   it("returns attachments ordered by createdAt desc", async () => {
-    mockDb.supportTicket.findUnique.mockResolvedValueOnce({ id: "ticket-1" });
+    mockDb.supportTicket.findUnique.mockResolvedValueOnce({ id: "ticket-1", tenantId: "tenant-acme" });
     mockDb.ticketAttachment.findMany.mockResolvedValueOnce([fakeAttachment]);
 
     const caller = createCaller(staffCtx());

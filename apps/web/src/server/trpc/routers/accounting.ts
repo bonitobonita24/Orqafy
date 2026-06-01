@@ -95,6 +95,9 @@ const accountRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
+      if (input.parentId) {
+        await loadAccountForTenant(input.parentId, ctx);
+      }
       return db.account.create({
         data: {
           tenantId: ctx.tenantId,
@@ -202,6 +205,13 @@ const journalEntryRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
+      await loadFiscalYearForTenant(input.fiscalYearId, ctx);
+      const accountIds = [...new Set(input.lines.map((l) => l.accountId))];
+      const accounts = await db.account.findMany({ where: { id: { in: accountIds }, tenantId: ctx.tenantId } });
+      if (accounts.length !== accountIds.length) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Account not found" });
+      }
+
       const entryCount = await db.journalEntry.count({ where: { tenantId: ctx.tenantId } });
       const entryNumber = `JE-${String(entryCount + 1).padStart(4, "0")}`;
 

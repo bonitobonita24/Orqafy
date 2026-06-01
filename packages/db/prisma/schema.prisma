@@ -120,6 +120,12 @@ model Tenant {
   journalLines                 JournalLine[]                @relation("TenantJournalLines")
   taxRates                     TaxRate[]                    @relation("TenantTaxRates")
   fiscalYears                  FiscalYear[]                 @relation("TenantFiscalYears")
+  supportTickets               SupportTicket[]              @relation("TenantSupportTickets")
+  ticketComments               TicketComment[]              @relation("TenantTicketComments")
+  ticketAttachments            TicketAttachment[]           @relation("TenantTicketAttachments")
+  jobOrders                    JobOrder[]                   @relation("TenantJobOrders")
+  jobOrderParts                JobOrderPart[]               @relation("TenantJobOrderParts")
+  jobOrderServiceLines         JobOrderServiceLine[]        @relation("TenantJobOrderServiceLines")
 
   @@map("tenants")
   @@schema("public")
@@ -2207,6 +2213,8 @@ model POSSaleItem {
 
 model SupportTicket {
   id           String    @id @default(cuid())
+  tenantId     String    @map("tenant_id")
+  tenant       Tenant    @relation("TenantSupportTickets", fields: [tenantId], references: [id])
   ticketNumber String    @unique @map("ticket_number")
   createdById  String    @map("created_by_id")
   createdBy    User      @relation("TicketCreatedBy", fields: [createdById], references: [id])
@@ -2224,12 +2232,15 @@ model SupportTicket {
   comments    TicketComment[]
   attachments TicketAttachment[]
 
+  @@index([tenantId])
   @@map("support_tickets")
   @@schema("public")
 }
 
 model TicketComment {
   id         String        @id @default(cuid())
+  tenantId   String        @map("tenant_id")
+  tenant     Tenant        @relation("TenantTicketComments", fields: [tenantId], references: [id])
   ticketId   String        @map("ticket_id")
   ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   userId     String        @map("user_id")
@@ -2239,6 +2250,7 @@ model TicketComment {
   createdAt  DateTime      @default(now()) @map("created_at")
   updatedAt  DateTime      @updatedAt @map("updated_at")
 
+  @@index([tenantId])
   @@index([ticketId])
   @@map("ticket_comments")
   @@schema("public")
@@ -2246,6 +2258,8 @@ model TicketComment {
 
 model TicketAttachment {
   id            String        @id @default(cuid())
+  tenantId      String        @map("tenant_id")
+  tenant        Tenant        @relation("TenantTicketAttachments", fields: [tenantId], references: [id])
   ticketId      String        @map("ticket_id")
   ticket        SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   fileName      String        @map("file_name")
@@ -2254,6 +2268,7 @@ model TicketAttachment {
   mimeType      String        @map("mime_type")
   createdAt     DateTime      @default(now()) @map("created_at")
 
+  @@index([tenantId])
   @@index([ticketId])
   @@map("ticket_attachments")
   @@schema("public")
@@ -2324,6 +2339,8 @@ model EcommerceOrderItem {
 
 model JobOrder {
   id                     String    @id @default(cuid())
+  tenantId               String    @map("tenant_id")
+  tenant                 Tenant    @relation("TenantJobOrders", fields: [tenantId], references: [id])
   jobOrderNumber         String    @unique @map("job_order_number")
   customerId             String    @map("customer_id")
   customer               Customer  @relation(fields: [customerId], references: [id])
@@ -2361,12 +2378,15 @@ model JobOrder {
   parts        JobOrderPart[]
   serviceLines JobOrderServiceLine[]
 
+  @@index([tenantId])
   @@map("job_orders")
   @@schema("public")
 }
 
 model JobOrderPart {
   id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  tenant          Tenant   @relation("TenantJobOrderParts", fields: [tenantId], references: [id])
   jobOrderId      String   @map("job_order_id")
   jobOrder        JobOrder @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
   productId       String?  @map("product_id")
@@ -2379,6 +2399,7 @@ model JobOrderPart {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
+  @@index([tenantId])
   @@index([jobOrderId])
   @@map("job_order_parts")
   @@schema("public")
@@ -2386,6 +2407,8 @@ model JobOrderPart {
 
 model JobOrderServiceLine {
   id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  tenant      Tenant   @relation("TenantJobOrderServiceLines", fields: [tenantId], references: [id])
   jobOrderId  String   @map("job_order_id")
   jobOrder    JobOrder @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
   description String
@@ -2396,6 +2419,7 @@ model JobOrderServiceLine {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  @@index([tenantId])
   @@index([jobOrderId])
   @@map("job_order_service_lines")
   @@schema("public")

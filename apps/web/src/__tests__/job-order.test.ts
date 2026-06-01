@@ -175,6 +175,7 @@ describe("jobOrder router", () => {
 
   describe("byId", () => {
     it("returns job order with relations", async () => {
+      const guardJo = { id: JO_CUID, tenantId: "acme-tenant-id" };
       const jo = {
         id: JO_CUID,
         jobOrderNumber: "JO-1",
@@ -183,7 +184,8 @@ describe("jobOrder router", () => {
         technician: null,
         parts: [],
       };
-      mockDb.jobOrder.findUnique.mockResolvedValue(jo);
+      // loadJobOrderForTenant calls findUnique first, then byId calls it again with include
+      mockDb.jobOrder.findUnique.mockResolvedValueOnce(guardJo).mockResolvedValueOnce(jo);
       const caller = createCaller(authenticatedCtx());
       const result = await caller.jobOrder.byId({ id: JO_CUID });
       expect(result).toEqual(jo);
@@ -198,6 +200,7 @@ describe("jobOrder router", () => {
 
   describe("publicView", () => {
     it("returns a minimal projection for token-gated public access", async () => {
+      const guardJo = { id: JO_CUID, tenantId: "acme-tenant-id" };
       const publicProjection = {
         id: JO_CUID,
         jobOrderNumber: "JO-1",
@@ -214,11 +217,13 @@ describe("jobOrder router", () => {
         customer: { firstName: "Alice", lastName: "Cruz", companyName: null },
         technician: { firstName: "Bob", lastName: "Reyes", displayName: null },
       };
-      mockDb.jobOrder.findUnique.mockResolvedValue(publicProjection);
+      // loadJobOrderForTenant calls findUnique first, then publicView calls it again with select
+      mockDb.jobOrder.findUnique.mockResolvedValueOnce(guardJo).mockResolvedValueOnce(publicProjection);
       const caller = createCaller(authenticatedCtx());
       const result = await caller.jobOrder.publicView({ id: JO_CUID, token: "abc123" });
       expect(result).toEqual(publicProjection);
-      const findArgs = mockDb.jobOrder.findUnique.mock.calls[0][0];
+      // The second findUnique call is the one with select — index [1]
+      const findArgs = mockDb.jobOrder.findUnique.mock.calls[1][0];
       // publicView MUST NOT leak internal fields such as createdById or createdBy details
       expect(findArgs.select).not.toHaveProperty("createdById");
       expect(findArgs.select).not.toHaveProperty("createdBy");
@@ -325,7 +330,7 @@ describe("jobOrder router", () => {
 
   describe("updateStatus state machine", () => {
     it("updates status from received → diagnosing", async () => {
-      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "received" });
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "received", tenantId: "acme-tenant-id" });
       mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID, status: "diagnosing" });
       const caller = createCaller(authenticatedCtx());
       await caller.jobOrder.updateStatus({ id: JO_CUID, status: "diagnosing" });
@@ -334,7 +339,7 @@ describe("jobOrder router", () => {
     });
 
     it("attaches diagnosis when moving to diagnosed/quoted", async () => {
-      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "diagnosing" });
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "diagnosing", tenantId: "acme-tenant-id" });
       mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID, status: "quoted" });
       const caller = createCaller(authenticatedCtx());
       await caller.jobOrder.updateStatus({
@@ -350,6 +355,7 @@ describe("jobOrder router", () => {
       mockDb.jobOrder.findUnique.mockResolvedValue({
         id: JO_CUID,
         status: "testing",
+        tenantId: "acme-tenant-id",
         customerSignatureUrl: "data:image/png;base64,AAA",
         technicianSignatureUrl: "data:image/png;base64,BBB",
       });
@@ -368,7 +374,7 @@ describe("jobOrder router", () => {
     });
 
     it("sets releasedAt when status=released", async () => {
-      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "completed" });
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "completed", tenantId: "acme-tenant-id" });
       mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID, status: "released" });
       const caller = createCaller(authenticatedCtx());
       await caller.jobOrder.updateStatus({ id: JO_CUID, status: "released" });
@@ -376,7 +382,7 @@ describe("jobOrder router", () => {
     });
 
     it("does NOT set completedAt for non-terminal status", async () => {
-      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "diagnosing" });
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "diagnosing", tenantId: "acme-tenant-id" });
       mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID });
       const caller = createCaller(authenticatedCtx());
       await caller.jobOrder.updateStatus({ id: JO_CUID, status: "in_progress" });
@@ -386,7 +392,7 @@ describe("jobOrder router", () => {
     });
 
     it("supports cancellation from any state", async () => {
-      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "approved" });
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "approved", tenantId: "acme-tenant-id" });
       mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID, status: "cancelled" });
       const caller = createCaller(authenticatedCtx());
       await caller.jobOrder.updateStatus({ id: JO_CUID, status: "cancelled" });
@@ -420,7 +426,7 @@ describe("jobOrder router", () => {
     });
 
     it("rejects invalid transition (received → released directly)", async () => {
-      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "received" });
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "received", tenantId: "acme-tenant-id" });
       const caller = createCaller(authenticatedCtx());
       await expect(
         caller.jobOrder.updateStatus({ id: JO_CUID, status: "released" })
@@ -432,7 +438,7 @@ describe("jobOrder router", () => {
     });
 
     it("rejects invalid transition (approved → testing skipping in_progress)", async () => {
-      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "approved" });
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "approved", tenantId: "acme-tenant-id" });
       const caller = createCaller(authenticatedCtx());
       await expect(
         caller.jobOrder.updateStatus({ id: JO_CUID, status: "testing" })
@@ -444,6 +450,7 @@ describe("jobOrder router", () => {
       mockDb.jobOrder.findUnique.mockResolvedValue({
         id: JO_CUID,
         status: "testing",
+        tenantId: "acme-tenant-id",
         customerSignatureUrl: null,
         technicianSignatureUrl: "data:image/png;base64,XXX",
       });
@@ -461,6 +468,7 @@ describe("jobOrder router", () => {
       mockDb.jobOrder.findUnique.mockResolvedValue({
         id: JO_CUID,
         status: "testing",
+        tenantId: "acme-tenant-id",
         customerSignatureUrl: "data:image/png;base64,YYY",
         technicianSignatureUrl: null,
       });
@@ -472,7 +480,7 @@ describe("jobOrder router", () => {
     });
 
     it("allows cancellation from quoted state", async () => {
-      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "quoted" });
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "quoted", tenantId: "acme-tenant-id" });
       mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID, status: "cancelled" });
       const caller = createCaller(authenticatedCtx());
       await caller.jobOrder.updateStatus({ id: JO_CUID, status: "cancelled" });
@@ -480,7 +488,7 @@ describe("jobOrder router", () => {
     });
 
     it("allows no-op transition (same status) for diagnosis-only update", async () => {
-      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "diagnosing" });
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "diagnosing", tenantId: "acme-tenant-id" });
       mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID, status: "diagnosing" });
       const caller = createCaller(authenticatedCtx());
       await caller.jobOrder.updateStatus({
@@ -496,7 +504,7 @@ describe("jobOrder router", () => {
 
   describe("assignTechnician", () => {
     it("assigns a technician when both job order and user exist", async () => {
-      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID });
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, tenantId: "acme-tenant-id" });
       mockDb.user.findUnique.mockResolvedValue({ id: TECH_CUID });
       mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID, technicianId: TECH_CUID });
       const caller = createCaller(authenticatedCtx());
@@ -516,7 +524,7 @@ describe("jobOrder router", () => {
     });
 
     it("throws BAD_REQUEST when technician user missing", async () => {
-      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID });
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, tenantId: "acme-tenant-id" });
       mockDb.user.findUnique.mockResolvedValue(null);
       const caller = createCaller(authenticatedCtx());
       await expect(
@@ -542,7 +550,7 @@ describe("jobOrder router", () => {
     };
 
     it("creates a part with server-computed totalPrice", async () => {
-      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "diagnosing" });
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "diagnosing", tenantId: "acme-tenant-id" });
       mockDb.jobOrderPart.create.mockResolvedValue({ id: "part-1" });
       const caller = createCaller(authenticatedCtx());
       const result = await caller.jobOrder.addPart(PART_INPUT);
@@ -560,7 +568,7 @@ describe("jobOrder router", () => {
     });
 
     it("throws BAD_REQUEST when job order status disallows line-item edits", async () => {
-      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "released" });
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "released", tenantId: "acme-tenant-id" });
       const caller = createCaller(authenticatedCtx());
       await expect(caller.jobOrder.addPart(PART_INPUT)).rejects.toMatchObject({
         code: "BAD_REQUEST",
@@ -590,7 +598,7 @@ describe("jobOrder router", () => {
     it("deletes a part when parent job order status allows", async () => {
       mockDb.jobOrderPart.findUnique.mockResolvedValue({
         id: PART_ID,
-        jobOrder: { status: "in_progress" },
+        jobOrder: { status: "in_progress", tenantId: "acme-tenant-id" },
       });
       mockDb.jobOrderPart.delete.mockResolvedValue({ id: PART_ID });
       const caller = createCaller(authenticatedCtx());
@@ -602,7 +610,7 @@ describe("jobOrder router", () => {
     it("throws BAD_REQUEST when parent status disallows line-item edits", async () => {
       mockDb.jobOrderPart.findUnique.mockResolvedValue({
         id: PART_ID,
-        jobOrder: { status: "completed" },
+        jobOrder: { status: "completed", tenantId: "acme-tenant-id" },
       });
       const caller = createCaller(authenticatedCtx());
       await expect(caller.jobOrder.removePart({ id: PART_ID })).rejects.toMatchObject({
@@ -623,7 +631,7 @@ describe("jobOrder router", () => {
     };
 
     it("creates a service line with hours and rate", async () => {
-      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "diagnosing" });
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "diagnosing", tenantId: "acme-tenant-id" });
       mockDb.jobOrderServiceLine.create.mockResolvedValue({ id: "svc-1" });
       const caller = createCaller(authenticatedCtx());
       const result = await caller.jobOrder.addServiceLine(SERVICE_INPUT);
@@ -641,7 +649,7 @@ describe("jobOrder router", () => {
     });
 
     it("throws BAD_REQUEST when status disallows line-item edits", async () => {
-      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "cancelled" });
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, status: "cancelled", tenantId: "acme-tenant-id" });
       const caller = createCaller(authenticatedCtx());
       await expect(caller.jobOrder.addServiceLine(SERVICE_INPUT)).rejects.toMatchObject({
         code: "BAD_REQUEST",
@@ -656,7 +664,7 @@ describe("jobOrder router", () => {
     it("deletes a service line when parent status allows and returns the id", async () => {
       mockDb.jobOrderServiceLine.findUnique.mockResolvedValue({
         id: SVC_ID,
-        jobOrder: { status: "testing" },
+        jobOrder: { status: "testing", tenantId: "acme-tenant-id" },
       });
       mockDb.jobOrderServiceLine.delete.mockResolvedValue({ id: SVC_ID });
       const caller = createCaller(authenticatedCtx());
@@ -675,6 +683,7 @@ describe("jobOrder router", () => {
       mockDb.jobOrder.findUnique.mockResolvedValue({
         id: JO_CUID,
         status: "testing",
+        tenantId: "acme-tenant-id",
         customerSignatureUrl: null,
         technicianSignatureUrl: null,
         signedAt: null,
@@ -695,6 +704,7 @@ describe("jobOrder router", () => {
       mockDb.jobOrder.findUnique.mockResolvedValue({
         id: JO_CUID,
         status: "completed",
+        tenantId: "acme-tenant-id",
         customerSignatureUrl: PNG_DATA_URL,
         technicianSignatureUrl: null,
         signedAt: null,
@@ -727,6 +737,7 @@ describe("jobOrder router", () => {
       mockDb.jobOrder.findUnique.mockResolvedValue({
         id: JO_CUID,
         status: "diagnosing",
+        tenantId: "acme-tenant-id",
         customerSignatureUrl: null,
         technicianSignatureUrl: null,
         signedAt: null,

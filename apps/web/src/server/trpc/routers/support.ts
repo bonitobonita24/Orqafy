@@ -19,6 +19,16 @@ type TicketStatus = (typeof TICKET_STATUS)[number];
 const ticketStatusSchema = z.enum(TICKET_STATUS);
 const ticketPrioritySchema = z.enum(TICKET_PRIORITY);
 
+// ── Tenant helper ─────────────────────────────────────────────────────────────
+
+async function loadTicketForTenant(id: string, ctx: { tenantId: string }) {
+  const t = await db.supportTicket.findUnique({ where: { id } });
+  if (!t || t.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Ticket not found" });
+  }
+  return t;
+}
+
 // ── Sequence helper ───────────────────────────────────────────────────────────
 
 async function generateTicketNumber(): Promise<string> {
@@ -60,9 +70,10 @@ const ticketRouter = createTRPCRouter({
         limit: z.number().int().min(1).max(100).default(20),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const { status, priority, assignedToId, page, limit } = input;
       const where = {
+        tenantId: ctx.tenantId,
         ...(status !== undefined ? { status } : {}),
         ...(priority !== undefined ? { priority } : {}),
         ...(assignedToId !== undefined ? { assignedToId } : {}),
@@ -94,7 +105,9 @@ const ticketRouter = createTRPCRouter({
 
   byId: protectedProcedure
     .input(z.object({ id: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      await loadTicketForTenant(input.id, ctx);
+
       const ticket = await db.supportTicket.findUnique({
         where: { id: input.id },
         include: {
@@ -145,6 +158,7 @@ const ticketRouter = createTRPCRouter({
       return db.supportTicket.create({
         data: {
           ticketNumber,
+          tenantId: ctx.tenantId,
           createdById: ctx.userId,
           title: input.title,
           description: input.description,
@@ -165,14 +179,7 @@ const ticketRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const existing = await db.supportTicket.findUnique({
-        where: { id: input.id },
-        select: { id: true, createdById: true },
-      });
-
-      if (!existing) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Ticket not found" });
-      }
+      const existing = await loadTicketForTenant(input.id, ctx);
 
       const isAdmin =
         ctx.roles?.includes("Administrator") === true ||
@@ -217,14 +224,7 @@ const ticketRouter = createTRPCRouter({
         });
       }
 
-      const existing = await db.supportTicket.findUnique({
-        where: { id: input.id },
-        select: { id: true, status: true },
-      });
-
-      if (!existing) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Ticket not found" });
-      }
+      const existing = await loadTicketForTenant(input.id, ctx);
 
       const newStatus =
         input.assignedToId !== null && existing.status === "open"
@@ -247,15 +247,8 @@ const ticketRouter = createTRPCRouter({
         status: ticketStatusSchema,
       })
     )
-    .mutation(async ({ input }) => {
-      const existing = await db.supportTicket.findUnique({
-        where: { id: input.id },
-        select: { id: true, status: true },
-      });
-
-      if (!existing) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Ticket not found" });
-      }
+    .mutation(async ({ ctx, input }) => {
+      const existing = await loadTicketForTenant(input.id, ctx);
 
       const allowed = VALID_TRANSITIONS[existing.status as TicketStatus] ?? [];
       if (!allowed.includes(input.status)) {
@@ -282,15 +275,8 @@ const ticketRouter = createTRPCRouter({
 
   close: writeProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
-      const existing = await db.supportTicket.findUnique({
-        where: { id: input.id },
-        select: { id: true, status: true },
-      });
-
-      if (!existing) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Ticket not found" });
-      }
+    .mutation(async ({ ctx, input }) => {
+      const existing = await loadTicketForTenant(input.id, ctx);
 
       if (existing.status !== "resolved") {
         throw new TRPCError({
@@ -313,14 +299,7 @@ const commentRouter = createTRPCRouter({
   list: protectedProcedure
     .input(z.object({ ticketId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const ticket = await db.supportTicket.findUnique({
-        where: { id: input.ticketId },
-        select: { id: true },
-      });
-
-      if (!ticket) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Ticket not found" });
-      }
+      await loadTicketForTenant(input.ticketId, ctx);
 
       const isPrivileged =
         ctx.roles?.includes("Administrator") === true ||
@@ -354,14 +333,7 @@ const commentRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const ticket = await db.supportTicket.findUnique({
-        where: { id: input.ticketId },
-        select: { id: true },
-      });
-
-      if (!ticket) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Ticket not found" });
-      }
+      await loadTicketForTenant(input.ticketId, ctx);
 
       const isPrivileged =
         ctx.roles?.includes("Administrator") === true ||
@@ -373,6 +345,7 @@ const commentRouter = createTRPCRouter({
       return db.ticketComment.create({
         data: {
           ticketId: input.ticketId,
+          tenantId: ctx.tenantId,
           userId: ctx.userId,
           content: input.content,
           isInternal,
@@ -384,15 +357,8 @@ const commentRouter = createTRPCRouter({
 const attachmentRouter = createTRPCRouter({
   list: protectedProcedure
     .input(z.object({ ticketId: z.string() }))
-    .query(async ({ input }) => {
-      const ticket = await db.supportTicket.findUnique({
-        where: { id: input.ticketId },
-        select: { id: true },
-      });
-
-      if (!ticket) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Ticket not found" });
-      }
+    .query(async ({ ctx, input }) => {
+      await loadTicketForTenant(input.ticketId, ctx);
 
       return db.ticketAttachment.findMany({
         where: { ticketId: input.ticketId },

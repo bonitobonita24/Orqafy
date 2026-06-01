@@ -59,6 +59,14 @@ const jobOrderInput = z.object({
   warranty: z.string().max(200).optional(),
 });
 
+async function loadJobOrderForTenant(id: string, ctx: { tenantId: string }) {
+  const jo = await db.jobOrder.findUnique({ where: { id } });
+  if (!jo || jo.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Job order not found" });
+  }
+  return jo;
+}
+
 export const jobOrderRouter = createTRPCRouter({
   list: protectedProcedure
     .input(
@@ -71,8 +79,9 @@ export const jobOrderRouter = createTRPCRouter({
         search: z.string().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.status !== undefined && input.status !== "" ? { status: input.status } : {}),
         ...(input.priority !== undefined && input.priority !== "" ? { priority: input.priority } : {}),
         ...(input.technicianId !== undefined ? { technicianId: input.technicianId } : {}),
@@ -106,8 +115,9 @@ export const jobOrderRouter = createTRPCRouter({
     .query(async ({ input, ctx }) => {
       const ip = ctx.req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
       rateLimiters.api.check(ip);
+      const jo = await loadJobOrderForTenant(input.id, ctx);
       const item = await db.jobOrder.findUnique({
-        where: { id: input.id },
+        where: { id: jo.id },
         include: {
           customer: true,
           createdBy: { select: { firstName: true, lastName: true } },
@@ -125,6 +135,7 @@ export const jobOrderRouter = createTRPCRouter({
     .query(async ({ input, ctx }) => {
       const ip = ctx.req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
       rateLimiters.public_invoice.check(ip);
+      await loadJobOrderForTenant(input.id, ctx);
       const item = await db.jobOrder.findUnique({
         where: { id: input.id },
         select: {
@@ -156,6 +167,7 @@ export const jobOrderRouter = createTRPCRouter({
       const jobOrderNumber = `JO-${Date.now()}`;
       return db.jobOrder.create({
         data: {
+          tenantId: ctx.tenantId,
           jobOrderNumber,
           customerId: input.customerId,
           createdById: ctx.userId,
@@ -184,9 +196,8 @@ export const jobOrderRouter = createTRPCRouter({
         laborCost: z.number().min(0).optional(),
       })
     )
-    .mutation(async ({ input }) => {
-      const existing = await db.jobOrder.findUnique({ where: { id: input.id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      const existing = await loadJobOrderForTenant(input.id, ctx);
 
       if (input.status !== existing.status) {
         const allowed = allowedTransitions[existing.status as JobOrderStatus];
@@ -232,9 +243,8 @@ export const jobOrderRouter = createTRPCRouter({
 
   assignTechnician: writeProcedure
     .input(z.object({ id: z.string().cuid(), technicianId: z.string().cuid() }))
-    .mutation(async ({ input }) => {
-      const existing = await db.jobOrder.findUnique({ where: { id: input.id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      const existing = await loadJobOrderForTenant(input.id, ctx);
       const technician = await db.user.findUnique({ where: { id: input.technicianId } });
       if (!technician) throw new TRPCError({ code: "BAD_REQUEST", message: "Technician not found." });
       return db.jobOrder.update({
@@ -254,9 +264,8 @@ export const jobOrderRouter = createTRPCRouter({
         isFromInventory: z.boolean().default(false),
       })
     )
-    .mutation(async ({ input }) => {
-      const jobOrder = await db.jobOrder.findUnique({ where: { id: input.jobOrderId } });
-      if (!jobOrder) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      const jobOrder = await loadJobOrderForTenant(input.jobOrderId, ctx);
       if (!lineItemEditableStatuses.has(jobOrder.status)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -270,6 +279,7 @@ export const jobOrderRouter = createTRPCRouter({
       const totalPrice = input.quantity * input.unitPrice;
       return db.jobOrderPart.create({
         data: {
+          tenantId: ctx.tenantId,
           jobOrderId: input.jobOrderId,
           description: sanitizePlainText(input.description),
           quantity: input.quantity,
@@ -283,12 +293,12 @@ export const jobOrderRouter = createTRPCRouter({
 
   removePart: writeProcedure
     .input(z.object({ id: z.string().cuid() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const part = await db.jobOrderPart.findUnique({
         where: { id: input.id },
-        include: { jobOrder: { select: { status: true } } },
+        include: { jobOrder: { select: { status: true, tenantId: true } } },
       });
-      if (!part) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!part || part.jobOrder.tenantId !== ctx.tenantId) throw new TRPCError({ code: "NOT_FOUND" });
       if (!lineItemEditableStatuses.has(part.jobOrder.status)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -310,9 +320,8 @@ export const jobOrderRouter = createTRPCRouter({
         sortOrder: z.number().int().min(0).default(0),
       })
     )
-    .mutation(async ({ input }) => {
-      const jobOrder = await db.jobOrder.findUnique({ where: { id: input.jobOrderId } });
-      if (!jobOrder) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ input, ctx }) => {
+      const jobOrder = await loadJobOrderForTenant(input.jobOrderId, ctx);
       if (!lineItemEditableStatuses.has(jobOrder.status)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -321,6 +330,7 @@ export const jobOrderRouter = createTRPCRouter({
       }
       return db.jobOrderServiceLine.create({
         data: {
+          tenantId: ctx.tenantId,
           jobOrderId: input.jobOrderId,
           description: sanitizePlainText(input.description),
           amount: input.amount,
@@ -333,12 +343,12 @@ export const jobOrderRouter = createTRPCRouter({
 
   removeServiceLine: writeProcedure
     .input(z.object({ id: z.string().cuid() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const line = await db.jobOrderServiceLine.findUnique({
         where: { id: input.id },
-        include: { jobOrder: { select: { status: true } } },
+        include: { jobOrder: { select: { status: true, tenantId: true } } },
       });
-      if (!line) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!line || line.jobOrder.tenantId !== ctx.tenantId) throw new TRPCError({ code: "NOT_FOUND" });
       if (!lineItemEditableStatuses.has(line.jobOrder.status)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -357,15 +367,14 @@ export const jobOrderRouter = createTRPCRouter({
         dataUrl: z.string().min(1).max(MAX_SIGNATURE_DATA_URL_LENGTH),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       if (!input.dataUrl.startsWith(SIGNATURE_DATA_URL_PREFIX)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Signature must be a PNG data URL.",
         });
       }
-      const existing = await db.jobOrder.findUnique({ where: { id: input.id } });
-      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      const existing = await loadJobOrderForTenant(input.id, ctx);
       if (!signatureCapturableStatuses.has(existing.status)) {
         throw new TRPCError({
           code: "BAD_REQUEST",

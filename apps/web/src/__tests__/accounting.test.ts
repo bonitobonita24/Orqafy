@@ -477,6 +477,12 @@ describe("accounting.journalEntry.create", () => {
 
   it("creates a journal entry with balanced lines", async () => {
     const created = { ...sampleJournalEntry, id: "cuid-new-je" };
+    mockDb.fiscalYear.findUnique.mockResolvedValueOnce(sampleFiscalYear);
+    mockDb.account.findMany.mockResolvedValueOnce([
+      { id: "cuid-acc-1", tenantId: "acme-tenant-id" },
+      { id: "cuid-acc-2", tenantId: "acme-tenant-id" },
+    ]);
+    mockDb.journalEntry.count.mockResolvedValueOnce(0);
     mockDb.journalEntry.create.mockResolvedValue(created);
 
     const caller = createCaller(authenticatedCtx());
