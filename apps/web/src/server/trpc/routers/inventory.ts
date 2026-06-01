@@ -131,9 +131,10 @@ export const inventoryRouter = createTRPCRouter({
   // ── Categories ────────────────────────────────────────────────────────────
   categoryList: protectedProcedure
     .input(z.object({ isActive: z.boolean().optional() }).default({}))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       return db.category.findMany({
         where: {
+          tenantId: ctx.tenantId,
           ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
         },
         orderBy: { sortOrder: "asc" },
@@ -150,9 +151,10 @@ export const inventoryRouter = createTRPCRouter({
         sortOrder: z.number().int().min(0).default(0),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       return db.category.create({
         data: {
+          tenantId: ctx.tenantId,
           name: input.name,
           slug: input.slug,
           description: input.description ?? null,
@@ -174,9 +176,9 @@ export const inventoryRouter = createTRPCRouter({
         isActive: z.boolean().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
-      const existing = await db.category.findUnique({ where: { id } });
+      const existing = await db.category.findFirst({ where: { id, tenantId: ctx.tenantId } });
       if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
       return db.category.update({
         where: { id },
@@ -193,8 +195,8 @@ export const inventoryRouter = createTRPCRouter({
 
   categoryToggleActive: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
-      const existing = await db.category.findUnique({ where: { id: input.id } });
+    .mutation(async ({ ctx, input }) => {
+      const existing = await db.category.findFirst({ where: { id: input.id, tenantId: ctx.tenantId } });
       if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
       return db.category.update({
         where: { id: input.id },
@@ -308,8 +310,9 @@ export const inventoryRouter = createTRPCRouter({
         type: z.enum(["in", "out", "adjustment", "transfer"]).optional(),
       }).default({})
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.productId !== undefined ? { productId: input.productId } : {}),
         ...(input.type !== undefined ? { type: input.type } : {}),
         ...(input.warehouseId !== undefined
@@ -336,9 +339,9 @@ export const inventoryRouter = createTRPCRouter({
 
   stockMovementById: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .query(async ({ input }) => {
-      const item = await db.stockMovement.findUnique({
-        where: { id: input.id },
+    .query(async ({ ctx, input }) => {
+      const item = await db.stockMovement.findFirst({
+        where: { id: input.id, tenantId: ctx.tenantId },
         include: { product: true, fromWarehouse: true, toWarehouse: true },
       });
       if (item === null) throw new TRPCError({ code: "NOT_FOUND" });
@@ -373,6 +376,7 @@ export const inventoryRouter = createTRPCRouter({
       }
       return db.stockMovement.create({
         data: {
+          tenantId: ctx.tenantId,
           type: input.type,
           productId: input.productId,
           quantity: input.quantity,
@@ -402,6 +406,7 @@ export const inventoryRouter = createTRPCRouter({
       }
       return db.stockMovement.create({
         data: {
+          tenantId: ctx.tenantId,
           type: "transfer",
           productId: input.productId,
           quantity: input.quantity,
@@ -427,6 +432,7 @@ export const inventoryRouter = createTRPCRouter({
     .mutation(async ({ input, ctx }) => {
       return db.stockMovement.create({
         data: {
+          tenantId: ctx.tenantId,
           type: "adjustment",
           productId: input.productId,
           quantity: Math.abs(input.quantity),

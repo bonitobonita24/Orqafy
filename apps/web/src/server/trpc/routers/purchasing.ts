@@ -658,6 +658,7 @@ export const goodsReceiptRouter = createTRPCRouter({
 
               await tx.stockMovement.create({
                 data: {
+                  tenantId: ctx.tenantId,
                   productId,
                   type: "in",
                   quantity: allocatedQty,

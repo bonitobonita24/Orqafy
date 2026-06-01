@@ -137,7 +137,7 @@ describe("pos.session.list", () => {
     expect(result.total).toBe(1);
     expect(result.items).toHaveLength(1);
     expect(mockDb.pOSSession.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: {}, skip: 0, take: 20 }),
+      expect.objectContaining({ where: { tenantId: "acme-tenant-id" }, skip: 0, take: 20 }),
     );
   });
 
@@ -151,7 +151,7 @@ describe("pos.session.list", () => {
 
     expect(mockDb.pOSSession.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { status: "closed", userId },
+        where: { tenantId: "acme-tenant-id", status: "closed", userId },
       }),
     );
   });
@@ -166,7 +166,7 @@ describe("pos.session.list", () => {
 
 describe("pos.session.byId", () => {
   it("returns session with user + sales", async () => {
-    mockDb.pOSSession.findUnique.mockResolvedValue({
+    mockDb.pOSSession.findFirst.mockResolvedValue({
       id: SESSION_ID,
       sessionNumber: "POS-2605-0001",
       status: "open",
@@ -180,7 +180,7 @@ describe("pos.session.byId", () => {
   });
 
   it("throws NOT_FOUND when missing", async () => {
-    mockDb.pOSSession.findUnique.mockResolvedValue(null);
+    mockDb.pOSSession.findFirst.mockResolvedValue(null);
     const caller = createCaller(authenticatedCtx());
     await expect(caller.pos.session.byId({ id: SESSION_ID })).rejects.toMatchObject({
       code: "NOT_FOUND",
@@ -248,7 +248,7 @@ describe("pos.session.open", () => {
 
 describe("pos.session.close", () => {
   it("computes expectedBalance = opening + cash sales, discrepancy = closing - expected", async () => {
-    mockDb.pOSSession.findUnique.mockResolvedValue({
+    mockDb.pOSSession.findFirst.mockResolvedValue({
       id: SESSION_ID,
       openingBalance: 5000,
       status: "open",
@@ -282,7 +282,7 @@ describe("pos.session.close", () => {
   });
 
   it("handles a session with no cash sales (discrepancy = closing - opening)", async () => {
-    mockDb.pOSSession.findUnique.mockResolvedValue({
+    mockDb.pOSSession.findFirst.mockResolvedValue({
       id: SESSION_ID,
       openingBalance: 5000,
       status: "open",
@@ -299,7 +299,7 @@ describe("pos.session.close", () => {
   });
 
   it("rejects when session is already closed", async () => {
-    mockDb.pOSSession.findUnique.mockResolvedValue({
+    mockDb.pOSSession.findFirst.mockResolvedValue({
       id: SESSION_ID,
       openingBalance: 5000,
       status: "closed",
@@ -311,7 +311,7 @@ describe("pos.session.close", () => {
   });
 
   it("rejects when session not found", async () => {
-    mockDb.pOSSession.findUnique.mockResolvedValue(null);
+    mockDb.pOSSession.findFirst.mockResolvedValue(null);
     const caller = createCaller(authenticatedCtx());
     await expect(
       caller.pos.session.close({ id: SESSION_ID, closingBalance: 5000 }),
@@ -363,6 +363,7 @@ describe("pos.sale.list", () => {
     expect(mockDb.pOSSale.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
+          tenantId: "acme-tenant-id",
           sessionId: SESSION_ID,
           status: "completed",
           paymentMethod: "gcash",
@@ -376,7 +377,7 @@ describe("pos.sale.list", () => {
 
 describe("pos.sale.byId", () => {
   it("returns the sale with items and session", async () => {
-    mockDb.pOSSale.findUnique.mockResolvedValue({
+    mockDb.pOSSale.findFirst.mockResolvedValue({
       id: SALE_ID,
       saleNumber: "SALE-2605-0001",
       items: [],
@@ -388,7 +389,7 @@ describe("pos.sale.byId", () => {
   });
 
   it("throws NOT_FOUND when missing", async () => {
-    mockDb.pOSSale.findUnique.mockResolvedValue(null);
+    mockDb.pOSSale.findFirst.mockResolvedValue(null);
     const caller = createCaller(authenticatedCtx());
     await expect(caller.pos.sale.byId({ id: SALE_ID })).rejects.toMatchObject({
       code: "NOT_FOUND",
@@ -400,7 +401,7 @@ describe("pos.sale.byId", () => {
 
 describe("pos.sale.create", () => {
   function setupHappyPath() {
-    mockDb.pOSSession.findUnique.mockResolvedValue({
+    mockDb.pOSSession.findFirst.mockResolvedValue({
       id: SESSION_ID,
       status: "open",
     });
@@ -529,7 +530,7 @@ describe("pos.sale.create", () => {
   });
 
   it("rejects when session is closed", async () => {
-    mockDb.pOSSession.findUnique.mockResolvedValue({
+    mockDb.pOSSession.findFirst.mockResolvedValue({
       id: SESSION_ID,
       status: "closed",
     });
@@ -555,7 +556,7 @@ describe("pos.sale.create", () => {
   });
 
   it("rejects when session not found", async () => {
-    mockDb.pOSSession.findUnique.mockResolvedValue(null);
+    mockDb.pOSSession.findFirst.mockResolvedValue(null);
 
     const caller = createCaller(authenticatedCtx());
     await expect(
@@ -577,7 +578,7 @@ describe("pos.sale.create", () => {
   });
 
   it("rejects when a referenced product does not exist", async () => {
-    mockDb.pOSSession.findUnique.mockResolvedValue({
+    mockDb.pOSSession.findFirst.mockResolvedValue({
       id: SESSION_ID,
       status: "open",
     });
@@ -628,7 +629,7 @@ describe("pos.sale.create", () => {
   });
 
   it("rejects amountPaid less than totalAmount", async () => {
-    mockDb.pOSSession.findUnique.mockResolvedValue({
+    mockDb.pOSSession.findFirst.mockResolvedValue({
       id: SESSION_ID,
       status: "open",
     });
@@ -649,7 +650,7 @@ describe("pos.sale.create", () => {
   });
 
   it("requires non-cash payments to equal totalAmount exactly", async () => {
-    mockDb.pOSSession.findUnique.mockResolvedValue({
+    mockDb.pOSSession.findFirst.mockResolvedValue({
       id: SESSION_ID,
       status: "open",
     });
@@ -694,7 +695,7 @@ describe("pos.sale.create", () => {
   });
 
   it("rejects when discount exceeds subtotal + tax (negative total)", async () => {
-    mockDb.pOSSession.findUnique.mockResolvedValue({
+    mockDb.pOSSession.findFirst.mockResolvedValue({
       id: SESSION_ID,
       status: "open",
     });
@@ -739,7 +740,7 @@ describe("pos.sale.void", () => {
     quantity: number;
     fromWarehouseId: string | null;
   }> = []) {
-    mockDb.pOSSale.findUnique.mockResolvedValue({
+    mockDb.pOSSale.findFirst.mockResolvedValue({
       id: SALE_ID,
       status: "completed",
     });
@@ -775,6 +776,7 @@ describe("pos.sale.void", () => {
 
     expect(mockDb.stockMovement.findMany).toHaveBeenCalledWith({
       where: {
+        tenantId: "acme-tenant-id",
         referenceType: "pos_sale",
         referenceId: SALE_ID,
         type: "out",
@@ -822,7 +824,7 @@ describe("pos.sale.void", () => {
   });
 
   it("rejects when sale is already voided", async () => {
-    mockDb.pOSSale.findUnique.mockResolvedValue({
+    mockDb.pOSSale.findFirst.mockResolvedValue({
       id: SALE_ID,
       status: "voided",
     });
@@ -835,7 +837,7 @@ describe("pos.sale.void", () => {
   });
 
   it("rejects when sale is refunded", async () => {
-    mockDb.pOSSale.findUnique.mockResolvedValue({
+    mockDb.pOSSale.findFirst.mockResolvedValue({
       id: SALE_ID,
       status: "refunded",
     });
@@ -846,7 +848,7 @@ describe("pos.sale.void", () => {
   });
 
   it("rejects when sale not found", async () => {
-    mockDb.pOSSale.findUnique.mockResolvedValue(null);
+    mockDb.pOSSale.findFirst.mockResolvedValue(null);
     const caller = createCaller(authenticatedCtx());
     await expect(
       caller.pos.sale.void({ id: SALE_ID, reason: "x" }),

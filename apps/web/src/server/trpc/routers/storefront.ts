@@ -282,6 +282,7 @@ export const storefrontRouter = createTRPCRouter({
 
           await tx.stockMovement.create({
             data: {
+              tenantId: ctx.tenantId,
               productId: item.productId,
               type: "out",
               quantity: item.quantity,
@@ -472,6 +473,7 @@ export const storefrontRouter = createTRPCRouter({
 
           await tx.stockMovement.create({
             data: {
+              tenantId: tenant.id,
               productId: item.productId,
               type: "out",
               quantity: item.quantity,
@@ -787,6 +789,7 @@ export const storefrontRouter = createTRPCRouter({
           });
           await tx.stockMovement.create({
             data: {
+              tenantId: ctx.tenantId,
               productId: m.productId,
               type: "in",
               quantity: m.quantity,

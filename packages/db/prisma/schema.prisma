@@ -76,6 +76,13 @@ model Tenant {
   productPurchaseHistories     ProductPurchaseHistory[]     @relation("TenantProductPurchaseHistories")
   warehouses                   Warehouse[]                  @relation("TenantWarehouses")
   warehouseStocks              WarehouseStock[]             @relation("TenantWarehouseStocks")
+  stockMovements               StockMovement[]              @relation("TenantStockMovements")
+  categories                   Category[]                   @relation("TenantCategories")
+  inventoryDisbursements       InventoryDisbursement[]      @relation("TenantInventoryDisbursements")
+  inventoryDisbursementItems   InventoryDisbursementItem[]  @relation("TenantInventoryDisbursementItems")
+  posSessions                  POSSession[]                 @relation("TenantPOSSessions")
+  posSales                     POSSale[]                    @relation("TenantPOSSales")
+  posSaleItems                 POSSaleItem[]                @relation("TenantPOSSaleItems")
 
   @@map("tenants")
   @@schema("public")
@@ -1089,8 +1096,10 @@ model ProductSerialNumber {
 
 model Category {
   id          String     @id @default(cuid())
+  tenantId    String     @map("tenant_id")
+  tenant      Tenant     @relation("TenantCategories", fields: [tenantId], references: [id])
   name        String
-  slug        String     @unique
+  slug        String
   description String?
   parentId    String?    @map("parent_id")
   parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
@@ -1102,6 +1111,8 @@ model Category {
 
   products Product[]
 
+  @@unique([tenantId, slug])
+  @@index([tenantId])
   @@map("categories")
   @@schema("public")
 }
@@ -1170,6 +1181,8 @@ model WarehouseStock {
 
 model StockMovement {
   id              String     @id @default(cuid())
+  tenantId        String     @map("tenant_id")
+  tenant          Tenant     @relation("TenantStockMovements", fields: [tenantId], references: [id])
   productId       String     @map("product_id")
   product         Product    @relation(fields: [productId], references: [id])
   type            String // in | out | adjustment | transfer
@@ -1186,6 +1199,7 @@ model StockMovement {
   createdBy       User       @relation("StockMovementCreatedBy", fields: [createdById], references: [id])
   createdAt       DateTime   @default(now()) @map("created_at")
 
+  @@index([tenantId])
   @@index([productId])
   @@index([type])
   @@map("stock_movements")
@@ -1194,6 +1208,8 @@ model StockMovement {
 
 model InventoryDisbursement {
   id                 String    @id @default(cuid())
+  tenantId           String    @map("tenant_id")
+  tenant             Tenant    @relation("TenantInventoryDisbursements", fields: [tenantId], references: [id])
   disbursementNumber String    @unique @map("disbursement_number")
   projectId          String    @map("project_id")
   project            Project   @relation(fields: [projectId], references: [id])
@@ -1212,12 +1228,15 @@ model InventoryDisbursement {
 
   items InventoryDisbursementItem[]
 
+  @@index([tenantId])
   @@map("inventory_disbursements")
   @@schema("public")
 }
 
 model InventoryDisbursementItem {
   id              String                @id @default(cuid())
+  tenantId        String                @map("tenant_id")
+  tenant          Tenant                @relation("TenantInventoryDisbursementItems", fields: [tenantId], references: [id])
   disbursementId  String                @map("disbursement_id")
   disbursement    InventoryDisbursement @relation(fields: [disbursementId], references: [id], onDelete: Cascade)
   productId       String                @map("product_id")
@@ -1228,6 +1247,7 @@ model InventoryDisbursementItem {
   createdAt       DateTime              @default(now()) @map("created_at")
   updatedAt       DateTime              @updatedAt @map("updated_at")
 
+  @@index([tenantId])
   @@index([disbursementId])
   @@map("inventory_disbursement_items")
   @@schema("public")
@@ -1963,6 +1983,8 @@ model Expense {
 
 model POSSession {
   id              String    @id @default(cuid())
+  tenantId        String    @map("tenant_id")
+  tenant          Tenant    @relation("TenantPOSSessions", fields: [tenantId], references: [id])
   sessionNumber   String    @unique @map("session_number")
   userId          String    @map("user_id")
   user            User      @relation(fields: [userId], references: [id])
@@ -1979,6 +2001,7 @@ model POSSession {
 
   sales POSSale[]
 
+  @@index([tenantId])
   @@index([userId])
   @@map("pos_sessions")
   @@schema("public")
@@ -1986,6 +2009,8 @@ model POSSession {
 
 model POSSale {
   id             String     @id @default(cuid())
+  tenantId       String     @map("tenant_id")
+  tenant         Tenant     @relation("TenantPOSSales", fields: [tenantId], references: [id])
   saleNumber     String     @unique @map("sale_number")
   sessionId      String     @map("session_id")
   session        POSSession @relation(fields: [sessionId], references: [id])
@@ -2004,6 +2029,7 @@ model POSSale {
 
   items POSSaleItem[]
 
+  @@index([tenantId])
   @@index([sessionId])
   @@map("pos_sales")
   @@schema("public")
@@ -2011,6 +2037,8 @@ model POSSale {
 
 model POSSaleItem {
   id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  tenant          Tenant   @relation("TenantPOSSaleItems", fields: [tenantId], references: [id])
   saleId          String   @map("sale_id")
   sale            POSSale  @relation(fields: [saleId], references: [id], onDelete: Cascade)
   productId       String   @map("product_id")
@@ -2022,6 +2050,7 @@ model POSSaleItem {
   serialNumberIds Json?    @map("serial_number_ids")
   createdAt       DateTime @default(now()) @map("created_at")
 
+  @@index([tenantId])
   @@index([saleId])
   @@map("pos_sale_items")
   @@schema("public")

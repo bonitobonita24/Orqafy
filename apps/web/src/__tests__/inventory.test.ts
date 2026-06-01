@@ -34,6 +34,7 @@ vi.mock("@orqafy/db", () => ({
     category: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
     },
@@ -50,6 +51,7 @@ vi.mock("@orqafy/db", () => ({
     stockMovement: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       count: vi.fn(),
     },
@@ -103,6 +105,7 @@ const mockDb = db as unknown as {
   category: {
     findMany: ReturnType<typeof vi.fn>;
     findUnique: ReturnType<typeof vi.fn>;
+    findFirst: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
   };
@@ -119,6 +122,7 @@ const mockDb = db as unknown as {
   stockMovement: {
     findMany: ReturnType<typeof vi.fn>;
     findUnique: ReturnType<typeof vi.fn>;
+    findFirst: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
     count: ReturnType<typeof vi.fn>;
   };
@@ -428,7 +432,7 @@ describe("inventory.categoryUpdate", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it("updates category name", async () => {
-    mockDb.category.findUnique.mockResolvedValue(sampleCategory);
+    mockDb.category.findFirst.mockResolvedValue(sampleCategory);
     mockDb.category.update.mockResolvedValue({ ...sampleCategory, name: "Gadgets" });
 
     const caller = createCaller(authenticatedCtx());
@@ -439,7 +443,7 @@ describe("inventory.categoryUpdate", () => {
   });
 
   it("throws NOT_FOUND for nonexistent category", async () => {
-    mockDb.category.findUnique.mockResolvedValue(null);
+    mockDb.category.findFirst.mockResolvedValue(null);
 
     const caller = createCaller(authenticatedCtx());
     await expect(
@@ -455,7 +459,7 @@ describe("inventory.categoryToggleActive", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it("toggles active → inactive", async () => {
-    mockDb.category.findUnique.mockResolvedValue({ ...sampleCategory, isActive: true });
+    mockDb.category.findFirst.mockResolvedValue({ ...sampleCategory, isActive: true });
     mockDb.category.update.mockResolvedValue({ ...sampleCategory, isActive: false });
 
     const caller = createCaller(authenticatedCtx());
@@ -469,7 +473,7 @@ describe("inventory.categoryToggleActive", () => {
   });
 
   it("toggles inactive → active", async () => {
-    mockDb.category.findUnique.mockResolvedValue({ ...sampleCategory, isActive: false });
+    mockDb.category.findFirst.mockResolvedValue({ ...sampleCategory, isActive: false });
     mockDb.category.update.mockResolvedValue({ ...sampleCategory, isActive: true });
 
     const caller = createCaller(authenticatedCtx());
@@ -479,7 +483,7 @@ describe("inventory.categoryToggleActive", () => {
   });
 
   it("throws NOT_FOUND for nonexistent category", async () => {
-    mockDb.category.findUnique.mockResolvedValue(null);
+    mockDb.category.findFirst.mockResolvedValue(null);
 
     const caller = createCaller(authenticatedCtx());
     await expect(
@@ -694,17 +698,17 @@ describe("inventory.stockMovementById", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it("returns a single stock movement by id", async () => {
-    mockDb.stockMovement.findUnique.mockResolvedValue(sampleStockMovement);
+    mockDb.stockMovement.findFirst.mockResolvedValue(sampleStockMovement);
 
     const caller = createCaller(authenticatedCtx());
     const result = await caller.inventory.stockMovementById({ id: "sm-1" });
 
     expect(result.id).toBe("sm-1");
-    expect(mockDb.stockMovement.findUnique).toHaveBeenCalledOnce();
+    expect(mockDb.stockMovement.findFirst).toHaveBeenCalledOnce();
   });
 
   it("throws NOT_FOUND when movement does not exist", async () => {
-    mockDb.stockMovement.findUnique.mockResolvedValue(null);
+    mockDb.stockMovement.findFirst.mockResolvedValue(null);
 
     const caller = createCaller(authenticatedCtx());
     await expect(caller.inventory.stockMovementById({ id: "no-such" })).rejects.toMatchObject({

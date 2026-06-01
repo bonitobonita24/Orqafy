@@ -5,13 +5,13 @@ import { prisma as db } from "@orqafy/db";
 
 // ── Sequence helpers ──────────────────────────────────────────────────────────
 
-async function generateSessionNumber(): Promise<string> {
+async function generateSessionNumber(tenantId: string): Promise<string> {
   const now = new Date();
   const yy = String(now.getFullYear()).slice(-2);
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   const prefix = `POS-${yy}${mm}-`;
   const last = await db.pOSSession.findFirst({
-    where: { sessionNumber: { startsWith: prefix } },
+    where: { tenantId, sessionNumber: { startsWith: prefix } },
     orderBy: { sessionNumber: "desc" },
     select: { sessionNumber: true },
   });
@@ -21,13 +21,13 @@ async function generateSessionNumber(): Promise<string> {
   return `${prefix}${String(seq).padStart(4, "0")}`;
 }
 
-async function generateSaleNumber(): Promise<string> {
+async function generateSaleNumber(tenantId: string): Promise<string> {
   const now = new Date();
   const yy = String(now.getFullYear()).slice(-2);
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   const prefix = `SALE-${yy}${mm}-`;
   const last = await db.pOSSale.findFirst({
-    where: { saleNumber: { startsWith: prefix } },
+    where: { tenantId, saleNumber: { startsWith: prefix } },
     orderBy: { saleNumber: "desc" },
     select: { saleNumber: true },
   });
@@ -64,8 +64,9 @@ const sessionRouter = createTRPCRouter({
         })
         .default({}),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.status !== undefined && { status: input.status }),
         ...(input.userId !== undefined && { userId: input.userId }),
       };
@@ -87,9 +88,9 @@ const sessionRouter = createTRPCRouter({
       return { items, total };
     }),
 
-  byId: protectedProcedure.input(z.object({ id: cuid })).query(async ({ input }) => {
-    const session = await db.pOSSession.findUnique({
-      where: { id: input.id },
+  byId: protectedProcedure.input(z.object({ id: cuid })).query(async ({ ctx, input }) => {
+    const session = await db.pOSSession.findFirst({
+      where: { id: input.id, tenantId: ctx.tenantId },
       include: {
         user: {
           select: { id: true, firstName: true, lastName: true, displayName: true },
@@ -113,7 +114,7 @@ const sessionRouter = createTRPCRouter({
         throw new TRPCError({ code: "UNAUTHORIZED" });
       }
       const existing = await db.pOSSession.findFirst({
-        where: { userId: ctx.userId, status: "open" },
+        where: { tenantId: ctx.tenantId, userId: ctx.userId, status: "open" },
         select: { id: true, sessionNumber: true },
       });
       if (existing !== null) {
@@ -122,9 +123,10 @@ const sessionRouter = createTRPCRouter({
           message: `You already have an open session: ${existing.sessionNumber}.`,
         });
       }
-      const sessionNumber = await generateSessionNumber();
+      const sessionNumber = await generateSessionNumber(ctx.tenantId);
       return db.pOSSession.create({
         data: {
+          tenantId: ctx.tenantId,
           sessionNumber,
           userId: ctx.userId,
           openingBalance: input.openingBalance,
@@ -142,9 +144,9 @@ const sessionRouter = createTRPCRouter({
         notes: z.string().optional(),
       }),
     )
-    .mutation(async ({ input }) => {
-      const session = await db.pOSSession.findUnique({
-        where: { id: input.id },
+    .mutation(async ({ ctx, input }) => {
+      const session = await db.pOSSession.findFirst({
+        where: { id: input.id, tenantId: ctx.tenantId },
         select: { id: true, openingBalance: true, status: true },
       });
       if (session === null) {
@@ -195,8 +197,9 @@ const saleRouter = createTRPCRouter({
         })
         .default({}),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.sessionId !== undefined && { sessionId: input.sessionId }),
         ...(input.status !== undefined && { status: input.status }),
         ...(input.paymentMethod !== undefined && { paymentMethod: input.paymentMethod }),
@@ -214,9 +217,9 @@ const saleRouter = createTRPCRouter({
       return { items, total };
     }),
 
-  byId: protectedProcedure.input(z.object({ id: cuid })).query(async ({ input }) => {
-    const sale = await db.pOSSale.findUnique({
-      where: { id: input.id },
+  byId: protectedProcedure.input(z.object({ id: cuid })).query(async ({ ctx, input }) => {
+    const sale = await db.pOSSale.findFirst({
+      where: { id: input.id, tenantId: ctx.tenantId },
       include: {
         items: { orderBy: { createdAt: "asc" } },
         session: { select: { id: true, sessionNumber: true, status: true } },
@@ -247,8 +250,8 @@ const saleRouter = createTRPCRouter({
         throw new TRPCError({ code: "UNAUTHORIZED" });
       }
 
-      const session = await db.pOSSession.findUnique({
-        where: { id: input.sessionId },
+      const session = await db.pOSSession.findFirst({
+        where: { id: input.sessionId, tenantId: ctx.tenantId },
         select: { id: true, status: true },
       });
       if (session === null) {
@@ -261,10 +264,10 @@ const saleRouter = createTRPCRouter({
         });
       }
 
-      // Validate every product exists.
+      // Validate every product exists within this tenant.
       const productIds = input.items.map((i) => i.productId);
       const products = await db.product.findMany({
-        where: { id: { in: productIds } },
+        where: { id: { in: productIds }, tenantId: ctx.tenantId },
         select: { id: true },
       });
       if (products.length !== new Set(productIds).size) {
@@ -303,13 +306,15 @@ const saleRouter = createTRPCRouter({
         });
       }
 
-      const saleNumber = await generateSaleNumber();
+      const saleNumber = await generateSaleNumber(ctx.tenantId);
 
       const userId = ctx.userId;
+      const tenantId = ctx.tenantId;
 
       return db.$transaction(async (tx) => {
         const sale = await tx.pOSSale.create({
           data: {
+            tenantId,
             saleNumber,
             sessionId: input.sessionId,
             ...(input.customerId !== undefined && { customerId: input.customerId }),
@@ -328,6 +333,7 @@ const saleRouter = createTRPCRouter({
           const lineTotal = item.quantity * item.unitPrice;
           await tx.pOSSaleItem.create({
             data: {
+              tenantId,
               saleId: sale.id,
               productId: item.productId,
               description: item.description,
@@ -338,6 +344,7 @@ const saleRouter = createTRPCRouter({
           });
           await tx.stockMovement.create({
             data: {
+              tenantId,
               productId: item.productId,
               type: "out",
               quantity: item.quantity,
@@ -361,8 +368,8 @@ const saleRouter = createTRPCRouter({
         throw new TRPCError({ code: "UNAUTHORIZED" });
       }
 
-      const sale = await db.pOSSale.findUnique({
-        where: { id: input.id },
+      const sale = await db.pOSSale.findFirst({
+        where: { id: input.id, tenantId: ctx.tenantId },
         select: { id: true, status: true },
       });
       if (sale === null) {
@@ -375,11 +382,9 @@ const saleRouter = createTRPCRouter({
         });
       }
 
-      // Phase 2: reverse each original out-movement so on-hand stock returns to
-      // its source warehouse. Pre-Phase-1 sales (or sales that never produced
-      // movements) still flip status cleanly when the find returns [].
       const movements = await db.stockMovement.findMany({
         where: {
+          tenantId: ctx.tenantId,
           referenceType: "pos_sale",
           referenceId: input.id,
           type: "out",
@@ -392,11 +397,13 @@ const saleRouter = createTRPCRouter({
       });
 
       const userId = ctx.userId;
+      const tenantId = ctx.tenantId;
 
       return db.$transaction(async (tx) => {
         for (const m of movements) {
           await tx.stockMovement.create({
             data: {
+              tenantId,
               productId: m.productId,
               type: "in",
               quantity: m.quantity,
