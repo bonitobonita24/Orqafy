@@ -1,4 +1,2 @@
-on new session, say "Resume Session. K-prime Extended Phase 2 Wave B"
-    -> claude: I'll need one answer before dispatching: do existing staging/prod Product rows belong to multiple tenants (needs a
-  per-tenant backfill strategy), or single-tenant / dev-only (drop-and-reseed)? Everything else is already scoped in
-  STATE.md.
+Todo:
+  ☐ Item
