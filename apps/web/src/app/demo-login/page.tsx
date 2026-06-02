@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { signIn } from "@/server/auth";
 import { AuthError } from "next-auth";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = { title: "Try the demo — Orqafy" };
 
 async function enterDemo() {

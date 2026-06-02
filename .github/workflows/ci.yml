@@ -93,6 +93,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://orqafy:orqafy_test_password@localhost:5432/orqafy_test?schema=public
           REDIS_URL: redis://localhost:6379
+          SKIP_ENV_VALIDATION: "1"
 
   security:
     name: Dependency vulnerability audit
