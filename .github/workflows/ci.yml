@@ -43,6 +43,29 @@ jobs:
       fail-fast: false
       matrix:
         task: [lint, typecheck, test, build]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: orqafy_test
+          POSTGRES_USER: orqafy
+          POSTGRES_PASSWORD: orqafy_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U orqafy -d orqafy_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      valkey:
+        image: valkey/valkey:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
@@ -52,6 +75,13 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Run db migrations (test task only)
+        if: matrix.task == 'test'
+        env:
+          DATABASE_URL: postgresql://orqafy:orqafy_test_password@localhost:5432/orqafy_test?schema=public
+        run: |
+          pnpm --filter @orqafy/db exec prisma migrate deploy
+          pnpm --filter @orqafy/db exec prisma generate
       - uses: actions/cache@v5
         with:
           path: .turbo
@@ -60,6 +90,9 @@ jobs:
             turbo-${{ runner.os }}-${{ github.ref_name }}-
             turbo-${{ runner.os }}-
       - run: pnpm turbo run ${{ matrix.task }} --cache-dir=.turbo
+        env:
+          DATABASE_URL: postgresql://orqafy:orqafy_test_password@localhost:5432/orqafy_test?schema=public
+          REDIS_URL: redis://localhost:6379
 
   security:
     name: Dependency vulnerability audit

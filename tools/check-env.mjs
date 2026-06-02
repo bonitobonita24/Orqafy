@@ -33,13 +33,25 @@ const REQUIRED_VARS = [
   "PGADMIN_PASSWORD",
 ];
 
-const envFile = process.argv[2] ?? ".env.dev";
-const envPath = resolve(ROOT, envFile);
-
-if (!existsSync(envPath)) {
-  console.error(`❌ ${envFile} not found`);
-  process.exit(1);
+let envFile;
+if (process.argv[2]) {
+  envFile = process.argv[2];
+  const envPath = resolve(ROOT, envFile);
+  if (!existsSync(envPath)) {
+    console.error(`❌ ${envFile} not found`);
+    process.exit(1);
+  }
+} else {
+  if (existsSync(resolve(ROOT, ".env.dev"))) {
+    envFile = ".env.dev";
+  } else if (existsSync(resolve(ROOT, ".env.example"))) {
+    envFile = ".env.example";
+  } else {
+    console.error("❌ Neither .env.dev nor .env.example found");
+    process.exit(1);
+  }
 }
+const envPath = resolve(ROOT, envFile);
 
 const content = readFileSync(envPath, "utf-8");
 const lines = content.split("\n");
