@@ -126,6 +126,7 @@ model Tenant {
   jobOrders                    JobOrder[]                   @relation("TenantJobOrders")
   jobOrderParts                JobOrderPart[]               @relation("TenantJobOrderParts")
   jobOrderServiceLines         JobOrderServiceLine[]        @relation("TenantJobOrderServiceLines")
+  users                        User[]                       @relation("TenantUsers")
   roles                        Role[]                       @relation("TenantRoles")
   departments                  Department[]                 @relation("TenantDepartments")
 
@@ -288,6 +289,8 @@ model TenantAuditLog {
 
 model User {
   id              String      @id @default(cuid())
+  tenantId        String      @map("tenant_id")
+  tenant          Tenant      @relation("TenantUsers", fields: [tenantId], references: [id])
   email           String      @unique
   passwordHash    String      @map("password_hash")
   firstName       String      @map("first_name")
@@ -341,6 +344,7 @@ model User {
   projectNotes                    ProjectNote[]
   contactLogs                     ContactLog[]            @relation("ContactLogCreatedBy")
 
+  @@index([tenantId])
   @@map("users")
   @@schema("public")
 }

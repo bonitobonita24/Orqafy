@@ -74,7 +74,7 @@ export const authConfig: NextAuthConfig = {
         if (tenant?.isActive !== true) return null;
 
         const user = await db.user.findFirst({
-          where: { email, isActive: true },
+          where: { email, tenantId: tenant.id, isActive: true },
           select: {
             id: true,
             email: true,

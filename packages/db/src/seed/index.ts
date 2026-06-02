@@ -7,6 +7,23 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Seeding database...');
 
+  // ── Demo tenant (must exist before roles/users — they reference tenantId) ──
+  const demoTenant = await prisma.tenant.upsert({
+    where: { slug: 'demo' },
+    update: {},
+    create: {
+      name: 'Orqafy Demo',
+      slug: 'demo',
+      schemaName: 't_demo',
+      status: 'demo',
+      maxUsers: 999,
+      currency: 'PHP',
+      timezone: 'Asia/Manila',
+      locale: 'en-PH',
+    },
+  });
+  console.log(`  ✅ Demo tenant created (id: ${demoTenant.id})`);
+
   // ── Roles ──
   const roleData = [
     { name: 'Platform Owner', slug: 'platform_owner', isSystem: true, sortOrder: 0, permissions: ['*'] },
@@ -27,11 +44,12 @@ async function main() {
   const roles: Record<string, string> = {};
   for (const r of roleData) {
     const role = await prisma.role.upsert({
-      where: { slug: r.slug },
+      where: { tenantId_slug: { tenantId: demoTenant.id, slug: r.slug } },
       update: {},
       create: {
         name: r.name,
         slug: r.slug,
+        tenantId: demoTenant.id,
         isSystem: r.isSystem,
         sortOrder: r.sortOrder,
         permissions: JSON.stringify(r.permissions),
@@ -67,23 +85,6 @@ async function main() {
     });
   }
   console.log(`  ✅ ${planData.length} plans seeded`);
-
-  // ── Demo tenant (public schema — Tenant record only) ──
-  const demoTenant = await prisma.tenant.upsert({
-    where: { slug: 'demo' },
-    update: {},
-    create: {
-      name: 'Orqafy Demo',
-      slug: 'demo',
-      schemaName: 't_demo',
-      status: 'demo',
-      maxUsers: 999,
-      currency: 'PHP',
-      timezone: 'Asia/Manila',
-      locale: 'en-PH',
-    },
-  });
-  console.log(`  ✅ Demo tenant created (id: ${demoTenant.id})`);
 
   // ── Create demo tenant schema + seed tenant-scoped data ──
   const schemaName = 't_demo';
@@ -146,6 +147,7 @@ async function main() {
       lastName: 'Master',
       displayName: 'webmaster',
       roleId: superAdminRoleId,
+      tenantId: demoTenant.id,
       isActive: true,
       securityVersion: 1,
     },
@@ -160,9 +162,9 @@ async function main() {
   for (const name of deptData) {
     const code = name.toLowerCase().replace(/ /g, '-');
     await prisma.$executeRawUnsafe(`
-      INSERT INTO "${schemaName}".departments (id, name, code, is_active, created_at, updated_at)
-      VALUES ('${createId()}', '${name}', '${code}', true, NOW(), NOW())
-      ON CONFLICT (code) DO NOTHING
+      INSERT INTO "${schemaName}".departments (id, tenant_id, name, code, is_active, created_at, updated_at)
+      VALUES ('${createId()}', '${demoTenant.id}', '${name}', '${code}', true, NOW(), NOW())
+      ON CONFLICT (tenant_id, code) DO NOTHING
     `);
   }
   console.log(`  ✅ ${deptData.length} departments seeded`);
@@ -177,34 +179,34 @@ async function main() {
     const name = expenseCats[i] as string;
     const code = name.toLowerCase().replace(/ & /g, '-').replace(/ /g, '-');
     await prisma.$executeRawUnsafe(`
-      INSERT INTO "${schemaName}".expense_categories (id, name, code, is_active, sort_order, created_at, updated_at)
-      VALUES ('${createId()}', '${name}', '${code}', true, ${i}, NOW(), NOW())
-      ON CONFLICT (code) DO NOTHING
+      INSERT INTO "${schemaName}".expense_categories (id, tenant_id, name, code, is_active, sort_order, created_at, updated_at)
+      VALUES ('${createId()}', '${demoTenant.id}', '${name}', '${code}', true, ${i}, NOW(), NOW())
+      ON CONFLICT (tenant_id, code) DO NOTHING
     `);
   }
   console.log(`  ✅ ${expenseCats.length} expense categories seeded`);
 
   // ── TaxRate (VAT 12%) ──
   await prisma.$executeRawUnsafe(`
-    INSERT INTO "${schemaName}".tax_rates (id, name, code, rate, is_default, is_active, created_at, updated_at)
-    VALUES ('${createId()}', 'VAT', 'vat-12', 12.00, true, true, NOW(), NOW())
-    ON CONFLICT (code) DO NOTHING
+    INSERT INTO "${schemaName}".tax_rates (id, tenant_id, name, code, rate, is_default, is_active, created_at, updated_at)
+    VALUES ('${createId()}', '${demoTenant.id}', 'VAT', 'vat-12', 12.00, true, true, NOW(), NOW())
+    ON CONFLICT (tenant_id, code) DO NOTHING
   `);
   console.log('  ✅ Default tax rate (VAT 12%) seeded');
 
   // ── Default warehouse ──
   await prisma.$executeRawUnsafe(`
-    INSERT INTO "${schemaName}".warehouses (id, name, code, is_default, is_active, created_at, updated_at)
-    VALUES ('${createId()}', 'Main Warehouse', 'main-warehouse', true, true, NOW(), NOW())
-    ON CONFLICT (code) DO NOTHING
+    INSERT INTO "${schemaName}".warehouses (id, tenant_id, name, code, is_default, is_active, created_at, updated_at)
+    VALUES ('${createId()}', '${demoTenant.id}', 'Main Warehouse', 'main-warehouse', true, true, NOW(), NOW())
+    ON CONFLICT (tenant_id, code) DO NOTHING
   `);
   console.log('  ✅ Default warehouse seeded');
 
   // ── FiscalYear (current year) ──
   const year = new Date().getFullYear();
   await prisma.$executeRawUnsafe(`
-    INSERT INTO "${schemaName}".fiscal_years (id, name, start_date, end_date, is_closed, created_at, updated_at)
-    VALUES ('${createId()}', 'FY ${year}', '${year}-01-01', '${year}-12-31', false, NOW(), NOW())
+    INSERT INTO "${schemaName}".fiscal_years (id, tenant_id, name, start_date, end_date, is_closed, created_at, updated_at)
+    VALUES ('${createId()}', '${demoTenant.id}', 'FY ${year}', '${year}-01-01', '${year}-12-31', false, NOW(), NOW())
     ON CONFLICT DO NOTHING
   `);
   console.log(`  ✅ Fiscal year FY ${year} seeded`);
@@ -251,9 +253,9 @@ async function main() {
     const parentId = acct.parentCode !== undefined ? accountIds[acct.parentCode] ?? null : null;
     const safeName = acct.name.replace(/'/g, "''");
     await prisma.$executeRawUnsafe(`
-      INSERT INTO "${schemaName}".accounts (id, code, name, type, is_system, parent_id, is_active, created_at, updated_at)
-      VALUES ('${id}', '${acct.code}', '${safeName}', '${acct.type}', ${acct.isGroup}, ${parentId !== null ? `'${parentId}'` : 'NULL'}, true, NOW(), NOW())
-      ON CONFLICT (code) DO NOTHING
+      INSERT INTO "${schemaName}".accounts (id, tenant_id, code, name, type, is_system, parent_id, is_active, created_at, updated_at)
+      VALUES ('${id}', '${demoTenant.id}', '${acct.code}', '${safeName}', '${acct.type}', ${acct.isGroup}, ${parentId !== null ? `'${parentId}'` : 'NULL'}, true, NOW(), NOW())
+      ON CONFLICT (tenant_id, code) DO NOTHING
     `);
   }
   console.log(`  ✅ ${accounts.length} chart of accounts entries seeded`);

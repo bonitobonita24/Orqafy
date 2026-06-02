@@ -10,7 +10,7 @@ export const reportRouter = createTRPCRouter({
         endDate: z.date().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const dateFilter =
         input.startDate !== undefined || input.endDate !== undefined
           ? {
@@ -21,6 +21,8 @@ export const reportRouter = createTRPCRouter({
             }
           : {};
 
+      const tenantScope = { tenantId: ctx.tenantId };
+
       const [
         invoiceStats,
         expenseStats,
@@ -30,23 +32,23 @@ export const reportRouter = createTRPCRouter({
         employeeCount,
       ] = await Promise.all([
         db.invoice.aggregate({
-          where: { ...dateFilter },
+          where: { ...tenantScope, ...dateFilter },
           _sum: { totalAmount: true },
           _count: { id: true },
         }),
         db.expense.aggregate({
-          where: { ...dateFilter },
+          where: { ...tenantScope, ...dateFilter },
           _sum: { amount: true },
           _count: { id: true },
         }),
         db.jobOrder.groupBy({
           by: ["status"],
-          where: { ...dateFilter },
+          where: { ...tenantScope, ...dateFilter },
           _count: { id: true },
         }),
-        db.customer.count(),
-        db.project.count(),
-        db.employee.count(),
+        db.customer.count({ where: tenantScope }),
+        db.project.count({ where: tenantScope }),
+        db.employee.count({ where: tenantScope }),
       ]);
 
       return {
@@ -72,9 +74,10 @@ export const reportRouter = createTRPCRouter({
         endDate: z.date(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const invoices = await db.invoice.findMany({
         where: {
+          tenantId: ctx.tenantId,
           status: "paid",
           paidAt: { gte: input.startDate, lte: input.endDate },
         },
@@ -84,9 +87,10 @@ export const reportRouter = createTRPCRouter({
       return invoices;
     }),
 
-  invoicesByStatus: protectedProcedure.query(async () => {
+  invoicesByStatus: protectedProcedure.query(async ({ ctx }) => {
     return db.invoice.groupBy({
       by: ["status"],
+      where: { tenantId: ctx.tenantId },
       _count: { id: true },
       _sum: { totalAmount: true },
     });
@@ -99,7 +103,7 @@ export const reportRouter = createTRPCRouter({
         endDate: z.date().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const dateFilter =
         input.startDate !== undefined || input.endDate !== undefined
           ? {
@@ -113,6 +117,7 @@ export const reportRouter = createTRPCRouter({
       return db.expense.groupBy({
         by: ["expenseCategoryId"],
         where: {
+          tenantId: ctx.tenantId,
           status: "approved",
           ...dateFilter,
         },
@@ -123,10 +128,10 @@ export const reportRouter = createTRPCRouter({
 
   topClients: protectedProcedure
     .input(z.object({ limit: z.number().int().min(1).max(20).default(10) }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       return db.invoice.groupBy({
         by: ["customerId"],
-        where: { status: "paid" },
+        where: { tenantId: ctx.tenantId, status: "paid" },
         _sum: { totalAmount: true },
         _count: { id: true },
         orderBy: { _sum: { totalAmount: "desc" } },
@@ -141,7 +146,7 @@ export const reportRouter = createTRPCRouter({
         endDate: z.date().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const dateFilter =
         input.startDate !== undefined || input.endDate !== undefined
           ? {
@@ -154,6 +159,7 @@ export const reportRouter = createTRPCRouter({
 
       return db.payroll.aggregate({
         where: {
+          tenantId: ctx.tenantId,
           status: "paid",
           ...dateFilter,
         },

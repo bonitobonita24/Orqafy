@@ -116,7 +116,7 @@ describe("report.dashboardKPIs", () => {
     expect(result.counts).toEqual({ customers: 48, projects: 7, employees: 15 });
 
     expect(mockDb.invoice.aggregate).toHaveBeenCalledWith({
-      where: {},
+      where: { tenantId: "acme-tenant-id" },
       _sum: { totalAmount: true },
       _count: { id: true },
     });
@@ -136,18 +136,18 @@ describe("report.dashboardKPIs", () => {
     await caller.report.dashboardKPIs({ startDate: start, endDate: end });
 
     expect(mockDb.invoice.aggregate).toHaveBeenCalledWith({
-      where: { createdAt: { gte: start, lte: end } },
+      where: { tenantId: "acme-tenant-id", createdAt: { gte: start, lte: end } },
       _sum: { totalAmount: true },
       _count: { id: true },
     });
     expect(mockDb.expense.aggregate).toHaveBeenCalledWith({
-      where: { createdAt: { gte: start, lte: end } },
+      where: { tenantId: "acme-tenant-id", createdAt: { gte: start, lte: end } },
       _sum: { amount: true },
       _count: { id: true },
     });
     expect(mockDb.jobOrder.groupBy).toHaveBeenCalledWith({
       by: ["status"],
-      where: { createdAt: { gte: start, lte: end } },
+      where: { tenantId: "acme-tenant-id", createdAt: { gte: start, lte: end } },
       _count: { id: true },
     });
   });
@@ -187,7 +187,7 @@ describe("report.dashboardKPIs", () => {
     await caller.report.dashboardKPIs({ startDate: start });
 
     expect(mockDb.invoice.aggregate).toHaveBeenCalledWith({
-      where: { createdAt: { gte: start } },
+      where: { tenantId: "acme-tenant-id", createdAt: { gte: start } },
       _sum: { totalAmount: true },
       _count: { id: true },
     });
@@ -215,7 +215,7 @@ describe("report.revenueByPeriod", () => {
 
     expect(result).toEqual(paidInvoices);
     expect(mockDb.invoice.findMany).toHaveBeenCalledWith({
-      where: { status: "paid", paidAt: { gte: start, lte: end } },
+      where: { tenantId: "acme-tenant-id", status: "paid", paidAt: { gte: start, lte: end } },
       select: { paidAt: true, totalAmount: true },
       orderBy: { paidAt: "asc" },
     });
@@ -265,6 +265,7 @@ describe("report.invoicesByStatus", () => {
     expect(result).toEqual(grouped);
     expect(mockDb.invoice.groupBy).toHaveBeenCalledWith({
       by: ["status"],
+      where: { tenantId: "acme-tenant-id" },
       _count: { id: true },
       _sum: { totalAmount: true },
     });
@@ -305,7 +306,7 @@ describe("report.expensesByCategory", () => {
     expect(result).toEqual(grouped);
     expect(mockDb.expense.groupBy).toHaveBeenCalledWith({
       by: ["expenseCategoryId"],
-      where: { status: "approved" },
+      where: { tenantId: "acme-tenant-id", status: "approved" },
       _sum: { amount: true },
       _count: { id: true },
     });
@@ -322,6 +323,7 @@ describe("report.expensesByCategory", () => {
     expect(mockDb.expense.groupBy).toHaveBeenCalledWith({
       by: ["expenseCategoryId"],
       where: {
+        tenantId: "acme-tenant-id",
         status: "approved",
         date: { gte: start, lte: end },
       },
@@ -363,7 +365,7 @@ describe("report.topClients", () => {
     expect(result).toEqual(grouped);
     expect(mockDb.invoice.groupBy).toHaveBeenCalledWith({
       by: ["customerId"],
-      where: { status: "paid" },
+      where: { tenantId: "acme-tenant-id", status: "paid" },
       _sum: { totalAmount: true },
       _count: { id: true },
       orderBy: { _sum: { totalAmount: "desc" } },
@@ -412,7 +414,7 @@ describe("report.payrollSummary", () => {
     expect(result._count.id).toBe(8);
 
     expect(mockDb.payroll.aggregate).toHaveBeenCalledWith({
-      where: { status: "paid" },
+      where: { tenantId: "acme-tenant-id", status: "paid" },
       _sum: { totalGross: true, totalNet: true, totalDeductions: true },
       _count: { id: true },
     });
@@ -431,6 +433,7 @@ describe("report.payrollSummary", () => {
 
     expect(mockDb.payroll.aggregate).toHaveBeenCalledWith({
       where: {
+        tenantId: "acme-tenant-id",
         status: "paid",
         periodStart: { gte: start, lte: end },
       },

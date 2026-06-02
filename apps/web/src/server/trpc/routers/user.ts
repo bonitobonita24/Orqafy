@@ -6,9 +6,10 @@ import { prisma as db } from "@orqafy/db";
 export const userRouter = createTRPCRouter({
   list: protectedProcedure
     .input(z.object({ page: z.number().int().min(1).default(1), limit: z.number().int().min(1).max(200).default(50) }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const [items, total] = await Promise.all([
         db.user.findMany({
+          where: { tenantId: ctx.tenantId },
           select: {
             id: true,
             email: true,
@@ -23,18 +24,19 @@ export const userRouter = createTRPCRouter({
           take: input.limit,
           orderBy: { createdAt: "desc" },
         }),
-        db.user.count(),
+        db.user.count({ where: { tenantId: ctx.tenantId } }),
       ]);
       return { items, total, page: input.page, limit: input.limit };
     }),
 
   byId: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const user = await db.user.findUnique({
         where: { id: input.id },
         select: {
           id: true,
+          tenantId: true,
           email: true,
           firstName: true,
           lastName: true,
@@ -44,15 +46,16 @@ export const userRouter = createTRPCRouter({
           role: { select: { name: true } },
         },
       });
-      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
-      return user;
+      if (!user || user.tenantId !== ctx.tenantId) throw new TRPCError({ code: "NOT_FOUND" });
+      const { tenantId: _, ...result } = user;
+      return result;
     }),
 
   deactivate: writeProcedure
     .input(z.object({ id: z.string().cuid() }))
-    .mutation(async ({ input }) => {
-      const user = await db.user.findUnique({ where: { id: input.id } });
-      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+    .mutation(async ({ ctx, input }) => {
+      const user = await db.user.findUnique({ where: { id: input.id }, select: { id: true, tenantId: true } });
+      if (!user || user.tenantId !== ctx.tenantId) throw new TRPCError({ code: "NOT_FOUND" });
       return db.user.update({
         where: { id: input.id },
         data: { isActive: false, securityVersion: { increment: 1 } },
