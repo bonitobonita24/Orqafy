@@ -75,13 +75,13 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Generate Prisma client
+        run: pnpm --filter @orqafy/db exec prisma generate
       - name: Run db migrations (test task only)
         if: matrix.task == 'test'
         env:
           DATABASE_URL: postgresql://orqafy:orqafy_test_password@localhost:5432/orqafy_test?schema=public
-        run: |
-          pnpm --filter @orqafy/db exec prisma migrate deploy
-          pnpm --filter @orqafy/db exec prisma generate
+        run: pnpm --filter @orqafy/db exec prisma migrate deploy
       - uses: actions/cache@v5
         with:
           path: .turbo
