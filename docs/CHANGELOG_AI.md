@@ -3,6 +3,17 @@
 # Append-only — newest entries at the bottom.
 # ---
 
+## 2026-06-02 — CI unblock (deferred items #3 + #5)
+- Agent:               CLAUDE_CODE
+- Why:                 CI on main was failing on every push since at least 2026-06-01 at governance gate (tools:check-env). Unblock it to validate the worker tenant-provisioning integration test (deferred item #5).
+- Files added:         none
+- Files modified:      tools/check-env.mjs, .github/workflows/ci.yml, turbo.json
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  (1) check-env hard-failed when .env.dev missing on CI. (2) After unblock, lint/typecheck/build/test all failed: workspace packages @orqafy/db and @orqafy/jobs export from dist/ but turbo lint/typecheck/test had no ^build chain. (3) After ^build fix, @prisma/client types missing because prisma generate only ran for test task. (4) After unconditional generate, worker test failed at runtime: Prisma couldn't see DATABASE_URL because turbo strict env mode (implied by build task's existing env declaration) strips workflow-step env vars unless allowlisted.
+- Errors resolved:     (1) check-env now tries .env.dev → falls back to .env.example. (2) turbo.json: lint/typecheck/test dependsOn changed to ["^build"]. (3) ci.yml: split conditional migrate step — Generate Prisma client always runs, migrate deploy stays test-only. (4) turbo.json: test task adds "env": ["DATABASE_URL", "REDIS_URL"].
+- Commits:             abba64d, a2baf27, d0da1c7, 3b9c521
+
 ## 2026-05-31 — Docker publish hardened — worker image added, arm64 dropped, timeout 30→60m
 - Agent:               CLAUDE_CODE
 - Why:                 Closes deferred Tasks #3 + #4 (GH Actions secrets + staging-latest verification) and the worker-build gap they surfaced. Komodo staging stack expects both `orqafy:staging-latest` AND `orqafy-worker:staging-latest`; previously only the web image was built by docker-publish.yml. Prior run 26687368923 was cancelled at 30-min timeout — web amd64+arm64 via QEMU consumed 25 min, leaving the worker build only 5 min before timeout fired.

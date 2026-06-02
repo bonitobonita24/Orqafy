@@ -4,6 +4,13 @@
 # READ ORDER: 🔴 first → 🟤 second → rest by relevance
 # ---
 
+## 2026-06-02 — 🟡 fix Turbo strict env mode + unbuilt dist/ chain — CI unblock
+- Type:      🟡 fix
+- Phase:     Deferred cleanup (post-IDOR audit)
+- Files:     tools/check-env.mjs, .github/workflows/ci.yml, turbo.json
+- Concepts:  turbo, ci, prisma, monorepo, env-vars, dist-chain, github-actions, services
+- Narrative: CI on main failed for 5+ consecutive pushes at the governance gate (tools:check-env). Root cause was a chain: check-env hardcoded .env.dev which is gitignored on CI, so the gate always failed. Fixing that exposed three deeper failures in sequence — each visible only after the prior fix landed. (1) `@orqafy/db` and `@orqafy/jobs` export from `dist/` (built by tsc) but turbo lint/typecheck/test only had `["^lint"]`/`["^typecheck"]`/`["^test"]` deps, no `^build` chain — fresh runners couldn't resolve workspace imports. (2) `prisma generate` was wired only to the test task's migrate step, but `@prisma/client` types are imported by all packages — so lint/typecheck/build failed too. (3) Once tasks ran, the worker integration test hit "DATABASE_URL not found" because turbo strict env mode (implicitly active because the build task already declared `env: ["SKIP_ENV_VALIDATION"]`) strips workflow-step env vars before passing to child processes — must declare in the task's `env` allowlist. Resolved with 4 small commits, each verified by watching the next CI run. Lesson: in turbo monorepos with `^build`-required workspace packages, always declare `^build` for downstream tasks AND always allowlist env vars per task once any single task declares an env (strict mode is global once enabled).
+
 ## 2026-05-31 — 🟤 decision docker-publish.yml builds amd64-only by default
 - Type:      🟤 decision
 - Phase:     Phase 8 deferred-task batch (Tasks #3 + #4 closure)
