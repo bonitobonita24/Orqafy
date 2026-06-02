@@ -127,7 +127,7 @@ describe("Product + Warehouse tenant parity (K-prime Extended Phase 2 Wave B)", 
     await caller.storefront.browseProducts({});
 
     expect(mockProductFindMany).toHaveBeenCalledOnce();
-    const callArg = mockProductFindMany.mock.calls[0]![0] as any;
+    const callArg = mockProductFindMany.mock.calls[0]![0];
     expect(callArg.where).toMatchObject({ tenantId: "tenant-A" });
   });
 
@@ -144,7 +144,7 @@ describe("Product + Warehouse tenant parity (K-prime Extended Phase 2 Wave B)", 
     });
 
     expect(mockProductFindFirst).toHaveBeenCalledOnce();
-    const callArg = mockProductFindFirst.mock.calls[0]![0] as any;
+    const callArg = mockProductFindFirst.mock.calls[0]![0];
     expect(callArg.where).toMatchObject({ id: PRODUCT_CUID, tenantId: "tenant-A" });
   });
 
@@ -173,7 +173,7 @@ describe("Product + Warehouse tenant parity (K-prime Extended Phase 2 Wave B)", 
     });
 
     expect(mockProductFindMany).toHaveBeenCalledOnce();
-    const callArg = mockProductFindMany.mock.calls[0]![0] as any;
+    const callArg = mockProductFindMany.mock.calls[0]![0];
     expect(callArg.where).toMatchObject({ tenantId: "tenant-A" });
   });
 
@@ -184,7 +184,7 @@ describe("Product + Warehouse tenant parity (K-prime Extended Phase 2 Wave B)", 
     await caller.inventory.warehouseList({});
 
     expect(mockWarehouseFindMany).toHaveBeenCalledOnce();
-    const callArg = mockWarehouseFindMany.mock.calls[0]![0] as any;
+    const callArg = mockWarehouseFindMany.mock.calls[0]![0];
     expect(callArg.where).toMatchObject({ tenantId: "tenant-A" });
   });
 
@@ -200,7 +200,7 @@ describe("Product + Warehouse tenant parity (K-prime Extended Phase 2 Wave B)", 
     });
 
     expect(mockWarehouseFindFirst).toHaveBeenCalledOnce();
-    const callArg = mockWarehouseFindFirst.mock.calls[0]![0] as any;
+    const callArg = mockWarehouseFindFirst.mock.calls[0]![0];
     expect(callArg.where).toMatchObject({ id: WAREHOUSE_CUID, tenantId: "tenant-A" });
   });
 
@@ -211,7 +211,7 @@ describe("Product + Warehouse tenant parity (K-prime Extended Phase 2 Wave B)", 
     await caller.inventory.stockList({});
 
     expect(mockWarehouseStockFindMany).toHaveBeenCalledOnce();
-    const callArg = mockWarehouseStockFindMany.mock.calls[0]![0] as any;
+    const callArg = mockWarehouseStockFindMany.mock.calls[0]![0];
     expect(callArg.where).toMatchObject({ tenantId: "tenant-A" });
   });
 });

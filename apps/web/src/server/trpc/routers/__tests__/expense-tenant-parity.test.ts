@@ -172,7 +172,7 @@ describe("Expense tenant parity (K-prime closure)", () => {
     });
 
     expect(mockExpenseCreate).toHaveBeenCalledOnce();
-    const callArg = mockExpenseCreate.mock.calls[0]![0] as any;
+    const callArg = mockExpenseCreate.mock.calls[0]![0];
     expect(callArg.data.tenantId).toBe("tenant-A");
   });
 });

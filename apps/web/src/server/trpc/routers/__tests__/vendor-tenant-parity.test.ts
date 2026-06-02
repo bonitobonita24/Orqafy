@@ -8,7 +8,6 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { TRPCError } from "@trpc/server";
 
 // ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
 const { mockVendorCreate, mockVendorFindUnique } = vi.hoisted(() => ({
@@ -130,7 +129,7 @@ describe("Vendor tenant parity (Batch 32 / Direction I close-out)", () => {
     await caller.vendor.create({ companyName: "Acme Co." });
 
     expect(mockVendorCreate).toHaveBeenCalledOnce();
-    const callArg = mockVendorCreate.mock.calls[0]![0] as any;
+    const callArg = mockVendorCreate.mock.calls[0]![0];
     expect(callArg.data.tenantId).toBe("tenant-A");
   });
 

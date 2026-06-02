@@ -162,7 +162,7 @@ describe("ContactLog tenant parity (K-prime Extended IDOR closure)", () => {
     });
 
     expect(mockContactLogCreate).toHaveBeenCalledOnce();
-    const callArg = mockContactLogCreate.mock.calls[0]![0] as any;
+    const callArg = mockContactLogCreate.mock.calls[0]![0];
     expect(callArg.data.tenantId).toBe("tenant-A");
     expect(callArg.data.createdById).toBe("user-1");
   });

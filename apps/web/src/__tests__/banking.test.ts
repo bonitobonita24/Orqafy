@@ -1006,7 +1006,7 @@ describe("banking.transaction.recordRefund", () => {
 
   it("creates a refund transaction and credits currentBalance atomically", async () => {
     mockDb.fundSource.findUnique.mockResolvedValue({ ...sampleFundSource, currentBalance: "5000.00" });
-    mockDb.$transaction.mockImplementation(async (fn: any) => fn(mockDb));
+    mockDb.$transaction.mockImplementation((fn: any) => fn(mockDb));
     mockDb.fundTransaction.create.mockResolvedValue({ id: "tx-refund-1", type: "refund", amount: "200.00", runningBalance: "5200.00" });
     mockDb.fundSource.update.mockResolvedValue({});
 
@@ -1040,7 +1040,7 @@ describe("banking.transaction.recordRefund", () => {
 
   it("omits referenceType when no originalTransactionId provided", async () => {
     mockDb.fundSource.findUnique.mockResolvedValue({ ...sampleFundSource, currentBalance: "1000.00" });
-    mockDb.$transaction.mockImplementation(async (fn: any) => fn(mockDb));
+    mockDb.$transaction.mockImplementation((fn: any) => fn(mockDb));
     mockDb.fundTransaction.create.mockResolvedValue({ id: "tx-refund-2" });
     mockDb.fundSource.update.mockResolvedValue({});
 
@@ -1079,7 +1079,7 @@ describe("banking.transaction.recordAdjustment", () => {
 
   it("applies positive delta atomically with adjustment_credit category", async () => {
     mockDb.fundSource.findUnique.mockResolvedValue({ ...sampleFundSource, type: "cash_on_hand", currentBalance: "1000.00" });
-    mockDb.$transaction.mockImplementation(async (fn: any) => fn(mockDb));
+    mockDb.$transaction.mockImplementation((fn: any) => fn(mockDb));
     mockDb.fundTransaction.create.mockResolvedValue({ id: "tx-adj-1", type: "adjustment", amount: "50.00", runningBalance: "1050.00" });
     mockDb.fundSource.update.mockResolvedValue({});
 
@@ -1109,7 +1109,7 @@ describe("banking.transaction.recordAdjustment", () => {
 
   it("applies negative delta atomically with adjustment_debit category", async () => {
     mockDb.fundSource.findUnique.mockResolvedValue({ ...sampleFundSource, type: "bank", currentBalance: "5000.00" });
-    mockDb.$transaction.mockImplementation(async (fn: any) => fn(mockDb));
+    mockDb.$transaction.mockImplementation((fn: any) => fn(mockDb));
     mockDb.fundTransaction.create.mockResolvedValue({ id: "tx-adj-2" });
     mockDb.fundSource.update.mockResolvedValue({});
 

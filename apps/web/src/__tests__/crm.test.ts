@@ -646,17 +646,17 @@ describe("crm.quotationCreate", () => {
   function setupHappyPath() {
     mockDb.customer.findUnique.mockResolvedValue({ id: CUSTOMER_ID, tenantId: "acme-tenant-id" });
     mockDb.quotation.findFirst.mockResolvedValue(null); // generateQuotationNumber
-    mockDb.$transaction.mockImplementation(async (fn: (tx: typeof mockDb) => Promise<unknown>) =>
+    mockDb.$transaction.mockImplementation((fn: (tx: typeof mockDb) => Promise<unknown>): unknown =>
       fn(mockDb),
     );
     mockDb.quotation.create.mockResolvedValue({ ...sampleQuotation });
-    mockDb.quotationMarkupColumn.create.mockImplementation(({ data }: { data: unknown }) =>
+    mockDb.quotationMarkupColumn.create.mockImplementation(({ data }: { data: unknown }): unknown =>
       Promise.resolve({ id: `mc-${Math.random()}`, ...(data as object) }),
     );
-    mockDb.quotationSection.create.mockImplementation(({ data }: { data: unknown }) =>
+    mockDb.quotationSection.create.mockImplementation(({ data }: { data: unknown }): unknown =>
       Promise.resolve({ id: `sec-${Math.random()}`, ...(data as object) }),
     );
-    mockDb.quotationLineItem.create.mockImplementation(({ data }: { data: unknown }) =>
+    mockDb.quotationLineItem.create.mockImplementation(({ data }: { data: unknown }): unknown =>
       Promise.resolve({ id: `li-${Math.random()}`, ...(data as object) }),
     );
     mockDb.quotationLineItemMarkup.create.mockResolvedValue({ id: "lim-1" });
@@ -886,17 +886,17 @@ describe("crm.quotationUpdate", () => {
   it("replaces sections + markupColumns and recomputes totals on full-payload edit", async () => {
     mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, tenantId: "acme-tenant-id", status: "draft" });
     mockDb.$transaction.mockImplementation(
-      async (fn: (tx: typeof mockDb) => Promise<unknown>) => fn(mockDb),
+      (fn: (tx: typeof mockDb) => Promise<unknown>): unknown => fn(mockDb),
     );
     mockDb.quotationSection.deleteMany.mockResolvedValue({ count: 2 });
     mockDb.quotationMarkupColumn.deleteMany.mockResolvedValue({ count: 1 });
-    mockDb.quotationMarkupColumn.create.mockImplementation(({ data }: { data: unknown }) =>
+    mockDb.quotationMarkupColumn.create.mockImplementation(({ data }: { data: unknown }): unknown =>
       Promise.resolve({ id: "col-new-1", ...(data as object) }),
     );
-    mockDb.quotationSection.create.mockImplementation(({ data }: { data: unknown }) =>
+    mockDb.quotationSection.create.mockImplementation(({ data }: { data: unknown }): unknown =>
       Promise.resolve({ id: "sec-new-1", ...(data as object) }),
     );
-    mockDb.quotationLineItem.create.mockImplementation(({ data }: { data: unknown }) =>
+    mockDb.quotationLineItem.create.mockImplementation(({ data }: { data: unknown }): unknown =>
       Promise.resolve({ id: "li-new-1", ...(data as object) }),
     );
     mockDb.quotationLineItemMarkup.create.mockResolvedValue({ id: "lim-new-1" });
@@ -1077,7 +1077,7 @@ describe("crm.quotationCreateRevision", () => {
       sections: [],
       revisions: [{ revisionNumber: 1 }],
     });
-    mockDb.$transaction.mockImplementation(async (fn: (tx: typeof mockDb) => Promise<unknown>) =>
+    mockDb.$transaction.mockImplementation((fn: (tx: typeof mockDb) => Promise<unknown>): unknown =>
       fn(mockDb),
     );
     mockDb.quotationRevision.create.mockResolvedValue({ id: "rev-2" });
@@ -1493,7 +1493,7 @@ describe("crm.quotationConvertToInvoice", () => {
   it("creates invoice from accepted quotation and flips status to converted", async () => {
     mockDb.quotation.findFirst.mockResolvedValue(acceptedQuotationFixture());
     mockDb.$transaction.mockImplementation(
-      async (fn: (tx: typeof mockDb) => Promise<unknown>) => fn(mockDb),
+      (fn: (tx: typeof mockDb) => Promise<unknown>): unknown => fn(mockDb),
     );
     mockDb.invoice.create.mockResolvedValue({
       id: "inv-new",
@@ -1584,7 +1584,7 @@ describe("crm.quotationConvertToInvoice", () => {
       }),
     );
     mockDb.$transaction.mockImplementation(
-      async (fn: (tx: typeof mockDb) => Promise<unknown>) => fn(mockDb),
+      (fn: (tx: typeof mockDb) => Promise<unknown>): unknown => fn(mockDb),
     );
     mockDb.invoice.create.mockResolvedValue({
       id: "inv-new",

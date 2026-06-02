@@ -117,7 +117,7 @@ describe("Customer tenant parity (K-prime Extended / CRM IDOR closure)", () => {
     await caller.crm.customerCreate({ firstName: "Test", lastName: "Customer" });
 
     expect(mockCustomerCreate).toHaveBeenCalledOnce();
-    const callArg = mockCustomerCreate.mock.calls[0]![0] as any;
+    const callArg = mockCustomerCreate.mock.calls[0]![0];
     expect(callArg.data.tenantId).toBe("tenant-A");
   });
 });

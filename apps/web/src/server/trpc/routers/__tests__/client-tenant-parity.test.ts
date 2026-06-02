@@ -134,7 +134,7 @@ describe("Client tenant parity (K-prime closure)", () => {
     await caller.client.create({ firstName: "Test", lastName: "User" });
 
     expect(mockCustomerCreate).toHaveBeenCalledOnce();
-    const callArg = mockCustomerCreate.mock.calls[0]![0] as any;
+    const callArg = mockCustomerCreate.mock.calls[0]![0];
     expect(callArg.data.tenantId).toBe("tenant-A");
   });
 });

@@ -354,7 +354,7 @@ describe("expense.recordProjectExpense", () => {
     const createdTx = { id: "tx-new", type: "expense", amount: 1000 };
     const updatedExpense = { ...createdExpense, referenceType: "fund_transaction", referenceId: "tx-new" };
 
-    mockDb.$transaction.mockImplementation((callback: (tx: any) => Promise<any>) => {
+    mockDb.$transaction.mockImplementation((callback: (tx: any) => Promise<any>): unknown => {
       return callback({
         projectExpense: {
           create: vi.fn().mockResolvedValue(createdExpense),
@@ -413,7 +413,7 @@ describe("expense.recordProjectExpense", () => {
     const createdTx = { id: "tx-cc", type: "expense" };
     const updatedExpense = { ...createdExpense, referenceType: "fund_transaction", referenceId: "tx-cc" };
 
-    mockDb.$transaction.mockImplementation((callback: (tx: any) => Promise<any>) => {
+    mockDb.$transaction.mockImplementation((callback: (tx: any) => Promise<any>): unknown => {
       return callback({
         projectExpense: {
           create: vi.fn().mockResolvedValue(createdExpense),

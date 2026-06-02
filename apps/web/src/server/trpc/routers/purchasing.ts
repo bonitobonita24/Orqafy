@@ -110,7 +110,7 @@ export const vendorRouter = createTRPCRouter({
     )
     .query(async ({ input, ctx }) => {
       const where = {
-        tenantId: ctx.tenantId!,
+        tenantId: ctx.tenantId,
         ...(input.type !== undefined ? { type: input.type } : {}),
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
         ...(input.search !== undefined && input.search !== ""
@@ -164,7 +164,7 @@ export const vendorRouter = createTRPCRouter({
     .mutation(async ({ input, ctx }) => {
       return db.vendor.create({
         data: {
-          tenantId: ctx.tenantId!,
+          tenantId: ctx.tenantId,
           type: input.type,
           companyName: input.companyName,
           ...(input.contactName !== undefined ? { contactName: input.contactName } : {}),

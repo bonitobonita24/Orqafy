@@ -31,7 +31,7 @@ export function LoginForm({ action }: LoginFormProps) {
 
   return (
     <form action={formAction} className="space-y-4">
-      {state?.error && (
+      {state?.error != null && state.error !== '' && (
         <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {state.error}
         </div>

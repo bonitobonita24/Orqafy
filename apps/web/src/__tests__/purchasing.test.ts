@@ -305,7 +305,7 @@ describe("purchasing.po.create", () => {
   };
 
   function txMock(): void {
-    mockDb.$transaction.mockImplementation(async (fn: any) => fn(mockDb));
+    mockDb.$transaction.mockImplementation((fn: any) => fn(mockDb));
   }
 
   it("creates PO with computed totals + auto-generates poNumber", async () => {
@@ -511,7 +511,7 @@ const approvedPoWithItem = {
 };
 
 function txPassthrough(): void {
-  mockDb.$transaction.mockImplementation(async (fn: any) => fn(mockDb));
+  mockDb.$transaction.mockImplementation((fn: any) => fn(mockDb));
 }
 
 describe("purchasing.goodsReceipt.list", () => {
@@ -744,7 +744,7 @@ describe("purchasing.po — Direction I tenantId scoping (RED)", () => {
       items: [],
       vendor: fakeVendor,
     });
-    mockDb.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(mockDb));
+    mockDb.$transaction.mockImplementation((fn: (tx: unknown) => Promise<unknown>): unknown => fn(mockDb));
 
     await createCaller(adminCtx()).purchasing.po.create({
       vendorId: "vendor-1",
@@ -789,7 +789,7 @@ describe("purchasing.po — Direction I-2 PurchaseOrderItem tenantId scoping (RE
       items: [],
       vendor: fakeVendor,
     });
-    mockDb.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(mockDb));
+    mockDb.$transaction.mockImplementation((fn: (tx: unknown) => Promise<unknown>): unknown => fn(mockDb));
 
     await createCaller(adminCtx()).purchasing.po.create({
       vendorId: "vendor-1",
@@ -822,7 +822,7 @@ describe("purchasing.po — Direction I-3 PurchaseOrderItemAllocation tenantId s
       items: [],
       vendor: fakeVendor,
     });
-    mockDb.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(mockDb));
+    mockDb.$transaction.mockImplementation((fn: (tx: unknown) => Promise<unknown>): unknown => fn(mockDb));
 
     await createCaller(adminCtx()).purchasing.po.create({
       vendorId: "vendor-1",
@@ -950,7 +950,7 @@ describe("purchasing.goodsReceipt — Direction I-5a tenant guards (RED)", () =>
     mockDb.goodsReceipt.create.mockResolvedValue({ ...fakeGrBase });
     mockDb.goodsReceiptItem.create.mockResolvedValue({});
     mockDb.goodsReceipt.findUnique.mockResolvedValue({ ...fakeGrBase, items: [] });
-    mockDb.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(mockDb));
+    mockDb.$transaction.mockImplementation((fn: (tx: unknown) => Promise<unknown>): unknown => fn(mockDb));
 
     await createCaller(adminCtx()).purchasing.goodsReceipt.create({
       purchaseOrderId: "po-1",
@@ -1005,7 +1005,7 @@ describe("purchasing.goodsReceipt — Direction I-5b GoodsReceiptItem tenantId s
     mockDb.goodsReceipt.create.mockResolvedValue({ ...fakeGrBase });
     mockDb.goodsReceiptItem.create.mockResolvedValue({});
     mockDb.goodsReceipt.findUnique.mockResolvedValue({ ...fakeGrBase, items: [] });
-    mockDb.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(mockDb));
+    mockDb.$transaction.mockImplementation((fn: (tx: unknown) => Promise<unknown>): unknown => fn(mockDb));
 
     await createCaller(adminCtx()).purchasing.goodsReceipt.create({
       purchaseOrderId: "po-1",

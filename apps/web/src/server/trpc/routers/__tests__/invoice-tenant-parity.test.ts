@@ -166,7 +166,7 @@ describe("Invoice tenant parity (K-prime closure)", () => {
 
     expect(result).toMatchObject({ tenantId: "tenant-A" });
     expect(mockInvoiceCreate).toHaveBeenCalledOnce();
-    const callArg = mockInvoiceCreate.mock.calls[0]![0] as any;
+    const callArg = mockInvoiceCreate.mock.calls[0]![0];
     expect(callArg.data.tenantId).toBe("tenant-A");
   });
 });

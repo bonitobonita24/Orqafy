@@ -117,7 +117,7 @@ describe("Storefront EcommerceOrder tenant parity (K-prime Extended Phase 2)", (
 
     // Verify the WHERE clause was scoped by tenantId
     expect(mockOrderFindFirst).toHaveBeenCalledOnce();
-    const callArg = mockOrderFindFirst.mock.calls[0]![0] as any;
+    const callArg = mockOrderFindFirst.mock.calls[0]![0];
     expect(callArg.where).toMatchObject({ id: ORDER_CUID, tenantId: "tenant-A" });
   });
 
@@ -135,7 +135,7 @@ describe("Storefront EcommerceOrder tenant parity (K-prime Extended Phase 2)", (
     });
 
     expect(mockCustomerFindFirst).toHaveBeenCalledOnce();
-    const callArg = mockCustomerFindFirst.mock.calls[0]![0] as any;
+    const callArg = mockCustomerFindFirst.mock.calls[0]![0];
     expect(callArg.where).toMatchObject({ id: CUSTOMER_CUID, tenantId: "tenant-A" });
   });
 
@@ -148,11 +148,11 @@ describe("Storefront EcommerceOrder tenant parity (K-prime Extended Phase 2)", (
     await caller.storefront.listAllOrders({});
 
     expect(mockOrderFindMany).toHaveBeenCalledOnce();
-    const findArg = mockOrderFindMany.mock.calls[0]![0] as any;
+    const findArg = mockOrderFindMany.mock.calls[0]![0];
     expect(findArg.where).toMatchObject({ tenantId: "tenant-A" });
 
     expect(mockOrderCount).toHaveBeenCalledOnce();
-    const countArg = mockOrderCount.mock.calls[0]![0] as any;
+    const countArg = mockOrderCount.mock.calls[0]![0];
     expect(countArg.where).toMatchObject({ tenantId: "tenant-A" });
   });
 

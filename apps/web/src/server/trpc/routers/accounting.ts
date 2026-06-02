@@ -58,7 +58,7 @@ const accountRouter = createTRPCRouter({
       })
     )
     .query(async ({ input, ctx }) => {
-      if (input.parentId) {
+      if (input.parentId != null && input.parentId !== '') {
         await loadAccountForTenant(input.parentId, ctx);
       }
       const where = {
@@ -98,7 +98,7 @@ const accountRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      if (input.parentId) {
+      if (input.parentId != null && input.parentId !== '') {
         await loadAccountForTenant(input.parentId, ctx);
       }
       return db.account.create({
@@ -129,7 +129,7 @@ const accountRouter = createTRPCRouter({
     .mutation(async ({ input, ctx }) => {
       const { id, parentId, ...data } = input;
       await loadAccountForTenant(id, ctx);
-      if (parentId) {
+      if (parentId != null && parentId !== '') {
         await loadAccountForTenant(parentId, ctx);
       }
       return db.account.update({

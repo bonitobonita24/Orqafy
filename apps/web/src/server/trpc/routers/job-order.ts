@@ -244,7 +244,7 @@ export const jobOrderRouter = createTRPCRouter({
   assignTechnician: writeProcedure
     .input(z.object({ id: z.string().cuid(), technicianId: z.string().cuid() }))
     .mutation(async ({ input, ctx }) => {
-      const existing = await loadJobOrderForTenant(input.id, ctx);
+      const _existing = await loadJobOrderForTenant(input.id, ctx);
       const technician = await db.user.findUnique({ where: { id: input.technicianId } });
       if (!technician) throw new TRPCError({ code: "BAD_REQUEST", message: "Technician not found." });
       return db.jobOrder.update({
