@@ -1,0 +1,210 @@
+# =============================================================
+# ORQAFY STAGING — Komodo Stack compose (single-file merge)
+# =============================================================
+# Generated 2026-06-03 by merging the 6 staging compose files:
+#   docker-compose.db.yml      (postgres + pgbouncer)
+#   docker-compose.cache.yml   (valkey)
+#   docker-compose.storage.yml (minio)
+#   docker-compose.pgadmin.yml (pgadmin)
+#   docker-compose.worker.yml  (worker)
+#   docker-compose.app.yml     (app, with Traefik labels)
+#
+# PASTE THIS ENTIRE FILE into:
+#   Komodo UI → Stack orqafy-staging → Compose tab
+#
+# DIFFERENCES vs the individual files:
+#   1. env_file paths changed from ../../../.env.staging → .env
+#      (Komodo writes the Stack Environment to .env in the run directory,
+#      so the compose file references it as a relative ".env")
+#   2. app_network declared ONCE as driver: bridge (instead of one creator
+#      + 5 external references). proxy network still external: true since
+#      Traefik creates it.
+#   3. pgAdmin's pgadmin-servers.json bind-mount REMOVED. If you want
+#      pre-registered server connection, copy pgadmin-servers.json to
+#      /opt/stacks/orqafy-staging/pgadmin-servers.json on the Komodo
+#      server and add the volume mount back manually. Otherwise register
+#      the postgres server in pgAdmin UI once after first deploy.
+# =============================================================
+
+networks:
+  app_network:
+    name: ${COMPOSE_PROJECT_NAME}_network
+    driver: bridge
+  proxy:
+    name: ${TRAEFIK_NETWORK:-proxy}
+    external: true
+
+volumes:
+  postgres_data:
+    name: ${COMPOSE_PROJECT_NAME}_postgres_data
+  pgbouncer_data:
+    name: ${COMPOSE_PROJECT_NAME}_pgbouncer_data
+  valkey_data:
+    name: ${COMPOSE_PROJECT_NAME}_valkey_data
+  minio_data:
+    name: ${COMPOSE_PROJECT_NAME}_minio_data
+  pgadmin_data:
+    name: ${COMPOSE_PROJECT_NAME}_pgadmin_data
+
+services:
+
+  # ─── DATABASE ───
+  postgres:
+    image: postgres:16-alpine
+    container_name: ${COMPOSE_PROJECT_NAME}_postgres
+    hostname: ${COMPOSE_PROJECT_NAME}_postgres
+    env_file: .env
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT}:5432"
+    networks: [app_network]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: ${COMPOSE_PROJECT_NAME}_pgbouncer
+    hostname: ${COMPOSE_PROJECT_NAME}_pgbouncer
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${COMPOSE_PROJECT_NAME}_postgres:5432/${DB_NAME}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 100
+      DEFAULT_POOL_SIZE: 20
+      AUTH_TYPE: scram-sha-256
+    ports:
+      - "${PGBOUNCER_PORT}:5432"
+    networks: [app_network]
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: unless-stopped
+
+  # ─── CACHE ───
+  valkey:
+    image: valkey/valkey:7-alpine
+    container_name: ${COMPOSE_PROJECT_NAME}_valkey
+    hostname: ${COMPOSE_PROJECT_NAME}_valkey
+    env_file: .env
+    command: valkey-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    volumes:
+      - valkey_data:/data
+    ports:
+      - "${REDIS_PORT}:6379"
+    networks: [app_network]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "valkey-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── STORAGE ───
+  minio:
+    image: minio/minio:latest
+    container_name: ${COMPOSE_PROJECT_NAME}_minio
+    hostname: ${COMPOSE_PROJECT_NAME}_minio
+    env_file: .env
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_KEY}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    ports:
+      - "${STORAGE_PORT}:9000"
+      - "${STORAGE_CONSOLE_PORT}:9001"
+    networks: [app_network]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── DB MANAGEMENT UI ───
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ${COMPOSE_PROJECT_NAME}_pgadmin
+    hostname: ${COMPOSE_PROJECT_NAME}_pgadmin
+    env_file: .env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      # pgadmin-servers.json bind-mount removed — register postgres server
+      # manually in pgAdmin UI after first deploy. See header comment.
+    ports:
+      - "${PGADMIN_PORT}:80"
+    networks: [app_network]
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-O", "-", "http://localhost:80/misc/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── BACKGROUND WORKER ───
+  worker:
+    # NO build: key — image pulled from Docker Hub only
+    image: ${DOCKERHUB_USERNAME}/${WORKER_IMAGE_NAME}:${APP_IMAGE_TAG:-staging-latest}
+    container_name: ${COMPOSE_PROJECT_NAME}_worker
+    hostname: ${COMPOSE_PROJECT_NAME}_worker
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - WORKER_PORT=${WORKER_PORT}
+    networks: [app_network]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:${WORKER_PORT}/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── APP (Traefik-routed, no host port) ───
+  app:
+    # NO build: key — image pulled from Docker Hub only
+    image: ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${APP_IMAGE_TAG:-staging-latest}
+    container_name: ${COMPOSE_PROJECT_NAME}_app
+    hostname: ${COMPOSE_PROJECT_NAME}_app
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - PORT=${APP_PORT}
+    networks: [app_network, proxy]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:${APP_PORT}/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.entrypoints=websecure"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.tls.certresolver=letsEncrypt"
+      - "traefik.http.services.${COMPOSE_PROJECT_NAME}_app.loadbalancer.server.port=3000"
