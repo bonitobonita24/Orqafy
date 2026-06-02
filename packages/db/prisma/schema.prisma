@@ -126,6 +126,8 @@ model Tenant {
   jobOrders                    JobOrder[]                   @relation("TenantJobOrders")
   jobOrderParts                JobOrderPart[]               @relation("TenantJobOrderParts")
   jobOrderServiceLines         JobOrderServiceLine[]        @relation("TenantJobOrderServiceLines")
+  roles                        Role[]                       @relation("TenantRoles")
+  departments                  Department[]                 @relation("TenantDepartments")
 
   @@map("tenants")
   @@schema("public")
@@ -345,8 +347,10 @@ model User {
 
 model Role {
   id          String   @id @default(cuid())
-  name        String   @unique
-  slug        String   @unique
+  tenantId    String   @map("tenant_id")
+  tenant      Tenant   @relation("TenantRoles", fields: [tenantId], references: [id])
+  name        String
+  slug        String
   description String?
   permissions Json     @default("[]")
   isSystem    Boolean  @default(false) @map("is_system")
@@ -356,14 +360,19 @@ model Role {
 
   users User[]
 
+  @@unique([tenantId, name])
+  @@unique([tenantId, slug])
+  @@index([tenantId])
   @@map("roles")
   @@schema("public")
 }
 
 model Department {
   id          String       @id @default(cuid())
+  tenantId    String       @map("tenant_id")
+  tenant      Tenant       @relation("TenantDepartments", fields: [tenantId], references: [id])
   name        String
-  code        String?      @unique
+  code        String?
   description String?
   parentId    String?      @map("parent_id")
   parent      Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
@@ -375,6 +384,8 @@ model Department {
   users     User[]
   employees Employee[]
 
+  @@unique([tenantId, code])
+  @@index([tenantId])
   @@map("departments")
   @@schema("public")
 }

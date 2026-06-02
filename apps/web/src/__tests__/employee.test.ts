@@ -301,7 +301,7 @@ describe("employee router", () => {
       const result = await caller.employee.departments();
       expect(result).toEqual(depts);
       expect(mockDb.department.findMany).toHaveBeenCalledWith({
-        where: { isActive: true },
+        where: { tenantId: "acme-tenant-id", isActive: true },
         orderBy: { name: "asc" },
       });
     });

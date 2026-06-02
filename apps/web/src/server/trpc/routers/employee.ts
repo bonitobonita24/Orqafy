@@ -159,9 +159,9 @@ export const employeeRouter = createTRPCRouter({
       });
     }),
 
-  departments: protectedProcedure.query(async () => {
+  departments: protectedProcedure.query(async ({ ctx }) => {
     return db.department.findMany({
-      where: { isActive: true },
+      where: { tenantId: ctx.tenantId, isActive: true },
       orderBy: { name: "asc" },
     });
   }),
