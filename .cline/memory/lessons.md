@@ -4,6 +4,13 @@
 # READ ORDER: 🔴 first → 🟤 second → rest by relevance
 # ---
 
+## 2026-06-02 — 🟡 fix vitest 4 mock: vi.fn().mockImplementation() on arrow can't be `new`'d as class
+- Type:      🟡 fix
+- Phase:     Phase 7 / dependency audit (Jun 2 2026)
+- Files:     apps/web/src/__tests__/admin-xendit-config.test.ts
+- Concepts:  vitest, vitest-4, mock, class-constructor, xendit, breaking-change
+- Narrative: Vitest 4 enforces that mocks used with `new` must be real constructors. Old vitest-3 pattern `vi.fn().mockImplementation((opts) => ({...}))` no longer satisfies `new X(opts)` — fails with `TypeError: ... is not a constructor`. Fix: replace the factory with an actual `class { constructor(opts) { ... } }` inside the `vi.mock()` block. Applies to all libs whose primary export is a class (Xendit, etc.). When upgrading from vitest 3→4, grep for `vi.fn().mockImplementation` usages where the mock is instantiated with `new` and convert to class syntax.
+
 ## 2026-06-02 — 🟡 fix Turbo strict env mode + unbuilt dist/ chain — CI unblock
 - Type:      🟡 fix
 - Phase:     Deferred cleanup (post-IDOR audit)

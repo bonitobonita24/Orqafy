@@ -3,6 +3,17 @@
 # Append-only — newest entries at the bottom.
 # ---
 
+## 2026-06-02 — Security + lint + build clearance (dep-audit, eslint, turbo build)
+- Agent:               CLAUDE_CODE
+- Why:                 Pre-existing CI failures: 36 CVEs (1 critical — vitest-ui), 48 eslint errors, turbo build failing on demo-login page (NEXT_PUBLIC env validation at build time). All three blocked CI red. Cleared in sequence.
+- Files added:         none
+- Files modified:      package.json (turbo 2.9.14, vitest 4.1 + pnpm overrides for 9 transitive deps), apps/web/package.json (next 15.5.18, vitest 4.1, @marsidev/react-turnstile 1.1.2, axios 1.8.2), apps/worker/package.json (vitest 4.1), apps/web/src/app/demo-login/page.tsx (added export const dynamic = "force-dynamic"), .github/workflows/ci.yml (added SKIP_ENV_VALIDATION=true to build job env), 16 files with lint fixes (unused imports, any types, strict-boolean-expressions, explicit function return types across routers/components/tests)
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  (1) 21 HIGH + 1 CRITICAL CVE (vitest-ui / @vitest/coverage-v8 via cookie 0.6.0 ReDoS). (2) 48 eslint errors across monorepo. (3) turbo build error: NEXT_PUBLIC_TURNSTILE_SITE_KEY read at module level in demo-login/page.tsx — Next.js validates all NEXT_PUBLIC vars at static build time; CI env has none.
+- Errors resolved:     (1) Upgraded next 15.5.18, vitest 4.1, turbo 2.9.14; added 9 pnpm overrides for transitive deps (cookie, axios, semver, etc.) — 36 CVEs cleared, 0 HIGH/CRITICAL remaining. (2) 48 lint errors cleared across 16 files — strict eslint rules now pass. (3) demo-login page marked force-dynamic (disables static optimisation); SKIP_ENV_VALIDATION=true added to CI build job — build unblocked.
+- Commits:             b027cce (chore(security): 36 CVEs cleared), 77c41e1 (chore(lint): 48 eslint errors cleared), 6d458b6 (fix(ci): turbo build unblocked)
+
 ## 2026-06-02 — CI unblock (deferred items #3 + #5)
 - Agent:               CLAUDE_CODE
 - Why:                 CI on main was failing on every push since at least 2026-06-01 at governance gate (tools:check-env). Unblock it to validate the worker tenant-provisioning integration test (deferred item #5).
