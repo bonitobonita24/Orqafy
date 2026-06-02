@@ -38,15 +38,16 @@ const { mockCreateInvoice, mockExpireInvoice, mockXenditCtor } = vi.hoisted(() =
   mockXenditCtor: vi.fn(),
 }));
 vi.mock("xendit-node", () => ({
-  Xendit: vi.fn().mockImplementation((opts: unknown) => {
-    mockXenditCtor(opts);
-    return {
-      Invoice: {
+  Xendit: class {
+    Invoice: { createInvoice: typeof mockCreateInvoice; expireInvoice: typeof mockExpireInvoice };
+    constructor(opts: unknown) {
+      mockXenditCtor(opts);
+      this.Invoice = {
         createInvoice: mockCreateInvoice,
         expireInvoice: mockExpireInvoice,
-      },
-    };
-  }),
+      };
+    }
+  },
 }));
 
 // ── Imports (after mocks) ─────────────────────────────────────────────────────
