@@ -2149,3 +2149,14 @@
 - Tests:               typecheck clean. K-prime trio (DB + Web + API) closes IDOR surface end-to-end for invoicing.
 - Errors encountered:  none
 - Errors resolved:     n/a
+
+## 2026-06-12 — Wire CRM surface (swarm W1) — customers list nav fix + NEEDS_SPEC log
+- Agent:               CLAUDE_CODE (swarm worker, branch swarm/wire-dead-controls)
+- Why:                 Swarm "wire dead controls" wave. Self-inventory of crm/** (14 tsx, 2967 LOC) found the CRM tRPC-backed interactive surface already fully wired (quotation actions/builder, contact-log create/delete/filter). The only genuine dead/inert control was the customers list: rows rendered with hover styling but no link to the existing customers/[id] detail page. Wired it (nav fix, mirrors quotations/contact-logs row-link pattern). Eight crm procedures (customerCreate/Update/ToggleActive, contactCreate/Update/Delete, creditUpsert/ToggleActive) are entirely unsurfaced; surfacing them is feature-build (new forms/routes/UX spec) — logged to docs/WIRING_NEEDS_SPEC.md per wave policy, not built.
+- Files added:         docs/WIRING_NEEDS_SPEC.md (CRM section — 8 unsurfaced procedures needing product/UX spec)
+- Files modified:      apps/web/src/app/(tenant)/[slug]/(app)/crm/customers/page.tsx (import next/link; Company/Name cell now links to /[slug]/crm/customers/[id])
+- Files deleted:       none
+- Schema/migrations:   none
+- Tests:               lint pass; typecheck pass (tsc --noEmit clean); vitest 811 passed (39 files); next build passes with .env.dev loaded (build-time env validation is the documented pre-existing /demo-login condition — code compiles + typechecks clean).
+- Errors encountered:  next build without env vars fails at /demo-login page-data collection (pre-existing — missing server env vars; documented 2026-06-02 entry / SKIP_ENV_VALIDATION in CI). Not introduced by this change.
+- Errors resolved:     Re-ran build with .env.dev sourced (normal dev validation path) → build succeeds, full route manifest emitted.

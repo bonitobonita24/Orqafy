@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 
@@ -99,16 +100,25 @@ export default async function CustomersPage({
                     className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
                   >
                     <td className="px-4 py-3">
-                      {c.companyName !== null ? (
-                        <>
-                          <div className="font-medium">{c.companyName}</div>
-                          <div className="text-xs text-muted-foreground">
+                      <Link
+                        href={`/${slug}/crm/customers/${c.id}`}
+                        className="hover:underline"
+                      >
+                        {c.companyName !== null ? (
+                          <>
+                            <div className="font-medium text-[#00d992]">
+                              {c.companyName}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {fullName}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="font-medium text-[#00d992]">
                             {fullName}
                           </div>
-                        </>
-                      ) : (
-                        <div className="font-medium">{fullName}</div>
-                      )}
+                        )}
+                      </Link>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {c.email !== null && (
