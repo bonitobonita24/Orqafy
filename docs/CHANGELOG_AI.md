@@ -2196,3 +2196,15 @@
 - Tests:               lint pass (no warnings/errors); vitest 811 passed (39 files); next build pass with .env.dev loaded (exit 0; /[slug]/inventory/stock-movements compiles as 259 B dynamic). Bare `next build` without env fails on /demo-login server-env validation — pre-existing (CI uses SKIP_ENV_VALIDATION=true), unrelated to this change.
 - Errors encountered:  none
 - Errors resolved:     Completed a broken partial diff in the working tree (stock-movements page destructured `product` but never used it → would fail lint/build).
+
+## 2026-06-12 — Swarm W5: Wire Purchasing surface (already fully wired — read-only)
+- Agent:               CLAUDE_CODE (swarm worker, branch swarm/wire-dead-controls)
+- Why:                 W5 punch-list item — wire dead/inert controls on the purchasing surface (purchasing, vendors, orders/[id]) against the existing purchasingRouter.
+- Files added:         none
+- Files modified:      docs/WIRING_NEEDS_SPEC.md (Purchasing W5 section), docs/CHANGELOG_AI.md, .cline/STATE.md
+- Files deleted:       none
+- Schema/migrations:   none
+- Decisions:           Self-inventory of purchasing/** (3 read-only server components, direct Prisma — page.tsx PO list, vendors/page.tsx vendor list, orders/[id]/page.tsx PO detail). Every interactive control is a working nav element (status filter tabs, Vendors↔Purchase-Orders links, PO# → orders/[id] row links, vendor Active/All tabs, mailto). NO dead/inert controls and NO broken hrefs existed to wire — this is the "already fully wired (read-only)" case (mirrors W3). Vendor rows are plain text and CANNOT be row-linked like W1's CRM customers because no `vendors/[id]` route exists; building one (or a vendorId-filtered PO list) is a feature-build, not a nav fix. The 11 purchasingRouter mutations (vendor create/update/deactivate; po create/update/submit/approve/markOrdered/cancel; goodsReceipt create) are entirely unsurfaced — each is a feature-build (net-new forms, line-item/allocation editors, status-transition action bars, inventory-affecting goods-receipt UX) → logged to WIRING_NEEDS_SPEC.md, NOT built per WAVE POLICY. Commit carries the NEEDS_SPEC log + governance checkpoint only (no app source changed).
+- Tests:               n/a — governance-markdown-only change; zero TS/app source modified, so lint/typecheck/build/test were not affected (no code to validate). Purchasing surface left exactly as-is.
+- Errors encountered:  none
+- Errors resolved:     none

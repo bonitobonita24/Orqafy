@@ -42,6 +42,21 @@
 #   are entirely unsurfaced = feature-builds → logged to docs/WIRING_NEEDS_SPEC.md, not built
 #   per WAVE POLICY. Validation: lint pass, vitest 811 pass, web build pass (with .env.dev
 #   loaded; stock-movements route 259 B dynamic).
+#
+# SWARM W5 (2026-06-12, branch swarm/wire-dead-controls — not yet merged to main):
+#   Wired Purchasing surface — "already fully wired (read-only)" case (mirrors W3).
+#   Self-inventory of purchasing/** (3 tsx, ~712 LOC): page.tsx (PO list), vendors/page.tsx
+#   (vendor list), orders/[id]/page.tsx (PO detail) are all read-only server components
+#   querying Prisma directly. Every interactive control is a working nav element (status
+#   filter tabs, Vendors↔Purchase-Orders links, PO# → orders/[id] row links, vendor
+#   Active/All tabs, mailto). NO dead/inert controls and NO broken hrefs existed to wire.
+#   Vendor rows are plain text and can't be row-linked like W1's CRM customers because no
+#   vendors/[id] route exists (building one = feature-build). The 11 purchasingRouter
+#   mutations (vendor create/update/deactivate; po create/update/submit/approve/markOrdered/
+#   cancel; goodsReceipt create) are entirely unsurfaced = feature-builds (forms, line-item/
+#   allocation editors, status-transition action bars, inventory-affecting GR UX) → logged to
+#   docs/WIRING_NEEDS_SPEC.md, not built per WAVE POLICY. Commit carries NEEDS_SPEC log +
+#   governance checkpoint only (no app source changed). Validation: n/a (markdown-only).
 # Main-branch staging-deploy handoff state below is UNCHANGED.
 
 PHASE:        Session closed — CI fully green; staging deploy gated on Komodo provisioning (operator)

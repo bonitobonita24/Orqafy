@@ -98,3 +98,37 @@ and confirm/UX decisions — so they are **not** in scope for "wire dead control
 - `inventory.stockAdjustment` — needs an "Adjust Stock" form (product, warehouse, delta/target qty, reason); inventory-affecting, so confirm-dialog policy undecided.
 
 These should be planned as a dedicated Phase 7 feature update with a PRODUCT.md-backed spec.
+
+---
+
+## Purchasing (W5)
+
+All three purchasing pages are **read-only server components** that query Prisma
+directly: `purchasing/page.tsx` (PO list), `purchasing/vendors/page.tsx` (vendor list),
+and `purchasing/orders/[id]/page.tsx` (PO detail). Every interactive control is a
+working nav element — status filter tabs, the "Vendors →" / "← Purchase Orders" links,
+the PO-number → `purchasing/orders/[id]` row links, the vendor Active/All filter tabs,
+and `mailto:` links. **No dead/inert controls exist** — there were no no-op buttons,
+unbound handlers, or broken hrefs to wire.
+
+One non-control was considered and rejected: the vendor-list rows are plain text (no
+`vendors/[id]` route exists), so they **cannot** be row-linked the way W1 linked CRM
+customers to an existing `customers/[id]` page. Building a vendor detail page — or
+linking a vendor's PO-count to a `vendorId`-filtered PO list (the list page reads
+Prisma directly and only honors a `status` searchParam today) — is a feature-build, not
+a nav fix, so it is **not** in scope for "wire dead controls."
+
+The following **11 `purchasingRouter` mutations are entirely unsurfaced** (no UI control
+exists). Surfacing any of them is a feature-build — net-new forms, line-item / allocation
+editors, status-transition actions, and confirm/UX decisions — so they are **not** in
+scope for this wave:
+
+- `purchasing.vendor.create` / `vendor.update` / `vendor.deactivate` — need an "Add/Edit Vendor" form (companyName, contact, email, phone, address, paymentTerms, platform fields) plus a deactivate confirm. The vendor list is display-only today.
+- `purchasing.po.create` — needs a "New PO" builder: vendor picker + a multi-row line-item editor (product, qty, unit price) with optional per-item warehouse/dimension **allocations** (the router validates allocation sums + type-specific ID requirements). No create UI exists.
+- `purchasing.po.update` — needs an edit form for draft POs (same builder as create), gated on PO status.
+- `purchasing.po.submit` / `po.approve` / `po.markOrdered` / `po.cancel` — need status-transition action controls on `purchasing/orders/[id]/page.tsx` (a status action bar). Each is a state machine step (draft → pending_approval → approved → ordered → cancelled); approve/cancel are authority actions, so confirm-dialog + role-gating UX is undecided.
+- `purchasing.goodsReceipt.create` — needs a "Receive Goods" form against an ordered PO (per-line quantityReceived / quantityRejected, GR notes). The PO detail page only **displays** existing goods receipts today; receiving is inventory-affecting (it increments stock), so confirm/UX policy is undecided.
+
+These add net-new forms/controls across the vendor list, PO list, and PO detail and
+span inventory-affecting / authority actions, so they should be planned as a dedicated
+Phase 7 feature update with a PRODUCT.md-backed spec.
