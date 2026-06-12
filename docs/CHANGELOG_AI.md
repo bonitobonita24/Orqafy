@@ -2184,3 +2184,15 @@
 - Tests:               No app source changed (governance docs only). lint not re-run for docs-only change; existing suite green at 811 (W2 baseline, unchanged).
 - Errors encountered:  none
 - Errors resolved:     none
+
+## 2026-06-12 — Wire Inventory surface (product→movements link + product filter) [swarm W4]
+- Agent:               CLAUDE_CODE (swarm worker, branch swarm/wire-dead-controls — not merged to main)
+- Why:                 W4 swarm session per WAVE POLICY — wire genuinely dead/inert controls against existing routers; log feature-builds to WIRING_NEEDS_SPEC.md.
+- Files added:         none
+- Files modified:      apps/web/src/app/(tenant)/[slug]/(app)/inventory/page.tsx (product-name link retargeted from non-existent `products/${id}` route → `inventory/stock-movements?productId=${id}`, with title tooltip); apps/web/src/app/(tenant)/[slug]/(app)/inventory/stock-movements/page.tsx (added `productId` filter to query + searchParams; fetch + render selected-product context banner with Clear link; preserve `productId` across type-tab hrefs and the warehouse GET form); docs/WIRING_NEEDS_SPEC.md (added Inventory W4 section); .cline/STATE.md (W4 checkpoint block).
+- Files deleted:       none
+- Schema/migrations:   none
+- Decisions:           Self-inventory of inventory/** (2 read-only server components, direct Prisma). Only dead control: the product-name link pointed at a non-existent `products/[id]` route → retargeted to product-filtered stock movements (in-scope nav/wire fix). Completed the partial productId-filter work already in the working tree (it had fetched `product` but never rendered it — an unused var that would fail lint/build; now rendered as a filter banner, and productId is preserved across the type tabs + warehouse form so the filter no longer silently drops). The 12 inventoryRouter mutations (product/category/warehouse CRUD+toggle, stockMovementCreate, stockTransfer, stockAdjustment) are entirely unsurfaced; each is a feature-build (net-new forms, pickers, confirm/UX) → logged to WIRING_NEEDS_SPEC.md, NOT built per WAVE POLICY.
+- Tests:               lint pass (no warnings/errors); vitest 811 passed (39 files); next build pass with .env.dev loaded (exit 0; /[slug]/inventory/stock-movements compiles as 259 B dynamic). Bare `next build` without env fails on /demo-login server-env validation — pre-existing (CI uses SKIP_ENV_VALIDATION=true), unrelated to this change.
+- Errors encountered:  none
+- Errors resolved:     Completed a broken partial diff in the working tree (stock-movements page destructured `product` but never used it → would fail lint/build).

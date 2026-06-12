@@ -20,13 +20,17 @@ function isTypeOption(value: string | undefined): value is TypeOption {
   return value !== undefined && (TYPE_OPTIONS as readonly string[]).includes(value);
 }
 
-async function getStockMovements(filters: { type?: string; warehouseId?: string }) {
+async function getStockMovements(filters: { type?: string; warehouseId?: string; productId?: string }) {
   const where: {
     type?: string;
+    productId?: string;
     OR?: Array<{ fromWarehouseId: string } | { toWarehouseId: string }>;
   } = {};
   if (filters.type !== undefined && filters.type !== "all" && isTypeOption(filters.type)) {
     where.type = filters.type;
+  }
+  if (filters.productId !== undefined && filters.productId !== "") {
+    where.productId = filters.productId;
   }
   if (filters.warehouseId !== undefined && filters.warehouseId !== "") {
     where.OR = [
@@ -59,18 +63,27 @@ async function getWarehouses() {
   });
 }
 
+async function getProduct(productId: string) {
+  return prisma.product.findUnique({
+    where: { id: productId },
+    select: { id: true, name: true, sku: true },
+  });
+}
+
 export default async function StockMovementsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; warehouseId?: string }>;
+  searchParams: Promise<{ type?: string; warehouseId?: string; productId?: string }>;
 }) {
-  const { type, warehouseId } = await searchParams;
-  const filters: { type?: string; warehouseId?: string } = {};
+  const { type, warehouseId, productId } = await searchParams;
+  const filters: { type?: string; warehouseId?: string; productId?: string } = {};
   if (type !== undefined) filters.type = type;
   if (warehouseId !== undefined) filters.warehouseId = warehouseId;
-  const [movements, warehouses] = await Promise.all([
+  if (productId !== undefined && productId !== "") filters.productId = productId;
+  const [movements, warehouses, product] = await Promise.all([
     getStockMovements(filters),
     getWarehouses(),
+    productId !== undefined && productId !== "" ? getProduct(productId) : Promise.resolve(null),
   ]);
 
   const counts = {
@@ -86,9 +99,16 @@ export default async function StockMovementsPage({
     const params = new URLSearchParams();
     if (nextType !== "all") params.set("type", nextType);
     if (warehouseId !== undefined && warehouseId !== "") params.set("warehouseId", warehouseId);
+    if (productId !== undefined && productId !== "") params.set("productId", productId);
     const qs = params.toString();
     return qs.length > 0 ? `?${qs}` : "?";
   }
+
+  const clearProductParams = new URLSearchParams();
+  if (activeType !== "all") clearProductParams.set("type", activeType);
+  if (warehouseId !== undefined && warehouseId !== "") clearProductParams.set("warehouseId", warehouseId);
+  const clearProductQs = clearProductParams.toString();
+  const clearProductHref = clearProductQs.length > 0 ? `?${clearProductQs}` : "?";
 
   return (
     <div className="space-y-6">
@@ -106,6 +126,23 @@ export default async function StockMovementsPage({
           ← Products
         </Link>
       </div>
+
+      {product !== null && (
+        <div className="flex items-center justify-between rounded-md border border-[#00d992]/30 bg-[#00d992]/10 px-4 py-2 text-sm">
+          <span className="text-[#00d992]">
+            Filtered by product: <span className="font-medium">{product.name}</span>
+            {product.sku !== null && (
+              <span className="ml-2 text-xs text-[#00d992]/80">{product.sku}</span>
+            )}
+          </span>
+          <Link
+            href={clearProductHref}
+            className="text-xs font-medium text-[#00d992] underline-offset-2 hover:underline"
+          >
+            Clear
+          </Link>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex flex-wrap gap-2">
@@ -129,6 +166,9 @@ export default async function StockMovementsPage({
 
         <form className="flex items-center gap-2" method="get">
           {activeType !== "all" && <input type="hidden" name="type" value={activeType} />}
+          {productId !== undefined && productId !== "" && (
+            <input type="hidden" name="productId" value={productId} />
+          )}
           <label className="text-xs text-muted-foreground" htmlFor="warehouseId">
             Warehouse:
           </label>

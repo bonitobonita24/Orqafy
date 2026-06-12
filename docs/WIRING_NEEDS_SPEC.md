@@ -73,3 +73,28 @@ it is **not** in scope for "wire dead controls":
 These add net-new forms/controls across the sessions list + detail and span
 inventory-affecting / destructive actions, so they should be planned as a dedicated
 Phase 7 feature update with a PRODUCT.md-backed spec.
+
+---
+
+## Inventory (W4)
+
+Both inventory pages are **read-only server components** that query Prisma directly:
+`inventory/page.tsx` (products list) and `inventory/stock-movements/page.tsx`
+(movements ledger with type-tab + warehouse + product filters). The only dead control
+found was the product-name link (it pointed at a non-existent `products/${id}` route);
+W4 wired it to `inventory/stock-movements?productId=${id}` and completed the
+product-filter chain (context banner, filter preservation across tabs/warehouse form,
+clear-filter link). No further dead/inert controls exist on these two pages.
+
+The following **12 `inventoryRouter` mutations are entirely unsurfaced** (no UI control
+exists). Surfacing any of them is a feature-build — net-new forms, validation, pickers,
+and confirm/UX decisions — so they are **not** in scope for "wire dead controls":
+
+- `inventory.productCreate` / `productUpdate` / `productToggleActive` — need an "Add/Edit Product" form (name, sku, unit, baseCost, category picker, active toggle) on the products list. Modal-vs-route and field/validation UX undecided.
+- `inventory.categoryCreate` / `categoryUpdate` / `categoryToggleActive` — need a category-management surface (none exists in the UI today).
+- `inventory.warehouseCreate` / `warehouseUpdate` / `warehouseToggleActive` — need a warehouse-management surface (the stock-movements warehouse filter only reads `warehouseList`).
+- `inventory.stockMovementCreate` — needs a "Record Movement" form (product picker, type, quantity, from/to warehouse, notes). The movements ledger is display-only today.
+- `inventory.stockTransfer` — needs a "Transfer Stock" form (product, qty, from→to warehouse) with the router's transactional from/to validation surfaced as UX.
+- `inventory.stockAdjustment` — needs an "Adjust Stock" form (product, warehouse, delta/target qty, reason); inventory-affecting, so confirm-dialog policy undecided.
+
+These should be planned as a dedicated Phase 7 feature update with a PRODUCT.md-backed spec.

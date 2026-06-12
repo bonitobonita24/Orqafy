@@ -30,6 +30,18 @@
 #   discrepancy/void-reason UX; void reverses inventory = destructive) = feature-builds → logged
 #   to docs/WIRING_NEEDS_SPEC.md, not built per WAVE POLICY. Commit carries NEEDS_SPEC log +
 #   governance checkpoint only (no app source changed).
+# SWARM W4 (2026-06-12, branch swarm/wire-dead-controls — not yet merged to main):
+#   Wired Inventory surface (2 read-only server components, direct Prisma). Dead control:
+#   inventory/page.tsx product-name link pointed at a non-existent products/[id] route →
+#   retargeted to inventory/stock-movements?productId=${id}. Completed the partial productId
+#   filter work in the tree on stock-movements/page.tsx: it had fetched `product` but never
+#   rendered it (unused var → would fail lint/build); now rendered as a filter-context banner
+#   with a Clear link, and productId is preserved across the type-tab hrefs + warehouse GET
+#   form so the filter no longer silently drops. The 12 inventoryRouter mutations
+#   (product/category/warehouse CRUD+toggle, stockMovementCreate, stockTransfer, stockAdjustment)
+#   are entirely unsurfaced = feature-builds → logged to docs/WIRING_NEEDS_SPEC.md, not built
+#   per WAVE POLICY. Validation: lint pass, vitest 811 pass, web build pass (with .env.dev
+#   loaded; stock-movements route 259 B dynamic).
 # Main-branch staging-deploy handoff state below is UNCHANGED.
 
 PHASE:        Session closed — CI fully green; staging deploy gated on Komodo provisioning (operator)
