@@ -2208,3 +2208,16 @@
 - Tests:               n/a — governance-markdown-only change; zero TS/app source modified, so lint/typecheck/build/test were not affected (no code to validate). Purchasing surface left exactly as-is.
 - Errors encountered:  none
 - Errors resolved:     none
+
+## 2026-06-12 — Swarm W6: Wire Accounting + Banking surfaces (already fully wired)
+- Agent:               CLAUDE_CODE (swarm worker, branch swarm/wire-dead-controls)
+- Why:                 W6 punch-list item — wire genuinely dead/inert controls on accounting/* + accounting/journal-entries + banking/* + fund-sources + transactions against accountingRouter + bankingRouter. Self-inventory found the surface already fully wired.
+- Files added:         none
+- Files modified:      docs/WIRING_NEEDS_SPEC.md (appended Accounting + Banking W6 section), .cline/STATE.md (W6 checkpoint block), docs/CHANGELOG_AI.md (this entry)
+- Files deleted:       none
+- Schema/migrations:   none
+- Finding:             All 7 accounting/banking pages (accounting/page.tsx, accounting/journal-entries/page.tsx, banking/page.tsx, banking/fund-sources/page.tsx, banking/transactions/page.tsx, banking/[fundSourceId]/transactions/page.tsx — ~1403 LOC, 0 client components) are read-only server components. 3 parallel read-only inventory scouts confirmed every interactive control is already WIRED: chart-of-accounts↔journal-entries cross links, treasury dashboard nav links (Manage sources / All transactions / per-row Transactions→), and the two ledgers' fully-functional filter forms (fund-source + type selects, Filter submit, Clear) + filter-preserving Prev/Next pagination. ZERO dead/inert controls, no broken hrefs, no TODO/disabled placeholders to wire.
+- Out of scope:        20 unsurfaced mutations (accountingRouter: account create/update/toggleActive, journalEntry create/post/reverse, fiscalYear create, taxRate create; bankingRouter: fund-source create/update/toggleActive + 9 transaction.record* money-movements) require net-new forms, balanced debit/credit editors, status-transition action bars, and balance-affecting money-movement UX — feature-builds, not wiring. Logged to docs/WIRING_NEEDS_SPEC.md per WAVE POLICY, not built. Account/fund-source/JE rows can't be row-linked (no detail routes exist).
+- Errors encountered:  none
+- Errors resolved:     none
+- Validation:          n/a (markdown/governance-only commit — no app source changed)

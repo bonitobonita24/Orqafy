@@ -132,3 +132,64 @@ scope for this wave:
 These add net-new forms/controls across the vendor list, PO list, and PO detail and
 span inventory-affecting / authority actions, so they should be planned as a dedicated
 Phase 7 feature update with a PRODUCT.md-backed spec.
+
+## Accounting + Banking (session W6)
+
+All seven Accounting + Banking pages are **read-only server components** that query
+Prisma / tRPC directly: `accounting/page.tsx` (chart of accounts list),
+`accounting/journal-entries/page.tsx` (journal entry list), `banking/page.tsx`
+(treasury dashboard), `banking/fund-sources/page.tsx` (fund source list),
+`banking/transactions/page.tsx` (global ledger), and
+`banking/[fundSourceId]/transactions/page.tsx` (per-source ledger). Every interactive
+control is a working nav/query element — the chart-of-accounts ↔ journal-entries cross
+links, the treasury "Manage sources" / "All transactions" / per-row "Transactions →"
+links, and the fully-functional ledger **filter forms** (fund-source select, type
+select, Filter submit, Clear) plus **pagination** Prev/Next links that preserve active
+filters via searchParams. **No dead/inert controls exist** — there were no no-op
+buttons, unbound handlers, disabled placeholders, or broken hrefs to wire, and there
+are no client components in these directories.
+
+One non-control was considered and rejected: the fund-source and account rows are plain
+display rows (no `accounting/accounts/[id]`, `journal-entries/[id]`, or
+`fund-sources/[id]` detail route exists), so they **cannot** be row-linked the way W1
+linked CRM customers to an existing detail page. Building those detail pages is a
+feature-build, not a nav fix, so it is **not** in scope for "wire dead controls."
+
+The following **20 router mutations are entirely unsurfaced** (no UI control exists).
+Surfacing any of them is a feature-build — net-new forms, line-item editors,
+status-transition actions, and confirm/UX decisions — so they are **not** in scope for
+this wave:
+
+**accountingRouter (10):**
+- `accounting.account.create` / `account.update` / `account.toggleActive` — need an
+  "Add/Edit Account" form (code, name, type, subtype, parentId, description, isSystem)
+  plus a toggle confirm. The chart-of-accounts list is display-only today.
+- `accounting.journalEntry.create` — needs a journal-entry builder: header (date,
+  description, fiscalYear) + a balanced multi-row debit/credit line editor (the router
+  validates that debits equal credits). No create UI exists.
+- `accounting.journalEntry.post` / `journalEntry.reverse` — need status-transition
+  action controls on a journal-entry detail page (draft → posted → reversed). Posting
+  and reversing are ledger-affecting authority actions, so confirm-dialog + role-gating
+  UX is undecided. No detail page exists yet either.
+- `accounting.fiscalYear.create` — needs a "New Fiscal Year" form (name, start/end
+  dates). No fiscal-year management UI exists.
+- `accounting.taxRate.create` — needs an "Add Tax Rate" form (name, rate, type). No tax
+  rate management UI exists.
+
+**bankingRouter (10):**
+- `banking.create` / `update` / `toggleActive` (fund sources) — need an "Add/Edit Fund
+  Source" form (name, type, opening balance, account number) plus a toggle confirm. The
+  fund-source list is display-only today.
+- `banking.transaction.recordIncome` / `recordExpense` / `transfer` /
+  `recordCreditCardCharge` / `payCreditCard` / `loanMoneyOutTo` / `loanMoneyIn` /
+  `recordRefund` / `recordAdjustment` — each needs a dedicated money-movement form
+  (amount, fund source(s), category, counterparty, notes). Several are
+  balance-affecting and inter-account (transfer, payCreditCard, loanMoneyOutTo /
+  loanMoneyIn move money between two sources), so amount/sign conventions, source
+  selection, and confirm/UX policy are undecided. The ledgers only **display** existing
+  transactions today; recording is balance-affecting.
+
+These add net-new forms/controls across the accounts list, journal-entries surface,
+fund-source list, and both ledgers, and span ledger-/balance-affecting authority
+actions, so they should be planned as a dedicated Phase 7 feature update with a
+PRODUCT.md-backed spec.

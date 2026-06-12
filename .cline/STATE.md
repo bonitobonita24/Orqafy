@@ -57,6 +57,26 @@
 #   allocation editors, status-transition action bars, inventory-affecting GR UX) → logged to
 #   docs/WIRING_NEEDS_SPEC.md, not built per WAVE POLICY. Commit carries NEEDS_SPEC log +
 #   governance checkpoint only (no app source changed). Validation: n/a (markdown-only).
+#
+# SWARM W6 (2026-06-12, branch swarm/wire-dead-controls — not yet merged to main):
+#   Wired Accounting + Banking surface — "already fully wired (read-only)" case (mirrors
+#   W3/W5). Self-inventory of accounting/** + banking/** (7 tsx, ~1403 LOC, 0 client
+#   components): chart-of-accounts list, journal-entries list, treasury dashboard,
+#   fund-sources list, and two transaction ledgers are all read-only server components.
+#   Every interactive control is a working nav/query element — chart-of-accounts↔journal
+#   cross-links, treasury Manage-sources/All-transactions/per-row Transactions→ links, and
+#   the ledgers' fully-functional filter forms (fund-source + type selects, Filter submit,
+#   Clear) plus filter-preserving Prev/Next pagination. NO dead/inert controls, no broken
+#   hrefs, no TODO/disabled placeholders existed to wire. Account/fund-source/JE rows are
+#   plain display rows and can't be row-linked like W1 (no accounts/[id], journal-entries/[id],
+#   or fund-sources/[id] detail route exists — building those = feature-build). The 20
+#   unsurfaced mutations (accountingRouter: account create/update/toggleActive, journalEntry
+#   create/post/reverse, fiscalYear create, taxRate create; bankingRouter: fund-source
+#   create/update/toggleActive + 9 transaction.record* money-movements) are feature-builds
+#   (forms, balanced debit/credit editors, status-transition action bars, balance-affecting
+#   money-movement UX) → logged to docs/WIRING_NEEDS_SPEC.md, not built per WAVE POLICY.
+#   Commit carries NEEDS_SPEC log + governance checkpoint only (no app source changed).
+#   Validation: n/a (markdown-only).
 # Main-branch staging-deploy handoff state below is UNCHANGED.
 
 PHASE:        Session closed — CI fully green; staging deploy gated on Komodo provisioning (operator)
