@@ -8,6 +8,16 @@
 #   fully wired otherwise. 8 unsurfaced crm procedures (customer/contact/credit CRUD) logged
 #   to docs/WIRING_NEEDS_SPEC.md as feature-builds needing product/UX spec (not built).
 #   Validation: lint pass, typecheck pass, vitest 811 pass, build pass (with .env.dev loaded).
+#
+# SWARM W2 (2026-06-12, branch swarm/wire-dead-controls — not yet merged to main):
+#   Wired Invoicing surface. clients/page.tsx was an inert redirect stub → now a real
+#   client list (new client island clients-list.tsx) wired to the existing client.list
+#   query, with search + rows linking to canonical crm/customers/[id] detail. invoices/page.tsx
+#   is a read-only table with ZERO existing controls; surfacing the 5 invoice mutations
+#   (markSent/markPaid/void/create/update) is a feature-build (net-new action UI + line-item
+#   editor + UX decisions) → logged to docs/WIRING_NEEDS_SPEC.md, not built per WAVE POLICY.
+#   Validation: lint pass (no warnings/errors), vitest 811 pass, web build pass (clients route
+#   now 1.44 kB dynamic).
 # Main-branch staging-deploy handoff state below is UNCHANGED.
 
 PHASE:        Session closed — CI fully green; staging deploy gated on Komodo provisioning (operator)

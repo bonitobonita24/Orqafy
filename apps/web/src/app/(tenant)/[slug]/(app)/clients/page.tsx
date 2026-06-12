@@ -1,4 +1,9 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { ClientsList } from "./clients-list";
+
+export const metadata: Metadata = { title: "Clients" };
+
+export const dynamic = "force-dynamic";
 
 export default async function ClientsPage({
   params,
@@ -6,5 +11,5 @@ export default async function ClientsPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  redirect(`/${slug}/crm/customers`);
+  return <ClientsList slug={slug} />;
 }

@@ -2160,3 +2160,15 @@
 - Tests:               lint pass; typecheck pass (tsc --noEmit clean); vitest 811 passed (39 files); next build passes with .env.dev loaded (build-time env validation is the documented pre-existing /demo-login condition — code compiles + typechecks clean).
 - Errors encountered:  next build without env vars fails at /demo-login page-data collection (pre-existing — missing server env vars; documented 2026-06-02 entry / SKIP_ENV_VALIDATION in CI). Not introduced by this change.
 - Errors resolved:     Re-ran build with .env.dev sourced (normal dev validation path) → build succeeds, full route manifest emitted.
+
+## 2026-06-12 — Wire Invoicing surface (clients list; invoice mutations logged) [swarm W2]
+- Agent:               CLAUDE_CODE
+- Why:                 W2 swarm session per WAVE POLICY — wire genuinely dead/inert controls against existing tRPC routers; log feature-builds to WIRING_NEEDS_SPEC.md. Branch swarm/wire-dead-controls (not merged to main).
+- Files added:         apps/web/src/app/(tenant)/[slug]/(app)/clients/clients-list.tsx (client island — trpc.client.list.useQuery, search input, table mirroring crm/customers styling, rows link to crm/customers/[id]).
+- Files modified:      apps/web/src/app/(tenant)/[slug]/(app)/clients/page.tsx (was a 10-line redirect stub → now renders <ClientsList>); docs/WIRING_NEEDS_SPEC.md (added Invoicing W2 section); .cline/STATE.md (W2 checkpoint block).
+- Files deleted:       none
+- Schema/migrations:   none
+- Decisions:           clients/page.tsx redirect stub replaced with a real list wired to the existing-but-unsurfaced client.list query (in-scope wire). invoices/page.tsx has ZERO existing controls; surfacing the 5 invoice mutations (markSent/markPaid/void/create/update) is a feature-build (net-new action UI, line-item editor, confirm-dialog/partial-payment UX) → logged to WIRING_NEEDS_SPEC.md, NOT built.
+- Tests:               lint pass (no warnings/errors); vitest 811 passed (39 files); next build pass (new /[slug]/clients route compiles as 1.44 kB dynamic).
+- Errors encountered:  none
+- Errors resolved:     none

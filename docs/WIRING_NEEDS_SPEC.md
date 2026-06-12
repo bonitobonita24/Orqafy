@@ -26,3 +26,23 @@ decision, and route additions — so it is **not** in scope for "wire dead contr
 
 Combined these likely exceed the 500-line surface budget and span new routes, so they
 should be planned as dedicated Phase 7 feature updates with a PRODUCT.md-backed spec.
+
+## Invoicing (session W2)
+
+Shipped this session: `clients/page.tsx` was an inert redirect stub → now a real
+client list wired to the existing `client.list` query (rows link to the canonical
+`crm/customers/[id]` detail). That was a genuine wire of an existing-but-unsurfaced
+procedure.
+
+`invoices/page.tsx` is a **read-only** server-rendered table with **zero existing
+controls** (no buttons, no row actions). The `invoice` router exposes 5 mutations
+that are entirely unsurfaced. Surfacing them is a feature-build — net-new action UI
+plus UX decisions — so it is **not** in scope for "wire dead controls":
+
+- `invoice.markSent` / `invoice.markPaid` / `invoice.void` — need row-action UI (inline buttons vs dropdown menu), confirm-dialog policy (void is semi-destructive), and optimistic-vs-refetch state UX. `markPaid` only sets full `paid`; the schema models `amountPaid`/`balance`/`partially_paid` but no partial-payment recording mutation exists — a product gap to resolve before wiring.
+- `invoice.create` — needs a full invoice form + route (customer picker, due date, line-item editor with quantity/unitPrice rows); substantial form, undecided field/validation/UX.
+- `invoice.update` — needs an edit form + route (draft-only); depends on the create form's line-item editor that does not yet exist.
+
+These span new routes and a line-item editor, likely exceeding the 500-line surface
+budget, so they should be planned as a dedicated Phase 7 feature update with a
+PRODUCT.md-backed spec.
