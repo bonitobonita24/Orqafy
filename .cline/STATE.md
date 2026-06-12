@@ -18,6 +18,18 @@
 #   editor + UX decisions) → logged to docs/WIRING_NEEDS_SPEC.md, not built per WAVE POLICY.
 #   Validation: lint pass (no warnings/errors), vitest 811 pass, web build pass (clients route
 #   now 1.44 kB dynamic).
+#
+# SWARM W3 (2026-06-12, branch swarm/wire-dead-controls — not yet merged to main):
+#   Wired POS surface — "already fully wired" case. Self-inventory of pos/** (4 tsx, 1014 LOC):
+#   new-sale/cart-client.tsx is a complete POS terminal already wired to pos.sale.create
+#   (picker, cart qty/price edit, tax/discount, payment+change, notes, Complete Sale gated on
+#   validateCart+isPending). pos/page.tsx (sessions list) + pos/[id]/page.tsx (session detail)
+#   are read-only server displays whose only controls are working nav Links. NO dead/inert
+#   controls existed to wire. Three unsurfaced pos mutations (session.open, session.close,
+#   sale.void) require net-new action UI (forms, confirm dialogs, openingBalance/closingBalance/
+#   discrepancy/void-reason UX; void reverses inventory = destructive) = feature-builds → logged
+#   to docs/WIRING_NEEDS_SPEC.md, not built per WAVE POLICY. Commit carries NEEDS_SPEC log +
+#   governance checkpoint only (no app source changed).
 # Main-branch staging-deploy handoff state below is UNCHANGED.
 
 PHASE:        Session closed — CI fully green; staging deploy gated on Komodo provisioning (operator)

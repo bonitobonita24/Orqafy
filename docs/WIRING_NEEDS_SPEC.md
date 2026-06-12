@@ -46,3 +46,30 @@ plus UX decisions — so it is **not** in scope for "wire dead controls":
 These span new routes and a line-item editor, likely exceeding the 500-line surface
 budget, so they should be planned as a dedicated Phase 7 feature update with a
 PRODUCT.md-backed spec.
+
+## POS (session W3)
+
+Self-inventory of `pos/**` (4 tsx, 1014 LOC): `pos/page.tsx` (sessions list),
+`pos/new-sale/page.tsx` + `pos/new-sale/cart-client.tsx` (POS terminal),
+`pos/[id]/page.tsx` (session detail).
+
+The POS interactive surface is **already fully wired**. `cart-client.tsx` is a
+complete point-of-sale terminal wired to `pos.sale.create` (product search/picker,
+cart quantity + unit-price editing, tax/discount inputs, payment method + live change
+calc, notes, and a Complete Sale button gated on `validateCart` + `isPending`).
+`pos/page.tsx` and `pos/[id]/page.tsx` are **read-only** server-rendered displays
+whose only controls are working nav `Link`s (status filter tabs, New Sale, and
+session-number → `pos/[id]` detail). **No dead/inert controls exist** — there were no
+no-op buttons or unbound handlers to wire.
+
+The following **3 pos router mutations are entirely unsurfaced** (no UI control
+exists). Surfacing each is a feature-build — net-new action UI plus UX decisions — so
+it is **not** in scope for "wire dead controls":
+
+- `pos.session.open` (input `{ openingBalance, notes? }`) — needs an "Open Session" control + form on `pos/page.tsx`. The router already enforces one-open-session-per-user (returns CONFLICT otherwise). The new-sale screen even prompts "No open sessions. Open one in POS Sessions first," but no open-session UI exists yet. Modal-vs-route and openingBalance/notes field/validation UX undecided.
+- `pos.session.close` (input `{ id, closingBalance, notes? }`) — needs a "Close Session" form on `pos/[id]/page.tsx` for open sessions (closingBalance input; the router computes expected balance + discrepancy from cash sales). Confirm-dialog policy and discrepancy-review UX undecided.
+- `pos.sale.void` (input `{ id, reason }` — reason required) — needs a per-row "Void" action on the sales table in `pos/[id]/page.tsx`. Void is **semi-destructive**: it reverses the sale's inventory by writing offsetting `in` stock movements inside a transaction and flips the sale to `voided`. Needs a confirm dialog + reason-capture input, and an inline-button-vs-dropdown / optimistic-vs-refetch decision.
+
+These add net-new forms/controls across the sessions list + detail and span
+inventory-affecting / destructive actions, so they should be planned as a dedicated
+Phase 7 feature update with a PRODUCT.md-backed spec.

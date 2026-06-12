@@ -2172,3 +2172,15 @@
 - Tests:               lint pass (no warnings/errors); vitest 811 passed (39 files); next build pass (new /[slug]/clients route compiles as 1.44 kB dynamic).
 - Errors encountered:  none
 - Errors resolved:     none
+
+## 2026-06-12 — Wire POS surface (already fully wired; mutations logged) [swarm W3]
+- Agent:               CLAUDE_CODE (swarm worker, branch swarm/wire-dead-controls — not merged to main)
+- Why:                 W3 swarm session per WAVE POLICY — wire genuinely dead/inert controls against existing tRPC routers; log feature-builds to WIRING_NEEDS_SPEC.md.
+- Files added:         none
+- Files modified:      docs/WIRING_NEEDS_SPEC.md (added POS W3 section); .cline/STATE.md (W3 checkpoint block).
+- Files deleted:       none
+- Schema/migrations:   none
+- Decisions:           Self-inventory of pos/** (4 tsx, 1014 LOC) found the POS interactive surface already fully wired: new-sale/cart-client.tsx is a complete terminal wired to pos.sale.create (picker, cart qty/price edit, tax/discount, payment+change, notes, Complete Sale gated on validateCart+isPending). pos/page.tsx (sessions list) and pos/[id]/page.tsx (session detail) are read-only server displays whose only controls are working nav Links (filter tabs, New Sale, session→detail). NO dead/inert controls existed to wire. Three pos mutations (session.open, session.close, sale.void) are entirely unsurfaced; surfacing each is a feature-build (net-new forms/controls, confirm dialogs, openingBalance/closingBalance/discrepancy/void-reason UX, inventory-affecting/destructive actions) → logged to WIRING_NEEDS_SPEC.md per wave policy, NOT built. Per WAVE POLICY "already fully wired" case, this commit carries only the NEEDS_SPEC log + governance checkpoint.
+- Tests:               No app source changed (governance docs only). lint not re-run for docs-only change; existing suite green at 811 (W2 baseline, unchanged).
+- Errors encountered:  none
+- Errors resolved:     none
