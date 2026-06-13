@@ -448,3 +448,49 @@ Self-inventory of the dashboard / reports / settings surfaces.
   links. No dead controls. (It computes its own report-style data directly; it does not
   call reportRouter/notificationRouter — surfacing notifications is the feature-build above.)
 - **Settings → Xendit** (`settings/xendit`) is live and wired (config-form island).
+
+## W12 — Platform admin (powerbyte-admin) + landing pricing (2026-06-14, branch swarm/wire-dead-controls)
+
+Self-inventory result: **the W12 domain is already fully wired — zero dead/inert controls,
+zero broken nav.** No functional code changed. Detail below.
+
+### Already fully wired (no action needed)
+- **Landing pricing** (`app/page.tsx`). The page already loads active plans
+  (`prisma.plan.findMany({ where: { isActive: true }, orderBy: { sortOrder } })`) and
+  renders a full pricing grid with per-plan price/users/storage/features and a working
+  `Get started → /register?plan={slug}` CTA. The "Pricing plans coming soon." line
+  (page.tsx:109) is the **empty-state fallback** for `plans.length === 0` — correct
+  behavior, not a dead control. It disappears automatically once Plan rows are seeded; it
+  is a data/seed concern, not a wiring concern. (Scope referenced `planRouter.list` — the
+  actual method is `planRouter.listActive`; it is **redundant-but-covered**: the RSC reads
+  Prisma directly and returns the identical result set, matching the W10/W11 convention
+  that an RSC reading Prisma directly counts as already-wired.)
+- **Platform admin list** (`powerbyte-admin/page.tsx`). Server component lists all tenants
+  (`prisma.tenant.findMany`) with status chips, plan, created date, and a working
+  `Manage → /powerbyte-admin/{id}` link. Access-gated by `powerbyte-admin/layout.tsx`
+  (redirects non-`Platform Owner`). No dead controls.
+- **Platform admin tenant detail** (`powerbyte-admin/[tenantId]/page.tsx`). Server
+  component with working Suspend / Reactivate **Server Actions** (Prisma `tenant.update`
+  + `redirect`), `notFound()` guard, breadcrumb back to `/powerbyte-admin` (exists),
+  details panel, workspace URL. All controls functional.
+
+### Feature-builds / hardening — NOT built per WAVE POLICY (need new infra + product/UX spec)
+- **Route admin pages through `platformRouter` (hardening, not a dead-control fix).**
+  `platformRouter` (`listTenants` / `getTenant` / `suspendTenant` / `reactivateTenant`)
+  already exists and is mounted, and its mutations add what the page Server Actions lack:
+  (a) `platformProcedure` auth at the data layer, and (b) **L5 audit logging** to
+  `tenantAuditLog` with `PLATFORM:SUSPEND_TENANT` / `PLATFORM:REACTIVATE_TENANT`
+  (security.md superadmin rule: "ALL superadmin operations MUST be logged to AuditLog with
+  prefix PLATFORM:"). Wiring the RSC pages/Server Actions onto the router is a
+  **behavior-changing refactor**, not a dead-control wire, and is blocked on two unbuilt
+  pieces: (1) there is **no RSC→tRPC server-caller pattern** in the app today
+  (`createCallerFactory` is used only in tests; every RSC page reads Prisma directly), so a
+  server-caller helper would have to be introduced; and (2) the router mutations require
+  `reason: z.string().min(1)` — capturing a suspension/reactivation reason is
+  **unspecified UX** (modal? textarea? prompt?). Deferred: needs the server-caller helper +
+  the reason-capture UX decision. Recommended as the canonical fix for the admin
+  audit-logging gap.
+- **Surface `listTenants` search/status filters.** `platformRouter.listTenants` accepts
+  `search` / `status` / pagination, but the admin list page renders an unfiltered,
+  unpaginated table. A search box + status filter + pagination is net-new UI (and would
+  ride on the server-caller helper above). Feature-build, deferred.

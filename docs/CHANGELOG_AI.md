@@ -2295,3 +2295,30 @@
       WIRING_NEEDS_SPEC.md, NOT built (WAVE POLICY).
 - Errors encountered:  none
 - Validation:          pnpm --filter @orqafy/web lint (clean), test (811 pass), build (pass)
+
+## 2026-06-14 — Swarm W12: Platform admin + landing pricing (self-inventory: already wired)
+- Agent:               CLAUDE_CODE (swarm worker W12, branch swarm/wire-dead-controls)
+- Why:                 W12 punch-list — wire powerbyte-admin + [tenantId] against
+                       platformRouter; clear landing pricing "Coming soon" vs planRouter.
+- Outcome:             Domain ALREADY FULLY WIRED — zero dead/inert controls, zero broken
+                       nav. No functional code changed (WAVE POLICY: already-wired domain →
+                       log only). Landing pricing (app/page.tsx) loads active plans via
+                       Prisma + renders full pricing grid; page.tsx:109 "Pricing plans
+                       coming soon." is the plans.length===0 empty-state (correct; resolves
+                       on seed). Scope's planRouter.list → actual planRouter.listActive,
+                       redundant-but-covered (RSC reads Prisma directly, W10/W11 convention).
+                       powerbyte-admin list + [tenantId] detail functional (Manage links,
+                       Suspend/Reactivate Server Actions, notFound guard, breadcrumb;
+                       layout gates non-Platform-Owner).
+- Feature-builds:      Logged 2 to WIRING_NEEDS_SPEC.md, NOT built (WAVE POLICY):
+                       (1) route admin Server Actions through platformRouter for L5 audit
+                       logging (PLATFORM:SUSPEND/REACTIVATE_TENANT) + auth — blocked on no
+                       RSC→tRPC server-caller pattern in app (createCallerFactory test-only)
+                       + router's required `reason` needing unspecified capture UX;
+                       (2) surface listTenants search/status/pagination filters.
+- Files modified:      docs/WIRING_NEEDS_SPEC.md, .cline/STATE.md, docs/CHANGELOG_AI.md
+- Files added:         none
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  none
+- Validation:          pnpm --filter @orqafy/web lint, test, build
