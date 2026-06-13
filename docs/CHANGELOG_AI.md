@@ -2322,3 +2322,33 @@
 - Schema/migrations:   none
 - Errors encountered:  none
 - Validation:          pnpm --filter @orqafy/web lint, test, build
+
+## 2026-06-14 — Swarm W13: Wave-program closeout + Phase 7 backend triage doc
+- Agent:               CLAUDE_CODE (swarm worker W13, branch swarm/wire-dead-controls)
+- Why:                 Closeout of the W0–W13 UI dead-control wiring program. Roll up
+                       governance + compile the deferred backend feature-builds (logged
+                       per-wave in WIRING_NEEDS_SPEC.md) into a single Phase 7 planning input.
+- Outcome:             Docs/governance only — NO app source changed.
+- Files added:         docs/UI_BACKEND_GAPS.md — consolidated triage of every unsurfaced
+                       backend procedure + product/UX gap across W1–W12. ~100+ unsurfaced
+                       router procedures over 9 CRUD/ops domains (CRM 8, Invoicing 5, POS 3,
+                       Inventory 12, Purchasing 11, Accounting+Banking 20, HR 14,
+                       Projects+Tasks 21, Service/Jobs/Support 8) + E-commerce 2 +
+                       Notification/Settings infra + 2 platform-admin hardening items.
+                       Flags 2 cross-cutting BLOCKERS to resolve first: (a) no RSC→tRPC
+                       server-caller pattern (createCallerFactory test-only) — blocks
+                       audit-on-mutation hardening; (b) Invoicing partial-payment recording
+                       unmodeled at the mutation layer. Closes with a recommended Phase 7
+                       epic grouping. Authoritative per-procedure source remains
+                       docs/WIRING_NEEDS_SPEC.md (W0 itself blocked on thrash; residuals were
+                       logged incrementally by waves W1–W12).
+- Files modified:      .cline/STATE.md (W13 closeout block + wave-program-complete note),
+                       docs/IMPLEMENTATION_MAP.md (UI Wiring Program W0–W13 summary section),
+                       docs/CHANGELOG_AI.md (this entry).
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  none
+- Validation:          pnpm --filter @orqafy/web lint (clean), test (811 pass), build (pass)
+- Note:                Wave program W0–W13 complete on swarm/wire-dead-controls; awaiting
+                       human review + merge to main. Main-branch staging-deploy handoff
+                       state unchanged.

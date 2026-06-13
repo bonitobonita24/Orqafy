@@ -4,6 +4,19 @@
 # Note: Batch 6+ batch detail lives in docs/CHANGELOG_AI.md and .cline/STATE.md — see those files for per-batch records since this file's structured snapshot section was last refreshed at Batch 5.
 # ---
 
+## UI Wiring Program (W0–W13, branch `swarm/wire-dead-controls` — 2026-06-12 → 2026-06-14)
+A 14-wave dead-control + broken-nav remediation pass across all 57 page surfaces / 28+ tRPC
+routers. WAVE POLICY: wire only dead/inert controls + broken nav; never author new action
+surfaces (those are logged as Phase 7 feature-builds). Outcome:
+- **Shipped (in scope):** W11 reports tenant-isolation 🔴 security fix; dead-nav/dead-link
+  fixes (W9 job-order breadcrumb, W10 storefront "Track order" link, W11 four settings hrefs).
+  Most domains were found **already fully wired** (RSC pages reading Prisma directly).
+- **Deferred (out of scope):** ~100+ unsurfaced backend procedures + product/UX gaps —
+  consolidated into **`docs/UI_BACKEND_GAPS.md`** (W13), the planning input for a future
+  Phase 7 backend feature wave. Per-wave detail: `docs/WIRING_NEEDS_SPEC.md`.
+- **Status:** Wave program complete on `swarm/wire-dead-controls`; awaiting human review + merge.
+  Does not touch the main-branch staging-deploy handoff state.
+
 ## Phase Status
 
 | Phase | Status | Notes |
