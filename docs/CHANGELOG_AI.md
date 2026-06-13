@@ -2260,3 +2260,12 @@
 - Notes:               Self-inventory found the service/job-orders/[id] detail already fully wired (status-actions→updateStatus, line-items→addPart/removePart/addServiceLine/removeServiceLine, signature→recordSignature). job-orders list/detail + support list/detail are read-only with only working nav/query Links — no other dead controls. 8 unsurfaced mutations (jobOrder.create/assignTechnician; support ticket.create/update/assign/changeStatus/close, comment.create) + a two-detail-route structural question logged to WIRING_NEEDS_SPEC.md as Phase-7 feature-builds. Dispatched inline (single indivisible nav fix) — no Sonnet fan-out warranted.
 - Validation:          lint pass (no warnings/errors), vitest 811 pass, web build pass.
 - Commits:             (this commit)
+
+## 2026-06-14 — Phase 4 W10: Wire E-commerce + Storefront
+- Agent:               CLAUDE_CODE
+- Why:                 Swarm W10 — wire dead/inert controls + nav fixes on the e-commerce/storefront surface against storefrontRouter.
+- Files modified:      apps/web/src/app/(tenant)/[slug]/store/layout.tsx (added "Track order" nav link to store header — store/orders/track was a functional but orphan page, nothing linked to it)
+- Files modified:      docs/WIRING_NEEDS_SPEC.md (logged listMyOrders + placeOrder as Phase 7 feature-builds; noted browseProducts/listAllOrders as redundant-but-covered)
+- Schema/migrations:   none
+- Self-inventory:      products list/detail, checkout, order tracking, ecommerce orders list/detail all already fully wired (search/filter/pagination, AddToCartButton+cart store, placeOrderAsCustomer+Turnstile, trackGuestOrder, updateOrderStatus/updateFulfillment/createXenditInvoice). Only genuine gap was the orphan track page.
+- Errors encountered:  none

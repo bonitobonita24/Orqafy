@@ -26,7 +26,15 @@ export default async function StoreLayout({
             >
               Shop
             </Link>
-            <CartDrawer />
+            <div className="flex items-center gap-4">
+              <Link
+                href={`/${slug}/store/orders/track`}
+                className="text-sm text-muted-foreground transition hover:text-[#00d992]"
+              >
+                Track order
+              </Link>
+              <CartDrawer />
+            </div>
           </div>
         </header>
         {children}

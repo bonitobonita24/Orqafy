@@ -381,3 +381,26 @@ comment.list/create, attachment.list).
 These add net-new forms/controls and lifecycle/authority interactions across the job-order
 intake, technician assignment, and the full support-ticket surface, so they should be planned
 as a dedicated Phase 7 feature update with a PRODUCT.md-backed spec.
+
+## W10 — E-commerce + Storefront (2026-06-14)
+
+The e-commerce + storefront surface is otherwise fully wired (storefront list/detail,
+add-to-cart, checkout→placeOrderAsCustomer+Turnstile, guest order tracking, admin order
+detail with updateOrderStatus/updateFulfillment/createXenditInvoice). Nav fix shipped:
+`store/orders/track` was a functional but orphan page (nothing linked to it) — added a
+"Track order" link to the store header. The following storefront procedures remain
+unsurfaced and need a dedicated Phase 7 spec (net-new pages + product/UX decisions):
+
+- `storefront.listMyOrders` — needs a customer-facing "My orders" history page
+  (authenticated customer order list). No such route exists; requires deciding the
+  customer account area IA and how authenticated storefront customers are modeled.
+- `storefront.placeOrder` — authenticated (writeProcedure) order creation, distinct from
+  the public `placeOrderAsCustomer` used by checkout. Surfacing it means a net-new
+  admin/staff "create order on behalf of customer" form (customer picker + line-item
+  builder) — a feature-build, not a dead control.
+
+### Redundant-but-covered (no action needed)
+- `storefront.browseProducts` and `storefront.listAllOrders` are unused by the UI because
+  the storefront product list and the admin `ecommerce/orders` list query Prisma directly
+  in their server components. Functionality is present; the tRPC procedures are simply not
+  the path the pages take. No wiring gap — flagged only to avoid a future "dead procedure" hunt.
