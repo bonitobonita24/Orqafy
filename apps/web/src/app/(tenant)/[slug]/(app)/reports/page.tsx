@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { auth } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Reports" };
 export const dynamic = "force-dynamic";
@@ -37,25 +39,27 @@ const JOB_ORDER_STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
-async function getKPIs() {
+async function getKPIs(tenantId: string) {
   const [invoiceStats, expenseStats, jobOrderStats, customers, projects, employees] =
     await Promise.all([
       prisma.invoice.aggregate({
+        where: { tenantId },
         _sum: { totalAmount: true },
         _count: { id: true },
       }),
       prisma.expense.aggregate({
-        where: { status: "approved" },
+        where: { tenantId, status: "approved" },
         _sum: { amount: true },
         _count: { id: true },
       }),
       prisma.jobOrder.groupBy({
         by: ["status"],
+        where: { tenantId },
         _count: { id: true },
       }),
-      prisma.customer.count(),
-      prisma.project.count(),
-      prisma.employee.count(),
+      prisma.customer.count({ where: { tenantId } }),
+      prisma.project.count({ where: { tenantId } }),
+      prisma.employee.count({ where: { tenantId } }),
     ]);
 
   const revenue = Number(invoiceStats._sum.totalAmount ?? 0);
@@ -74,18 +78,19 @@ async function getKPIs() {
   };
 }
 
-async function getInvoicesByStatus() {
+async function getInvoicesByStatus(tenantId: string) {
   return prisma.invoice.groupBy({
     by: ["status"],
+    where: { tenantId },
     _count: { id: true },
     _sum: { totalAmount: true },
   });
 }
 
-async function getTopClients() {
+async function getTopClients(tenantId: string) {
   const grouped = await prisma.invoice.groupBy({
     by: ["customerId"],
-    where: { status: "paid" },
+    where: { tenantId, status: "paid" },
     _sum: { totalAmount: true },
     _count: { id: true },
     orderBy: { _sum: { totalAmount: "desc" } },
@@ -95,7 +100,7 @@ async function getTopClients() {
   if (grouped.length === 0) return [];
 
   const customers = await prisma.customer.findMany({
-    where: { id: { in: grouped.map((g) => g.customerId) } },
+    where: { tenantId, id: { in: grouped.map((g) => g.customerId) } },
     select: { id: true, firstName: true, lastName: true, companyName: true },
   });
   const customerMap = new Map(customers.map((c) => [c.id, c]));
@@ -115,10 +120,10 @@ async function getTopClients() {
   });
 }
 
-async function getExpensesByCategory() {
+async function getExpensesByCategory(tenantId: string) {
   const grouped = await prisma.expense.groupBy({
     by: ["expenseCategoryId"],
-    where: { status: "approved" },
+    where: { tenantId, status: "approved" },
     _sum: { amount: true },
     _count: { id: true },
   });
@@ -126,7 +131,7 @@ async function getExpensesByCategory() {
   if (grouped.length === 0) return [];
 
   const categories = await prisma.expenseCategory.findMany({
-    where: { id: { in: grouped.map((g) => g.expenseCategoryId) } },
+    where: { tenantId, id: { in: grouped.map((g) => g.expenseCategoryId) } },
     select: { id: true, name: true, code: true },
   });
   const catMap = new Map(categories.map((c) => [c.id, c]));
@@ -145,9 +150,9 @@ async function getExpensesByCategory() {
     .sort((a, b) => b.total - a.total);
 }
 
-async function getPayrollSummary() {
+async function getPayrollSummary(tenantId: string) {
   const agg = await prisma.payroll.aggregate({
-    where: { status: "paid" },
+    where: { tenantId, status: "paid" },
     _sum: { totalGross: true, totalNet: true, totalDeductions: true },
     _count: { id: true },
   });
@@ -160,13 +165,27 @@ async function getPayrollSummary() {
 }
 
 export default async function ReportsPage() {
+  // Tenant isolation: scope every aggregate to the signed-in user's tenant.
+  // Mirrors reportRouter's ctx.tenantId scoping — without it these cross-module
+  // aggregates would span ALL tenants (cross-tenant data leak).
+  const session = await auth();
+  const tenantId = session?.user?.tenantId;
+  if (
+    session?.user == null ||
+    session.user.error === "SESSION_INVALIDATED" ||
+    tenantId == null ||
+    tenantId === ""
+  ) {
+    notFound();
+  }
+
   const [kpis, invoicesByStatus, topClients, expensesByCategory, payroll] =
     await Promise.all([
-      getKPIs(),
-      getInvoicesByStatus(),
-      getTopClients(),
-      getExpensesByCategory(),
-      getPayrollSummary(),
+      getKPIs(tenantId),
+      getInvoicesByStatus(tenantId),
+      getTopClients(tenantId),
+      getExpensesByCategory(tenantId),
+      getPayrollSummary(tenantId),
     ]);
 
   return (

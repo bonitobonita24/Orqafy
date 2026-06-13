@@ -2269,3 +2269,29 @@
 - Schema/migrations:   none
 - Self-inventory:      products list/detail, checkout, order tracking, ecommerce orders list/detail all already fully wired (search/filter/pagination, AddToCartButton+cart store, placeOrderAsCustomer+Turnstile, trackGuestOrder, updateOrderStatus/updateFulfillment/createXenditInvoice). Only genuine gap was the orphan track page.
 - Errors encountered:  none
+
+## 2026-06-14 — Swarm W11: Wire Dashboard + Reports + Settings
+- Agent:               CLAUDE_CODE (swarm worker, branch swarm/wire-dead-controls)
+- Why:                 W11 punch-list — wire dashboard against report/notification queries,
+                       reports against reportRouter, clear settings "Coming soon".
+- Files modified:      apps/web/src/app/(tenant)/[slug]/(app)/reports/page.tsx,
+                       apps/web/src/app/(tenant)/[slug]/(app)/settings/page.tsx,
+                       docs/WIRING_NEEDS_SPEC.md, .cline/STATE.md, docs/CHANGELOG_AI.md,
+                       .cline/memory/lessons.md
+- Files added:         none
+- Files deleted:       none
+- Schema/migrations:   none
+- Change detail:
+    * 🔴 SECURITY (reports): reports/page.tsx ran cross-module Prisma aggregates with no
+      tenant scoping → leaked aggregates across ALL tenants. Rewired every query
+      (getKPIs/getInvoicesByStatus/getTopClients/getExpensesByCategory/getPayrollSummary)
+      to scope by session.user.tenantId (resolved via auth(), mirroring reportRouter's
+      ctx.tenantId scoping), added notFound() guard. Customer/category name lookups also
+      tenant-scoped (defense in depth).
+    * Settings: nulled 4 dead hrefs (Users/Departments/Expense Categories/SMTP) that pointed
+      to non-existent sub-pages; "Coming soon" badge retained (accurate).
+    * Dashboard: already tenant-scoped + fully wired — no change.
+    * Feature-builds (notification surface, 5 settings sub-pages) logged to
+      WIRING_NEEDS_SPEC.md, NOT built (WAVE POLICY).
+- Errors encountered:  none
+- Validation:          pnpm --filter @orqafy/web lint (clean), test (811 pass), build (pass)

@@ -404,3 +404,47 @@ unsurfaced and need a dedicated Phase 7 spec (net-new pages + product/UX decisio
   the storefront product list and the admin `ecommerce/orders` list query Prisma directly
   in their server components. Functionality is present; the tRPC procedures are simply not
   the path the pages take. No wiring gap — flagged only to avoid a future "dead procedure" hunt.
+
+---
+
+## W11 — Dashboard + Reports + Settings (2026-06-14, branch swarm/wire-dead-controls)
+
+Self-inventory of the dashboard / reports / settings surfaces.
+
+### Shipped this session (in wiring scope)
+- **Reports page tenant isolation (🔴 security fix).** `reports/page.tsx` was a server
+  component running cross-module Prisma aggregates (invoice/expense/jobOrder/customer/
+  project/employee/payroll) with **no tenant scoping** — it leaked aggregates across ALL
+  tenants and didn't even resolve a tenant. Rewired every query to scope by the signed-in
+  user's `tenantId` (resolved via `auth()`, mirroring `reportRouter`'s `ctx.tenantId`
+  scoping exactly). Added a `notFound()` guard when there is no valid session/tenant.
+  This is the "reports against reportRouter" punch-list item: the page now applies the
+  same tenant-safe query logic the router exposes.
+- **Settings dead-link cleanup.** Four "Coming soon" cards (Users, Departments, Expense
+  Categories, SMTP) carried `href`s pointing to settings sub-pages that do not exist
+  (would 404). Nulled those hrefs to match the already-null `account` card so the data is
+  honest. The "Coming soon" badge is left intact because those areas genuinely are not
+  built. Only `settings/xendit` exists and stays Live + linked.
+
+### Feature-builds — NOT built per WAVE POLICY (need product/UX spec + backend)
+- **Notification surface (dashboard + global header bell).** `notificationRouter` is a
+  STUB: `list`/`unreadCount`/`markRead`/`markAllRead` return empty/0 with a comment that
+  there is no persistent Notification model and Valkey integration is not wired. The
+  header bell (`components/layout/app-header.tsx`) is a dead `<Button>` (no handler,
+  comment "wired to notification.list in Phase 8"). Surfacing notifications needs: (a) the
+  Valkey-backed (or Prisma) notification backend implemented, and (b) net-new popover/
+  dropdown UX (list rendering, mark-read interactions, empty state, badge). Both ends are
+  unbuilt → feature-build, deferred.
+- **Settings sub-pages** — `settings/users`, `settings/departments`,
+  `settings/expense-categories`, `settings/smtp`, and `settings/account` have no page.
+  Each is a net-new management surface (CRUD UI + product/UX decisions; e.g. user/role
+  management, department tree, expense-category editor, SMTP config form, account/plan/
+  billing). Only `settings/xendit` is built. These are feature-builds, not dead controls.
+
+### Already fully wired (no action needed)
+- **Dashboard** (`dashboard/page.tsx`) is tenant-scoped (resolves tenant by slug, every
+  query filtered by `tenantId`) and fully wired: 4 KPI cards link to invoices/expenses/
+  crm, "Recent invoices"/"Recent expenses" panels render live data with working "View all"
+  links. No dead controls. (It computes its own report-style data directly; it does not
+  call reportRouter/notificationRouter — surfacing notifications is the feature-build above.)
+- **Settings → Xendit** (`settings/xendit`) is live and wired (config-form island).
