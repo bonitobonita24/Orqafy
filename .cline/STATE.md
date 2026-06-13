@@ -77,6 +77,23 @@
 #   money-movement UX) → logged to docs/WIRING_NEEDS_SPEC.md, not built per WAVE POLICY.
 #   Commit carries NEEDS_SPEC log + governance checkpoint only (no app source changed).
 #   Validation: n/a (markdown-only).
+#
+# SWARM W7 (2026-06-14, branch swarm/wire-dead-controls — not yet merged to main):
+#   Wired HR surface — employees + payroll + dtr — "already fully wired (read-only)" case
+#   (mirrors W3/W5/W6). Self-inventory of employees/**, payroll/**, dtr/** (5 tsx, ~964 LOC,
+#   0 client components): employee list + detail, payroll-run list + detail (payslip table),
+#   and DTR (attendance + leave tables) are all read-only server components querying Prisma
+#   directly. Every interactive control is already a working nav element — employees + payroll
+#   list rows link to their [id] detail routes, employees All/Active/Terminated + payroll
+#   All/Draft/Processing/Approved/Paid filter tabs work via query params, both detail pages
+#   have working back-links, dtr is pure display. NO dead/inert controls, no broken hrefs, no
+#   TODO/disabled placeholders existed to wire. The 14 unsurfaced mutations (employeeRouter:
+#   create/update/terminate; payrollRouter: create/process/approve/markPaid; dtrRouter:
+#   attendanceClockIn/ClockOut/Approve/Reject + leaveRequestCreate/Approve/Reject) are
+#   feature-builds (forms, time-clock UI, status-transition action bars, HR-/money-affecting
+#   authority UX) → logged to docs/WIRING_NEEDS_SPEC.md, not built per WAVE POLICY.
+#   Commit carries NEEDS_SPEC log + governance checkpoint only (no app source changed).
+#   Validation: n/a (markdown-only).
 # Main-branch staging-deploy handoff state below is UNCHANGED.
 
 PHASE:        Session closed — CI fully green; staging deploy gated on Komodo provisioning (operator)

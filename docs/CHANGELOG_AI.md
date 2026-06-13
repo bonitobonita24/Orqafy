@@ -2221,3 +2221,16 @@
 - Errors encountered:  none
 - Errors resolved:     none
 - Validation:          n/a (markdown/governance-only commit — no app source changed)
+
+## 2026-06-14 — Swarm W7: Wire HR surface — employees + payroll + dtr (already fully wired)
+- Agent:               CLAUDE_CODE (swarm worker, branch swarm/wire-dead-controls)
+- Why:                 W7 punch-list item — wire genuinely dead/inert controls on employees/[id] + payroll/[id] + dtr against employeeRouter + payrollRouter + dtrRouter. Self-inventory found the surface already fully wired (read-only).
+- Files added:         none
+- Files modified:      docs/WIRING_NEEDS_SPEC.md (appended HR W7 section), .cline/STATE.md (W7 checkpoint block), docs/CHANGELOG_AI.md (this entry)
+- Files deleted:       none
+- Schema/migrations:   none
+- Finding:             All 5 HR pages (employees/page.tsx, employees/[id]/page.tsx, payroll/page.tsx, payroll/[id]/page.tsx, dtr/page.tsx — ~964 LOC, 0 client components) are read-only server components querying Prisma directly. Every existing interactive control is already WIRED: employees + payroll list rows link to their `[id]` detail routes; employees All/Active/Terminated and payroll All/Draft/Processing/Approved/Paid filter tabs work via query params; both detail pages have working back-links; dtr is pure display (attendance + leave tables). ZERO dead/inert controls, no broken hrefs, no TODO/disabled placeholders to wire.
+- Out of scope:        14 unsurfaced router mutations (employeeRouter: create/update/terminate; payrollRouter: create/process/approve/markPaid; dtrRouter: attendanceClockIn/ClockOut/Approve/Reject + leaveRequestCreate/Approve/Reject) require net-new forms, time-clock UI, status-transition action bars, and HR-/money-affecting authority UX — feature-builds, not wiring. Logged to docs/WIRING_NEEDS_SPEC.md per WAVE POLICY, not built.
+- Errors encountered:  none
+- Errors resolved:     none
+- Validation:          n/a (markdown/governance-only commit — no app source changed)

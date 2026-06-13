@@ -193,3 +193,59 @@ These add net-new forms/controls across the accounts list, journal-entries surfa
 fund-source list, and both ledgers, and span ledger-/balance-affecting authority
 actions, so they should be planned as a dedicated Phase 7 feature update with a
 PRODUCT.md-backed spec.
+
+## HR — Employees + Payroll + DTR (session W7)
+
+All five HR pages are **read-only server components** that query Prisma directly:
+`employees/page.tsx` (employee list), `employees/[id]/page.tsx` (employee detail),
+`payroll/page.tsx` (payroll-run list), `payroll/[id]/page.tsx` (payroll-run detail with
+payslip table), and `dtr/page.tsx` (attendance + leave-request tables).
+
+The HR surface is **already fully wired** for the controls that exist — there were no
+dead/inert controls to connect this session:
+- `employees/page.tsx` — rows already link to `employees/[id]`; the All/Active/Terminated
+  filter tabs already work via the `?filter=` query param.
+- `employees/[id]/page.tsx` — "← Back to Employees" link works; otherwise display-only.
+- `payroll/page.tsx` — rows already link to `payroll/[id]`; the
+  All/Draft/Processing/Approved/Paid tabs already work via the `?status=` query param.
+- `payroll/[id]/page.tsx` — "← Back to Payroll" link works; payslip table is display-only.
+- `dtr/page.tsx` — pure display: attendance (last 7 days) and leave-request tables with
+  status badges, no interactive controls.
+
+The following **14 router mutations are entirely unsurfaced** (no UI control exists).
+Surfacing any of them is a feature-build — net-new forms, action bars, status-transition
+controls, and confirm/UX + authority-gating decisions — so they are **not** in scope for
+"wire dead controls":
+
+**employeeRouter (3):**
+- `employee.create` — needs an "Add Employee" form + route (e.g. `employees/new`): links a
+  User, plus employmentType, dateHired, optional compensation (base/daily/hourly), gov IDs
+  (SSS/PhilHealth/Pag-IBIG/TIN), banking, and emergency contact. Field/validation/UX spec
+  required. No create UI exists.
+- `employee.update` — needs an employee edit form + route (e.g. `employees/[id]/edit`);
+  same field set as create. The detail page is display-only today.
+- `employee.terminate` — needs a "Terminate" action control on the employee detail page;
+  this is an HR authority action (sets dateTerminated), so confirm-dialog + role-gating UX
+  is undecided.
+
+**payrollRouter (4):**
+- `payroll.create` — needs a "New Payroll Run" form (period start/end, currency, employee
+  selection / payslip generation policy). No create UI exists.
+- `payroll.process` / `payroll.approve` / `payroll.markPaid` — need a status-transition
+  action bar on the payroll-run detail page (draft → processing → approved → paid). These
+  are money-/ledger-affecting authority actions, so confirm-dialog + role-gating UX is
+  undecided. The detail page only displays status + payslips today.
+
+**dtrRouter (7):**
+- `dtr.attendanceClockIn` / `attendanceClockOut` — need a time-clock UI (per-employee
+  clock widget or kiosk); device/role/UX decisions undecided.
+- `dtr.attendanceApprove` / `attendanceReject` — need approve/reject action controls on an
+  attendance review surface; the DTR attendance table is display-only today.
+- `dtr.leaveRequestCreate` — needs a "Request Leave" form (type, date range, reason). No
+  create UI exists.
+- `dtr.leaveRequestApprove` / `leaveRequestReject` — need approve/reject action controls on
+  the leave-request list (supervisor authority actions); confirm/role-gating UX undecided.
+
+These add net-new forms/controls across the employee list/detail, payroll-run detail, and
+DTR attendance/leave surfaces, and span HR-/money-affecting authority actions, so they
+should be planned as a dedicated Phase 7 feature update with a PRODUCT.md-backed spec.
