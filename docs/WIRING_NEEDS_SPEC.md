@@ -320,3 +320,64 @@ UX decisions — so they are **not** in scope for "wire dead controls":
 These add net-new forms/controls and client interactivity across the project list/detail,
 expenses, milestones, and the kanban board, and span lifecycle/authority actions, so they
 should be planned as a dedicated Phase 7 feature update with a PRODUCT.md-backed spec.
+
+---
+
+## Service + Job Orders + Support (W9)
+
+Self-inventory of the W9 surface — `job-orders/page.tsx` (197 LOC list),
+`job-orders/[id]/page.tsx` (359 LOC read-only ops detail), `service/job-orders/[id]/page.tsx`
+(210 LOC interactive technician detail + 3 client components: status-actions,
+line-items, signature-pad), `support/page.tsx` (177 LOC list), `support/[id]/page.tsx`
+(247 LOC read-only detail). Routers: `jobOrderRouter` (list/byId/publicView + create,
+updateStatus, assignTechnician, addPart, removePart, addServiceLine, removeServiceLine,
+recordSignature), `supportRouter` (ticket.list/byId/create/update/assign/changeStatus/close,
+comment.list/create, attachment.list).
+
+### Wired this session (dead control fixed)
+- **`service/job-orders/[id]/page.tsx` breadcrumb** — the "Job orders" breadcrumb pointed at
+  `/${slug}/service/job-orders`, which has no `page.tsx` (only `[id]` exists) → it 404'd.
+  Retargeted to the real job-orders list at `/${slug}/job-orders`. (Dead nav → existing route.)
+
+### Already fully wired (no action needed)
+- The `service/job-orders/[id]` detail page is already interactive: status-actions →
+  `jobOrder.updateStatus` (state-machine-gated, signature-gated for completion), line-items →
+  `jobOrder.addPart`/`removePart`/`addServiceLine`/`removeServiceLine`, signature-pad →
+  `jobOrder.recordSignature`. All status/parts/service/signature mutations are surfaced.
+- `job-orders/page.tsx` (status filter tabs + row→detail links), `job-orders/[id]/page.tsx`
+  (read-only ops view, working back link), `support/page.tsx` (status tabs + row→detail links),
+  `support/[id]/page.tsx` (read-only thread + external attachment links) — every interactive
+  control is a working nav/query element. No dead/inert controls.
+
+### Feature-builds — NOT built per WAVE POLICY (need new UI/UX spec)
+
+**jobOrderRouter (2):**
+- `jobOrder.create` — needs a "New Job Order" intake form (customer picker, device fields,
+  reported issue, priority, estimated cost). No create UI exists on the job-orders list.
+- `jobOrder.assignTechnician` — needs a technician picker on the detail surface; technician
+  is display-only today.
+
+**supportRouter (6):**
+- `ticket.create` — needs a "New Ticket" form (title, description, priority, category). The
+  support list has no create control.
+- `ticket.update` — needs an edit form for ticket fields; detail is display-only.
+- `ticket.assign` — needs an assignee picker (the detail shows raw `User {id.slice(0,8)}`,
+  not even a resolved user lookup) — net-new picker + user-name resolution.
+- `ticket.changeStatus` — the router enforces a status state machine
+  (open → in_progress/waiting → resolved → closed); surfacing it means status-action buttons
+  + confirm/authority UX on the detail page (none exist).
+- `ticket.close` — a lifecycle action needing a confirm + (optional) resolution note UI.
+- `comment.create` — needs an add-comment form (content + internal/public toggle) on the
+  ticket thread, which is display-only today.
+
+### Structural note (UX decision — not a dead control)
+- Two job-order detail routes coexist: `job-orders/[id]` (read-only ops view, where the
+  job-orders list links) and `service/job-orders/[id]` (interactive technician view, reachable
+  only by direct URL — nothing links to it, and `service/job-orders` has no list page).
+  Whether the list should link to the interactive view, whether the read-only view should be
+  retired, and whether a `service/job-orders` list route should exist are product/IA decisions —
+  out of scope for a wiring pass. Flagged for a dedicated Phase 7 spec.
+
+These add net-new forms/controls and lifecycle/authority interactions across the job-order
+intake, technician assignment, and the full support-ticket surface, so they should be planned
+as a dedicated Phase 7 feature update with a PRODUCT.md-backed spec.

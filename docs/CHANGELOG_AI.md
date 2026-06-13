@@ -2247,3 +2247,16 @@
 - Errors encountered:  none
 - Errors resolved:     none
 - Validation:          n/a (markdown/governance-only commit — no app source changed)
+
+## 2026-06-14 — Swarm W9 — Wire Service + Job Orders + Support
+- Agent:               CLAUDE_CODE
+- Why:                 W9 punch-list item — wire dead/inert controls on the job-orders, service/job-orders/[id], and support surfaces against existing jobOrderRouter + supportRouter (WAVE POLICY: wire-only against existing procedures; log feature-builds to WIRING_NEEDS_SPEC.md, do not build).
+- Files added:         none
+- Files modified:      apps/web/src/app/(tenant)/[slug]/(app)/service/job-orders/[id]/page.tsx (breadcrumb dead-link fix), docs/WIRING_NEEDS_SPEC.md (W9 section), .cline/STATE.md (W9 checkpoint)
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  Dead nav link — service/job-orders/[id] breadcrumb "Job orders" pointed at /${slug}/service/job-orders, which has no page.tsx (only [id] exists) → 404.
+- Errors resolved:     Retargeted the breadcrumb to the existing job-orders list at /${slug}/job-orders.
+- Notes:               Self-inventory found the service/job-orders/[id] detail already fully wired (status-actions→updateStatus, line-items→addPart/removePart/addServiceLine/removeServiceLine, signature→recordSignature). job-orders list/detail + support list/detail are read-only with only working nav/query Links — no other dead controls. 8 unsurfaced mutations (jobOrder.create/assignTechnician; support ticket.create/update/assign/changeStatus/close, comment.create) + a two-detail-route structural question logged to WIRING_NEEDS_SPEC.md as Phase-7 feature-builds. Dispatched inline (single indivisible nav fix) — no Sonnet fan-out warranted.
+- Validation:          lint pass (no warnings/errors), vitest 811 pass, web build pass.
+- Commits:             (this commit)

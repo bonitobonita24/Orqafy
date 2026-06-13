@@ -94,7 +94,7 @@ export default async function JobOrderDetailPage({ params }: PageProps) {
     <div className="space-y-8">
       <header className="space-y-4">
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <Link href={`/${slug}/service/job-orders`} className="hover:text-foreground">
+          <Link href={`/${slug}/job-orders`} className="hover:text-foreground">
             Job orders
           </Link>
           <span>/</span>
