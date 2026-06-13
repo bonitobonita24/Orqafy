@@ -94,6 +94,26 @@
 #   authority UX) → logged to docs/WIRING_NEEDS_SPEC.md, not built per WAVE POLICY.
 #   Commit carries NEEDS_SPEC log + governance checkpoint only (no app source changed).
 #   Validation: n/a (markdown-only).
+#
+# SWARM W8 (2026-06-14, branch swarm/wire-dead-controls — not yet merged to main):
+#   Wired Projects + Tasks surfaces — "already fully wired (read-only)" case (mirrors
+#   W3/W5/W6/W7). Self-inventory of projects/** + tasks (4 tsx, ~1413 LOC, 0 client
+#   components): project list, project detail (overview/tasks/expenses/milestones tabs),
+#   per-project expense ledger, and global kanban board are all read-only server components
+#   querying Prisma directly. Every interactive control is already a working nav/query
+#   element — project status chips + pagination + name→[id] row links; detail tab chips +
+#   back link + View-All-Expenses link; expense-type chips + pagination; tasks Kanban/Calendar
+#   view toggle. NO dead/inert controls, no no-op handlers, no disabled placeholders existed
+#   to wire. Two broken/inert non-controls flagged (NOT built, feature-builds): "New Project"
+#   button → projects/new (route absent → 404; wiring = build create form), and non-clickable
+#   task <div> cards (no task detail route, no drag-to-status, calendar Phase-2 placeholder).
+#   21 unsurfaced mutations (projectRouter: project create/update/complete/archive,
+#   expense.recordProjectExpense, milestone create/update/complete; tasksRouter:
+#   taskCreate/Update/UpdateStatus/Assign/Unassign/AddStatusReport + todo CRUD) are
+#   feature-builds (forms, line/checklist editors, kanban drag, status-machine/authority UX)
+#   → logged to docs/WIRING_NEEDS_SPEC.md, not built per WAVE POLICY.
+#   Commit carries NEEDS_SPEC log + governance checkpoint only (no app source changed).
+#   Validation: n/a (markdown-only).
 # Main-branch staging-deploy handoff state below is UNCHANGED.
 
 PHASE:        Session closed — CI fully green; staging deploy gated on Komodo provisioning (operator)

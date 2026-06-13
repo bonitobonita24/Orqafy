@@ -2222,6 +2222,19 @@
 - Errors resolved:     none
 - Validation:          n/a (markdown/governance-only commit — no app source changed)
 
+## 2026-06-14 — Swarm W8: Wire Projects + Tasks surfaces (already fully wired)
+- Agent:               CLAUDE_CODE (swarm worker, branch swarm/wire-dead-controls)
+- Why:                 W8 punch-list item — wire genuinely dead/inert controls on projects/* + tasks against projectRouter + tasksRouter. Self-inventory found the surface already fully wired (read-only).
+- Files added:         none
+- Files modified:      docs/WIRING_NEEDS_SPEC.md (appended Projects + Tasks W8 section), .cline/STATE.md (W8 checkpoint block), docs/CHANGELOG_AI.md (this entry)
+- Files deleted:       none
+- Schema/migrations:   none
+- Finding:             All 4 Projects/Tasks pages (projects/page.tsx, projects/[id]/page.tsx, projects/[id]/expenses/page.tsx, tasks/page.tsx — ~1413 LOC, 0 client components) are read-only server components querying Prisma directly. Every existing interactive control is already WIRED: project list status chips + pagination + name→[id] row links; detail-page overview/tasks/expenses/milestones tab chips + back link + "View All Expenses→"; expenses-ledger type chips + pagination + back link; tasks Kanban/Calendar view toggle. ZERO dead/inert controls, no no-op handlers, no disabled placeholders.
+- Out of scope:        Two broken/inert non-controls flagged but NOT built (feature-builds): the "New Project" button → `/${slug}/projects/new` (route absent → 404; wiring = build a create form), and the non-interactive task `<div>` cards (no task detail route, no drag-to-status, calendar placeholder). 21 unsurfaced mutations (projectRouter: project create/update/complete/archive, expense.recordProjectExpense, milestone create/update/complete; tasksRouter: taskCreate/Update/UpdateStatus/Assign/Unassign/AddStatusReport + todo create/update/delete/complete/addAttachment) require net-new forms, line/checklist editors, kanban drag interactivity, and status-machine/authority UX — feature-builds, not wiring. Logged to docs/WIRING_NEEDS_SPEC.md per WAVE POLICY, not built.
+- Errors encountered:  none
+- Errors resolved:     none
+- Validation:          n/a (markdown/governance-only commit — no app source changed)
+
 ## 2026-06-14 — Swarm W7: Wire HR surface — employees + payroll + dtr (already fully wired)
 - Agent:               CLAUDE_CODE (swarm worker, branch swarm/wire-dead-controls)
 - Why:                 W7 punch-list item — wire genuinely dead/inert controls on employees/[id] + payroll/[id] + dtr against employeeRouter + payrollRouter + dtrRouter. Self-inventory found the surface already fully wired (read-only).

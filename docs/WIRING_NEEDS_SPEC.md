@@ -249,3 +249,74 @@ controls, and confirm/UX + authority-gating decisions — so they are **not** in
 These add net-new forms/controls across the employee list/detail, payroll-run detail, and
 DTR attendance/leave surfaces, and span HR-/money-affecting authority actions, so they
 should be planned as a dedicated Phase 7 feature update with a PRODUCT.md-backed spec.
+
+## Projects + Tasks (session W8)
+
+All four Projects/Tasks pages are **read-only server components** that query Prisma
+directly: `projects/page.tsx` (project list), `projects/[id]/page.tsx` (project detail
+with overview/tasks/expenses/milestones tabs), `projects/[id]/expenses/page.tsx`
+(per-project expense ledger), and `tasks/page.tsx` (global kanban board).
+
+The Projects/Tasks surface is **already fully wired** for the controls that exist —
+there were **no dead/inert controls** to connect this session (no no-op buttons, unbound
+handlers, disabled placeholders, or `href="#"`), and there are no client components in
+these directories. Every interactive control is a working nav/query element:
+- `projects/page.tsx` — status filter chips (`?status=`), pagination Prev/Next (filter-
+  preserving), and project-name → `projects/[id]` row links all work.
+- `projects/[id]/page.tsx` — the overview/tasks/expenses/milestones tab chips (`?tab=`),
+  the "← Projects" back link, and the "View All Expenses →" link all work; every tab body
+  is a display-only table/card grid.
+- `projects/[id]/expenses/page.tsx` — the expense-type filter chips (`?type=`),
+  pagination, and "← project" back link all work; the ledger is display-only.
+- `tasks/page.tsx` — the Kanban/Calendar view toggle (`?view=`) works; the kanban columns
+  render task cards as plain (non-interactive) `<div>`s.
+
+Two non-controls were considered and **rejected** as out-of-scope feature-builds:
+- The **"New Project"** button (and the "Create your first project →" empty-state link) on
+  `projects/page.tsx` point at `/${slug}/projects/new`, **a route that does not exist**
+  (only `projects/page.tsx`, `[id]/`, and `[id]/expenses/` exist — there is no
+  `projects/new/`). This is a broken nav target, but "wiring" it means **building a project
+  create form** (vendor/customer picker, manager, status, dates, budget) backed by
+  `project.create` — a feature-build with undecided field/validation/UX, **not** a
+  control-wiring or nav fix. Flagged here for a human; not silently left.
+- The **task cards** on `tasks/page.tsx` are non-clickable `<div>`s — there is **no task
+  detail route** to link them to, and the kanban has no drag-to-change-status, no
+  "New Task" button, and a "Calendar view coming in Phase 2" placeholder. Each of these is
+  a feature-build (new route / client interactivity / new form), not an inert control.
+
+The following **router mutations are entirely unsurfaced** (no UI control exists).
+Surfacing any of them is a feature-build — net-new forms, line-item / line-editor UI,
+status-transition action bars, kanban drag interactivity, and confirm/authority-gating
+UX decisions — so they are **not** in scope for "wire dead controls":
+
+**projectRouter + sub-routers (8):**
+- `project.create` / `project.update` — need a "New/Edit Project" form + routes (e.g.
+  `projects/new`, `projects/[id]/edit`): name, customer picker, manager, description,
+  status, dates, budget. Field/validation/modal-vs-route UX undecided. The list and detail
+  pages are display-only today.
+- `project.complete` / `project.archive` — need status/lifecycle action controls on the
+  project detail page (the router enforces a status state machine:
+  planning → active → on_hold/completed/cancelled); these are authority actions, so
+  confirm-dialog + role-gating UX is undecided.
+- `project.expense.recordProjectExpense` — needs a "Record Expense" form on the project
+  expenses surface (description, amount, type, date); the expense ledger is display-only.
+- `project.milestone.create` / `milestone.update` / `milestone.complete` — need a
+  milestone-management surface (add/edit milestone, mark complete) on the milestones tab,
+  which is display-only today.
+
+**tasksRouter (13):**
+- `tasks.taskCreate` / `taskUpdate` — need a "New/Edit Task" form (title, project, status,
+  priority, due date, milestone, assignees). No create/edit UI exists.
+- `tasks.taskUpdateStatus` — the status state machine exists in the router
+  (todo → in_progress/blocked, etc.), but surfacing it means **kanban drag-and-drop** (or
+  a per-card status dropdown) — net-new client interactivity, not an inert control.
+- `tasks.taskAssign` / `taskUnassign` — need an assignee picker on a task detail/card UI
+  that does not exist (cards only show an assignee count).
+- `tasks.taskAddStatusReport` — needs a status-report form on a task detail surface that
+  does not exist.
+- `tasks.todoCreate` / `todoUpdate` / `todoDelete` / `todoComplete` / `todoAddAttachment`
+  — need a per-task checklist/todo UI (none exists in the Projects/Tasks pages today).
+
+These add net-new forms/controls and client interactivity across the project list/detail,
+expenses, milestones, and the kanban board, and span lifecycle/authority actions, so they
+should be planned as a dedicated Phase 7 feature update with a PRODUCT.md-backed spec.
