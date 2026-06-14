@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 
@@ -136,7 +137,12 @@ export default async function InvoicesPage({
                     className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
                   >
                     <td className="px-4 py-3 font-mono text-xs">
-                      {inv.invoiceNumber}
+                      <Link
+                        href={`/${slug}/invoices/${inv.id}`}
+                        className="text-[#00d992] hover:underline"
+                      >
+                        {inv.invoiceNumber}
+                      </Link>
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-medium">{customerName}</div>
