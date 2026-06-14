@@ -587,3 +587,39 @@ locked for the Phase 7 build. Source: owner redline on the proposal.
   thin "pay full balance" convenience over `recordPayment`.
 
 **Phase:** Phase 7 Foundations
+
+## 2026-06-14 — D7 Notifications: build + product-judgment defaults (async review)
+
+D7 ("Prisma durable `Notification` + Valkey real-time fan-out") was already
+ACCEPTED option (b); this entry logs the **product-judgment calls** made while
+building it, so the owner can course-correct. None of these block — each is a
+sensible default wired with `createNotification`.
+
+- **Category set (initial).** `Notification.category` is a plain String (matches
+  the repo's String-status convention). Canonical set seeded in
+  `apps/web/src/server/notifications/categories.ts`:
+  `order_placed` · `task_assigned` · `invoice_payment` · `system`. Add by
+  appending; removing one needs a data migration to remap rows.
+- **Which events emit (default = 3 obvious existing user-recipient flows):**
+  1. **Task assigned** (`tasks.taskAssign`) → notifies the **assignee** (category
+     `task_assigned`). Skips self-assignment.
+  2. **Invoice payment recorded** (`invoice.recordPayment`, the F2 flow) →
+     notifies the **invoice creator** (`createdById`, category `invoice_payment`),
+     fired AFTER the payment transaction commits. Skips self (recorder == creator).
+  3. **Job order assigned to a technician** (`jobOrder.assignTechnician`) →
+     notifies the **technician** (category `task_assigned`). Skips self.
+  - **`order_placed` is defined but NOT yet wired.** The storefront `placeOrder`
+    is staff-on-behalf (D6), so the placing user would self-notify; the natural
+    recipient (a manager/admin role fan-out) needs a product decision on WHO
+    receives. Left unwired pending owner input rather than guessing a broad
+    recipient set. **OWNER: confirm desired order-placed recipients.**
+- **Recipient model = single `recipientUserId` (per-user), not role-targeted.**
+  Each notification targets one user. Role/department fan-out (notify all
+  Administrators, etc.) is deferrable; if wanted, emit one row per resolved user.
+  **OWNER: confirm per-user is sufficient for v1.**
+- **Tenant-isolation hardening (incidental).** `jobOrder.assignTechnician`
+  previously looked up the technician without a tenant check; added
+  `technician.tenantId === ctx.tenantId` (BAD_REQUEST otherwise) so the
+  assignment — and its notification — can never cross tenants.
+
+**Phase:** Phase 7 (D7 build)

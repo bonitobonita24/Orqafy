@@ -4,6 +4,7 @@ import { createTRPCRouter, protectedProcedure, writeProcedure, publicProcedure }
 import { prisma as db, writeAuditLog } from "@orqafy/db";
 import { rateLimiters } from "@/server/lib/rate-limit";
 import { sanitizePlainText } from "@/server/lib/sanitize";
+import { createNotification } from "@/server/notifications/create";
 
 async function loadInvoiceForTenant(id: string, ctx: { tenantId: string }) {
   const invoice = await db.invoice.findUnique({ where: { id } });
@@ -75,7 +76,7 @@ async function recordInvoicePayment(args: {
     }
   }
 
-  return db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     const payment = await tx.payment.create({
       data: {
         tenantId: ctx.tenantId,
@@ -145,6 +146,22 @@ async function recordInvoicePayment(args: {
 
     return { invoice: updatedInvoice, payment };
   });
+
+  // D7 — notify the invoice creator that a payment was recorded (after commit,
+  // so the notification never outlives a rolled-back transaction). Skip when the
+  // person recording the payment is the creator (no self-ping).
+  if (invoice.createdById !== ctx.userId) {
+    await createNotification({
+      tenantId: ctx.tenantId,
+      recipientUserId: invoice.createdById,
+      category: "invoice_payment",
+      title: nextStatus === "paid" ? "Invoice fully paid" : "Payment recorded",
+      body: `${invoice.currency} ${amount.toFixed(2)} recorded against invoice ${invoice.invoiceNumber}.`,
+      payload: { invoiceId: invoice.id, paymentId: result.payment.id, status: nextStatus },
+    });
+  }
+
+  return result;
 }
 
 const lineItemInput = z.object({

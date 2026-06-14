@@ -1,7 +1,6 @@
 "use client";
 
-import { Bell } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/components/layout/notification-bell";
 
 interface AppHeaderProps {
   title?: string;
@@ -17,11 +16,8 @@ export function AppHeader({ title }: AppHeaderProps) {
       )}
 
       <div className="flex items-center gap-2">
-        {/* Notification bell — wired to /api/trpc/notification.list in Phase 8 */}
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-          <Bell className="h-4 w-4" />
-          <span className="sr-only">Notifications</span>
-        </Button>
+        {/* D7 — durable Prisma notifications + Valkey real-time fan-out. */}
+        <NotificationBell />
       </div>
     </header>
   );

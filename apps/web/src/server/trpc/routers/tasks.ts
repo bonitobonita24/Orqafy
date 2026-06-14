@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
 import { prisma as db } from "@orqafy/db";
+import { createNotification } from "@/server/notifications/create";
 
 const TASK_STATUS = z.enum(["todo", "in_progress", "review", "done", "blocked"]);
 const TASK_PRIORITY = z.enum(["low", "medium", "high", "critical"]);
@@ -145,13 +146,27 @@ export const tasksRouter = createTRPCRouter({
         where: { taskId: input.taskId, userId: input.userId },
       });
       if (existing) throw new TRPCError({ code: "CONFLICT", message: "User already assigned to this task." });
-      return db.taskAssignment.create({
+      const assignment = await db.taskAssignment.create({
         data: {
           taskId: input.taskId,
           userId: input.userId,
           tenantId: task.tenantId,
         },
       });
+
+      // D7 — notify the assignee (skip self-assignment, no point pinging yourself).
+      if (input.userId !== ctx.userId) {
+        await createNotification({
+          tenantId: task.tenantId,
+          recipientUserId: input.userId,
+          category: "task_assigned",
+          title: "New task assigned",
+          body: `You were assigned to "${task.title}".`,
+          payload: { taskId: task.id, projectId: task.projectId },
+        });
+      }
+
+      return assignment;
     }),
 
   taskUnassign: writeProcedure

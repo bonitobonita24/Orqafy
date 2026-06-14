@@ -9,6 +9,7 @@ import {
   Briefcase,
   ArrowRight,
 } from "lucide-react";
+import { DashboardNotifications } from "./dashboard-notifications";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -336,6 +337,8 @@ export default async function DashboardPage({
           )}
         </div>
       </div>
+
+      <DashboardNotifications />
     </div>
   );
 }

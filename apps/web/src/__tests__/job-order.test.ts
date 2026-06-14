@@ -4,6 +4,12 @@ import { jobOrderRouter } from "@/server/trpc/routers/job-order";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 
+// D7 — assignTechnician emits a notification as a side effect; stub it (the
+// createNotification helper is unit-tested separately).
+vi.mock("@/server/notifications/create", () => ({
+  createNotification: vi.fn().mockResolvedValue({ id: "notif-test" }),
+}));
+
 vi.mock("@orqafy/db", () => ({
   prisma: {
     jobOrder: {
@@ -504,8 +510,9 @@ describe("jobOrder router", () => {
 
   describe("assignTechnician", () => {
     it("assigns a technician when both job order and user exist", async () => {
-      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, tenantId: "acme-tenant-id" });
-      mockDb.user.findUnique.mockResolvedValue({ id: TECH_CUID });
+      mockDb.jobOrder.findUnique.mockResolvedValue({ id: JO_CUID, tenantId: "acme-tenant-id", jobOrderNumber: "JO-1" });
+      // D7 — technician must belong to the caller's tenant (isolation guard).
+      mockDb.user.findUnique.mockResolvedValue({ id: TECH_CUID, tenantId: "acme-tenant-id" });
       mockDb.jobOrder.update.mockResolvedValue({ id: JO_CUID, technicianId: TECH_CUID });
       const caller = createCaller(authenticatedCtx());
       await caller.jobOrder.assignTechnician({ id: JO_CUID, technicianId: TECH_CUID });

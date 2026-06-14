@@ -4,6 +4,7 @@ import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
 import { prisma as db } from "@orqafy/db";
 import { rateLimiters } from "@/server/lib/rate-limit";
 import { sanitizePlainText } from "@/server/lib/sanitize";
+import { createNotification } from "@/server/notifications/create";
 
 const jobOrderStatuses = [
   "received",
@@ -244,13 +245,32 @@ export const jobOrderRouter = createTRPCRouter({
   assignTechnician: writeProcedure
     .input(z.object({ id: z.string().cuid(), technicianId: z.string().cuid() }))
     .mutation(async ({ input, ctx }) => {
-      const _existing = await loadJobOrderForTenant(input.id, ctx);
+      const jobOrder = await loadJobOrderForTenant(input.id, ctx);
       const technician = await db.user.findUnique({ where: { id: input.technicianId } });
-      if (!technician) throw new TRPCError({ code: "BAD_REQUEST", message: "Technician not found." });
-      return db.jobOrder.update({
+      // Tenant-isolation: the technician MUST belong to the caller's tenant —
+      // both for the assignment itself and so the D7 notification below can
+      // never be published to a cross-tenant user.
+      if (!technician || technician.tenantId !== ctx.tenantId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Technician not found." });
+      }
+      const updated = await db.jobOrder.update({
         where: { id: input.id },
         data: { technicianId: input.technicianId },
       });
+
+      // D7 — notify the assigned technician (skip self-assignment).
+      if (input.technicianId !== ctx.userId) {
+        await createNotification({
+          tenantId: ctx.tenantId,
+          recipientUserId: input.technicianId,
+          category: "task_assigned",
+          title: "Job order assigned",
+          body: `You were assigned job order ${jobOrder.jobOrderNumber}.`,
+          payload: { jobOrderId: jobOrder.id },
+        });
+      }
+
+      return updated;
     }),
 
   addPart: writeProcedure

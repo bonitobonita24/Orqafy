@@ -31,6 +31,12 @@ const {
   mockAuditCreate: vi.fn(),
 }));
 
+// D7 — recordPayment emits a notification to the invoice creator as a side
+// effect; stub it (createNotification is unit-tested separately).
+vi.mock("@/server/notifications/create", () => ({
+  createNotification: vi.fn().mockResolvedValue({ id: "notif-test" }),
+}));
+
 vi.mock("@orqafy/db", () => {
   const tx = {
     payment: { create: mockPaymentCreate },

@@ -8,6 +8,12 @@ import { tasksRouter } from "@/server/trpc/routers/tasks";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 
+// D7 — taskAssign emits a notification as a side effect; stub it here (the
+// createNotification helper is unit-tested separately in notifications/__tests__).
+vi.mock("@/server/notifications/create", () => ({
+  createNotification: vi.fn().mockResolvedValue({ id: "notif-test" }),
+}));
+
 vi.mock("@orqafy/db", () => ({
   prisma: {
     project: {
