@@ -103,6 +103,12 @@ export default async function InvoicesPage({
             </span>
           </p>
         </div>
+        <Link
+          href={`/${slug}/invoices/new`}
+          className="px-4 py-2 rounded-md bg-[#00d992] text-[#050507] text-sm font-medium hover:bg-[#00d992]/90 transition-colors"
+        >
+          New Invoice
+        </Link>
       </div>
 
       <div className="rounded-lg border border-border bg-card">
