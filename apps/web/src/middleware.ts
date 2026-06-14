@@ -12,6 +12,15 @@ export default auth(function middleware(req) {
     return NextResponse.next();
   }
 
+  // API routes (tRPC, Auth.js) enforce their own auth + tenant scoping inside their
+  // handlers/procedures. The tenant-slug guard below is for PAGE routes ONLY — if it
+  // runs on /api/* it misreads the first segment ("api") as a tenant slug and
+  // 307-redirects every client-side tRPC request to /<slug>/dashboard, breaking all
+  // mutations + the notifications poll. (Matcher also excludes /api; this is belt-and-suspenders.)
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
+
   const session = req.auth;
 
   // Unauthenticated — redirect to login
@@ -64,9 +73,10 @@ export const config = {
   runtime: "nodejs",
   matcher: [
     /*
-     * Match all paths except static files and Next.js internals.
-     * Auth.js handles its own /api/auth routes — they pass through PUBLIC_PATHS check.
+     * Match all paths except API routes, static files, and Next.js internals.
+     * /api/* (tRPC + Auth.js) is excluded — those handlers enforce their own auth;
+     * running the tenant-slug guard on them misreads "api" as a tenant slug.
      */
-    "/((?!_next/static|_next/image|images|fonts|icons).*)",
+    "/((?!api|_next/static|_next/image|images|fonts|icons).*)",
   ],
 };
