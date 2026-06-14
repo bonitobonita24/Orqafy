@@ -11,13 +11,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
-const { mockCustomerCreate, mockCustomerFindUnique } = vi.hoisted(() => ({
+const { mockCustomerCreate, mockCustomerFindUnique, mockAuditLogCreate } = vi.hoisted(() => ({
   mockCustomerCreate: vi.fn(),
   mockCustomerFindUnique: vi.fn(),
+  mockAuditLogCreate: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
+vi.mock("@orqafy/db", () => {
+  const mockDb = {
     customer: {
       findUnique: mockCustomerFindUnique,
       findMany: vi.fn(),
@@ -26,8 +27,16 @@ vi.mock("@orqafy/db", () => ({
       update: vi.fn(),
       count: vi.fn(),
     },
-  },
-}));
+    auditLog: { create: mockAuditLogCreate },
+  };
+  return {
+    prisma: {
+      ...mockDb,
+      $transaction: vi.fn((fn: any) => fn(mockDb)),
+    },
+    writeAuditLog: async (tx: any, entry: any) => { await tx.auditLog.create({ data: entry }); },
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: { api: { check: vi.fn() }, public: { check: vi.fn() } },
@@ -119,5 +128,31 @@ describe("Customer tenant parity (K-prime Extended / CRM IDOR closure)", () => {
     expect(mockCustomerCreate).toHaveBeenCalledOnce();
     const callArg = mockCustomerCreate.mock.calls[0]![0];
     expect(callArg.data.tenantId).toBe("tenant-A");
+  });
+
+  it("customerCreate writes an audit log row with action CREATE and entity Customer", async () => {
+    const createdCustomer = {
+      id: "customer-audit",
+      tenantId: "tenant-A",
+      firstName: "Audit",
+      lastName: "Test",
+      email: null,
+      phone: null,
+      company: null,
+      notes: null,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    mockCustomerCreate.mockResolvedValueOnce(createdCustomer);
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+    await caller.crm.customerCreate({ firstName: "Audit", lastName: "Test" });
+
+    expect(mockAuditLogCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ action: "CREATE", entity: "Customer" }),
+      }),
+    );
   });
 });

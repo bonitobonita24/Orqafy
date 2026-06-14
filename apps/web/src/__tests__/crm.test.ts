@@ -22,8 +22,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { crmRouter } from "@/server/trpc/routers/crm";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
+vi.mock("@orqafy/db", () => {
+  const mockPrisma = {
     customer: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
@@ -68,9 +68,19 @@ vi.mock("@orqafy/db", () => ({
     invoice: {
       create: vi.fn(),
     },
-    $transaction: vi.fn(),
-  },
-}));
+    auditLog: { create: vi.fn() },
+  };
+  return {
+    prisma: {
+      ...mockPrisma,
+      $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(mockPrisma)),
+    },
+    writeAuditLog: async (
+      tx: { auditLog: { create: (args: unknown) => unknown } },
+      entry: unknown,
+    ) => { await tx.auditLog.create({ data: entry }); },
+  };
+});
 
 import type { NextRequest } from "next/server";
 
@@ -151,6 +161,9 @@ const mockDb = db as unknown as {
     count: ReturnType<typeof vi.fn>;
   };
   invoice: {
+    create: ReturnType<typeof vi.fn>;
+  };
+  auditLog: {
     create: ReturnType<typeof vi.fn>;
   };
   $transaction: ReturnType<typeof vi.fn>;
@@ -304,6 +317,20 @@ describe("crm.customer.create", () => {
     await expect(
       demoCaller.crm.customerCreate({ firstName: "Test", lastName: "User" })
     ).rejects.toThrow();
+  });
+
+  it("writes an audit log row with action CREATE and entity Customer", async () => {
+    const created = { ...sampleCustomer, id: "cust-audit" };
+    mockDb.customer.create.mockResolvedValue(created);
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.crm.customerCreate({ firstName: "Audit", lastName: "Test" });
+
+    expect(mockDb.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ action: "CREATE", entity: "Customer" }),
+      }),
+    );
   });
 });
 

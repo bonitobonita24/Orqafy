@@ -12,15 +12,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
-const { mockContactLogFindFirst, mockContactLogCreate, mockCustomerFindUnique } =
+const { mockContactLogFindFirst, mockContactLogCreate, mockCustomerFindUnique, mockAuditLogCreate } =
   vi.hoisted(() => ({
     mockContactLogFindFirst: vi.fn(),
     mockContactLogCreate: vi.fn(),
     mockCustomerFindUnique: vi.fn(),
+    mockAuditLogCreate: vi.fn(),
   }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
+vi.mock("@orqafy/db", () => {
+  const mockDb = {
     contactLog: {
       findFirst: mockContactLogFindFirst,
       findUnique: vi.fn(),
@@ -32,8 +33,16 @@ vi.mock("@orqafy/db", () => ({
     customer: {
       findUnique: mockCustomerFindUnique,
     },
-  },
-}));
+    auditLog: { create: mockAuditLogCreate },
+  };
+  return {
+    prisma: {
+      ...mockDb,
+      $transaction: vi.fn((fn: any) => fn(mockDb)),
+    },
+    writeAuditLog: async (tx: any, entry: any) => { await tx.auditLog.create({ data: entry }); },
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: { api: { check: vi.fn() }, public: { check: vi.fn() } },
@@ -165,5 +174,38 @@ describe("ContactLog tenant parity (K-prime Extended IDOR closure)", () => {
     const callArg = mockContactLogCreate.mock.calls[0]![0];
     expect(callArg.data.tenantId).toBe("tenant-A");
     expect(callArg.data.createdById).toBe("user-1");
+  });
+
+  it("contactLogCreate writes an audit log row with action CREATE and entity ContactLog", async () => {
+    mockCustomerFindUnique.mockResolvedValueOnce({
+      id: "cust-1",
+      tenantId: "tenant-A",
+    });
+    const created = {
+      id: "log-audit",
+      tenantId: "tenant-A",
+      customerId: "cust-1",
+      createdById: "user-1",
+      type: "note",
+      subject: "audit subject",
+      body: null,
+      occurredAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    mockContactLogCreate.mockResolvedValueOnce(created);
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+    await caller.crm.contactLogCreate({
+      customerId: "ck1234567890123456789012a",
+      type: "note",
+      subject: "audit subject",
+    });
+
+    expect(mockAuditLogCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ action: "CREATE", entity: "ContactLog" }),
+      }),
+    );
   });
 });

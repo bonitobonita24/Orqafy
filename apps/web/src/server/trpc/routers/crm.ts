@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
-import { prisma as db } from "@orqafy/db";
+import { prisma as db, writeAuditLog } from "@orqafy/db";
 
 const CUSTOMER_TIERS = ["regular", "vip", "authorized_dealer"] as const;
 
@@ -147,25 +147,36 @@ export const crmRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      return db.customer.create({
-        data: {
-          tenantId: ctx.tenantId,
-          firstName: input.firstName,
-          lastName: input.lastName,
-          companyName: input.companyName ?? null,
-          email: input.email ?? null,
-          phone: input.phone ?? null,
-          address: input.address ?? null,
-          city: input.city ?? null,
-          province: input.province ?? null,
-          postalCode: input.postalCode ?? null,
-          country: input.country,
-          taxId: input.taxId ?? null,
-          tier: input.tier,
-          notes: input.notes ?? null,
-          isActive: true,
-          portalEnabled: false,
-        },
+      return db.$transaction(async (tx) => {
+        const created = await tx.customer.create({
+          data: {
+            tenantId: ctx.tenantId,
+            firstName: input.firstName,
+            lastName: input.lastName,
+            companyName: input.companyName ?? null,
+            email: input.email ?? null,
+            phone: input.phone ?? null,
+            address: input.address ?? null,
+            city: input.city ?? null,
+            province: input.province ?? null,
+            postalCode: input.postalCode ?? null,
+            country: input.country,
+            taxId: input.taxId ?? null,
+            tier: input.tier,
+            notes: input.notes ?? null,
+            isActive: true,
+            portalEnabled: false,
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "Customer",
+          entityId: created.id,
+          before: null,
+          after: { id: created.id, firstName: created.firstName, lastName: created.lastName, companyName: created.companyName, tier: created.tier, isActive: created.isActive },
+        });
+        return created;
       });
     }),
 
@@ -189,23 +200,34 @@ export const crmRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
-      await loadCustomerForTenant(id, { tenantId: ctx.tenantId });
-      return db.customer.update({
-        where: { id },
-        data: {
-          ...(data.firstName !== undefined ? { firstName: data.firstName } : {}),
-          ...(data.lastName !== undefined ? { lastName: data.lastName } : {}),
-          ...(data.companyName !== undefined ? { companyName: data.companyName } : {}),
-          ...(data.email !== undefined ? { email: data.email } : {}),
-          ...(data.phone !== undefined ? { phone: data.phone } : {}),
-          ...(data.address !== undefined ? { address: data.address } : {}),
-          ...(data.city !== undefined ? { city: data.city } : {}),
-          ...(data.province !== undefined ? { province: data.province } : {}),
-          ...(data.postalCode !== undefined ? { postalCode: data.postalCode } : {}),
-          ...(data.taxId !== undefined ? { taxId: data.taxId } : {}),
-          ...(data.tier !== undefined ? { tier: data.tier } : {}),
-          ...(data.notes !== undefined ? { notes: data.notes } : {}),
-        },
+      const prev = await loadCustomerForTenant(id, { tenantId: ctx.tenantId });
+      return db.$transaction(async (tx) => {
+        const updated = await tx.customer.update({
+          where: { id },
+          data: {
+            ...(data.firstName !== undefined ? { firstName: data.firstName } : {}),
+            ...(data.lastName !== undefined ? { lastName: data.lastName } : {}),
+            ...(data.companyName !== undefined ? { companyName: data.companyName } : {}),
+            ...(data.email !== undefined ? { email: data.email } : {}),
+            ...(data.phone !== undefined ? { phone: data.phone } : {}),
+            ...(data.address !== undefined ? { address: data.address } : {}),
+            ...(data.city !== undefined ? { city: data.city } : {}),
+            ...(data.province !== undefined ? { province: data.province } : {}),
+            ...(data.postalCode !== undefined ? { postalCode: data.postalCode } : {}),
+            ...(data.taxId !== undefined ? { taxId: data.taxId } : {}),
+            ...(data.tier !== undefined ? { tier: data.tier } : {}),
+            ...(data.notes !== undefined ? { notes: data.notes } : {}),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Customer",
+          entityId: id,
+          before: { firstName: prev.firstName, lastName: prev.lastName, companyName: prev.companyName, tier: prev.tier, email: prev.email, phone: prev.phone },
+          after: { firstName: updated.firstName, lastName: updated.lastName, companyName: updated.companyName, tier: updated.tier, email: updated.email, phone: updated.phone },
+        });
+        return updated;
       });
     }),
 
@@ -215,9 +237,20 @@ export const crmRouter = createTRPCRouter({
       const existing = await loadCustomerForTenant(input.id, {
         tenantId: ctx.tenantId,
       });
-      return db.customer.update({
-        where: { id: input.id },
-        data: { isActive: !existing.isActive },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.customer.update({
+          where: { id: input.id },
+          data: { isActive: !existing.isActive },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Customer",
+          entityId: input.id,
+          before: { isActive: existing.isActive },
+          after: { isActive: updated.isActive },
+        });
+        return updated;
       });
     }),
 
@@ -246,16 +279,27 @@ export const crmRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       await loadCustomerForTenant(input.customerId, ctx);
-      return db.customerContact.create({
-        data: {
-          tenantId: ctx.tenantId,
-          customerId: input.customerId,
-          name: input.name,
-          email: input.email ?? null,
-          phone: input.phone ?? null,
-          position: input.position ?? null,
-          isPrimary: input.isPrimary,
-        },
+      return db.$transaction(async (tx) => {
+        const created = await tx.customerContact.create({
+          data: {
+            tenantId: ctx.tenantId,
+            customerId: input.customerId,
+            name: input.name,
+            email: input.email ?? null,
+            phone: input.phone ?? null,
+            position: input.position ?? null,
+            isPrimary: input.isPrimary,
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "CustomerContact",
+          entityId: created.id,
+          before: null,
+          after: { id: created.id, customerId: created.customerId, name: created.name, email: created.email, isPrimary: created.isPrimary },
+        });
+        return created;
       });
     }),
 
@@ -275,15 +319,26 @@ export const crmRouter = createTRPCRouter({
       const existing = await db.customerContact.findUnique({ where: { id } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
       await loadCustomerForTenant(existing.customerId, ctx);
-      return db.customerContact.update({
-        where: { id },
-        data: {
-          ...(data.name !== undefined ? { name: data.name } : {}),
-          ...(data.email !== undefined ? { email: data.email } : {}),
-          ...(data.phone !== undefined ? { phone: data.phone } : {}),
-          ...(data.position !== undefined ? { position: data.position } : {}),
-          ...(data.isPrimary !== undefined ? { isPrimary: data.isPrimary } : {}),
-        },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.customerContact.update({
+          where: { id },
+          data: {
+            ...(data.name !== undefined ? { name: data.name } : {}),
+            ...(data.email !== undefined ? { email: data.email } : {}),
+            ...(data.phone !== undefined ? { phone: data.phone } : {}),
+            ...(data.position !== undefined ? { position: data.position } : {}),
+            ...(data.isPrimary !== undefined ? { isPrimary: data.isPrimary } : {}),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "CustomerContact",
+          entityId: id,
+          before: { name: existing.name, email: existing.email, phone: existing.phone, position: existing.position, isPrimary: existing.isPrimary },
+          after: { name: updated.name, email: updated.email, phone: updated.phone, position: updated.position, isPrimary: updated.isPrimary },
+        });
+        return updated;
       });
     }),
 
@@ -293,7 +348,18 @@ export const crmRouter = createTRPCRouter({
       const existing = await db.customerContact.findUnique({ where: { id: input.id } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
       await loadCustomerForTenant(existing.customerId, ctx);
-      return db.customerContact.delete({ where: { id: input.id } });
+      return db.$transaction(async (tx) => {
+        const deleted = await tx.customerContact.delete({ where: { id: input.id } });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "DELETE",
+          entity: "CustomerContact",
+          entityId: input.id,
+          before: { id: existing.id, customerId: existing.customerId, name: existing.name, email: existing.email, isPrimary: existing.isPrimary },
+          after: null,
+        });
+        return deleted;
+      });
     }),
 
   // ── CustomerCreditAccount ─────────────────────────────────────────────────
@@ -324,18 +390,31 @@ export const crmRouter = createTRPCRouter({
       await loadCustomerForTenant(input.customerId, {
         tenantId: ctx.tenantId,
       });
-      return db.customerCreditAccount.upsert({
-        where: { customerId: input.customerId },
-        create: {
-          tenantId: ctx.tenantId,
-          customerId: input.customerId,
-          creditLimit: input.creditLimit,
-          isActive: input.isActive ?? true,
-        },
-        update: {
-          creditLimit: input.creditLimit,
-          ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
-        },
+      const prevCca = await db.customerCreditAccount.findUnique({ where: { customerId: input.customerId } });
+      return db.$transaction(async (tx) => {
+        const result = await tx.customerCreditAccount.upsert({
+          where: { customerId: input.customerId },
+          create: {
+            tenantId: ctx.tenantId,
+            customerId: input.customerId,
+            creditLimit: input.creditLimit,
+            isActive: input.isActive ?? true,
+          },
+          update: {
+            creditLimit: input.creditLimit,
+            ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+          },
+        });
+        const isCreate = prevCca === null;
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: isCreate ? "CREATE" : "UPDATE",
+          entity: "CustomerCreditAccount",
+          entityId: result.id,
+          before: isCreate ? null : { creditLimit: Number(prevCca.creditLimit), isActive: prevCca.isActive },
+          after: { creditLimit: Number(result.creditLimit), isActive: result.isActive },
+        });
+        return result;
       });
     }),
 
@@ -346,9 +425,20 @@ export const crmRouter = createTRPCRouter({
         input.customerId,
         { tenantId: ctx.tenantId },
       );
-      return db.customerCreditAccount.update({
-        where: { customerId: input.customerId },
-        data: { isActive: !existing.isActive },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.customerCreditAccount.update({
+          where: { customerId: input.customerId },
+          data: { isActive: !existing.isActive },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "CustomerCreditAccount",
+          entityId: existing.id,
+          before: { isActive: existing.isActive },
+          after: { isActive: updated.isActive },
+        });
+        return updated;
       });
     }),
 
@@ -621,6 +711,15 @@ export const crmRouter = createTRPCRouter({
           },
         });
 
+        await writeAuditLog(tx, {
+          userId: userId,
+          action: "CREATE",
+          entity: "Quotation",
+          entityId: quotation.id,
+          before: null,
+          after: { id: quotation.id, quotationNumber: quotation.quotationNumber, customerId: quotation.customerId, status: quotation.status, subtotal: Number(quotation.subtotal), totalAmount: Number(quotation.totalAmount) },
+        });
+
         return quotation;
       });
     }),
@@ -687,17 +786,28 @@ export const crmRouter = createTRPCRouter({
 
       // Header-only update path — when sections/markupColumns not provided.
       if (input.sections === undefined && input.markupColumns === undefined) {
-        return db.quotation.update({
-          where: { id: input.id },
-          data: {
-            ...(input.title !== undefined && { title: input.title }),
-            ...(input.validUntil !== undefined && { validUntil: input.validUntil }),
-            ...(input.notes !== undefined && { notes: input.notes }),
-            ...(input.termsAndConditions !== undefined && {
-              termsAndConditions: input.termsAndConditions,
-            }),
-            ...(input.taxAmount !== undefined && { taxAmount: input.taxAmount }),
-          },
+        return db.$transaction(async (tx) => {
+          const updated = await tx.quotation.update({
+            where: { id: input.id },
+            data: {
+              ...(input.title !== undefined && { title: input.title }),
+              ...(input.validUntil !== undefined && { validUntil: input.validUntil }),
+              ...(input.notes !== undefined && { notes: input.notes }),
+              ...(input.termsAndConditions !== undefined && {
+                termsAndConditions: input.termsAndConditions,
+              }),
+              ...(input.taxAmount !== undefined && { taxAmount: input.taxAmount }),
+            },
+          });
+          await writeAuditLog(tx, {
+            userId: ctx.userId,
+            action: "UPDATE",
+            entity: "Quotation",
+            entityId: input.id,
+            before: { title: existing.title, status: existing.status, taxAmount: Number(existing.taxAmount), totalAmount: Number(existing.totalAmount) },
+            after: { title: updated.title, status: updated.status, taxAmount: Number(updated.taxAmount), totalAmount: Number(updated.totalAmount) },
+          });
+          return updated;
         });
       }
 
@@ -792,7 +902,7 @@ export const crmRouter = createTRPCRouter({
           }
         }
 
-        return tx.quotation.update({
+        const updated = await tx.quotation.update({
           where: { id: input.id },
           data: {
             subtotal,
@@ -806,6 +916,15 @@ export const crmRouter = createTRPCRouter({
             }),
           },
         });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Quotation",
+          entityId: input.id,
+          before: { title: existing.title, status: existing.status, subtotal: Number(existing.subtotal), taxAmount: Number(existing.taxAmount), totalAmount: Number(existing.totalAmount) },
+          after: { title: updated.title, status: updated.status, subtotal: Number(updated.subtotal), taxAmount: Number(updated.taxAmount), totalAmount: Number(updated.totalAmount) },
+        });
+        return updated;
       });
     }),
 
@@ -821,9 +940,20 @@ export const crmRouter = createTRPCRouter({
           message: `Only draft quotations can be sent (current status: ${existing.status}).`,
         });
       }
-      return db.quotation.update({
-        where: { id: input.id },
-        data: { status: "sent", sentAt: new Date() },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.quotation.update({
+          where: { id: input.id },
+          data: { status: "sent", sentAt: new Date() },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Quotation",
+          entityId: input.id,
+          before: { status: existing.status },
+          after: { status: updated.status },
+        });
+        return updated;
       });
     }),
 
@@ -839,9 +969,20 @@ export const crmRouter = createTRPCRouter({
           message: `Only sent quotations can be accepted (current status: ${existing.status}).`,
         });
       }
-      return db.quotation.update({
-        where: { id: input.id },
-        data: { status: "accepted", acceptedAt: new Date() },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.quotation.update({
+          where: { id: input.id },
+          data: { status: "accepted", acceptedAt: new Date() },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Quotation",
+          entityId: input.id,
+          before: { status: existing.status },
+          after: { status: updated.status },
+        });
+        return updated;
       });
     }),
 
@@ -857,9 +998,20 @@ export const crmRouter = createTRPCRouter({
           message: `Only sent quotations can be rejected (current status: ${existing.status}).`,
         });
       }
-      return db.quotation.update({
-        where: { id: input.id },
-        data: { status: "rejected" },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.quotation.update({
+          where: { id: input.id },
+          data: { status: "rejected" },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Quotation",
+          entityId: input.id,
+          before: { status: existing.status },
+          after: { status: updated.status },
+        });
+        return updated;
       });
     }),
 
@@ -930,10 +1082,19 @@ export const crmRouter = createTRPCRouter({
             },
           },
         });
-        return tx.quotation.update({
+        const updated = await tx.quotation.update({
           where: { id: existing.id },
           data: { status: "draft" },
         });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Quotation",
+          entityId: existing.id,
+          before: { status: existing.status, revisionNumber: existing.revisions[0]?.revisionNumber ?? null },
+          after: { status: updated.status, revisionNumber: nextNumber },
+        });
+        return updated;
       });
     }),
 
@@ -1061,6 +1222,14 @@ export const crmRouter = createTRPCRouter({
             convertedToInvoiceId: invoice.id,
           },
         });
+        await writeAuditLog(tx, {
+          userId: userId,
+          action: "UPDATE",
+          entity: "Quotation",
+          entityId: existing.id,
+          before: { status: existing.status, convertedToInvoiceId: existing.convertedToInvoiceId },
+          after: { status: "converted", convertedToInvoiceId: invoice.id },
+        });
         return invoice;
       });
     }),
@@ -1182,16 +1351,28 @@ export const crmRouter = createTRPCRouter({
       await loadCustomerForTenant(input.customerId, {
         tenantId: ctx.tenantId,
       });
-      return db.contactLog.create({
-        data: {
-          tenantId: ctx.tenantId,
-          customerId: input.customerId,
-          createdById: ctx.userId,
-          type: input.type,
-          subject: input.subject,
-          occurredAt: input.occurredAt ?? new Date(),
-          ...(input.body !== undefined && { body: input.body }),
-        },
+      const userId = ctx.userId;
+      return db.$transaction(async (tx) => {
+        const created = await tx.contactLog.create({
+          data: {
+            tenantId: ctx.tenantId,
+            customerId: input.customerId,
+            createdById: userId,
+            type: input.type,
+            subject: input.subject,
+            occurredAt: input.occurredAt ?? new Date(),
+            ...(input.body !== undefined && { body: input.body }),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: userId,
+          action: "CREATE",
+          entity: "ContactLog",
+          entityId: created.id,
+          before: null,
+          after: { id: created.id, customerId: created.customerId, type: created.type, subject: created.subject },
+        });
+        return created;
       });
     }),
 
@@ -1206,23 +1387,44 @@ export const crmRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await loadContactLogForTenant(input.id, { tenantId: ctx.tenantId });
-      return db.contactLog.update({
-        where: { id: input.id },
-        data: {
-          ...(input.type !== undefined && { type: input.type }),
-          ...(input.subject !== undefined && { subject: input.subject }),
-          ...(input.body !== undefined && { body: input.body }),
-          ...(input.occurredAt !== undefined && { occurredAt: input.occurredAt }),
-        },
+      const prev = await loadContactLogForTenant(input.id, { tenantId: ctx.tenantId });
+      return db.$transaction(async (tx) => {
+        const updated = await tx.contactLog.update({
+          where: { id: input.id },
+          data: {
+            ...(input.type !== undefined && { type: input.type }),
+            ...(input.subject !== undefined && { subject: input.subject }),
+            ...(input.body !== undefined && { body: input.body }),
+            ...(input.occurredAt !== undefined && { occurredAt: input.occurredAt }),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "ContactLog",
+          entityId: input.id,
+          before: { type: prev.type, subject: prev.subject, body: prev.body },
+          after: { type: updated.type, subject: updated.subject, body: updated.body },
+        });
+        return updated;
       });
     }),
 
   contactLogDelete: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      await loadContactLogForTenant(input.id, { tenantId: ctx.tenantId });
-      await db.contactLog.delete({ where: { id: input.id } });
-      return { id: input.id };
+      const prev = await loadContactLogForTenant(input.id, { tenantId: ctx.tenantId });
+      return db.$transaction(async (tx) => {
+        await tx.contactLog.delete({ where: { id: input.id } });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "DELETE",
+          entity: "ContactLog",
+          entityId: input.id,
+          before: { id: prev.id, customerId: prev.customerId, type: prev.type, subject: prev.subject },
+          after: null,
+        });
+        return { id: input.id };
+      });
     }),
 });
