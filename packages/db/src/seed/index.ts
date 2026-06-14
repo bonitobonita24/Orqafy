@@ -154,6 +154,63 @@ async function main() {
   });
   console.log('  ✅ Webmaster account seeded (webmaster@orqafy.local)');
 
+  // ── DEV-ONLY standardized login accounts ──
+  // Owner directive: predictable weak credentials for local development ONLY.
+  // GATED on APP_ENV so staging/prod seeds NEVER create these. The seed reads
+  // env via process.env (tsx loads packages/db/.env, which is the dev env file
+  // and intentionally omits APP_ENV — absent ⇒ development). Any non-dev value
+  // (staging/production) skips this block entirely.
+  const appEnv = process.env['APP_ENV'] ?? 'development';
+  const isDevEnv = appEnv !== 'staging' && appEnv !== 'production';
+  if (isDevEnv) {
+    // admin@mail.com / admin — full tenant super admin (same role as webmaster)
+    const devAdminHash = await bcrypt.hash('admin', 12);
+    await prisma.user.upsert({
+      where: { email: 'admin@mail.com' },
+      update: { passwordHash: devAdminHash, isActive: true },
+      create: {
+        email: 'admin@mail.com',
+        passwordHash: devAdminHash,
+        firstName: 'Dev',
+        lastName: 'Admin',
+        displayName: 'admin',
+        roleId: superAdminRoleId,
+        tenantId: demoTenant.id,
+        isActive: true,
+        securityVersion: 1,
+      },
+    });
+
+    // user@mail.com / user — lowest normal internal role (Staff)
+    const staffRoleId = roles['staff'];
+    if (staffRoleId === undefined) {
+      throw new Error('staff role not found');
+    }
+    const devUserHash = await bcrypt.hash('user', 12);
+    await prisma.user.upsert({
+      where: { email: 'user@mail.com' },
+      update: { passwordHash: devUserHash, isActive: true },
+      create: {
+        email: 'user@mail.com',
+        passwordHash: devUserHash,
+        firstName: 'Dev',
+        lastName: 'User',
+        displayName: 'user',
+        roleId: staffRoleId,
+        tenantId: demoTenant.id,
+        isActive: true,
+        securityVersion: 1,
+      },
+    });
+    console.log(
+      `  ✅ DEV-ONLY accounts seeded (admin@mail.com / user@mail.com) [APP_ENV=${appEnv}]`
+    );
+  } else {
+    console.log(
+      `  ⏭️  DEV-ONLY accounts skipped (APP_ENV=${appEnv} — staging/prod never gets weak creds)`
+    );
+  }
+
   // ── Departments ──
   const deptData = [
     'Executive', 'Sales', 'Purchasing', 'Finance', 'Human Resources',
