@@ -448,12 +448,97 @@ describe("dtrRouter", () => {
     });
   });
 
+  describe("dtr.leaveRequestCancel", () => {
+    it("cancels a pending request when called by the requesting employee", async () => {
+      mockDb.leaveRequest.findUnique.mockResolvedValue(fakeLeave);
+      mockDb.employee.findUnique.mockResolvedValue(fakeEmployee); // userId === "user-1"
+      mockDb.leaveRequest.update.mockResolvedValue({ ...fakeLeave, status: "cancelled" });
+      const caller = createCaller(authenticatedCtx());
+      const result = await caller.dtr.leaveRequestCancel({ leaveRequestId: "leave-1" });
+      expect(result.status).toBe("cancelled");
+      expect(mockDb.leaveRequest.update).toHaveBeenCalledOnce();
+    });
+
+    it("writes an audit log row with action UPDATE and entity LeaveRequest", async () => {
+      mockDb.leaveRequest.findUnique.mockResolvedValue(fakeLeave);
+      mockDb.employee.findUnique.mockResolvedValue(fakeEmployee);
+      mockDb.leaveRequest.update.mockResolvedValue({ ...fakeLeave, status: "cancelled" });
+      const caller = createCaller(authenticatedCtx());
+      await caller.dtr.leaveRequestCancel({ leaveRequestId: "leave-1" });
+      expect(mockDb.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: "UPDATE",
+            entity: "LeaveRequest",
+            after: expect.objectContaining({ status: "cancelled" }),
+          }),
+        }),
+      );
+    });
+
+    it("throws FORBIDDEN when cancelling someone else's request", async () => {
+      mockDb.leaveRequest.findUnique.mockResolvedValue(fakeLeave);
+      mockDb.employee.findUnique.mockResolvedValue({ ...fakeEmployee, userId: "user-2" });
+      const caller = createCaller(authenticatedCtx()); // userId === "user-1"
+      await expect(
+        caller.dtr.leaveRequestCancel({ leaveRequestId: "leave-1" })
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      expect(mockDb.leaveRequest.update).not.toHaveBeenCalled();
+    });
+
+    it("throws BAD_REQUEST when the request is not pending (already approved)", async () => {
+      mockDb.leaveRequest.findUnique.mockResolvedValue({ ...fakeLeave, status: "approved" });
+      mockDb.employee.findUnique.mockResolvedValue(fakeEmployee);
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.dtr.leaveRequestCancel({ leaveRequestId: "leave-1" })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(mockDb.leaveRequest.update).not.toHaveBeenCalled();
+    });
+
+    it("throws BAD_REQUEST when cancelling an already-cancelled request", async () => {
+      mockDb.leaveRequest.findUnique.mockResolvedValue({ ...fakeLeave, status: "cancelled" });
+      mockDb.employee.findUnique.mockResolvedValue(fakeEmployee);
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.dtr.leaveRequestCancel({ leaveRequestId: "leave-1" })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    });
+
+    it("throws NOT_FOUND for a cross-tenant request", async () => {
+      mockDb.leaveRequest.findUnique.mockResolvedValue({ ...fakeLeave, tenantId: "other-tenant" });
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.dtr.leaveRequestCancel({ leaveRequestId: "leave-1" })
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      expect(mockDb.leaveRequest.update).not.toHaveBeenCalled();
+    });
+
+    it("rejects unauthenticated caller", async () => {
+      const caller = createCaller(unauthenticatedCtx());
+      await expect(
+        caller.dtr.leaveRequestCancel({ leaveRequestId: "leave-1" })
+      ).rejects.toThrow(TRPCError);
+    });
+  });
+
   // ─── Epic-2 state-machine guards (Phase 7) ─────────────────────────────────
   // Each lifecycle procedure must reject illegal transitions server-side, not
   // just the happy path. These tests pin every rejected edge.
   describe("Epic-2 state-machine guards", () => {
-    describe("dtr.attendanceApprove — illegal transitions", () => {
-      it("rejects approving an already-approved record (approved → approved)", async () => {
+    // Owner decision (Phase 7): approvers may FLIP a prior decision to handle
+    // re-review edges. Only re-applying the SAME decision is rejected as a no-op.
+    describe("dtr.attendanceApprove — re-review flips", () => {
+      it("flips a rejected record to approved (rejected → approved)", async () => {
+        mockDb.attendanceRecord.findUnique.mockResolvedValue({ ...fakeAttendance, status: "rejected" });
+        mockDb.attendanceRecord.update.mockResolvedValue({ ...fakeAttendance, status: "approved" });
+        const caller = createCaller(authenticatedCtx("HR Manager"));
+        const result = await caller.dtr.attendanceApprove({ attendanceId: "att-1" });
+        expect(result.status).toBe("approved");
+        expect(mockDb.attendanceRecord.update).toHaveBeenCalledOnce();
+      });
+
+      it("rejects re-approving an already-approved record (approved → approved no-op)", async () => {
         mockDb.attendanceRecord.findUnique.mockResolvedValue({ ...fakeAttendance, status: "approved" });
         const caller = createCaller(authenticatedCtx("HR Manager"));
         await expect(
@@ -462,31 +547,39 @@ describe("dtrRouter", () => {
         expect(mockDb.attendanceRecord.update).not.toHaveBeenCalled();
       });
 
-      it("rejects approving an already-rejected record (rejected → approved)", async () => {
-        mockDb.attendanceRecord.findUnique.mockResolvedValue({ ...fakeAttendance, status: "rejected" });
+      it("still approves a present record (present → approved)", async () => {
+        mockDb.attendanceRecord.findUnique.mockResolvedValue(fakeAttendance);
+        mockDb.attendanceRecord.update.mockResolvedValue({ ...fakeAttendance, status: "approved" });
         const caller = createCaller(authenticatedCtx("HR Manager"));
+        const result = await caller.dtr.attendanceApprove({ attendanceId: "att-1" });
+        expect(result.status).toBe("approved");
+      });
+
+      it("requires approver role to flip", async () => {
+        const caller = createCaller(authenticatedCtx("Employee"));
         await expect(
           caller.dtr.attendanceApprove({ attendanceId: "att-1" })
-        ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+        ).rejects.toMatchObject({ code: "FORBIDDEN" });
       });
     });
 
-    describe("dtr.attendanceReject — illegal transitions", () => {
-      it("rejects rejecting an already-approved record (approved → rejected)", async () => {
+    describe("dtr.attendanceReject — re-review flips", () => {
+      it("flips an approved record to rejected (approved → rejected)", async () => {
         mockDb.attendanceRecord.findUnique.mockResolvedValue({ ...fakeAttendance, status: "approved" });
+        mockDb.attendanceRecord.update.mockResolvedValue({ ...fakeAttendance, status: "rejected" });
         const caller = createCaller(authenticatedCtx("HR Manager"));
-        await expect(
-          caller.dtr.attendanceReject({ attendanceId: "att-1" })
-        ).rejects.toMatchObject({ code: "BAD_REQUEST" });
-        expect(mockDb.attendanceRecord.update).not.toHaveBeenCalled();
+        const result = await caller.dtr.attendanceReject({ attendanceId: "att-1" });
+        expect(result.status).toBe("rejected");
+        expect(mockDb.attendanceRecord.update).toHaveBeenCalledOnce();
       });
 
-      it("rejects rejecting an already-rejected record (rejected → rejected)", async () => {
+      it("rejects re-rejecting an already-rejected record (rejected → rejected no-op)", async () => {
         mockDb.attendanceRecord.findUnique.mockResolvedValue({ ...fakeAttendance, status: "rejected" });
         const caller = createCaller(authenticatedCtx("HR Manager"));
         await expect(
           caller.dtr.attendanceReject({ attendanceId: "att-1" })
         ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+        expect(mockDb.attendanceRecord.update).not.toHaveBeenCalled();
       });
     });
 

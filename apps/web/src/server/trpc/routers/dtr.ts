@@ -44,16 +44,15 @@ function requireApproverRole(roles: ReadonlyArray<string>): void {
 }
 
 // Attendance review state machine. A record is created as "present" (open for
-// review); an approver moves it to a terminal "approved" or "rejected". Once
-// terminal it cannot be re-reviewed. `attendanceClockIn` only ever creates
-// "present" records, so "present" is the sole reviewable state.
-const ATTENDANCE_REVIEWABLE_STATUSES: ReadonlyArray<string> = ["present"];
-
+// review); an approver moves it to "approved" or "rejected". Approvers may also
+// FLIP a prior decision (re-review): approved → rejected and rejected → approved.
+// The only no-op is re-applying the SAME decision the record already carries —
+// that is rejected as a BAD_REQUEST so the audit log isn't spammed with no-ops.
 function requireReviewableAttendance(status: string, verb: "approved" | "rejected"): void {
-  if (!ATTENDANCE_REVIEWABLE_STATUSES.includes(status)) {
+  if (status === verb) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: `Cannot ${verb === "approved" ? "approve" : "reject"} an attendance record that is already ${status}.`,
+      message: `This attendance record is already ${status}.`,
     });
   }
 }
@@ -351,6 +350,45 @@ export const dtrRouter = createTRPCRouter({
         const updated = await tx.leaveRequest.update({
           where: { id: input.leaveRequestId },
           data: { status: "rejected" },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "LeaveRequest",
+          entityId: updated.id,
+          before: { status: (existing as { status: string }).status },
+          after: { status: updated.status },
+        });
+        return updated;
+      });
+    }),
+
+  // Self-service cancel. Unlike approve/reject (approver-gated), only the
+  // REQUESTING employee — the owner of the record — may cancel, and only while
+  // the request is still "pending". The owner check loads the employee row and
+  // compares its userId to the caller's; tenant scoping is enforced by
+  // loadLeaveRequestForTenant + loadEmployeeForTenant.
+  leaveRequestCancel: writeProcedure
+    .input(z.object({ leaveRequestId: z.string().min(1) }))
+    .mutation(async ({ input, ctx }) => {
+      const existing = await loadLeaveRequestForTenant(input.leaveRequestId, ctx);
+      const employee = await loadEmployeeForTenant(existing.employeeId, ctx);
+      if (employee.userId !== ctx.userId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can only cancel your own leave requests.",
+        });
+      }
+      if ((existing as { status: string }).status !== "pending") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only pending leave requests can be cancelled.",
+        });
+      }
+      return db.$transaction(async (tx) => {
+        const updated = await tx.leaveRequest.update({
+          where: { id: input.leaveRequestId },
+          data: { status: "cancelled" },
         });
         await writeAuditLog(tx, {
           userId: ctx.userId,
