@@ -7,8 +7,8 @@ import { dtrRouter } from "@/server/trpc/routers/dtr";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
+vi.mock("@orqafy/db", () => {
+  const mockPrisma = {
     attendanceRecord: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
@@ -27,8 +27,19 @@ vi.mock("@orqafy/db", () => ({
       findFirst: vi.fn(),
       findUnique: vi.fn(),
     },
-  },
-}));
+    auditLog: { create: vi.fn() },
+  };
+  return {
+    prisma: {
+      ...mockPrisma,
+      $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(mockPrisma)),
+    },
+    writeAuditLog: async (
+      tx: { auditLog: { create: (args: unknown) => unknown } },
+      entry: unknown,
+    ) => { await tx.auditLog.create({ data: entry }); },
+  };
+});
 
 import type { NextRequest } from "next/server";
 function makeReq(): NextRequest {
@@ -81,6 +92,9 @@ const mockDb = db as unknown as {
   employee: {
     findFirst: ReturnType<typeof vi.fn>;
     findUnique: ReturnType<typeof vi.fn>;
+  };
+  auditLog: {
+    create: ReturnType<typeof vi.fn>;
   };
 };
 
@@ -189,6 +203,23 @@ describe("dtrRouter", () => {
           lng: 120.9842,
         })
       ).rejects.toThrow(TRPCError);
+    });
+
+    it("writes an audit log row with action CREATE and entity AttendanceRecord", async () => {
+      mockDb.employee.findUnique.mockResolvedValue(fakeEmployee);
+      mockDb.attendanceRecord.findFirst.mockResolvedValue(null);
+      mockDb.attendanceRecord.create.mockResolvedValue({ ...fakeAttendance, id: "att-audit" });
+      const caller = createCaller(authenticatedCtx());
+      await caller.dtr.attendanceClockIn({
+        employeeId: "emp-1",
+        lat: 14.5995,
+        lng: 120.9842,
+      });
+      expect(mockDb.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ action: "CREATE", entity: "AttendanceRecord" }),
+        }),
+      );
     });
   });
 

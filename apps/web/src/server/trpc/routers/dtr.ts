@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
-import { prisma as db } from "@orqafy/db";
+import { prisma as db, writeAuditLog } from "@orqafy/db";
 
 async function loadEmployeeForTenant(id: string, ctx: { tenantId: string }) {
   const e = await db.employee.findUnique({ where: { id } });
@@ -104,16 +104,32 @@ export const dtrRouter = createTRPCRouter({
           message: "Employee has already clocked in today.",
         });
       }
-      return db.attendanceRecord.create({
-        data: {
-          tenantId: ctx.tenantId,
-          employeeId: input.employeeId,
-          date: today,
-          clockIn: new Date(),
-          clockInLat: input.lat,
-          clockInLng: input.lng,
-          status: "present",
-        },
+      return db.$transaction(async (tx) => {
+        const created = await tx.attendanceRecord.create({
+          data: {
+            tenantId: ctx.tenantId,
+            employeeId: input.employeeId,
+            date: today,
+            clockIn: new Date(),
+            clockInLat: input.lat,
+            clockInLng: input.lng,
+            status: "present",
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "AttendanceRecord",
+          entityId: created.id,
+          before: null,
+          after: {
+            employeeId: created.employeeId,
+            date: created.date.toISOString(),
+            clockIn: created.clockIn?.toISOString() ?? null,
+            status: created.status,
+          },
+        });
+        return created;
       });
     }),
 
@@ -124,14 +140,33 @@ export const dtrRouter = createTRPCRouter({
       lng: z.number(),
     }))
     .mutation(async ({ input, ctx }) => {
-      await loadAttendanceForTenant(input.attendanceId, ctx);
-      return db.attendanceRecord.update({
-        where: { id: input.attendanceId },
-        data: {
-          clockOut: new Date(),
-          clockOutLat: input.lat,
-          clockOutLng: input.lng,
-        },
+      const before = await loadAttendanceForTenant(input.attendanceId, ctx);
+      return db.$transaction(async (tx) => {
+        const updated = await tx.attendanceRecord.update({
+          where: { id: input.attendanceId },
+          data: {
+            clockOut: new Date(),
+            clockOutLat: input.lat,
+            clockOutLng: input.lng,
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "AttendanceRecord",
+          entityId: updated.id,
+          before: {
+            employeeId: before.employeeId,
+            clockOut: before.clockOut?.toISOString() ?? null,
+            status: before.status,
+          },
+          after: {
+            employeeId: updated.employeeId,
+            clockOut: updated.clockOut?.toISOString() ?? null,
+            status: updated.status,
+          },
+        });
+        return updated;
       });
     }),
 
@@ -139,10 +174,21 @@ export const dtrRouter = createTRPCRouter({
     .input(z.object({ attendanceId: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
       requireApproverRole(ctx.roles);
-      await loadAttendanceForTenant(input.attendanceId, ctx);
-      return db.attendanceRecord.update({
-        where: { id: input.attendanceId },
-        data: { status: "approved" },
+      const before = await loadAttendanceForTenant(input.attendanceId, ctx);
+      return db.$transaction(async (tx) => {
+        const updated = await tx.attendanceRecord.update({
+          where: { id: input.attendanceId },
+          data: { status: "approved" },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "AttendanceRecord",
+          entityId: updated.id,
+          before: { status: before.status },
+          after: { status: updated.status },
+        });
+        return updated;
       });
     }),
 
@@ -153,15 +199,26 @@ export const dtrRouter = createTRPCRouter({
     }))
     .mutation(async ({ input, ctx }) => {
       requireApproverRole(ctx.roles);
-      await loadAttendanceForTenant(input.attendanceId, ctx);
+      const before = await loadAttendanceForTenant(input.attendanceId, ctx);
       // AttendanceRecord schema has no rejectionReason field — store the supplied
       // reason in the existing `notes` field so it's not silently discarded.
-      return db.attendanceRecord.update({
-        where: { id: input.attendanceId },
-        data: {
-          status: "rejected",
-          ...(input.reason !== undefined && { notes: input.reason }),
-        },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.attendanceRecord.update({
+          where: { id: input.attendanceId },
+          data: {
+            status: "rejected",
+            ...(input.reason !== undefined && { notes: input.reason }),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "AttendanceRecord",
+          entityId: updated.id,
+          before: { status: before.status, notes: before.notes ?? null },
+          after: { status: updated.status, notes: updated.notes ?? null },
+        });
+        return updated;
       });
     }),
 
@@ -190,17 +247,35 @@ export const dtrRouter = createTRPCRouter({
     }))
     .mutation(async ({ input, ctx }) => {
       await loadEmployeeForTenant(input.employeeId, ctx);
-      return db.leaveRequest.create({
-        data: {
-          tenantId: ctx.tenantId,
-          employeeId: input.employeeId,
-          type: input.type,
-          startDate: new Date(input.startDate),
-          endDate: new Date(input.endDate),
-          totalDays: inclusiveDayCount(input.startDate, input.endDate),
-          status: "pending",
-          ...(input.reason !== undefined && { reason: input.reason }),
-        },
+      return db.$transaction(async (tx) => {
+        const created = await tx.leaveRequest.create({
+          data: {
+            tenantId: ctx.tenantId,
+            employeeId: input.employeeId,
+            type: input.type,
+            startDate: new Date(input.startDate),
+            endDate: new Date(input.endDate),
+            totalDays: inclusiveDayCount(input.startDate, input.endDate),
+            status: "pending",
+            ...(input.reason !== undefined && { reason: input.reason }),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "LeaveRequest",
+          entityId: created.id,
+          before: null,
+          after: {
+            employeeId: created.employeeId,
+            type: created.type,
+            startDate: created.startDate.toISOString(),
+            endDate: created.endDate.toISOString(),
+            totalDays: created.totalDays,
+            status: created.status,
+          },
+        });
+        return created;
       });
     }),
 
@@ -208,10 +283,24 @@ export const dtrRouter = createTRPCRouter({
     .input(z.object({ leaveRequestId: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
       requireApproverRole(ctx.roles);
-      await loadLeaveRequestForTenant(input.leaveRequestId, ctx);
-      return db.leaveRequest.update({
-        where: { id: input.leaveRequestId },
-        data: { status: "approved", approvedAt: new Date() },
+      const before = await loadLeaveRequestForTenant(input.leaveRequestId, ctx);
+      return db.$transaction(async (tx) => {
+        const updated = await tx.leaveRequest.update({
+          where: { id: input.leaveRequestId },
+          data: { status: "approved", approvedAt: new Date() },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "LeaveRequest",
+          entityId: updated.id,
+          before: { status: (before as { status: string }).status, approvedAt: null },
+          after: {
+            status: updated.status,
+            approvedAt: updated.approvedAt?.toISOString() ?? null,
+          },
+        });
+        return updated;
       });
     }),
 
@@ -229,9 +318,20 @@ export const dtrRouter = createTRPCRouter({
           message: "Only pending leave requests can be rejected.",
         });
       }
-      return db.leaveRequest.update({
-        where: { id: input.leaveRequestId },
-        data: { status: "rejected" },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.leaveRequest.update({
+          where: { id: input.leaveRequestId },
+          data: { status: "rejected" },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "LeaveRequest",
+          entityId: updated.id,
+          before: { status: (existing as { status: string }).status },
+          after: { status: updated.status },
+        });
+        return updated;
       });
     }),
 });
