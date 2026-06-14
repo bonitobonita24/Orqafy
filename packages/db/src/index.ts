@@ -7,3 +7,11 @@ export {
   toSchemaName,
 } from './helpers/tenant-schema';
 export { tenantGuardExtension } from './middleware/tenant-guard';
+export { provisionTenantRolesAndOwner } from './helpers/tenant-owner';
+export type { ProvisionTenantOwnerInput } from './helpers/tenant-owner';
+export {
+  STANDARD_ROLES,
+  TENANT_SUPER_ADMIN_SLUG,
+  PASSWORD_BCRYPT_COST,
+} from './seed/roles';
+export type { StandardRoleDef } from './seed/roles';
