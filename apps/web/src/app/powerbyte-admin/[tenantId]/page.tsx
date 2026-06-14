@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { TenantStatusActions } from "./tenant-status-actions";
 
 export const metadata: Metadata = { title: "Tenant — Platform Admin" };
 
@@ -23,28 +24,6 @@ async function getTenant(tenantId: string) {
   });
 }
 
-async function suspendTenant(formData: FormData) {
-  "use server";
-  const tenantId = formData.get("tenantId") as string;
-  if (!tenantId) return;
-  await prisma.tenant.update({
-    where: { id: tenantId },
-    data: { status: "suspended" },
-  });
-  redirect(`/powerbyte-admin/${tenantId}`);
-}
-
-async function reactivateTenant(formData: FormData) {
-  "use server";
-  const tenantId = formData.get("tenantId") as string;
-  if (!tenantId) return;
-  await prisma.tenant.update({
-    where: { id: tenantId },
-    data: { status: "active" },
-  });
-  redirect(`/powerbyte-admin/${tenantId}`);
-}
-
 export default async function TenantDetailPage({
   params,
 }: {
@@ -56,11 +35,6 @@ export default async function TenantDetailPage({
   if (tenant === null) {
     notFound();
   }
-
-  const isSuspended = tenant.status === "suspended";
-  const canSuspend =
-    tenant.status === "active" || tenant.status === "provisioning";
-  const canReactivate = isSuspended;
 
   return (
     <div className="space-y-6">
@@ -79,30 +53,7 @@ export default async function TenantDetailPage({
             {tenant.slug}
           </p>
         </div>
-        <div className="flex gap-2">
-          {canSuspend && (
-            <form action={suspendTenant}>
-              <input type="hidden" name="tenantId" value={tenant.id} />
-              <button
-                type="submit"
-                className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
-              >
-                Suspend workspace
-              </button>
-            </form>
-          )}
-          {canReactivate && (
-            <form action={reactivateTenant}>
-              <input type="hidden" name="tenantId" value={tenant.id} />
-              <button
-                type="submit"
-                className="rounded-md bg-[#00d992] px-4 py-2 text-sm font-semibold text-background transition-all hover:bg-[#2fd6a1]"
-              >
-                Reactivate workspace
-              </button>
-            </form>
-          )}
-        </div>
+        <TenantStatusActions tenantId={tenant.id} status={tenant.status} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
