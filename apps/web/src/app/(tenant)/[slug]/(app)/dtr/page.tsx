@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@orqafy/db";
+import { auth } from "@/server/auth";
 import { LeaveRequestForm } from "./leave-request-form";
 import { LeaveRequestActions } from "./leave-request-actions";
 import { AttendanceActions } from "./attendance-actions";
@@ -61,6 +62,7 @@ async function getLeaveRequests() {
         select: {
           id: true,
           employeeNumber: true,
+          userId: true,
           user: { select: { id: true, firstName: true, lastName: true, displayName: true } },
         },
       },
@@ -69,10 +71,12 @@ async function getLeaveRequests() {
 }
 
 export default async function DtrPage() {
-  const [attendance, leaves] = await Promise.all([
+  const [session, attendance, leaves] = await Promise.all([
+    auth(),
     getRecentAttendance(),
     getLeaveRequests(),
   ]);
+  const currentUserId = session?.user?.id ?? null;
 
   return (
     <div className="space-y-8">
@@ -221,7 +225,11 @@ export default async function DtrPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <LeaveRequestActions leaveRequestId={l.id} status={l.status} />
+                      <LeaveRequestActions
+                        leaveRequestId={l.id}
+                        status={l.status}
+                        isOwn={currentUserId !== null && l.employee.userId === currentUserId}
+                      />
                     </td>
                   </tr>
                 ))}
