@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { CloseSessionDialog } from "./close-session-dialog";
+import { VoidSaleAction } from "./void-sale-action";
 
 export const metadata: Metadata = { title: "POS Session Detail" };
 export const dynamic = "force-dynamic";
@@ -87,19 +89,22 @@ export default async function POSSessionDetailPage({
         >
           ← All Sessions
         </Link>
-        <div className="mt-2 flex items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {session.sessionNumber}
-          </h1>
-          {isOpen ? (
-            <span className="rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992]">
-              Open
-            </span>
-          ) : (
-            <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-              Closed
-            </span>
-          )}
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight">
+              {session.sessionNumber}
+            </h1>
+            {isOpen ? (
+              <span className="rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992]">
+                Open
+              </span>
+            ) : (
+              <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                Closed
+              </span>
+            )}
+          </div>
+          {isOpen && <CloseSessionDialog sessionId={session.id} />}
         </div>
       </div>
 
@@ -188,6 +193,7 @@ export default async function POSSessionDetailPage({
                 <th className="px-4 py-2 text-right font-medium">Total</th>
                 <th className="px-4 py-2 font-medium">Method</th>
                 <th className="px-4 py-2 font-medium">Status</th>
+                <th className="px-4 py-2 font-medium"></th>
               </tr>
             </thead>
             <tbody>
@@ -224,6 +230,14 @@ export default async function POSSessionDetailPage({
                   </td>
                   <td className="px-4 py-2">
                     <SaleStatus status={s.status} />
+                  </td>
+                  <td className="px-4 py-2">
+                    {s.status === "completed" && isOpen && (
+                      <VoidSaleAction
+                        saleId={s.id}
+                        saleNumber={s.saleNumber}
+                      />
+                    )}
                   </td>
                 </tr>
               ))}
