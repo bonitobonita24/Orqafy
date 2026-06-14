@@ -539,3 +539,51 @@ a data migration to remap rows.
 - [swarm W0 · 2026-06-12 18:30:41] 2026-06-12 W0 q-W0-03 [A/high]: Re-dispatch W0 as 15-child partition (W0-01..W0-14 + W0-synth) per pre-resolved Answer A on q-W0-01; single-worker W0 closed under V32 R2 (≤500 lines) + R4 (BLOCKED→re-decompose) + pre-flight rule 3 (≤12 files / ≤80K tokens).
 - [swarm W0 · 2026-06-12 18:31:54] 2026-06-12 | q-W0-04 | Bucket A | Confirmed 15-child W0 partition per q-W0-03 standing directive; single-worker W0 closed pre-audit, no commits. Children W0-01..W0-14 emit /tmp/punchlist-<domain>.md; W0-synth aggregates to docs/UI_WIRING_PUNCHLIST.md + STATE.md + CHANGELOG_AI.md. Governing: V32.2 R7 Parallel Fan-Out.
 - [swarm W0 · 2026-06-12 18:33:18] 2026-06-12 q-W0-05 [A]: W0 cancelled (no commits) and re-dispatched as 15-child partition (W0-01..W0-14 + W0-synth, audit-only per domain) per V32 R2 + Phase 4 anti-thrashing + pre-resolved Answers A on q-W0-03/04.
+
+## 2026-06-14 — Phase 7 owner decisions D1–D8 (accepted)
+
+Owner accepted the Phase 7 backend feature spec (`docs/PRODUCT_PHASE7_PROPOSAL.md`,
+commit 5fce839) including all 8 recommended defaults. Recorded here as accepted /
+locked for the Phase 7 build. Source: owner redline on the proposal.
+
+- **D1 — Invoice payment ↔ Banking auto-post: ACCEPTED (a) auto-post.** Recording an
+  invoice payment auto-creates a Banking `income` FundTransaction against the chosen
+  fund source. Rationale: Orqafy's thesis is "every peso traces to a fund source," so
+  coupling payment to the ledger is on-brand.
+- **D2 — DTR time-clock device model: ACCEPTED (a) per-user web widget now, (c) mobile
+  later.** Web time-clock ships first; GPS mobile clock deferred. Rationale: fastest to
+  ship; unblocks attendance without native dependency.
+- **D3 — Kanban task status: ACCEPTED status-dropdown v1.** Task status changes via a
+  dropdown driving the router state machine; drag-and-drop board deferred. Rationale:
+  smallest surface that wires the existing transition procedures.
+- **D4 — POS Open Session UX: ACCEPTED modal.** Opening a POS session is a shadcn modal,
+  not a dedicated route. Rationale: light, in-context action.
+- **D5 — Job-order detail route: ACCEPTED (a) consolidate on the interactive view.** The
+  interactive job-order detail route is canonical; the duplicate read-only route is
+  retired/redirected, and a `service/job-orders` list is added. Rationale: removes
+  divergence before building intake.
+- **D6 — Authenticated storefront customer + placeOrder role: ACCEPTED (c) both,
+  staff-on-behalf first.** Logged-in customer checkout AND staff "order on behalf";
+  staff-on-behalf built first. Rationale: reuses the line-item builder, unblocks the
+  common internal flow sooner.
+- **D7 — Notification store: ACCEPTED (b) Prisma durable + Valkey fan-out.** Notifications
+  persist in a Prisma `Notification` model; Valkey handles real-time fan-out only.
+  Rationale: survives restarts, queryable history, schema-as-source-of-truth.
+- **D8 — Platform suspend/reactivate reason-capture UX: ACCEPTED (a) AlertDialog +
+  textarea.** Suspend/reactivate uses a shadcn AlertDialog with a required reason
+  textarea (`reason: min(1)`). Rationale: consistent with lifecycle/authority confirm UX.
+
+**Foundations landed alongside this acceptance (Phase 7 build, branch main):**
+- **F1 — RSC→tRPC server-caller** (`apps/web/src/server/trpc/server.ts`):
+  `createServerCaller()` wraps `createCallerFactory(appRouter)` with a request context
+  resolved from `auth()` + `next/headers`, so RSC pages / Server Actions call tRPC
+  procedures (gaining RBAC + L5 AuditLog) instead of reading Prisma directly.
+- **F2 — Invoice partial-payment model** (`packages/db` + `invoice.recordPayment`):
+  the existing `Payment` model is EXTENDED (not duplicated into a new `InvoicePayment`
+  table) with `fundSourceId` + `recordedById`. `invoice.recordPayment` records a
+  partial/full payment, updates `amountPaid`/`balance`, transitions status
+  `partially_paid`/`paid`, rejects over-payment, and — per D1 — auto-posts a Banking
+  income FundTransaction when a fund source is supplied. `invoice.markPaid` is now a
+  thin "pay full balance" convenience over `recordPayment`.
+
+**Phase:** Phase 7 Foundations

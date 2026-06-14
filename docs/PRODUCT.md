@@ -716,6 +716,18 @@ operations and financial traceability without the complexity.
   SMTP_FROM_ADDRESS, SMTP_FROM_NAME); used ONLY for platform-level emails (tenant welcome,
   billing reminders, suspension notices, password resets); never used for tenant-scoped emails
 
+### Invoice Payments (Phase 7)
+
+Invoices support partial payments. Each recorded payment is a `Payment` ledger row
+(amount, method, optional fund source, recordedBy, paidAt) linked to the invoice.
+Recording a payment updates the invoice `amountPaid` / `balance` and transitions
+status: balance > 0 → `partially_paid`; balance == 0 → `paid`. Over-payment beyond the
+outstanding balance is rejected. Per owner decision D1 (2026-06-14), when a fund source
+is selected the payment AUTO-POSTS a Banking `income` transaction to that fund source
+and increments its balance (referenceType `invoice_payment`), so every collected peso
+traces to a fund source. `invoice.markPaid` settles the full outstanding balance in one
+action as a convenience over `recordPayment`. Every payment writes an L5 AuditLog entry.
+
 ## Roles + Permissions
 
 | Role | Can do | Cannot do |
@@ -973,9 +985,19 @@ Invoice: id, customerId, proposalId (nullable), quotationId (nullable — links 
   CONSTRAINT: if projectId is set, Project.customerId MUST equal Invoice.customerId
   (validated on create and update; prevents cross-customer project invoicing)
 
-Payment: id, invoiceId, amount, method (cash|card|bank|gcash|other), fundSourceId,
-  referenceNo, balanceAfterPayment, excessAmount, excessHandling
-  (credited_to_account|refunded|pending_decision), notes, recordedBy, paidAt
+Payment: id, tenantId, invoiceId, amount, currency, method (cash|bank_transfer|gcash|
+  maya|card|xendit|credit), status (pending|completed|failed|refunded),
+  referenceNumber (nullable), xenditPaymentId (nullable),
+  fundSourceId (nullable — Phase 7: links the payment to the Banking fund source it
+  posted to; set when D1 auto-post is used), recordedById (nullable — Phase 7: userId
+  who recorded the payment), notes (nullable), paidAt, createdAt, updatedAt
+  [global public schema; tenantId-scoped]
+  NOTE (Phase 7 / D1): when fundSourceId is set, invoice.recordPayment auto-posts a
+  Banking income FundTransaction (referenceType=invoice_payment, referenceId=Payment.id)
+  to that fund source and bumps its currentBalance, in the same DB transaction.
+  [Prior fields preserved for reference: referenceNo, balanceAfterPayment, excessAmount,
+  excessHandling (credited_to_account|refunded|pending_decision), recordedBy — superseded
+  by the above canonical schema as of Phase 7]
 
 Subscription: id, customerId, planId, billingCycle (monthly|quarterly|annual),
   nextBillingDate, descriptionTemplate, status (active|paused|cancelled)
