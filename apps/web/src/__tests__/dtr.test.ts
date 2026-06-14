@@ -447,4 +447,80 @@ describe("dtrRouter", () => {
       ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     });
   });
+
+  // ─── Epic-2 state-machine guards (Phase 7) ─────────────────────────────────
+  // Each lifecycle procedure must reject illegal transitions server-side, not
+  // just the happy path. These tests pin every rejected edge.
+  describe("Epic-2 state-machine guards", () => {
+    describe("dtr.attendanceApprove — illegal transitions", () => {
+      it("rejects approving an already-approved record (approved → approved)", async () => {
+        mockDb.attendanceRecord.findUnique.mockResolvedValue({ ...fakeAttendance, status: "approved" });
+        const caller = createCaller(authenticatedCtx("HR Manager"));
+        await expect(
+          caller.dtr.attendanceApprove({ attendanceId: "att-1" })
+        ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+        expect(mockDb.attendanceRecord.update).not.toHaveBeenCalled();
+      });
+
+      it("rejects approving an already-rejected record (rejected → approved)", async () => {
+        mockDb.attendanceRecord.findUnique.mockResolvedValue({ ...fakeAttendance, status: "rejected" });
+        const caller = createCaller(authenticatedCtx("HR Manager"));
+        await expect(
+          caller.dtr.attendanceApprove({ attendanceId: "att-1" })
+        ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      });
+    });
+
+    describe("dtr.attendanceReject — illegal transitions", () => {
+      it("rejects rejecting an already-approved record (approved → rejected)", async () => {
+        mockDb.attendanceRecord.findUnique.mockResolvedValue({ ...fakeAttendance, status: "approved" });
+        const caller = createCaller(authenticatedCtx("HR Manager"));
+        await expect(
+          caller.dtr.attendanceReject({ attendanceId: "att-1" })
+        ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+        expect(mockDb.attendanceRecord.update).not.toHaveBeenCalled();
+      });
+
+      it("rejects rejecting an already-rejected record (rejected → rejected)", async () => {
+        mockDb.attendanceRecord.findUnique.mockResolvedValue({ ...fakeAttendance, status: "rejected" });
+        const caller = createCaller(authenticatedCtx("HR Manager"));
+        await expect(
+          caller.dtr.attendanceReject({ attendanceId: "att-1" })
+        ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      });
+    });
+
+    describe("dtr.attendanceClockOut — illegal transitions", () => {
+      it("rejects clocking out a session that is already closed", async () => {
+        mockDb.attendanceRecord.findUnique.mockResolvedValue({
+          ...fakeAttendance,
+          clockOut: new Date("2025-01-15T17:00:00Z"),
+        });
+        const caller = createCaller(authenticatedCtx());
+        await expect(
+          caller.dtr.attendanceClockOut({ attendanceId: "att-1", lat: 14.6, lng: 120.9 })
+        ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+        expect(mockDb.attendanceRecord.update).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("dtr.leaveRequestApprove — illegal transitions", () => {
+      it("rejects approving an already-approved request (approved → approved)", async () => {
+        mockDb.leaveRequest.findUnique.mockResolvedValue({ ...fakeLeave, status: "approved" });
+        const caller = createCaller(authenticatedCtx("HR Manager"));
+        await expect(
+          caller.dtr.leaveRequestApprove({ leaveRequestId: "leave-1" })
+        ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+        expect(mockDb.leaveRequest.update).not.toHaveBeenCalled();
+      });
+
+      it("rejects approving an already-rejected request (rejected → approved)", async () => {
+        mockDb.leaveRequest.findUnique.mockResolvedValue({ ...fakeLeave, status: "rejected" });
+        const caller = createCaller(authenticatedCtx("HR Manager"));
+        await expect(
+          caller.dtr.leaveRequestApprove({ leaveRequestId: "leave-1" })
+        ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      });
+    });
+  });
 });

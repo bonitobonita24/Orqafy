@@ -43,6 +43,21 @@ function requireApproverRole(roles: ReadonlyArray<string>): void {
   }
 }
 
+// Attendance review state machine. A record is created as "present" (open for
+// review); an approver moves it to a terminal "approved" or "rejected". Once
+// terminal it cannot be re-reviewed. `attendanceClockIn` only ever creates
+// "present" records, so "present" is the sole reviewable state.
+const ATTENDANCE_REVIEWABLE_STATUSES: ReadonlyArray<string> = ["present"];
+
+function requireReviewableAttendance(status: string, verb: "approved" | "rejected"): void {
+  if (!ATTENDANCE_REVIEWABLE_STATUSES.includes(status)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Cannot ${verb === "approved" ? "approve" : "reject"} an attendance record that is already ${status}.`,
+    });
+  }
+}
+
 // Inclusive day count between two ISO dates (e.g. "2025-01-20" → "2025-01-21" = 2 days).
 function inclusiveDayCount(startISO: string, endISO: string): number {
   const start = new Date(startISO);
@@ -141,6 +156,12 @@ export const dtrRouter = createTRPCRouter({
     }))
     .mutation(async ({ input, ctx }) => {
       const before = await loadAttendanceForTenant(input.attendanceId, ctx);
+      if (before.clockOut != null) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This attendance session has already been clocked out.",
+        });
+      }
       return db.$transaction(async (tx) => {
         const updated = await tx.attendanceRecord.update({
           where: { id: input.attendanceId },
@@ -175,6 +196,7 @@ export const dtrRouter = createTRPCRouter({
     .mutation(async ({ input, ctx }) => {
       requireApproverRole(ctx.roles);
       const before = await loadAttendanceForTenant(input.attendanceId, ctx);
+      requireReviewableAttendance(before.status, "approved");
       return db.$transaction(async (tx) => {
         const updated = await tx.attendanceRecord.update({
           where: { id: input.attendanceId },
@@ -200,6 +222,7 @@ export const dtrRouter = createTRPCRouter({
     .mutation(async ({ input, ctx }) => {
       requireApproverRole(ctx.roles);
       const before = await loadAttendanceForTenant(input.attendanceId, ctx);
+      requireReviewableAttendance(before.status, "rejected");
       // AttendanceRecord schema has no rejectionReason field — store the supplied
       // reason in the existing `notes` field so it's not silently discarded.
       return db.$transaction(async (tx) => {
@@ -284,6 +307,12 @@ export const dtrRouter = createTRPCRouter({
     .mutation(async ({ input, ctx }) => {
       requireApproverRole(ctx.roles);
       const before = await loadLeaveRequestForTenant(input.leaveRequestId, ctx);
+      if ((before as { status: string }).status !== "pending") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only pending leave requests can be approved.",
+        });
+      }
       return db.$transaction(async (tx) => {
         const updated = await tx.leaveRequest.update({
           where: { id: input.leaveRequestId },
