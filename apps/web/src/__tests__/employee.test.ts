@@ -354,6 +354,21 @@ describe("employee router", () => {
         data: { dateTerminated: terminationDate },
       });
     });
+
+    // Owner decision (Phase 7): line Managers may terminate too, so the
+    // terminate roster matches the dtr.ts approver list.
+    it("allows termination for a Manager role", async () => {
+      mockDb.employee.findUnique.mockResolvedValue({
+        id: VALID_CUID,
+        tenantId: "acme-tenant-id",
+        dateTerminated: null,
+      });
+      const terminationDate = new Date("2026-06-01");
+      mockDb.employee.update.mockResolvedValue({ id: VALID_CUID, dateTerminated: terminationDate });
+      const caller = createCaller(authenticatedCtx(["Manager"]));
+      await caller.employee.terminate({ id: VALID_CUID, dateTerminated: terminationDate });
+      expect(mockDb.employee.update).toHaveBeenCalledOnce();
+    });
   });
 
   describe("departments", () => {

@@ -11,16 +11,17 @@ async function loadEmployeeForTenant(id: string, ctx: { tenantId: string }) {
   return e;
 }
 
-// Roles with HR authority to terminate an employee. Inline gate (vs. shared
+// Roles with authority to terminate an employee. Inline gate (vs. shared
 // middleware) keeps the role list visible at the call site — matches the
-// approver-gate convention used in dtr.ts.
-const HR_AUTHORITY_ROLES = ["HR Manager", "Administrator"] as const;
+// approver-gate convention used in dtr.ts. The roster mirrors dtr.ts
+// APPROVER_ROLES so line Managers can terminate as well as approve DTR/leave.
+const TERMINATE_ROLES = ["HR Manager", "Manager", "Administrator"] as const;
 
-function requireHrAuthority(roles: ReadonlyArray<string>): void {
-  if (!roles.some((r) => (HR_AUTHORITY_ROLES as ReadonlyArray<string>).includes(r))) {
+function requireTerminateAuthority(roles: ReadonlyArray<string>): void {
+  if (!roles.some((r) => (TERMINATE_ROLES as ReadonlyArray<string>).includes(r))) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Only an HR Manager or Administrator can terminate an employee.",
+      message: "Only an HR Manager, Manager, or Administrator can terminate an employee.",
     });
   }
 }
@@ -205,7 +206,7 @@ export const employeeRouter = createTRPCRouter({
   terminate: writeProcedure
     .input(z.object({ id: z.string().cuid(), dateTerminated: z.date() }))
     .mutation(async ({ input, ctx }) => {
-      requireHrAuthority(ctx.roles);
+      requireTerminateAuthority(ctx.roles);
       const existing = await loadEmployeeForTenant(input.id, ctx);
       if (existing.dateTerminated != null) {
         throw new TRPCError({
