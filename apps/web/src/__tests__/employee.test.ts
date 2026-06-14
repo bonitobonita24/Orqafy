@@ -4,8 +4,8 @@ import { employeeRouter } from "@/server/trpc/routers/employee";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
+vi.mock("@orqafy/db", () => {
+  const mockPrisma = {
     employee: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
@@ -19,8 +19,16 @@ vi.mock("@orqafy/db", () => ({
     department: {
       findMany: vi.fn(),
     },
-  },
-}));
+    auditLog: { create: vi.fn() },
+  };
+  return {
+    prisma: {
+      ...mockPrisma,
+      $transaction: vi.fn(async (fn: any) => fn(mockPrisma)),
+    },
+    writeAuditLog: async (tx: any, entry: any) => { await tx.auditLog.create({ data: entry }); },
+  };
+});
 
 import type { NextRequest } from "next/server";
 function makeReq(): NextRequest {
@@ -65,6 +73,7 @@ const mockDb = db as unknown as {
   };
   user: { findUnique: any };
   department: { findMany: any };
+  auditLog: { create: any };
 };
 
 const VALID_CUID = "ck1234567890123456789012a";
@@ -171,7 +180,7 @@ describe("employee router", () => {
   describe("create", () => {
     it("creates an employee with auto-generated employeeNumber", async () => {
       mockDb.user.findUnique.mockResolvedValue({ id: USER_CUID });
-      mockDb.employee.create.mockResolvedValue({ id: VALID_CUID, employeeNumber: "EMP-123" });
+      mockDb.employee.create.mockResolvedValue({ id: VALID_CUID, employeeNumber: "EMP-123", dateHired: new Date("2026-01-01"), position: null, employmentType: "full_time" });
       const caller = createCaller(authenticatedCtx());
       const result = await caller.employee.create({
         userId: USER_CUID,
@@ -212,7 +221,7 @@ describe("employee router", () => {
 
     it("persists optional government IDs when provided", async () => {
       mockDb.user.findUnique.mockResolvedValue({ id: USER_CUID });
-      mockDb.employee.create.mockResolvedValue({ id: VALID_CUID });
+      mockDb.employee.create.mockResolvedValue({ id: VALID_CUID, dateHired: new Date("2026-01-01"), position: null, employmentType: "full_time" });
       const caller = createCaller(authenticatedCtx());
       await caller.employee.create({
         userId: USER_CUID,
@@ -240,6 +249,22 @@ describe("employee router", () => {
         })
       ).rejects.toMatchObject({ code: "FORBIDDEN" });
     });
+
+    it("writes an audit log row with action CREATE and entity Employee", async () => {
+      mockDb.user.findUnique.mockResolvedValue({ id: USER_CUID });
+      mockDb.employee.create.mockResolvedValue({ id: VALID_CUID, employeeNumber: "EMP-999", dateHired: new Date("2026-01-01"), position: null, employmentType: "full_time" });
+      const caller = createCaller(authenticatedCtx());
+      await caller.employee.create({
+        userId: USER_CUID,
+        dateHired: new Date("2026-01-01"),
+        employmentType: "full_time",
+      });
+      expect(mockDb.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ action: "CREATE", entity: "Employee" }),
+        }),
+      );
+    });
   });
 
   describe("update", () => {
@@ -247,8 +272,8 @@ describe("employee router", () => {
       // update: loadEmployeeForTenant (findUnique #1) then findUnique #2 for existing check
       mockDb.employee.findUnique
         .mockResolvedValueOnce({ id: VALID_CUID, tenantId: "acme-tenant-id" })
-        .mockResolvedValueOnce({ id: VALID_CUID, tenantId: "acme-tenant-id" });
-      mockDb.employee.update.mockResolvedValue({ id: VALID_CUID, position: "Manager" });
+        .mockResolvedValueOnce({ id: VALID_CUID, tenantId: "acme-tenant-id", dateHired: new Date("2026-01-01"), position: null, employmentType: "full_time", departmentId: null });
+      mockDb.employee.update.mockResolvedValue({ id: VALID_CUID, position: "Manager", dateHired: new Date("2026-01-01"), employmentType: "full_time", departmentId: null });
       const caller = createCaller(authenticatedCtx());
       await caller.employee.update({ id: VALID_CUID, position: "Manager" });
       const callArgs = mockDb.employee.update.mock.calls[0][0];

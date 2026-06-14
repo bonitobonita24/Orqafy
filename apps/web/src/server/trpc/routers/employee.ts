@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
-import { prisma as db } from "@orqafy/db";
+import { prisma as db, writeAuditLog } from "@orqafy/db";
 
 async function loadEmployeeForTenant(id: string, ctx: { tenantId: string }) {
   const e = await db.employee.findUnique({ where: { id } });
@@ -96,27 +96,45 @@ export const employeeRouter = createTRPCRouter({
       const user = await db.user.findUnique({ where: { id: input.userId } });
       if (!user) throw new TRPCError({ code: "BAD_REQUEST", message: "User not found." });
       const employeeNumber = `EMP-${Date.now()}`;
-      return db.employee.create({
-        data: {
-          tenantId: ctx.tenantId,
-          userId: input.userId,
-          departmentId: input.departmentId ?? null,
-          position: input.position ?? null,
-          employmentType: input.employmentType,
-          dateHired: input.dateHired,
-          baseSalary: input.baseSalary ?? null,
-          dailyRate: input.dailyRate ?? null,
-          hourlyRate: input.hourlyRate ?? null,
-          sssNumber: input.sssNumber ?? null,
-          philhealthNumber: input.philhealthNumber ?? null,
-          pagibigNumber: input.pagibigNumber ?? null,
-          tinNumber: input.tinNumber ?? null,
-          bankName: input.bankName ?? null,
-          bankAccountNumber: input.bankAccountNumber ?? null,
-          emergencyContactName: input.emergencyContactName ?? null,
-          emergencyContactPhone: input.emergencyContactPhone ?? null,
-          employeeNumber,
-        },
+      return db.$transaction(async (tx) => {
+        const created = await tx.employee.create({
+          data: {
+            tenantId: ctx.tenantId,
+            userId: input.userId,
+            departmentId: input.departmentId ?? null,
+            position: input.position ?? null,
+            employmentType: input.employmentType,
+            dateHired: input.dateHired,
+            baseSalary: input.baseSalary ?? null,
+            dailyRate: input.dailyRate ?? null,
+            hourlyRate: input.hourlyRate ?? null,
+            sssNumber: input.sssNumber ?? null,
+            philhealthNumber: input.philhealthNumber ?? null,
+            pagibigNumber: input.pagibigNumber ?? null,
+            tinNumber: input.tinNumber ?? null,
+            bankName: input.bankName ?? null,
+            bankAccountNumber: input.bankAccountNumber ?? null,
+            emergencyContactName: input.emergencyContactName ?? null,
+            emergencyContactPhone: input.emergencyContactPhone ?? null,
+            employeeNumber,
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "Employee",
+          entityId: created.id,
+          before: null,
+          after: {
+            id: created.id,
+            userId: created.userId,
+            employeeNumber: created.employeeNumber,
+            position: created.position,
+            employmentType: created.employmentType,
+            dateHired: created.dateHired.toISOString(),
+          },
+        });
+        return created;
       });
     }),
 
@@ -127,35 +145,67 @@ export const employeeRouter = createTRPCRouter({
       await loadEmployeeForTenant(id, ctx);
       const existing = await db.employee.findUnique({ where: { id } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      return db.employee.update({
-        where: { id },
-        data: {
-          ...(rest.departmentId !== undefined ? { departmentId: rest.departmentId ?? null } : {}),
-          ...(rest.position !== undefined ? { position: rest.position ?? null } : {}),
-          ...(rest.employmentType !== undefined ? { employmentType: rest.employmentType } : {}),
-          ...(rest.dateHired !== undefined ? { dateHired: rest.dateHired } : {}),
-          ...(rest.baseSalary !== undefined ? { baseSalary: rest.baseSalary ?? null } : {}),
-          ...(rest.dailyRate !== undefined ? { dailyRate: rest.dailyRate ?? null } : {}),
-          ...(rest.hourlyRate !== undefined ? { hourlyRate: rest.hourlyRate ?? null } : {}),
-          ...(rest.sssNumber !== undefined ? { sssNumber: rest.sssNumber ?? null } : {}),
-          ...(rest.philhealthNumber !== undefined ? { philhealthNumber: rest.philhealthNumber ?? null } : {}),
-          ...(rest.pagibigNumber !== undefined ? { pagibigNumber: rest.pagibigNumber ?? null } : {}),
-          ...(rest.tinNumber !== undefined ? { tinNumber: rest.tinNumber ?? null } : {}),
-          ...(rest.bankName !== undefined ? { bankName: rest.bankName ?? null } : {}),
-          ...(rest.bankAccountNumber !== undefined ? { bankAccountNumber: rest.bankAccountNumber ?? null } : {}),
-          ...(rest.emergencyContactName !== undefined ? { emergencyContactName: rest.emergencyContactName ?? null } : {}),
-          ...(rest.emergencyContactPhone !== undefined ? { emergencyContactPhone: rest.emergencyContactPhone ?? null } : {}),
-        },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.employee.update({
+          where: { id },
+          data: {
+            ...(rest.departmentId !== undefined ? { departmentId: rest.departmentId ?? null } : {}),
+            ...(rest.position !== undefined ? { position: rest.position ?? null } : {}),
+            ...(rest.employmentType !== undefined ? { employmentType: rest.employmentType } : {}),
+            ...(rest.dateHired !== undefined ? { dateHired: rest.dateHired } : {}),
+            ...(rest.baseSalary !== undefined ? { baseSalary: rest.baseSalary ?? null } : {}),
+            ...(rest.dailyRate !== undefined ? { dailyRate: rest.dailyRate ?? null } : {}),
+            ...(rest.hourlyRate !== undefined ? { hourlyRate: rest.hourlyRate ?? null } : {}),
+            ...(rest.sssNumber !== undefined ? { sssNumber: rest.sssNumber ?? null } : {}),
+            ...(rest.philhealthNumber !== undefined ? { philhealthNumber: rest.philhealthNumber ?? null } : {}),
+            ...(rest.pagibigNumber !== undefined ? { pagibigNumber: rest.pagibigNumber ?? null } : {}),
+            ...(rest.tinNumber !== undefined ? { tinNumber: rest.tinNumber ?? null } : {}),
+            ...(rest.bankName !== undefined ? { bankName: rest.bankName ?? null } : {}),
+            ...(rest.bankAccountNumber !== undefined ? { bankAccountNumber: rest.bankAccountNumber ?? null } : {}),
+            ...(rest.emergencyContactName !== undefined ? { emergencyContactName: rest.emergencyContactName ?? null } : {}),
+            ...(rest.emergencyContactPhone !== undefined ? { emergencyContactPhone: rest.emergencyContactPhone ?? null } : {}),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Employee",
+          entityId: id,
+          before: {
+            position: existing.position,
+            employmentType: existing.employmentType,
+            departmentId: existing.departmentId,
+            dateHired: existing.dateHired.toISOString(),
+          },
+          after: {
+            position: updated.position,
+            employmentType: updated.employmentType,
+            departmentId: updated.departmentId,
+            dateHired: updated.dateHired.toISOString(),
+          },
+        });
+        return updated;
       });
     }),
 
   terminate: writeProcedure
     .input(z.object({ id: z.string().cuid(), dateTerminated: z.date() }))
     .mutation(async ({ input, ctx }) => {
-      await loadEmployeeForTenant(input.id, ctx);
-      return db.employee.update({
-        where: { id: input.id },
-        data: { dateTerminated: input.dateTerminated },
+      const existing = await loadEmployeeForTenant(input.id, ctx);
+      return db.$transaction(async (tx) => {
+        const updated = await tx.employee.update({
+          where: { id: input.id },
+          data: { dateTerminated: input.dateTerminated },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Employee",
+          entityId: input.id,
+          before: { dateTerminated: existing.dateTerminated ? existing.dateTerminated.toISOString() : null },
+          after: { dateTerminated: updated.dateTerminated ? updated.dateTerminated.toISOString() : null },
+        });
+        return updated;
       });
     }),
 
