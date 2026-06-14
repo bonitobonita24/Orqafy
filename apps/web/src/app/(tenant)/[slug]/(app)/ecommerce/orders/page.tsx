@@ -164,6 +164,12 @@ export default async function EcommerceOrdersPage({ params, searchParams }: Page
             {paymentMethod ? ` · method "${PAYMENT_METHOD_LABELS[paymentMethod]}"` : ""}
           </p>
         </div>
+        <Link
+          href={`/${slug}/ecommerce/orders/new`}
+          className="rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20"
+        >
+          + Place order
+        </Link>
       </div>
 
       {/* Order status filter */}
