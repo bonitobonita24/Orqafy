@@ -7,7 +7,7 @@ interface Plan {
   id: string;
   slug: string;
   name: string;
-  priceMonthly: unknown; // Decimal from Prisma
+  priceMonthly: number; // serialized from Prisma Decimal in the server component
 }
 
 interface Props {

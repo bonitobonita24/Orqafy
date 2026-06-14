@@ -7,11 +7,15 @@ export const metadata: Metadata = { title: "Create your workspace" };
 export const dynamic = "force-dynamic";
 
 async function getActivePlans() {
-  return prisma.plan.findMany({
+  const plans = await prisma.plan.findMany({
     where: { isActive: true },
     orderBy: { sortOrder: "asc" },
     select: { id: true, slug: true, name: true, priceMonthly: true },
   });
+  // Serialize the Prisma Decimal to a plain number before it crosses the
+  // Server→Client component boundary (RegisterForm is a Client Component);
+  // raw Decimal instances are not plain objects and trip React's RSC guard.
+  return plans.map((p) => ({ ...p, priceMonthly: Number(p.priceMonthly) }));
 }
 
 export default async function RegisterPage({
