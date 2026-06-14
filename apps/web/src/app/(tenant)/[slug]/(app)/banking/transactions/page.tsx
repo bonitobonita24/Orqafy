@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@orqafy/db";
+import { NewTransactionButton } from "./transaction-form";
 
 export const metadata: Metadata = { title: "Transactions Ledger" };
 
@@ -135,6 +136,7 @@ export default async function TransactionsLedgerPage({ searchParams }: PageProps
             All fund transactions across sources
           </p>
         </div>
+        <NewTransactionButton />
       </div>
 
       {/* Filters */}

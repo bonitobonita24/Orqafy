@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { NewTransactionButton } from "../../transactions/transaction-form";
 
 export const metadata: Metadata = { title: "Account Transactions" };
 
@@ -170,7 +171,9 @@ export default async function AccountTransactionsPage({ params, searchParams }: 
             {fundSource.accountNumber !== null && ` · ${fundSource.accountNumber}`}
           </p>
         </div>
-        <div className="text-right">
+        <div className="flex flex-col items-end gap-3">
+          <NewTransactionButton prefillFundSourceId={fundSource.id} />
+          <div className="text-right">
           <div className="text-xs text-muted-foreground mb-1">Current Balance</div>
           <div className="text-2xl font-mono font-semibold">
             {formatAmount(fundSource.currentBalance, fundSource.currency)}
@@ -180,6 +183,7 @@ export default async function AccountTransactionsPage({ params, searchParams }: 
               Inactive
             </span>
           )}
+          </div>
         </div>
       </div>
 

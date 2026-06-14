@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@orqafy/db";
+import { AddFundSourceButton, EditFundSourceButton, ToggleFundSourceButton } from "./fund-source-form";
 
 export const metadata: Metadata = { title: "Fund Sources" };
 
@@ -59,6 +60,7 @@ export default async function FundSourcesPage() {
             {active.length} active of {fundSources.length} total
           </p>
         </div>
+        <AddFundSourceButton />
       </div>
 
       <div className="rounded-lg border border-border bg-card">
@@ -75,6 +77,7 @@ export default async function FundSourcesPage() {
                 <th className="px-4 py-3 font-medium">Balance</th>
                 <th className="px-4 py-3 font-medium">Account</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -119,6 +122,12 @@ export default async function FundSourcesPage() {
                           Inactive
                         </span>
                       )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <EditFundSourceButton fundSource={fs} />
+                        <ToggleFundSourceButton id={fs.id} isActive={fs.isActive} />
+                      </div>
                     </td>
                   </tr>
                 );
