@@ -298,14 +298,15 @@ export function InvoiceActions({
                     </span>
                   </Label>
                   <Select
-                    value={payFundSourceId}
-                    onValueChange={setPayFundSourceId}
+                    value={payFundSourceId === "" ? "__none__" : payFundSourceId}
+                    onValueChange={(v) => setPayFundSourceId(v === "__none__" ? "" : v)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select fund source…" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      {/* Radix forbids an empty-string SelectItem value; sentinel maps back to "". */}
+                      <SelectItem value="__none__">None</SelectItem>
                       {fundSources.map((fs) => (
                         <SelectItem key={fs.id} value={fs.id}>
                           {fs.name}

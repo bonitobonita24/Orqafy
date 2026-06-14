@@ -221,12 +221,17 @@ export function EmployeeForm({
           <Label htmlFor="department" className="text-xs font-medium text-muted-foreground">
             Department
           </Label>
-          <Select value={departmentId} onValueChange={setDepartmentId}>
+          <Select
+            value={departmentId === "" ? "__none__" : departmentId}
+            onValueChange={(v) => setDepartmentId(v === "__none__" ? "" : v)}
+          >
             <SelectTrigger id="department">
               <SelectValue placeholder="None" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">None</SelectItem>
+              {/* Radix forbids an empty-string SelectItem value; use a sentinel
+                  and map it back to "" (= no department) in onValueChange. */}
+              <SelectItem value="__none__">None</SelectItem>
               {departments.map((d) => (
                 <SelectItem key={d.id} value={d.id}>
                   {d.name}
