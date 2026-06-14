@@ -61,6 +61,12 @@ export default async function CustomersPage({
             {active.length} active of {customers.length} total
           </p>
         </div>
+        <Link
+          href={`/${slug}/crm/customers/new`}
+          className="rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20"
+        >
+          + New Customer
+        </Link>
       </div>
 
       <div className="rounded-lg border border-border bg-card">

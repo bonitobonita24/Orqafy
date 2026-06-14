@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 import {
@@ -6,6 +7,9 @@ import {
   type ContactLogEntry,
 } from "./contact-log-timeline";
 import { QuickAddContactLog } from "./quick-add-contact-log";
+import { CustomerToggleActive } from "./customer-toggle-active";
+import { ContactsPanel } from "./contacts-panel";
+import { CreditPanel } from "./credit-panel";
 
 export const metadata: Metadata = { title: "Customer Detail" };
 
@@ -113,6 +117,16 @@ export default async function CustomerDetailPage({ params }: Props) {
               Inactive
             </span>
           )}
+          <Link
+            href={`/${slug}/crm/customers/${customer.id}/edit`}
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+          >
+            Edit
+          </Link>
+          <CustomerToggleActive
+            customerId={customer.id}
+            isActive={customer.isActive}
+          />
         </div>
       </div>
 
@@ -174,101 +188,24 @@ export default async function CustomerDetailPage({ params }: Props) {
       </div>
 
       {/* Contacts */}
-      <div className="rounded-lg border border-border bg-card">
-        <div className="border-b border-border px-6 py-4">
-          <h2 className="text-sm font-semibold">
-            Contacts
-            <span className="ml-2 text-xs font-normal text-muted-foreground">
-              {customer.contacts.length}
-            </span>
-          </h2>
-        </div>
-        {customer.contacts.length === 0 ? (
-          <div className="px-6 py-8 text-center text-sm text-muted-foreground">
-            No contacts added yet.
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Position</th>
-                <th className="px-4 py-3 font-medium">Email</th>
-                <th className="px-4 py-3 font-medium">Phone</th>
-              </tr>
-            </thead>
-            <tbody>
-              {customer.contacts.map((contact) => (
-                <tr
-                  key={contact.id}
-                  className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{contact.name}</span>
-                      {contact.isPrimary && (
-                        <span className="rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#00d992]">
-                          Primary
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {contact.position !== null ? contact.position : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {contact.email !== null ? contact.email : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {contact.phone !== null ? contact.phone : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <ContactsPanel
+        customerId={customer.id}
+        initialContacts={customer.contacts}
+      />
 
       {/* Credit Account */}
-      <div className="rounded-lg border border-border bg-card p-6">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Credit Account
-        </h2>
-        {customer.creditAccount === null ? (
-          <p className="text-sm text-muted-foreground">
-            No credit account configured.
-          </p>
-        ) : (
-          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div>
-              <dt className="text-xs text-muted-foreground">Credit Limit</dt>
-              <dd className="mt-0.5 text-sm font-medium">
-                ₱{Number(customer.creditAccount.creditLimit).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">Current Balance</dt>
-              <dd className="mt-0.5 text-sm font-medium">
-                ₱{Number(customer.creditAccount.currentBalance).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">Status</dt>
-              <dd className="mt-0.5">
-                {customer.creditAccount.isActive ? (
-                  <span className="rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992]">
-                    Active
-                  </span>
-                ) : (
-                  <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                    Inactive
-                  </span>
-                )}
-              </dd>
-            </div>
-          </dl>
-        )}
-      </div>
+      <CreditPanel
+        customerId={customer.id}
+        creditAccount={
+          customer.creditAccount !== null
+            ? {
+                creditLimit: Number(customer.creditAccount.creditLimit),
+                currentBalance: Number(customer.creditAccount.currentBalance),
+                isActive: customer.creditAccount.isActive,
+              }
+            : null
+        }
+      />
 
       {/* Touchpoints */}
       <div className="rounded-lg border border-border bg-card">
