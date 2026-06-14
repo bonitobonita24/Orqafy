@@ -316,6 +316,44 @@ describe("employee router", () => {
         caller.employee.terminate({ id: VALID_CUID, dateTerminated: new Date() })
       ).rejects.toMatchObject({ code: "FORBIDDEN" });
     });
+
+    // ── Epic-2 state-machine guards (Phase 7) ──────────────────────────────
+    it("rejects terminating an already-terminated employee (BAD_REQUEST)", async () => {
+      mockDb.employee.findUnique.mockResolvedValue({
+        id: VALID_CUID,
+        tenantId: "acme-tenant-id",
+        dateTerminated: new Date("2026-01-01"),
+      });
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.employee.terminate({ id: VALID_CUID, dateTerminated: new Date("2026-06-01") })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(mockDb.employee.update).not.toHaveBeenCalled();
+    });
+
+    it("gates termination to HR authority — FORBIDDEN for a non-HR role", async () => {
+      const caller = createCaller(authenticatedCtx(["Employee"]));
+      await expect(
+        caller.employee.terminate({ id: VALID_CUID, dateTerminated: new Date() })
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      expect(mockDb.employee.update).not.toHaveBeenCalled();
+    });
+
+    it("allows termination for an HR Manager role", async () => {
+      mockDb.employee.findUnique.mockResolvedValue({
+        id: VALID_CUID,
+        tenantId: "acme-tenant-id",
+        dateTerminated: null,
+      });
+      const terminationDate = new Date("2026-06-01");
+      mockDb.employee.update.mockResolvedValue({ id: VALID_CUID, dateTerminated: terminationDate });
+      const caller = createCaller(authenticatedCtx(["HR Manager"]));
+      await caller.employee.terminate({ id: VALID_CUID, dateTerminated: terminationDate });
+      expect(mockDb.employee.update).toHaveBeenCalledWith({
+        where: { id: VALID_CUID },
+        data: { dateTerminated: terminationDate },
+      });
+    });
   });
 
   describe("departments", () => {
