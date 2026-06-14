@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { ProductToggle } from "./products/product-toggle";
 
 export const metadata: Metadata = { title: "Products" };
 
 export const dynamic = "force-dynamic";
 
-async function getProducts() {
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+async function getProducts(tenantId: string) {
   return prisma.product.findMany({
+    where: { tenantId },
     orderBy: { name: "asc" },
     select: {
       id: true,
@@ -21,8 +28,16 @@ async function getProducts() {
   });
 }
 
-export default async function InventoryPage() {
-  const products = await getProducts();
+export default async function InventoryPage({ params }: PageProps) {
+  const { slug } = await params;
+
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (!tenant) notFound();
+
+  const products = await getProducts(tenant.id);
   const active = products.filter((p) => p.isActive);
 
   return (
@@ -34,18 +49,45 @@ export default async function InventoryPage() {
             {active.length} active of {products.length} total
           </p>
         </div>
-        <Link
-          href="inventory/stock-movements"
-          className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
-        >
-          Stock Movements →
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/${slug}/inventory/categories`}
+            className="rounded-md border border-border bg-card px-3 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
+          >
+            Categories
+          </Link>
+          <Link
+            href={`/${slug}/inventory/warehouses`}
+            className="rounded-md border border-border bg-card px-3 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
+          >
+            Warehouses
+          </Link>
+          <Link
+            href={`/${slug}/inventory/stock-movements`}
+            className="rounded-md border border-border bg-card px-3 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
+          >
+            Stock Movements →
+          </Link>
+          <Link
+            href={`/${slug}/inventory/products/new`}
+            className="rounded-md border border-[#00d992] bg-[#00d992]/10 px-3 py-2 text-sm font-medium text-[#00d992] transition-colors hover:bg-[#00d992]/20"
+          >
+            + Add Product
+          </Link>
+        </div>
       </div>
 
       <div className="rounded-lg border border-border bg-card">
         {products.length === 0 ? (
           <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No products yet.
+            No products yet.{" "}
+            <Link
+              href={`/${slug}/inventory/products/new`}
+              className="text-[#00d992] hover:underline"
+            >
+              Add one
+            </Link>
+            .
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -56,6 +98,7 @@ export default async function InventoryPage() {
                 <th className="px-4 py-3 font-medium">Unit</th>
                 <th className="px-4 py-3 font-medium">Base Cost</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Edit</th>
               </tr>
             </thead>
             <tbody>
@@ -66,7 +109,7 @@ export default async function InventoryPage() {
                 >
                   <td className="px-4 py-3">
                     <Link
-                      href={`inventory/stock-movements?productId=${p.id}`}
+                      href={`/${slug}/inventory/stock-movements?productId=${p.id}`}
                       title="View stock movements for this product"
                       className="font-medium transition-colors hover:text-[#00d992]"
                     >
@@ -81,20 +124,25 @@ export default async function InventoryPage() {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{p.unit}</td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    ₱{Number(p.baseCost).toLocaleString("en-PH", {
+                    ₱
+                    {Number(p.baseCost).toLocaleString("en-PH", {
                       minimumFractionDigits: 2,
                     })}
                   </td>
                   <td className="px-4 py-3">
-                    {p.isActive ? (
-                      <span className="rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992]">
-                        Active
-                      </span>
-                    ) : (
-                      <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                        Inactive
-                      </span>
-                    )}
+                    <ProductToggle
+                      id={p.id}
+                      name={p.name}
+                      isActive={p.isActive}
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/${slug}/inventory/products/${p.id}/edit`}
+                      className="text-xs text-muted-foreground transition-colors hover:text-[#00d992]"
+                    >
+                      Edit
+                    </Link>
                   </td>
                 </tr>
               ))}

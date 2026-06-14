@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { StockActions } from "./stock-actions";
 
 export const metadata: Metadata = { title: "Stock Movements" };
 
@@ -20,12 +22,16 @@ function isTypeOption(value: string | undefined): value is TypeOption {
   return value !== undefined && (TYPE_OPTIONS as readonly string[]).includes(value);
 }
 
-async function getStockMovements(filters: { type?: string; warehouseId?: string; productId?: string }) {
+async function getStockMovements(
+  tenantId: string,
+  filters: { type?: string; warehouseId?: string; productId?: string },
+) {
   const where: {
+    tenantId: string;
     type?: string;
     productId?: string;
     OR?: Array<{ fromWarehouseId: string } | { toWarehouseId: string }>;
-  } = {};
+  } = { tenantId };
   if (filters.type !== undefined && filters.type !== "all" && isTypeOption(filters.type)) {
     where.type = filters.type;
   }
@@ -56,34 +62,55 @@ async function getStockMovements(filters: { type?: string; warehouseId?: string;
   });
 }
 
-async function getWarehouses() {
+async function getWarehouses(tenantId: string) {
   return prisma.warehouse.findMany({
+    where: { tenantId },
     orderBy: { name: "asc" },
-    select: { id: true, name: true },
+    select: { id: true, name: true, code: true },
   });
 }
 
-async function getProduct(productId: string) {
-  return prisma.product.findUnique({
-    where: { id: productId },
+async function getProducts(tenantId: string) {
+  return prisma.product.findMany({
+    where: { tenantId, isActive: true },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, unit: true },
+  });
+}
+
+async function getProduct(productId: string, tenantId: string) {
+  return prisma.product.findFirst({
+    where: { id: productId, tenantId },
     select: { id: true, name: true, sku: true },
   });
 }
 
 export default async function StockMovementsPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ type?: string; warehouseId?: string; productId?: string }>;
 }) {
+  const { slug } = await params;
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (!tenant) notFound();
+
   const { type, warehouseId, productId } = await searchParams;
   const filters: { type?: string; warehouseId?: string; productId?: string } = {};
   if (type !== undefined) filters.type = type;
   if (warehouseId !== undefined) filters.warehouseId = warehouseId;
   if (productId !== undefined && productId !== "") filters.productId = productId;
-  const [movements, warehouses, product] = await Promise.all([
-    getStockMovements(filters),
-    getWarehouses(),
-    productId !== undefined && productId !== "" ? getProduct(productId) : Promise.resolve(null),
+  const [movements, warehouses, products, product] = await Promise.all([
+    getStockMovements(tenant.id, filters),
+    getWarehouses(tenant.id),
+    getProducts(tenant.id),
+    productId !== undefined && productId !== ""
+      ? getProduct(productId, tenant.id)
+      : Promise.resolve(null),
   ]);
 
   const counts = {
@@ -119,12 +146,15 @@ export default async function StockMovementsPage({
             {movements.length} shown · {counts.in} in · {counts.out} out · {counts.transfer} transfer · {counts.adjustment} adjustment
           </p>
         </div>
-        <Link
-          href="../inventory"
-          className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
-        >
-          ← Products
-        </Link>
+        <div className="flex items-center gap-2">
+          <StockActions products={products} warehouses={warehouses} />
+          <Link
+            href={`/${slug}/inventory`}
+            className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
+          >
+            ← Products
+          </Link>
+        </div>
       </div>
 
       {product !== null && (
