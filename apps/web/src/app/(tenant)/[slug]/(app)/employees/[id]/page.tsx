@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { EmployeeTerminate } from "./employee-terminate";
 
 export const metadata: Metadata = { title: "Employee Details" };
 export const dynamic = "force-dynamic";
@@ -50,7 +51,7 @@ export default async function EmployeeDetailPage({
 }: {
   params: Promise<{ slug: string; id: string }>;
 }) {
-  const { id } = await params;
+  const { slug, id } = await params;
   const employee = await getEmployee(id);
   if (employee === null) notFound();
 
@@ -73,7 +74,7 @@ export default async function EmployeeDetailPage({
             {employee.employeeNumber}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           {terminated ? (
             <span className="rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-400">
               Terminated
@@ -83,6 +84,13 @@ export default async function EmployeeDetailPage({
               Active
             </span>
           )}
+          <Link
+            href={`/${slug}/employees/${id}/edit`}
+            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+          >
+            Edit
+          </Link>
+          {!terminated && <EmployeeTerminate employeeId={id} />}
         </div>
       </div>
 

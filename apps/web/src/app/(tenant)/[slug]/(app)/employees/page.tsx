@@ -58,21 +58,32 @@ async function getEmployees(filter: string) {
 }
 
 export default async function EmployeesPage({
+  params: routeParams,
   searchParams,
 }: {
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ filter?: string }>;
 }) {
+  const { slug } = await routeParams;
   const params = await searchParams;
   const filter = params.filter ?? "all";
   const employees = await getEmployees(filter);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Employees</h1>
-        <p className="text-sm text-muted-foreground">
-          {employees.length} employee{employees.length === 1 ? "" : "s"}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Employees</h1>
+          <p className="text-sm text-muted-foreground">
+            {employees.length} employee{employees.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        <Link
+          href={`/${slug}/employees/new`}
+          className="rounded-md bg-[#00d992]/10 border border-[#00d992]/30 px-3 py-1.5 text-xs font-medium text-[#00d992] transition-colors hover:bg-[#00d992]/20"
+        >
+          + New Employee
+        </Link>
       </div>
 
       <div className="flex flex-wrap gap-1 rounded-md border border-border bg-card p-1">
