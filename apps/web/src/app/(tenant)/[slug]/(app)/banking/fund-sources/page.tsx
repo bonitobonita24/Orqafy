@@ -125,7 +125,15 @@ export default async function FundSourcesPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
-                        <EditFundSourceButton fundSource={fs} />
+                        <EditFundSourceButton
+                          fundSource={{
+                            id: fs.id,
+                            name: fs.name,
+                            type: fs.type,
+                            bankName: fs.bankName,
+                            accountNumber: fs.accountNumber,
+                          }}
+                        />
                         <ToggleFundSourceButton id={fs.id} isActive={fs.isActive} />
                       </div>
                     </td>
