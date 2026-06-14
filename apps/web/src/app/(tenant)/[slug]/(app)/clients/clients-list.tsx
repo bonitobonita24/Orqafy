@@ -1,30 +1,8 @@
-import type { Metadata } from "next";
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { prisma } from "@orqafy/db";
-
-export const metadata: Metadata = { title: "Customers" };
-
-export const dynamic = "force-dynamic";
-
-async function getCustomers(tenantId: string) {
-  return prisma.customer.findMany({
-    where: { tenantId },
-    orderBy: { companyName: "asc" },
-    select: {
-      id: true,
-      companyName: true,
-      firstName: true,
-      lastName: true,
-      email: true,
-      phone: true,
-      city: true,
-      province: true,
-      tier: true,
-      isActive: true,
-    },
-  });
-}
+import { trpc } from "@/lib/trpc";
 
 const TIER_LABELS: Record<string, string> = {
   regular: "Regular",
@@ -38,35 +16,48 @@ const TIER_COLORS: Record<string, string> = {
   authorized_dealer: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
 };
 
-export default async function CustomersPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  const tenant = await prisma.tenant.findUnique({
-    where: { slug },
-    select: { id: true },
+export function ClientsList({ slug }: { slug: string }) {
+  const [search, setSearch] = useState("");
+
+  const { data, isPending, isError } = trpc.client.list.useQuery({
+    page: 1,
+    limit: 50,
+    ...(search !== "" ? { search } : {}),
   });
-  if (!tenant) notFound();
-  const customers = await getCustomers(tenant.id);
-  const active = customers.filter((c) => c.isActive);
+
+  const clients = data?.items ?? [];
+  const total = data?.total ?? 0;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Clients</h1>
           <p className="text-sm text-muted-foreground">
-            {active.length} active of {customers.length} total
+            {isPending ? "Loading…" : `${total} total`}
           </p>
         </div>
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search clients…"
+          className="h-9 w-64 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-[#00d992]/50"
+        />
       </div>
 
       <div className="rounded-lg border border-border bg-card">
-        {customers.length === 0 ? (
+        {isError ? (
+          <div className="px-6 py-12 text-center text-sm text-red-400">
+            Failed to load clients. Please try again.
+          </div>
+        ) : isPending ? (
           <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No customers yet.
+            Loading clients…
+          </div>
+        ) : clients.length === 0 ? (
+          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
+            {search !== "" ? "No clients match your search." : "No clients yet."}
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -80,7 +71,7 @@ export default async function CustomersPage({
               </tr>
             </thead>
             <tbody>
-              {customers.map((c) => {
+              {clients.map((c) => {
                 const tierClass =
                   TIER_COLORS[c.tier] ??
                   "text-muted-foreground bg-muted border-border";
@@ -89,11 +80,7 @@ export default async function CustomersPage({
                 const location =
                   c.city !== null && c.province !== null
                     ? `${c.city}, ${c.province}`
-                    : c.city !== null
-                      ? c.city
-                      : c.province !== null
-                        ? c.province
-                        : null;
+                    : (c.city ?? c.province ?? null);
                 return (
                   <tr
                     key={c.id}

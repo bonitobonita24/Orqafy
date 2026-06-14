@@ -22,7 +22,7 @@ const CARDS = [
     title: "Users",
     description: "Manage team members, roles, and permissions.",
     live: false,
-    href: "settings/users",
+    href: null,
   },
   {
     key: "departments",
@@ -30,7 +30,7 @@ const CARDS = [
     title: "Departments",
     description: "Organize your team by department.",
     live: false,
-    href: "settings/departments",
+    href: null,
   },
   {
     key: "expense-categories",
@@ -38,7 +38,7 @@ const CARDS = [
     title: "Expense Categories",
     description: "Categorize expenses for reporting and accounting.",
     live: false,
-    href: "settings/expense-categories",
+    href: null,
   },
   {
     key: "smtp",
@@ -46,7 +46,7 @@ const CARDS = [
     title: "SMTP",
     description: "Configure email delivery for invoices and notifications.",
     live: false,
-    href: "settings/smtp",
+    href: null,
   },
   {
     key: "xendit",

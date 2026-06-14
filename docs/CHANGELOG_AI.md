@@ -2149,3 +2149,206 @@
 - Tests:               typecheck clean. K-prime trio (DB + Web + API) closes IDOR surface end-to-end for invoicing.
 - Errors encountered:  none
 - Errors resolved:     n/a
+
+## 2026-06-12 — Wire CRM surface (swarm W1) — customers list nav fix + NEEDS_SPEC log
+- Agent:               CLAUDE_CODE (swarm worker, branch swarm/wire-dead-controls)
+- Why:                 Swarm "wire dead controls" wave. Self-inventory of crm/** (14 tsx, 2967 LOC) found the CRM tRPC-backed interactive surface already fully wired (quotation actions/builder, contact-log create/delete/filter). The only genuine dead/inert control was the customers list: rows rendered with hover styling but no link to the existing customers/[id] detail page. Wired it (nav fix, mirrors quotations/contact-logs row-link pattern). Eight crm procedures (customerCreate/Update/ToggleActive, contactCreate/Update/Delete, creditUpsert/ToggleActive) are entirely unsurfaced; surfacing them is feature-build (new forms/routes/UX spec) — logged to docs/WIRING_NEEDS_SPEC.md per wave policy, not built.
+- Files added:         docs/WIRING_NEEDS_SPEC.md (CRM section — 8 unsurfaced procedures needing product/UX spec)
+- Files modified:      apps/web/src/app/(tenant)/[slug]/(app)/crm/customers/page.tsx (import next/link; Company/Name cell now links to /[slug]/crm/customers/[id])
+- Files deleted:       none
+- Schema/migrations:   none
+- Tests:               lint pass; typecheck pass (tsc --noEmit clean); vitest 811 passed (39 files); next build passes with .env.dev loaded (build-time env validation is the documented pre-existing /demo-login condition — code compiles + typechecks clean).
+- Errors encountered:  next build without env vars fails at /demo-login page-data collection (pre-existing — missing server env vars; documented 2026-06-02 entry / SKIP_ENV_VALIDATION in CI). Not introduced by this change.
+- Errors resolved:     Re-ran build with .env.dev sourced (normal dev validation path) → build succeeds, full route manifest emitted.
+
+## 2026-06-12 — Wire Invoicing surface (clients list; invoice mutations logged) [swarm W2]
+- Agent:               CLAUDE_CODE
+- Why:                 W2 swarm session per WAVE POLICY — wire genuinely dead/inert controls against existing tRPC routers; log feature-builds to WIRING_NEEDS_SPEC.md. Branch swarm/wire-dead-controls (not merged to main).
+- Files added:         apps/web/src/app/(tenant)/[slug]/(app)/clients/clients-list.tsx (client island — trpc.client.list.useQuery, search input, table mirroring crm/customers styling, rows link to crm/customers/[id]).
+- Files modified:      apps/web/src/app/(tenant)/[slug]/(app)/clients/page.tsx (was a 10-line redirect stub → now renders <ClientsList>); docs/WIRING_NEEDS_SPEC.md (added Invoicing W2 section); .cline/STATE.md (W2 checkpoint block).
+- Files deleted:       none
+- Schema/migrations:   none
+- Decisions:           clients/page.tsx redirect stub replaced with a real list wired to the existing-but-unsurfaced client.list query (in-scope wire). invoices/page.tsx has ZERO existing controls; surfacing the 5 invoice mutations (markSent/markPaid/void/create/update) is a feature-build (net-new action UI, line-item editor, confirm-dialog/partial-payment UX) → logged to WIRING_NEEDS_SPEC.md, NOT built.
+- Tests:               lint pass (no warnings/errors); vitest 811 passed (39 files); next build pass (new /[slug]/clients route compiles as 1.44 kB dynamic).
+- Errors encountered:  none
+- Errors resolved:     none
+
+## 2026-06-12 — Wire POS surface (already fully wired; mutations logged) [swarm W3]
+- Agent:               CLAUDE_CODE (swarm worker, branch swarm/wire-dead-controls — not merged to main)
+- Why:                 W3 swarm session per WAVE POLICY — wire genuinely dead/inert controls against existing tRPC routers; log feature-builds to WIRING_NEEDS_SPEC.md.
+- Files added:         none
+- Files modified:      docs/WIRING_NEEDS_SPEC.md (added POS W3 section); .cline/STATE.md (W3 checkpoint block).
+- Files deleted:       none
+- Schema/migrations:   none
+- Decisions:           Self-inventory of pos/** (4 tsx, 1014 LOC) found the POS interactive surface already fully wired: new-sale/cart-client.tsx is a complete terminal wired to pos.sale.create (picker, cart qty/price edit, tax/discount, payment+change, notes, Complete Sale gated on validateCart+isPending). pos/page.tsx (sessions list) and pos/[id]/page.tsx (session detail) are read-only server displays whose only controls are working nav Links (filter tabs, New Sale, session→detail). NO dead/inert controls existed to wire. Three pos mutations (session.open, session.close, sale.void) are entirely unsurfaced; surfacing each is a feature-build (net-new forms/controls, confirm dialogs, openingBalance/closingBalance/discrepancy/void-reason UX, inventory-affecting/destructive actions) → logged to WIRING_NEEDS_SPEC.md per wave policy, NOT built. Per WAVE POLICY "already fully wired" case, this commit carries only the NEEDS_SPEC log + governance checkpoint.
+- Tests:               No app source changed (governance docs only). lint not re-run for docs-only change; existing suite green at 811 (W2 baseline, unchanged).
+- Errors encountered:  none
+- Errors resolved:     none
+
+## 2026-06-12 — Wire Inventory surface (product→movements link + product filter) [swarm W4]
+- Agent:               CLAUDE_CODE (swarm worker, branch swarm/wire-dead-controls — not merged to main)
+- Why:                 W4 swarm session per WAVE POLICY — wire genuinely dead/inert controls against existing routers; log feature-builds to WIRING_NEEDS_SPEC.md.
+- Files added:         none
+- Files modified:      apps/web/src/app/(tenant)/[slug]/(app)/inventory/page.tsx (product-name link retargeted from non-existent `products/${id}` route → `inventory/stock-movements?productId=${id}`, with title tooltip); apps/web/src/app/(tenant)/[slug]/(app)/inventory/stock-movements/page.tsx (added `productId` filter to query + searchParams; fetch + render selected-product context banner with Clear link; preserve `productId` across type-tab hrefs and the warehouse GET form); docs/WIRING_NEEDS_SPEC.md (added Inventory W4 section); .cline/STATE.md (W4 checkpoint block).
+- Files deleted:       none
+- Schema/migrations:   none
+- Decisions:           Self-inventory of inventory/** (2 read-only server components, direct Prisma). Only dead control: the product-name link pointed at a non-existent `products/[id]` route → retargeted to product-filtered stock movements (in-scope nav/wire fix). Completed the partial productId-filter work already in the working tree (it had fetched `product` but never rendered it — an unused var that would fail lint/build; now rendered as a filter banner, and productId is preserved across the type tabs + warehouse form so the filter no longer silently drops). The 12 inventoryRouter mutations (product/category/warehouse CRUD+toggle, stockMovementCreate, stockTransfer, stockAdjustment) are entirely unsurfaced; each is a feature-build (net-new forms, pickers, confirm/UX) → logged to WIRING_NEEDS_SPEC.md, NOT built per WAVE POLICY.
+- Tests:               lint pass (no warnings/errors); vitest 811 passed (39 files); next build pass with .env.dev loaded (exit 0; /[slug]/inventory/stock-movements compiles as 259 B dynamic). Bare `next build` without env fails on /demo-login server-env validation — pre-existing (CI uses SKIP_ENV_VALIDATION=true), unrelated to this change.
+- Errors encountered:  none
+- Errors resolved:     Completed a broken partial diff in the working tree (stock-movements page destructured `product` but never used it → would fail lint/build).
+
+## 2026-06-12 — Swarm W5: Wire Purchasing surface (already fully wired — read-only)
+- Agent:               CLAUDE_CODE (swarm worker, branch swarm/wire-dead-controls)
+- Why:                 W5 punch-list item — wire dead/inert controls on the purchasing surface (purchasing, vendors, orders/[id]) against the existing purchasingRouter.
+- Files added:         none
+- Files modified:      docs/WIRING_NEEDS_SPEC.md (Purchasing W5 section), docs/CHANGELOG_AI.md, .cline/STATE.md
+- Files deleted:       none
+- Schema/migrations:   none
+- Decisions:           Self-inventory of purchasing/** (3 read-only server components, direct Prisma — page.tsx PO list, vendors/page.tsx vendor list, orders/[id]/page.tsx PO detail). Every interactive control is a working nav element (status filter tabs, Vendors↔Purchase-Orders links, PO# → orders/[id] row links, vendor Active/All tabs, mailto). NO dead/inert controls and NO broken hrefs existed to wire — this is the "already fully wired (read-only)" case (mirrors W3). Vendor rows are plain text and CANNOT be row-linked like W1's CRM customers because no `vendors/[id]` route exists; building one (or a vendorId-filtered PO list) is a feature-build, not a nav fix. The 11 purchasingRouter mutations (vendor create/update/deactivate; po create/update/submit/approve/markOrdered/cancel; goodsReceipt create) are entirely unsurfaced — each is a feature-build (net-new forms, line-item/allocation editors, status-transition action bars, inventory-affecting goods-receipt UX) → logged to WIRING_NEEDS_SPEC.md, NOT built per WAVE POLICY. Commit carries the NEEDS_SPEC log + governance checkpoint only (no app source changed).
+- Tests:               n/a — governance-markdown-only change; zero TS/app source modified, so lint/typecheck/build/test were not affected (no code to validate). Purchasing surface left exactly as-is.
+- Errors encountered:  none
+- Errors resolved:     none
+
+## 2026-06-12 — Swarm W6: Wire Accounting + Banking surfaces (already fully wired)
+- Agent:               CLAUDE_CODE (swarm worker, branch swarm/wire-dead-controls)
+- Why:                 W6 punch-list item — wire genuinely dead/inert controls on accounting/* + accounting/journal-entries + banking/* + fund-sources + transactions against accountingRouter + bankingRouter. Self-inventory found the surface already fully wired.
+- Files added:         none
+- Files modified:      docs/WIRING_NEEDS_SPEC.md (appended Accounting + Banking W6 section), .cline/STATE.md (W6 checkpoint block), docs/CHANGELOG_AI.md (this entry)
+- Files deleted:       none
+- Schema/migrations:   none
+- Finding:             All 7 accounting/banking pages (accounting/page.tsx, accounting/journal-entries/page.tsx, banking/page.tsx, banking/fund-sources/page.tsx, banking/transactions/page.tsx, banking/[fundSourceId]/transactions/page.tsx — ~1403 LOC, 0 client components) are read-only server components. 3 parallel read-only inventory scouts confirmed every interactive control is already WIRED: chart-of-accounts↔journal-entries cross links, treasury dashboard nav links (Manage sources / All transactions / per-row Transactions→), and the two ledgers' fully-functional filter forms (fund-source + type selects, Filter submit, Clear) + filter-preserving Prev/Next pagination. ZERO dead/inert controls, no broken hrefs, no TODO/disabled placeholders to wire.
+- Out of scope:        20 unsurfaced mutations (accountingRouter: account create/update/toggleActive, journalEntry create/post/reverse, fiscalYear create, taxRate create; bankingRouter: fund-source create/update/toggleActive + 9 transaction.record* money-movements) require net-new forms, balanced debit/credit editors, status-transition action bars, and balance-affecting money-movement UX — feature-builds, not wiring. Logged to docs/WIRING_NEEDS_SPEC.md per WAVE POLICY, not built. Account/fund-source/JE rows can't be row-linked (no detail routes exist).
+- Errors encountered:  none
+- Errors resolved:     none
+- Validation:          n/a (markdown/governance-only commit — no app source changed)
+
+## 2026-06-14 — Swarm W8: Wire Projects + Tasks surfaces (already fully wired)
+- Agent:               CLAUDE_CODE (swarm worker, branch swarm/wire-dead-controls)
+- Why:                 W8 punch-list item — wire genuinely dead/inert controls on projects/* + tasks against projectRouter + tasksRouter. Self-inventory found the surface already fully wired (read-only).
+- Files added:         none
+- Files modified:      docs/WIRING_NEEDS_SPEC.md (appended Projects + Tasks W8 section), .cline/STATE.md (W8 checkpoint block), docs/CHANGELOG_AI.md (this entry)
+- Files deleted:       none
+- Schema/migrations:   none
+- Finding:             All 4 Projects/Tasks pages (projects/page.tsx, projects/[id]/page.tsx, projects/[id]/expenses/page.tsx, tasks/page.tsx — ~1413 LOC, 0 client components) are read-only server components querying Prisma directly. Every existing interactive control is already WIRED: project list status chips + pagination + name→[id] row links; detail-page overview/tasks/expenses/milestones tab chips + back link + "View All Expenses→"; expenses-ledger type chips + pagination + back link; tasks Kanban/Calendar view toggle. ZERO dead/inert controls, no no-op handlers, no disabled placeholders.
+- Out of scope:        Two broken/inert non-controls flagged but NOT built (feature-builds): the "New Project" button → `/${slug}/projects/new` (route absent → 404; wiring = build a create form), and the non-interactive task `<div>` cards (no task detail route, no drag-to-status, calendar placeholder). 21 unsurfaced mutations (projectRouter: project create/update/complete/archive, expense.recordProjectExpense, milestone create/update/complete; tasksRouter: taskCreate/Update/UpdateStatus/Assign/Unassign/AddStatusReport + todo create/update/delete/complete/addAttachment) require net-new forms, line/checklist editors, kanban drag interactivity, and status-machine/authority UX — feature-builds, not wiring. Logged to docs/WIRING_NEEDS_SPEC.md per WAVE POLICY, not built.
+- Errors encountered:  none
+- Errors resolved:     none
+- Validation:          n/a (markdown/governance-only commit — no app source changed)
+
+## 2026-06-14 — Swarm W7: Wire HR surface — employees + payroll + dtr (already fully wired)
+- Agent:               CLAUDE_CODE (swarm worker, branch swarm/wire-dead-controls)
+- Why:                 W7 punch-list item — wire genuinely dead/inert controls on employees/[id] + payroll/[id] + dtr against employeeRouter + payrollRouter + dtrRouter. Self-inventory found the surface already fully wired (read-only).
+- Files added:         none
+- Files modified:      docs/WIRING_NEEDS_SPEC.md (appended HR W7 section), .cline/STATE.md (W7 checkpoint block), docs/CHANGELOG_AI.md (this entry)
+- Files deleted:       none
+- Schema/migrations:   none
+- Finding:             All 5 HR pages (employees/page.tsx, employees/[id]/page.tsx, payroll/page.tsx, payroll/[id]/page.tsx, dtr/page.tsx — ~964 LOC, 0 client components) are read-only server components querying Prisma directly. Every existing interactive control is already WIRED: employees + payroll list rows link to their `[id]` detail routes; employees All/Active/Terminated and payroll All/Draft/Processing/Approved/Paid filter tabs work via query params; both detail pages have working back-links; dtr is pure display (attendance + leave tables). ZERO dead/inert controls, no broken hrefs, no TODO/disabled placeholders to wire.
+- Out of scope:        14 unsurfaced router mutations (employeeRouter: create/update/terminate; payrollRouter: create/process/approve/markPaid; dtrRouter: attendanceClockIn/ClockOut/Approve/Reject + leaveRequestCreate/Approve/Reject) require net-new forms, time-clock UI, status-transition action bars, and HR-/money-affecting authority UX — feature-builds, not wiring. Logged to docs/WIRING_NEEDS_SPEC.md per WAVE POLICY, not built.
+- Errors encountered:  none
+- Errors resolved:     none
+- Validation:          n/a (markdown/governance-only commit — no app source changed)
+
+## 2026-06-14 — Swarm W9 — Wire Service + Job Orders + Support
+- Agent:               CLAUDE_CODE
+- Why:                 W9 punch-list item — wire dead/inert controls on the job-orders, service/job-orders/[id], and support surfaces against existing jobOrderRouter + supportRouter (WAVE POLICY: wire-only against existing procedures; log feature-builds to WIRING_NEEDS_SPEC.md, do not build).
+- Files added:         none
+- Files modified:      apps/web/src/app/(tenant)/[slug]/(app)/service/job-orders/[id]/page.tsx (breadcrumb dead-link fix), docs/WIRING_NEEDS_SPEC.md (W9 section), .cline/STATE.md (W9 checkpoint)
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  Dead nav link — service/job-orders/[id] breadcrumb "Job orders" pointed at /${slug}/service/job-orders, which has no page.tsx (only [id] exists) → 404.
+- Errors resolved:     Retargeted the breadcrumb to the existing job-orders list at /${slug}/job-orders.
+- Notes:               Self-inventory found the service/job-orders/[id] detail already fully wired (status-actions→updateStatus, line-items→addPart/removePart/addServiceLine/removeServiceLine, signature→recordSignature). job-orders list/detail + support list/detail are read-only with only working nav/query Links — no other dead controls. 8 unsurfaced mutations (jobOrder.create/assignTechnician; support ticket.create/update/assign/changeStatus/close, comment.create) + a two-detail-route structural question logged to WIRING_NEEDS_SPEC.md as Phase-7 feature-builds. Dispatched inline (single indivisible nav fix) — no Sonnet fan-out warranted.
+- Validation:          lint pass (no warnings/errors), vitest 811 pass, web build pass.
+- Commits:             (this commit)
+
+## 2026-06-14 — Phase 4 W10: Wire E-commerce + Storefront
+- Agent:               CLAUDE_CODE
+- Why:                 Swarm W10 — wire dead/inert controls + nav fixes on the e-commerce/storefront surface against storefrontRouter.
+- Files modified:      apps/web/src/app/(tenant)/[slug]/store/layout.tsx (added "Track order" nav link to store header — store/orders/track was a functional but orphan page, nothing linked to it)
+- Files modified:      docs/WIRING_NEEDS_SPEC.md (logged listMyOrders + placeOrder as Phase 7 feature-builds; noted browseProducts/listAllOrders as redundant-but-covered)
+- Schema/migrations:   none
+- Self-inventory:      products list/detail, checkout, order tracking, ecommerce orders list/detail all already fully wired (search/filter/pagination, AddToCartButton+cart store, placeOrderAsCustomer+Turnstile, trackGuestOrder, updateOrderStatus/updateFulfillment/createXenditInvoice). Only genuine gap was the orphan track page.
+- Errors encountered:  none
+
+## 2026-06-14 — Swarm W11: Wire Dashboard + Reports + Settings
+- Agent:               CLAUDE_CODE (swarm worker, branch swarm/wire-dead-controls)
+- Why:                 W11 punch-list — wire dashboard against report/notification queries,
+                       reports against reportRouter, clear settings "Coming soon".
+- Files modified:      apps/web/src/app/(tenant)/[slug]/(app)/reports/page.tsx,
+                       apps/web/src/app/(tenant)/[slug]/(app)/settings/page.tsx,
+                       docs/WIRING_NEEDS_SPEC.md, .cline/STATE.md, docs/CHANGELOG_AI.md,
+                       .cline/memory/lessons.md
+- Files added:         none
+- Files deleted:       none
+- Schema/migrations:   none
+- Change detail:
+    * 🔴 SECURITY (reports): reports/page.tsx ran cross-module Prisma aggregates with no
+      tenant scoping → leaked aggregates across ALL tenants. Rewired every query
+      (getKPIs/getInvoicesByStatus/getTopClients/getExpensesByCategory/getPayrollSummary)
+      to scope by session.user.tenantId (resolved via auth(), mirroring reportRouter's
+      ctx.tenantId scoping), added notFound() guard. Customer/category name lookups also
+      tenant-scoped (defense in depth).
+    * Settings: nulled 4 dead hrefs (Users/Departments/Expense Categories/SMTP) that pointed
+      to non-existent sub-pages; "Coming soon" badge retained (accurate).
+    * Dashboard: already tenant-scoped + fully wired — no change.
+    * Feature-builds (notification surface, 5 settings sub-pages) logged to
+      WIRING_NEEDS_SPEC.md, NOT built (WAVE POLICY).
+- Errors encountered:  none
+- Validation:          pnpm --filter @orqafy/web lint (clean), test (811 pass), build (pass)
+
+## 2026-06-14 — Swarm W12: Platform admin + landing pricing (self-inventory: already wired)
+- Agent:               CLAUDE_CODE (swarm worker W12, branch swarm/wire-dead-controls)
+- Why:                 W12 punch-list — wire powerbyte-admin + [tenantId] against
+                       platformRouter; clear landing pricing "Coming soon" vs planRouter.
+- Outcome:             Domain ALREADY FULLY WIRED — zero dead/inert controls, zero broken
+                       nav. No functional code changed (WAVE POLICY: already-wired domain →
+                       log only). Landing pricing (app/page.tsx) loads active plans via
+                       Prisma + renders full pricing grid; page.tsx:109 "Pricing plans
+                       coming soon." is the plans.length===0 empty-state (correct; resolves
+                       on seed). Scope's planRouter.list → actual planRouter.listActive,
+                       redundant-but-covered (RSC reads Prisma directly, W10/W11 convention).
+                       powerbyte-admin list + [tenantId] detail functional (Manage links,
+                       Suspend/Reactivate Server Actions, notFound guard, breadcrumb;
+                       layout gates non-Platform-Owner).
+- Feature-builds:      Logged 2 to WIRING_NEEDS_SPEC.md, NOT built (WAVE POLICY):
+                       (1) route admin Server Actions through platformRouter for L5 audit
+                       logging (PLATFORM:SUSPEND/REACTIVATE_TENANT) + auth — blocked on no
+                       RSC→tRPC server-caller pattern in app (createCallerFactory test-only)
+                       + router's required `reason` needing unspecified capture UX;
+                       (2) surface listTenants search/status/pagination filters.
+- Files modified:      docs/WIRING_NEEDS_SPEC.md, .cline/STATE.md, docs/CHANGELOG_AI.md
+- Files added:         none
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  none
+- Validation:          pnpm --filter @orqafy/web lint, test, build
+
+## 2026-06-14 — Swarm W13: Wave-program closeout + Phase 7 backend triage doc
+- Agent:               CLAUDE_CODE (swarm worker W13, branch swarm/wire-dead-controls)
+- Why:                 Closeout of the W0–W13 UI dead-control wiring program. Roll up
+                       governance + compile the deferred backend feature-builds (logged
+                       per-wave in WIRING_NEEDS_SPEC.md) into a single Phase 7 planning input.
+- Outcome:             Docs/governance only — NO app source changed.
+- Files added:         docs/UI_BACKEND_GAPS.md — consolidated triage of every unsurfaced
+                       backend procedure + product/UX gap across W1–W12. ~100+ unsurfaced
+                       router procedures over 9 CRUD/ops domains (CRM 8, Invoicing 5, POS 3,
+                       Inventory 12, Purchasing 11, Accounting+Banking 20, HR 14,
+                       Projects+Tasks 21, Service/Jobs/Support 8) + E-commerce 2 +
+                       Notification/Settings infra + 2 platform-admin hardening items.
+                       Flags 2 cross-cutting BLOCKERS to resolve first: (a) no RSC→tRPC
+                       server-caller pattern (createCallerFactory test-only) — blocks
+                       audit-on-mutation hardening; (b) Invoicing partial-payment recording
+                       unmodeled at the mutation layer. Closes with a recommended Phase 7
+                       epic grouping. Authoritative per-procedure source remains
+                       docs/WIRING_NEEDS_SPEC.md (W0 itself blocked on thrash; residuals were
+                       logged incrementally by waves W1–W12).
+- Files modified:      .cline/STATE.md (W13 closeout block + wave-program-complete note),
+                       docs/IMPLEMENTATION_MAP.md (UI Wiring Program W0–W13 summary section),
+                       docs/CHANGELOG_AI.md (this entry).
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  none
+- Validation:          pnpm --filter @orqafy/web lint (clean), test (811 pass), build (pass)
+- Note:                Wave program W0–W13 complete on swarm/wire-dead-controls; awaiting
+                       human review + merge to main. Main-branch staging-deploy handoff
+                       state unchanged.

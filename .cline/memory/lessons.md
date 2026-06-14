@@ -1339,3 +1339,18 @@
 - Files:    pnpm-lock.yaml, apps/web/package.json
 - Concepts: pnpm, frozen-lockfile, docker, hot-reload, lockfile-drift, phantom-ui
 - Narrative: phantom-ui was pinned to exact `0.10.1` in apps/web/package.json (per ui-rules.md pre-1.0 pin policy from commit c05b1a5) but pnpm-lock.yaml retained the original `^0.10.1` specifier. Hot container with `pnpm install --frozen-lockfile` boot command went into restart-loop with ERR_PNPM_OUTDATED_LOCKFILE. Fix: `pnpm install --lockfile-only` from host WSL2 (8.7s, -107L in lockfile, simpler resolver tree). Commit the resynced lockfile in the SAME commit that tightens the pin. RULE: ANY package.json pin change (caret→exact or version bump) MUST be followed by `pnpm install --lockfile-only` and the resynced lockfile committed in the same commit, or hot containers crash on next restart.
+
+## 2026-06-14 — 🔴 Reports server component leaked cross-tenant aggregates
+- Type:      🔴 gotcha
+- Phase:     Phase 4 swarm W11 (wire dead controls)
+- Files:     apps/web/src/app/(tenant)/[slug]/(app)/reports/page.tsx
+- Concepts:  tenant-isolation, IDOR, rsc, prisma, aggregate, reportRouter, auth
+- Narrative: reports/page.tsx (RSC) computed revenue/expense/jobOrder/customer/project/
+  employee/payroll aggregates via raw prisma.*.aggregate/groupBy/count with NO where:{tenantId}
+  and no tenant resolution at all — every signed-in user saw platform-wide totals (cross-tenant
+  leak). The Prisma tenant-guard (L6) is NOT auto-active in server components (it relies on a
+  per-request tenant context set by tRPC middleware), so RSC pages MUST scope manually — the
+  dashboard already does. Fix: resolve session via auth(), derive session.user.tenantId, scope
+  every query (mirroring reportRouter's ctx.tenantId), notFound() when no valid tenant. LESSON:
+  any RSC page doing prisma aggregates is a tenant-leak suspect — grep for prisma.*.(aggregate|
+  groupBy|count|findMany) without tenantId in app/**/page.tsx.
