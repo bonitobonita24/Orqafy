@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
-import { prisma as db } from "@orqafy/db";
+import { prisma as db, writeAuditLog } from "@orqafy/db";
 
 export const inventoryRouter = createTRPCRouter({
   // ── Products ──────────────────────────────────────────────────────────────
@@ -65,20 +65,31 @@ export const inventoryRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      return db.product.create({
-        data: {
-          tenantId: ctx.tenantId,
-          name: input.name,
-          sku: input.sku ?? null,
-          barcode: input.barcode ?? null,
-          description: input.description ?? null,
-          categoryId: input.categoryId ?? null,
-          unit: input.unit,
-          baseCost: input.baseCost,
-          reorderLevel: input.reorderLevel ?? null,
-          reorderQuantity: input.reorderQuantity ?? null,
-          isSerialTracked: input.isSerialTracked,
-        },
+      return db.$transaction(async (tx) => {
+        const created = await tx.product.create({
+          data: {
+            tenantId: ctx.tenantId,
+            name: input.name,
+            sku: input.sku ?? null,
+            barcode: input.barcode ?? null,
+            description: input.description ?? null,
+            categoryId: input.categoryId ?? null,
+            unit: input.unit,
+            baseCost: input.baseCost,
+            reorderLevel: input.reorderLevel ?? null,
+            reorderQuantity: input.reorderQuantity ?? null,
+            isSerialTracked: input.isSerialTracked,
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "Product",
+          entityId: created.id,
+          before: null,
+          after: { id: created.id, name: created.name, sku: created.sku, unit: created.unit, isActive: created.isActive },
+        });
+        return created;
       });
     }),
 
@@ -97,34 +108,56 @@ export const inventoryRouter = createTRPCRouter({
         isActive: z.boolean().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
       const existing = await db.product.findUnique({ where: { id } });
       if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
-      return db.product.update({
-        where: { id },
-        data: {
-          ...(rest.name !== undefined ? { name: rest.name } : {}),
-          ...(rest.sku !== undefined ? { sku: rest.sku } : {}),
-          ...(rest.barcode !== undefined ? { barcode: rest.barcode } : {}),
-          ...(rest.description !== undefined ? { description: rest.description } : {}),
-          ...(rest.categoryId !== undefined ? { categoryId: rest.categoryId } : {}),
-          ...(rest.unit !== undefined ? { unit: rest.unit } : {}),
-          ...(rest.baseCost !== undefined ? { baseCost: rest.baseCost } : {}),
-          ...(rest.reorderLevel !== undefined ? { reorderLevel: rest.reorderLevel } : {}),
-          ...(rest.isActive !== undefined ? { isActive: rest.isActive } : {}),
-        },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.product.update({
+          where: { id },
+          data: {
+            ...(rest.name !== undefined ? { name: rest.name } : {}),
+            ...(rest.sku !== undefined ? { sku: rest.sku } : {}),
+            ...(rest.barcode !== undefined ? { barcode: rest.barcode } : {}),
+            ...(rest.description !== undefined ? { description: rest.description } : {}),
+            ...(rest.categoryId !== undefined ? { categoryId: rest.categoryId } : {}),
+            ...(rest.unit !== undefined ? { unit: rest.unit } : {}),
+            ...(rest.baseCost !== undefined ? { baseCost: rest.baseCost } : {}),
+            ...(rest.reorderLevel !== undefined ? { reorderLevel: rest.reorderLevel } : {}),
+            ...(rest.isActive !== undefined ? { isActive: rest.isActive } : {}),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Product",
+          entityId: id,
+          before: { id: existing.id, name: existing.name, sku: existing.sku, unit: existing.unit, isActive: existing.isActive },
+          after: { id: updated.id, name: updated.name, sku: updated.sku, unit: updated.unit, isActive: updated.isActive },
+        });
+        return updated;
       });
     }),
 
   productToggleActive: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const existing = await db.product.findUnique({ where: { id: input.id } });
       if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
-      return db.product.update({
-        where: { id: input.id },
-        data: { isActive: !existing.isActive },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.product.update({
+          where: { id: input.id },
+          data: { isActive: !existing.isActive },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Product",
+          entityId: input.id,
+          before: { id: existing.id, name: existing.name, isActive: existing.isActive },
+          after: { id: updated.id, name: updated.name, isActive: updated.isActive },
+        });
+        return updated;
       });
     }),
 
@@ -152,15 +185,26 @@ export const inventoryRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      return db.category.create({
-        data: {
-          tenantId: ctx.tenantId,
-          name: input.name,
-          slug: input.slug,
-          description: input.description ?? null,
-          parentId: input.parentId ?? null,
-          sortOrder: input.sortOrder,
-        },
+      return db.$transaction(async (tx) => {
+        const created = await tx.category.create({
+          data: {
+            tenantId: ctx.tenantId,
+            name: input.name,
+            slug: input.slug,
+            description: input.description ?? null,
+            parentId: input.parentId ?? null,
+            sortOrder: input.sortOrder,
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "Category",
+          entityId: created.id,
+          before: null,
+          after: { id: created.id, name: created.name, slug: created.slug, isActive: created.isActive },
+        });
+        return created;
       });
     }),
 
@@ -180,16 +224,27 @@ export const inventoryRouter = createTRPCRouter({
       const { id, ...rest } = input;
       const existing = await db.category.findFirst({ where: { id, tenantId: ctx.tenantId } });
       if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
-      return db.category.update({
-        where: { id },
-        data: {
-          ...(rest.name !== undefined ? { name: rest.name } : {}),
-          ...(rest.slug !== undefined ? { slug: rest.slug } : {}),
-          ...(rest.description !== undefined ? { description: rest.description } : {}),
-          ...(rest.parentId !== undefined ? { parentId: rest.parentId } : {}),
-          ...(rest.sortOrder !== undefined ? { sortOrder: rest.sortOrder } : {}),
-          ...(rest.isActive !== undefined ? { isActive: rest.isActive } : {}),
-        },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.category.update({
+          where: { id },
+          data: {
+            ...(rest.name !== undefined ? { name: rest.name } : {}),
+            ...(rest.slug !== undefined ? { slug: rest.slug } : {}),
+            ...(rest.description !== undefined ? { description: rest.description } : {}),
+            ...(rest.parentId !== undefined ? { parentId: rest.parentId } : {}),
+            ...(rest.sortOrder !== undefined ? { sortOrder: rest.sortOrder } : {}),
+            ...(rest.isActive !== undefined ? { isActive: rest.isActive } : {}),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Category",
+          entityId: id,
+          before: { id: existing.id, name: existing.name, slug: existing.slug, isActive: existing.isActive },
+          after: { id: updated.id, name: updated.name, slug: updated.slug, isActive: updated.isActive },
+        });
+        return updated;
       });
     }),
 
@@ -198,9 +253,20 @@ export const inventoryRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const existing = await db.category.findFirst({ where: { id: input.id, tenantId: ctx.tenantId } });
       if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
-      return db.category.update({
-        where: { id: input.id },
-        data: { isActive: !existing.isActive },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.category.update({
+          where: { id: input.id },
+          data: { isActive: !existing.isActive },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Category",
+          entityId: input.id,
+          before: { id: existing.id, name: existing.name, isActive: existing.isActive },
+          after: { id: updated.id, name: updated.name, isActive: updated.isActive },
+        });
+        return updated;
       });
     }),
 
@@ -227,14 +293,25 @@ export const inventoryRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      return db.warehouse.create({
-        data: {
-          tenantId: ctx.tenantId,
-          name: input.name,
-          code: input.code,
-          address: input.address ?? null,
-          isDefault: input.isDefault,
-        },
+      return db.$transaction(async (tx) => {
+        const created = await tx.warehouse.create({
+          data: {
+            tenantId: ctx.tenantId,
+            name: input.name,
+            code: input.code,
+            address: input.address ?? null,
+            isDefault: input.isDefault,
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "Warehouse",
+          entityId: created.id,
+          before: null,
+          after: { id: created.id, name: created.name, code: created.code, isDefault: created.isDefault, isActive: created.isActive },
+        });
+        return created;
       });
     }),
 
@@ -253,15 +330,26 @@ export const inventoryRouter = createTRPCRouter({
       const { id, ...rest } = input;
       const existing = await db.warehouse.findFirst({ where: { id, tenantId: ctx.tenantId } });
       if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
-      return db.warehouse.update({
-        where: { id },
-        data: {
-          ...(rest.name !== undefined ? { name: rest.name } : {}),
-          ...(rest.code !== undefined ? { code: rest.code } : {}),
-          ...(rest.address !== undefined ? { address: rest.address } : {}),
-          ...(rest.isDefault !== undefined ? { isDefault: rest.isDefault } : {}),
-          ...(rest.isActive !== undefined ? { isActive: rest.isActive } : {}),
-        },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.warehouse.update({
+          where: { id },
+          data: {
+            ...(rest.name !== undefined ? { name: rest.name } : {}),
+            ...(rest.code !== undefined ? { code: rest.code } : {}),
+            ...(rest.address !== undefined ? { address: rest.address } : {}),
+            ...(rest.isDefault !== undefined ? { isDefault: rest.isDefault } : {}),
+            ...(rest.isActive !== undefined ? { isActive: rest.isActive } : {}),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Warehouse",
+          entityId: id,
+          before: { id: existing.id, name: existing.name, code: existing.code, isDefault: existing.isDefault, isActive: existing.isActive },
+          after: { id: updated.id, name: updated.name, code: updated.code, isDefault: updated.isDefault, isActive: updated.isActive },
+        });
+        return updated;
       });
     }),
 
@@ -270,9 +358,20 @@ export const inventoryRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const existing = await db.warehouse.findFirst({ where: { id: input.id, tenantId: ctx.tenantId } });
       if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
-      return db.warehouse.update({
-        where: { id: input.id },
-        data: { isActive: !existing.isActive },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.warehouse.update({
+          where: { id: input.id },
+          data: { isActive: !existing.isActive },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Warehouse",
+          entityId: input.id,
+          before: { id: existing.id, name: existing.name, isActive: existing.isActive },
+          after: { id: updated.id, name: updated.name, isActive: updated.isActive },
+        });
+        return updated;
       });
     }),
 
@@ -374,19 +473,30 @@ export const inventoryRouter = createTRPCRouter({
       if (input.type === "adjustment" && input.fromWarehouseId === undefined && input.toWarehouseId === undefined) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "At least one warehouse required for type 'adjustment'" });
       }
-      return db.stockMovement.create({
-        data: {
-          tenantId: ctx.tenantId,
-          type: input.type,
-          productId: input.productId,
-          quantity: input.quantity,
-          fromWarehouseId: input.fromWarehouseId ?? null,
-          toWarehouseId: input.toWarehouseId ?? null,
-          notes: input.notes ?? null,
-          referenceType: input.referenceType ?? null,
-          referenceId: input.referenceId ?? null,
-          createdById: ctx.userId,
-        },
+      return db.$transaction(async (tx) => {
+        const created = await tx.stockMovement.create({
+          data: {
+            tenantId: ctx.tenantId,
+            type: input.type,
+            productId: input.productId,
+            quantity: input.quantity,
+            fromWarehouseId: input.fromWarehouseId ?? null,
+            toWarehouseId: input.toWarehouseId ?? null,
+            notes: input.notes ?? null,
+            referenceType: input.referenceType ?? null,
+            referenceId: input.referenceId ?? null,
+            createdById: ctx.userId,
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "StockMovement",
+          entityId: created.id,
+          before: null,
+          after: { id: created.id, type: created.type, productId: created.productId, quantity: Number(created.quantity), fromWarehouseId: created.fromWarehouseId, toWarehouseId: created.toWarehouseId },
+        });
+        return created;
       });
     }),
 
@@ -404,19 +514,30 @@ export const inventoryRouter = createTRPCRouter({
       if (input.fromWarehouseId === input.toWarehouseId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Source and destination warehouses must differ" });
       }
-      return db.stockMovement.create({
-        data: {
-          tenantId: ctx.tenantId,
-          type: "transfer",
-          productId: input.productId,
-          quantity: input.quantity,
-          fromWarehouseId: input.fromWarehouseId,
-          toWarehouseId: input.toWarehouseId,
-          notes: input.notes ?? null,
-          referenceType: null,
-          referenceId: null,
-          createdById: ctx.userId,
-        },
+      return db.$transaction(async (tx) => {
+        const created = await tx.stockMovement.create({
+          data: {
+            tenantId: ctx.tenantId,
+            type: "transfer",
+            productId: input.productId,
+            quantity: input.quantity,
+            fromWarehouseId: input.fromWarehouseId,
+            toWarehouseId: input.toWarehouseId,
+            notes: input.notes ?? null,
+            referenceType: null,
+            referenceId: null,
+            createdById: ctx.userId,
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "StockMovement",
+          entityId: created.id,
+          before: null,
+          after: { id: created.id, type: created.type, productId: created.productId, quantity: Number(created.quantity), fromWarehouseId: created.fromWarehouseId, toWarehouseId: created.toWarehouseId },
+        });
+        return created;
       });
     }),
 
@@ -430,19 +551,30 @@ export const inventoryRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      return db.stockMovement.create({
-        data: {
-          tenantId: ctx.tenantId,
-          type: "adjustment",
-          productId: input.productId,
-          quantity: Math.abs(input.quantity),
-          fromWarehouseId: input.quantity < 0 ? input.warehouseId : null,
-          toWarehouseId: input.quantity >= 0 ? input.warehouseId : null,
-          notes: input.notes,
-          referenceType: null,
-          referenceId: null,
-          createdById: ctx.userId,
-        },
+      return db.$transaction(async (tx) => {
+        const created = await tx.stockMovement.create({
+          data: {
+            tenantId: ctx.tenantId,
+            type: "adjustment",
+            productId: input.productId,
+            quantity: Math.abs(input.quantity),
+            fromWarehouseId: input.quantity < 0 ? input.warehouseId : null,
+            toWarehouseId: input.quantity >= 0 ? input.warehouseId : null,
+            notes: input.notes,
+            referenceType: null,
+            referenceId: null,
+            createdById: ctx.userId,
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "StockMovement",
+          entityId: created.id,
+          before: null,
+          after: { id: created.id, type: created.type, productId: created.productId, quantity: Number(created.quantity), fromWarehouseId: created.fromWarehouseId, toWarehouseId: created.toWarehouseId },
+        });
+        return created;
       });
     }),
 });

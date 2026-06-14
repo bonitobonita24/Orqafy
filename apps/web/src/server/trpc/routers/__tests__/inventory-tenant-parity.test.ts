@@ -8,23 +8,35 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { inventoryRouter } from "@/server/trpc/routers/inventory";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
+// vi.hoisted runs before vi.mock factories, making _prismaMock available inside the factory.
+// $transaction passes _prismaMock as `tx` so tx.<model>.<op>() hits the SAME vi.fn()
+// instances that existing assertions already reference via mockDb.
+const { _prismaMock } = vi.hoisted(() => {
+  const mock = {
     product: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), count: vi.fn() },
     category: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     warehouse: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     warehouseStock: { findMany: vi.fn() },
     stockMovement: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), count: vi.fn() },
+    auditLog: { create: vi.fn() },
+    $transaction: vi.fn(),
+  };
+  // $transaction invokes its callback with the same mock object so tx === prisma
+  mock.$transaction.mockImplementation((fn: (tx: typeof mock) => unknown) => fn(mock));
+  return { _prismaMock: mock };
+});
+
+vi.mock("@orqafy/db", () => ({
+  prisma: _prismaMock,
+  writeAuditLog: async (tx: { auditLog: { create: (args: unknown) => Promise<unknown> } }, entry: unknown) => {
+    await tx.auditLog.create({ data: entry });
   },
 }));
 
 import type { NextRequest } from "next/server";
-import { prisma as db } from "@orqafy/db";
 
-const mockDb = db as unknown as {
-  category: { findMany: ReturnType<typeof vi.fn>; findFirst: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
-  stockMovement: { findMany: ReturnType<typeof vi.fn>; findFirst: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; count: ReturnType<typeof vi.fn> };
-};
+// Use _prismaMock directly — it IS the mock object, no cast needed.
+const mockDb = _prismaMock;
 
 function makeReq(): NextRequest { return {} as NextRequest; }
 
@@ -120,5 +132,33 @@ describe("stockMovement tenant parity", () => {
     await caller.inventory.stockAdjustment({ productId: "p1", quantity: -2, warehouseId: "wh1", notes: "damaged" });
     const call = mockDb.stockMovement.create.mock.calls[0] as [{ data: { tenantId: string } }];
     expect(call[0].data.tenantId).toBe("tid-alpha");
+  });
+});
+
+// ── Audit log assertions ────────────────────────────────────────────────────
+
+describe("audit log written for inventory mutations", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("categoryCreate writes an audit row with action CREATE entity Category", async () => {
+    mockDb.category.create.mockResolvedValue({ id: "cat-audit", tenantId: "tid-alpha", name: "Audit Cat", slug: "audit-cat", isActive: true });
+    const caller = createCaller(tenantACtx());
+    await caller.inventory.categoryCreate({ name: "Audit Cat", slug: "audit-cat" });
+    expect(mockDb.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ action: "CREATE", entity: "Category" }),
+      }),
+    );
+  });
+
+  it("stockMovementCreate writes an audit row with action CREATE entity StockMovement", async () => {
+    mockDb.stockMovement.create.mockResolvedValue({ id: "sm-audit", tenantId: "tid-alpha", type: "in", productId: "p1", quantity: 5, fromWarehouseId: null, toWarehouseId: "wh1" });
+    const caller = createCaller(tenantACtx());
+    await caller.inventory.stockMovementCreate({ type: "in", productId: "p1", quantity: 5, toWarehouseId: "wh1" });
+    expect(mockDb.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ action: "CREATE", entity: "StockMovement" }),
+      }),
+    );
   });
 });

@@ -22,8 +22,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { inventoryRouter } from "@/server/trpc/routers/inventory";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
+const { mockPrisma } = vi.hoisted(() => {
+  const mockAuditLogCreate = vi.fn();
+  const mockPrisma = {
     product: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
@@ -55,6 +56,21 @@ vi.mock("@orqafy/db", () => ({
       create: vi.fn(),
       count: vi.fn(),
     },
+    auditLog: { create: mockAuditLogCreate },
+    // $transaction invokes its callback with the same mock object as `tx`,
+    // so router code using tx.<model>.<op> hits the same vi.fn() the tests assert on.
+    $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(mockPrisma)),
+  };
+  return { mockPrisma };
+});
+
+vi.mock("@orqafy/db", () => ({
+  prisma: mockPrisma,
+  writeAuditLog: async (
+    tx: { auditLog: { create: (args: unknown) => unknown } },
+    entry: unknown,
+  ) => {
+    await tx.auditLog.create({ data: entry });
   },
 }));
 
@@ -126,6 +142,7 @@ const mockDb = db as unknown as {
     create: ReturnType<typeof vi.fn>;
     count: ReturnType<typeof vi.fn>;
   };
+  auditLog: { create: ReturnType<typeof vi.fn> };
 };
 
 const sampleCategory = {
@@ -899,5 +916,53 @@ describe("inventory.stockAdjustment", () => {
         notes: "Correction",
       })
     ).rejects.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// L5 AuditLog — every Epic-1 mutation must write an audit row (always-on L5)
+// ---------------------------------------------------------------------------
+describe("inventory L5 AuditLog", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("productCreate writes a CREATE/Product audit row", async () => {
+    mockDb.product.create.mockResolvedValue({ ...sampleProduct, id: "prod-new" });
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.inventory.productCreate({ name: "Audited Product" });
+
+    expect(mockDb.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "CREATE",
+          entity: "Product",
+          entityId: "prod-new",
+          userId: "user-1",
+        }),
+      }),
+    );
+  });
+
+  it("stockMovementCreate writes a CREATE/StockMovement audit row", async () => {
+    mockDb.stockMovement.create.mockResolvedValue(sampleStockMovement);
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.inventory.stockMovementCreate({
+      type: "in",
+      productId: "prod-1",
+      quantity: 10,
+      toWarehouseId: "wh-1",
+    });
+
+    expect(mockDb.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "CREATE",
+          entity: "StockMovement",
+          entityId: "sm-1",
+          userId: "user-1",
+        }),
+      }),
+    );
   });
 });
