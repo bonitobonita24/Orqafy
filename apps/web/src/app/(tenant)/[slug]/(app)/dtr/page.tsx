@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { prisma } from "@orqafy/db";
+import { LeaveRequestForm } from "./leave-request-form";
+import { LeaveRequestActions } from "./leave-request-actions";
+import { AttendanceActions } from "./attendance-actions";
 
 export const metadata: Metadata = { title: "DTR" };
 export const dynamic = "force-dynamic";
@@ -99,6 +102,7 @@ export default async function DtrPage() {
                   <th className="px-4 py-3 font-medium">Clock Out</th>
                   <th className="px-4 py-3 font-medium">OT (min)</th>
                   <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -146,6 +150,9 @@ export default async function DtrPage() {
                         {a.status}
                       </span>
                     </td>
+                    <td className="px-4 py-3">
+                      <AttendanceActions attendanceId={a.id} status={a.status} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -155,7 +162,10 @@ export default async function DtrPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground">Leave Requests</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-muted-foreground">Leave Requests</h2>
+          <LeaveRequestForm />
+        </div>
         <div className="rounded-lg border border-border bg-card">
           {leaves.length === 0 ? (
             <div className="px-6 py-12 text-center text-sm text-muted-foreground">
@@ -171,6 +181,7 @@ export default async function DtrPage() {
                   <th className="px-4 py-3 font-medium">Days</th>
                   <th className="px-4 py-3 font-medium">Reason</th>
                   <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -208,6 +219,9 @@ export default async function DtrPage() {
                       >
                         {l.status}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <LeaveRequestActions leaveRequestId={l.id} status={l.status} />
                     </td>
                   </tr>
                 ))}
