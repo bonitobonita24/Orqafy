@@ -1870,10 +1870,11 @@ Rate limiting:    public: 10/min per IP (auth/signup); api: 120/min per tenant
 CORS origins:     dev: localhost:[Phase 3 port]; staging: https://orqafy-staging.powerbyte.app;
                   prod: https://orqafy.powerbyte.app
 Security layers:  L3 RBAC + L5 AuditLog + L6 Prisma guardrails always active
-                  L1 tenant context (search_path per request) + L2 schema-boundary isolation
-                  + L4 PgBouncer pool limits — all active (schema isolation replaces RLS)
-                  NOTE: L2 uses separate-schema isolation NOT PostgreSQL RLS — schema IS
-                  the boundary; no tenantId column on any ERP entity
+                  L1 tenant context (ctx.tenantId per request) + L2 shared-schema + tenant_id
+                  isolation + L4 PgBouncer pool limits — all active
+                  NOTE: L2 uses shared-schema multi-tenancy + tenant_id column (framework
+                  default) — every ERP entity carries tenant_id, scoped via ctx.tenantId;
+                  separate-schema isolation applies only to payroll/banking
 Additional:       CSRF SameSite=Lax (web) — tRPC + SameSite=Lax inherently CSRF-resistant
                   (Lax preferred over Strict to avoid breaking email link navigation,
                   e.g. customer clicking invoice link from email would force re-login

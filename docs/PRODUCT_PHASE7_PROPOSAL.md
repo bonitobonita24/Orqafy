@@ -9,8 +9,9 @@
 > decisions already made. Genuine product-direction forks are flagged `⚠ NEEDS OWNER DECISION`.
 >
 > **Locked stack (applies to every entry).** Next.js (App Router) · tRPC · Prisma · Auth.js v5 ·
-> PostgreSQL (separate-schema-per-tenant; `search_path` switched per request — Orqafy's tenancy
-> exception, so NO `tenant_id` column on ERP entities; schema IS the boundary) · Valkey · BullMQ ·
+> PostgreSQL (shared-schema multi-tenancy + `tenant_id` column — the framework default; every ERP
+> entity carries `tenant_id` and is scoped via `ctx.tenantId`. Separate-schema isolation applies only
+> to payroll/banking, not to general ERP entities) · Valkey · BullMQ ·
 > MinIO→S3 · shadcn/ui · Tailwind. **Security L1–L6 always on:** L3 RBAC via `rbac.ts` middleware,
 > L5 AuditLog on every mutation, L6 Prisma guardrails. All forms = React Hook Form + Zod; all tables
 > = TanStack; all confirms = shadcn `AlertDialog`.
