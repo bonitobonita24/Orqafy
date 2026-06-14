@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { TRPCError } from "@trpc/server";
 import { prisma } from "@orqafy/db";
 import { createQueues } from "@orqafy/jobs";
+import { jobConnection } from "@/server/jobs/connection";
 
 interface RegisterInput {
   slug: string;
@@ -52,11 +53,7 @@ export async function registerTenant(input: RegisterInput): Promise<{ error: str
       data: { slug, name, schemaName, status: "provisioning", planId: dbPlan.id },
     });
 
-    const queues = createQueues({
-      host: process.env["REDIS_HOST"] ?? "localhost",
-      port: parseInt(process.env["REDIS_PORT"] ?? "6379", 10),
-      password: process.env["REDIS_PASSWORD"],
-    });
+    const queues = createQueues(jobConnection());
 
     await queues.tenantProvisioning.add("provision-tenant", {
       tenantId: tenant.id,

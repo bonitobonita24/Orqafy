@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 import { prisma } from "@orqafy/db";
 import { createQueues } from "@orqafy/jobs";
+import { jobConnection } from "../../jobs/connection";
 
 const RESERVED_SLUGS = new Set([
   "platform",
@@ -116,11 +117,7 @@ export const registrationRouter = createTRPCRouter({
         },
       });
 
-      const queues = createQueues({
-        host: process.env["REDIS_HOST"] ?? "localhost",
-        port: parseInt(process.env["REDIS_PORT"] ?? "6379", 10),
-        password: process.env["REDIS_PASSWORD"],
-      });
+      const queues = createQueues(jobConnection());
 
       await queues.tenantProvisioning.add("provision-tenant", {
         tenantId: tenant.id,
