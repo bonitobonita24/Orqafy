@@ -98,7 +98,7 @@ export default async function InvoicesPage({
           <h1 className="text-2xl font-bold tracking-tight">Invoices</h1>
           <p className="text-sm text-muted-foreground">
             {invoices.length} total · {paidCount} paid ·{" "}
-            <span className="text-yellow-400">
+            <span className="text-foreground">
               {formatCurrency(outstanding, "PHP")} outstanding
             </span>
           </p>

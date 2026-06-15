@@ -165,7 +165,7 @@ export default async function DashboardPage({
       value: formatCurrency(data.outstanding),
       sub: `${data.outstandingCount} unpaid invoice${data.outstandingCount === 1 ? "" : "s"}`,
       icon: FileText,
-      accent: "text-yellow-400",
+      accent: "text-foreground",
       href: `/${slug}/invoices`,
     },
     {
@@ -173,7 +173,7 @@ export default async function DashboardPage({
       value: formatCurrency(data.pendingExpenseTotal),
       sub: `${data.pendingExpenseCount} awaiting approval`,
       icon: Receipt,
-      accent: "text-orange-400",
+      accent: "text-foreground",
       href: `/${slug}/expenses`,
     },
     {
@@ -181,7 +181,7 @@ export default async function DashboardPage({
       value: data.activeCustomers.toString(),
       sub: "customer accounts",
       icon: Users,
-      accent: "text-blue-400",
+      accent: "text-foreground",
       href: `/${slug}/crm/customers`,
     },
     {
@@ -189,7 +189,7 @@ export default async function DashboardPage({
       value: formatCurrency(data.paidThisMonth),
       sub: `${data.paidCount} settled`,
       icon: Briefcase,
-      accent: "text-primary",
+      accent: "text-foreground",
       href: `/${slug}/invoices`,
     },
   ];

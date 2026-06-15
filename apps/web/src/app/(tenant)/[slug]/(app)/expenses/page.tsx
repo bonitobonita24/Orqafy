@@ -86,7 +86,7 @@ export default async function ExpensesPage({
           <h1 className="text-2xl font-bold tracking-tight">Expenses</h1>
           <p className="text-sm text-muted-foreground">
             {expenses.length} total · {approvedCount} approved ·{" "}
-            <span className="text-yellow-400">
+            <span className="text-foreground">
               {pending.length} pending ({formatCurrency(pendingTotal, "PHP")})
             </span>
           </p>
