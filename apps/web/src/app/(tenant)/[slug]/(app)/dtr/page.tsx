@@ -4,6 +4,7 @@ import { auth } from "@/server/auth";
 import { LeaveRequestForm } from "./leave-request-form";
 import { LeaveRequestActions } from "./leave-request-actions";
 import { AttendanceActions } from "./attendance-actions";
+import { ClockActions } from "./clock-actions";
 
 export const metadata: Metadata = { title: "DTR" };
 export const dynamic = "force-dynamic";
@@ -19,6 +20,31 @@ const STATUS_BADGE: Record<string, string> = {
 
 function statusBadge(status: string): string {
   return STATUS_BADGE[status] ?? "border-border bg-muted text-muted-foreground";
+}
+
+/**
+ * Fetch the Employee row for the currently logged-in user, if one exists.
+ * Returns null for admin-only accounts that have no employee record.
+ */
+async function getMyEmployee(userId: string | null) {
+  if (userId === null) return null;
+  return prisma.employee.findFirst({
+    where: { userId },
+    select: { id: true },
+  });
+}
+
+/**
+ * Fetch today's AttendanceRecord for the given employee, if any.
+ * Returns null when no clock-in has occurred today.
+ */
+async function getMyTodayRecord(employeeId: string) {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  return prisma.attendanceRecord.findFirst({
+    where: { employeeId, date: today },
+    select: { id: true, clockIn: true, clockOut: true, status: true },
+  });
 }
 
 async function getRecentAttendance() {
@@ -39,6 +65,8 @@ async function getRecentAttendance() {
         select: {
           id: true,
           employeeNumber: true,
+          // userId required so the row can be matched against session.user.id
+          userId: true,
           user: { select: { id: true, firstName: true, lastName: true, displayName: true } },
         },
       },
@@ -71,12 +99,18 @@ async function getLeaveRequests() {
 }
 
 export default async function DtrPage() {
-  const [session, attendance, leaves] = await Promise.all([
-    auth(),
+  const session = await auth();
+  const currentUserId = session?.user?.id ?? null;
+
+  // Employee lookup runs first so the result can feed getMyTodayRecord.
+  const myEmployee = await getMyEmployee(currentUserId);
+  const myTodayRecord =
+    myEmployee !== null ? await getMyTodayRecord(myEmployee.id) : null;
+
+  const [attendance, leaves] = await Promise.all([
     getRecentAttendance(),
     getLeaveRequests(),
   ]);
-  const currentUserId = session?.user?.id ?? null;
 
   return (
     <div className="space-y-8">
@@ -86,6 +120,59 @@ export default async function DtrPage() {
           Recent attendance and leave requests across the organization.
         </p>
       </div>
+
+      {/* ── My Attendance Today (self-service clock-in / clock-out) ──────── */}
+      {myEmployee !== null && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            My Attendance Today
+          </h2>
+          <div className="flex items-center gap-4 rounded-lg border border-border bg-card px-5 py-4">
+            {myTodayRecord !== null ? (
+              <>
+                <div className="flex-1 space-y-0.5">
+                  <p className="text-sm font-medium">
+                    Clocked in at{" "}
+                    {myTodayRecord.clockIn?.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }) ?? "—"}
+                  </p>
+                  {myTodayRecord.clockOut !== null ? (
+                    <p className="text-xs text-muted-foreground">
+                      Clocked out at{" "}
+                      {myTodayRecord.clockOut.toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Not yet clocked out
+                    </p>
+                  )}
+                </div>
+                <ClockActions
+                  attendanceId={myTodayRecord.id}
+                  employeeId={myEmployee.id}
+                  hasClockedOut={myTodayRecord.clockOut !== null}
+                />
+              </>
+            ) : (
+              <>
+                <p className="flex-1 text-sm text-muted-foreground">
+                  You have not clocked in today.
+                </p>
+                <ClockActions
+                  attendanceId={null}
+                  employeeId={myEmployee.id}
+                  hasClockedOut={false}
+                />
+              </>
+            )}
+          </div>
+        </section>
+      )}
 
       <section className="space-y-3">
         <h2 className="text-sm font-medium text-muted-foreground">
@@ -155,7 +242,17 @@ export default async function DtrPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <AttendanceActions attendanceId={a.id} status={a.status} />
+                      <div className="flex flex-col gap-1">
+                        <AttendanceActions attendanceId={a.id} status={a.status} />
+                        {currentUserId !== null &&
+                          a.employee.userId === currentUserId && (
+                            <ClockActions
+                              attendanceId={a.id}
+                              employeeId={a.employee.id}
+                              hasClockedOut={a.clockOut !== null}
+                            />
+                          )}
+                      </div>
                     </td>
                   </tr>
                 ))}
