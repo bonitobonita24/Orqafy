@@ -592,7 +592,7 @@ operations and financial traceability without the complexity.
 - Receipt generation
 
 ### Accounting
-> **Build status (2026-06-15, see DECISIONS_LOG):** data-entry CRUD scaffolded (Chart of Accounts CRUD, Journal Entry drafts with debit==credit form validation). Business logic — posting journals to ledger, trial balance / GL rollups / financial statements (P&L, balance sheet), auto-posting from invoices/purchasing/payroll, period/year close — is **HELD pending owner rules** (marked `// HOLD(owner-rule)` in code).
+> **Build status (2026-06-15, see DECISIONS_LOG §A):** Chart of Accounts CRUD, Journal Entry drafts, **posting** (balanced + active-account + open-FY guards, DRAFT→POSTED, postedById, $transaction + audit), **reversal** (new mirror POSTED entry, reversalOfId, original stays POSTED), and **Trial Balance** page (per-account aggregation of POSTED lines, debit/credit/balance totals, isBalanced check) are **BUILT**. Still **HELD**: financial statements (P&L, balance sheet), GL rollup reports, auto-posting from invoices/purchasing/payroll, fiscal period/year close.
 - Chart of Accounts: asset/liability/equity/income/expense
 - Journal Entries auto-posted on every money movement (payments, expenses, payroll,
   cash advances, credit card payments, credit transactions)

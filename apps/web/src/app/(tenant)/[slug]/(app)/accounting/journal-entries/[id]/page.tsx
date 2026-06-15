@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { JournalEntryActions } from "./JournalEntryActions";
 
 export const metadata: Metadata = { title: "Journal Entry" };
 export const dynamic = "force-dynamic";
@@ -59,6 +60,7 @@ export default async function JournalEntryDetailPage({
               Edit Draft
             </Link>
           )}
+          <JournalEntryActions entryId={id} status={entry.status} slug={slug} />
         </div>
       </div>
 
@@ -145,10 +147,10 @@ export default async function JournalEntryDetailPage({
         </table>
       </div>
 
-      {/* HOLD notice for posting */}
-      {entry.status === "draft" && (
-        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
-          Posting this journal entry to the ledger is pending owner configuration of posting rules.
+      {/* Posting info for posted entries */}
+      {entry.status === "posted" && entry.postedAt !== null && (
+        <div className="rounded-md border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
+          Posted on {entry.postedAt.toLocaleDateString()}
         </div>
       )}
     </div>

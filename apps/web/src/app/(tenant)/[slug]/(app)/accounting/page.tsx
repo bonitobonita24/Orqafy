@@ -34,7 +34,7 @@ export default async function AccountingPage({
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Accounting</h1>
         <p className="text-sm text-muted-foreground">
-          Chart of accounts and journal entries — data entry only.
+          Chart of accounts, journal entries, and trial balance.
         </p>
       </div>
 
@@ -55,7 +55,7 @@ export default async function AccountingPage({
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Link
           href={`/${slug}/accounting/accounts`}
           className="group rounded-lg border border-border bg-card p-6 transition-colors hover:bg-muted/30"
@@ -71,14 +71,23 @@ export default async function AccountingPage({
         >
           <h2 className="font-semibold group-hover:text-primary">Journal Entries →</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Record debit/credit lines as draft entries. Posting pending owner configuration.
+            Create draft entries, post to the ledger, and reverse posted entries.
+          </p>
+        </Link>
+        <Link
+          href={`/${slug}/accounting/trial-balance`}
+          className="group rounded-lg border border-border bg-card p-6 transition-colors hover:bg-muted/30"
+        >
+          <h2 className="font-semibold group-hover:text-primary">Trial Balance →</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Per-account aggregation of posted debit/credit lines with balance verification.
           </p>
         </Link>
       </div>
 
-      <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
-        Posting journals to the ledger, trial balance, GL rollups, and financial statements are pending
-        owner-supplied rules (see DECISIONS_LOG 2026-06-15).
+      <div className="rounded-md border border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+        Financial statements, GL rollups, and auto-posting from other modules are pending
+        owner-supplied rules (see DECISIONS_LOG §A).
       </div>
     </div>
   );

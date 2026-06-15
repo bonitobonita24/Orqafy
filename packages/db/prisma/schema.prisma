@@ -341,6 +341,7 @@ model User {
   jobOrdersTechnician             JobOrder[]              @relation("JobOrderTechnician")
   taskStatusReports               TaskStatusReport[]
   journalEntries                  JournalEntry[]          @relation("JournalCreatedBy")
+  journalsPosted                  JournalEntry[]          @relation("JournalPostedBy")
   fundTransfers                   FundTransfer[]          @relation("FundTransferCreatedBy")
   stockMovements                  StockMovement[]         @relation("StockMovementCreatedBy")
   projectNotes                    ProjectNote[]
@@ -2036,6 +2037,11 @@ model JournalEntry {
   createdById   String     @map("created_by_id")
   createdBy     User       @relation("JournalCreatedBy", fields: [createdById], references: [id])
   postedAt      DateTime?  @map("posted_at")
+  postedById    String?    @map("posted_by_id")
+  postedBy      User?      @relation("JournalPostedBy", fields: [postedById], references: [id])
+  reversalOfId  String?    @map("reversal_of_id")
+  reversalOf    JournalEntry?  @relation("JournalReversals", fields: [reversalOfId], references: [id])
+  reversals     JournalEntry[] @relation("JournalReversals")
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
 

@@ -40,6 +40,7 @@ vi.mock("@orqafy/db", () => {
     account: { create: accountCreate, update: accountUpdate },
     journalEntry: { create: journalEntryCreate, update: journalEntryUpdate },
     journalLine: { deleteMany: journalLineDeleteMany },
+    auditLog: { create: vi.fn() },
   };
   return {
     prisma: {
@@ -53,8 +54,13 @@ vi.mock("@orqafy/db", () => {
       journalEntry: {
         findMany: vi.fn(),
         findUnique: vi.fn(),
+        findFirst: vi.fn().mockResolvedValue(null), // not already reversed by default
         create: journalEntryCreate,
         update: journalEntryUpdate,
+        count: vi.fn(),
+      },
+      journalLine: {
+        findMany: vi.fn(),
         count: vi.fn(),
       },
       fiscalYear: {
@@ -607,9 +613,26 @@ describe("accounting.journalEntry.post", () => {
   });
 
   it("posts a draft journal entry", async () => {
-    const existing = { ...sampleJournalEntry, status: "draft" };
-    const posted = { ...existing, status: "posted", postedAt: new Date() };
-    mockDb.journalEntry.findUnique.mockResolvedValue(existing);
+    const existingWithLines = {
+      ...sampleJournalEntry,
+      status: "draft",
+      fiscalYearId: "cuid-fy-1",
+      date: new Date("2025-06-15"),
+      lines: [
+        { id: "jl-1", accountId: "cuid-acc-1", debit: "1000.00", credit: "0.00" },
+        { id: "jl-2", accountId: "cuid-acc-2", debit: "0.00",    credit: "1000.00" },
+      ],
+    };
+    const posted = { ...existingWithLines, status: "posted", postedAt: new Date(), postedById: "user-1" };
+    mockDb.journalEntry.findUnique.mockResolvedValue(existingWithLines);
+    mockDb.account.findMany.mockResolvedValue([
+      { id: "cuid-acc-1", tenantId: "acme-tenant-id", name: "Cash",    isActive: true },
+      { id: "cuid-acc-2", tenantId: "acme-tenant-id", name: "Revenue", isActive: true },
+    ]);
+    mockDb.fiscalYear.findUnique.mockResolvedValue({
+      id: "cuid-fy-1", tenantId: "acme-tenant-id", isClosed: false,
+      startDate: new Date("2025-01-01"), endDate: new Date("2025-12-31"),
+    });
     mockDb.journalEntry.update.mockResolvedValue(posted);
 
     const caller = createCaller(authenticatedCtx());
@@ -665,16 +688,16 @@ describe("accounting.journalEntry.reverse", () => {
       id: "cuid-je-rev",
       entryNumber: "JE-0002",
       status: "posted",
+      reversalOfId: "cuid-je-1",
       referenceType: "reversal",
       referenceId: "cuid-je-1",
       description: "Reversal of Initial cash deposit",
     };
-    const voided = { ...postedEntry, status: "void" };
 
     mockDb.journalEntry.findUnique.mockResolvedValue(postedEntry);
+    mockDb.journalEntry.findFirst.mockResolvedValue(null); // not already reversed
     mockDb.journalEntry.count.mockResolvedValue(1);
     mockDb.journalEntry.create.mockResolvedValue(reversalEntry);
-    mockDb.journalEntry.update.mockResolvedValue(voided);
 
     const caller = createCaller(authenticatedCtx());
     const result = await caller.accounting.journalEntry.reverse({ id: "cuid-je-1" });
@@ -682,6 +705,7 @@ describe("accounting.journalEntry.reverse", () => {
     expect(result.id).toBe("cuid-je-rev");
     expect(result.referenceType).toBe("reversal");
     expect(result.referenceId).toBe("cuid-je-1");
+    expect(result.reversalOfId).toBe("cuid-je-1");
 
     // Verify reversal was created with swapped debits/credits
     const createCall = mockDb.journalEntry.create.mock.calls[0] as [
@@ -693,12 +717,10 @@ describe("accounting.journalEntry.reverse", () => {
     expect(createdLines[1]?.debit).toBe(1000);
     expect(createdLines[1]?.credit).toBe(0);
 
-    // Verify original was marked void
-    const updateCall = mockDb.journalEntry.update.mock.calls[0] as [
-      { where: { id: string }; data: { status: string } },
-    ];
-    expect(updateCall[0].where.id).toBe("cuid-je-1");
-    expect(updateCall[0].data.status).toBe("void");
+    // Verify original was NOT voided (stays "posted" per DECISIONS_LOG §A)
+    const updateCalls = mockDb.journalEntry.update.mock.calls as Array<[{ where: { id: string }; data: { status: string } }]>;
+    const voidCall = updateCalls.find((call) => call[0]?.data?.status === "void");
+    expect(voidCall).toBeUndefined();
   });
 
   it("throws NOT_FOUND when journal entry does not exist", async () => {

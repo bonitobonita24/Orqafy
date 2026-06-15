@@ -3,6 +3,15 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
 import { prisma as db, writeAuditLog } from "@orqafy/db";
 
+// Accountant-scoped write procedure — blocks demo tenants AND enforces Accountant/Administrator role
+const accountantWriteProcedure = writeProcedure.use(({ ctx, next }) => {
+  const allowed = ["Administrator", "Accountant"];
+  if (!ctx.roles.some((r) => allowed.includes(r))) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Requires Administrator or Accountant role." });
+  }
+  return next({ ctx });
+});
+
 async function loadAccountForTenant(id: string, ctx: { tenantId: string }) {
   const a = await db.account.findUnique({ where: { id } });
   if (!a || a.tenantId !== ctx.tenantId) {
@@ -353,80 +362,216 @@ const journalEntryRouter = createTRPCRouter({
       });
     }),
 
-  // HOLD(owner-rule): posting journals to ledger — requires owner to define posting rules,
-  // GL rollup strategy, and fiscal period validation. Do not implement until owner supplies rules.
-  post: writeProcedure
+  post: accountantWriteProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
-      const existing = await loadJournalEntryForTenant(input.id, ctx);
+      // Load entry with lines (tenant-scoped)
+      const existing = await loadJournalEntryForTenant(input.id, ctx, true) as Awaited<ReturnType<typeof loadJournalEntryForTenant>> & {
+        lines: Array<{ accountId: string; debit: unknown; credit: unknown }>;
+      };
+
+      // Guard: must be draft
       if (existing.status !== "draft") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft journal entries can be posted." });
+      }
+
+      const lines = (existing as { lines: Array<{ accountId: string; debit: unknown; credit: unknown }> }).lines;
+
+      // Guard: ≥2 lines
+      if (lines.length < 2) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Journal entry must have at least 2 lines." });
+      }
+
+      // Guard: balanced (Σdebit == Σcredit)
+      const sumDebit = lines.reduce((s, l) => s + Number(l.debit), 0);
+      const sumCredit = lines.reduce((s, l) => s + Number(l.credit), 0);
+      if (Math.abs(sumDebit - sumCredit) > 0.001) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Only draft journal entries can be posted.",
+          message: `Unbalanced entry: debits ${sumDebit.toFixed(2)} ≠ credits ${sumCredit.toFixed(2)}.`,
         });
       }
-      return db.journalEntry.update({
-        where: { id: input.id },
-        data: {
-          status: "posted",
-          postedAt: new Date(),
-        },
+
+      // Guard: all accounts active
+      const accountIds = [...new Set(lines.map((l) => l.accountId))];
+      const accounts = await db.account.findMany({
+        where: { id: { in: accountIds }, tenantId: ctx.tenantId },
+      });
+      const inactive = accounts.filter((a) => !a.isActive);
+      if (inactive.length > 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Accounts inactive: ${inactive.map((a) => a.name).join(", ")}`,
+        });
+      }
+
+      // Guard: fiscal year open and entry date within range
+      const fy = await loadFiscalYearForTenant(existing.fiscalYearId, ctx);
+      if (fy.isClosed) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot post to a closed fiscal year." });
+      }
+      const entryDate = existing.date;
+      if (entryDate < fy.startDate || entryDate > fy.endDate) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Entry date is outside the fiscal year range.",
+        });
+      }
+
+      return db.$transaction(async (tx) => {
+        const updated = await tx.journalEntry.update({
+          where: { id: input.id },
+          data: { status: "posted", postedAt: new Date(), postedById: ctx.userId },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "POST",
+          entity: "JournalEntry",
+          entityId: input.id,
+          before: { status: "draft" },
+          after: { status: "posted", postedAt: updated.postedAt },
+        });
+        return updated;
       });
     }),
 
-  // HOLD(owner-rule): journal reversal — requires posted status (linked to posting rules above).
-  // Reversal creates a counter-entry and marks original void. Hold until posting rules are defined.
-  reverse: writeProcedure
+  reverse: accountantWriteProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
-      const existing = await db.journalEntry.findUnique({
-        where: { id: input.id },
-        include: { lines: true },
-      });
-      if (!existing || existing.tenantId !== ctx.tenantId) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
+      const existing = await loadJournalEntryForTenant(input.id, ctx, true) as Awaited<ReturnType<typeof loadJournalEntryForTenant>> & {
+        lines: Array<{ accountId: string; debit: unknown; credit: unknown; description: string | null }>;
+      };
+
+      // Guard: must be posted
       if (existing.status !== "posted") {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Only posted journal entries can be reversed.",
-        });
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only posted entries can be reversed." });
       }
 
+      // Guard: not already reversed
+      const alreadyReversed = await db.journalEntry.findFirst({
+        where: { reversalOfId: input.id, tenantId: ctx.tenantId },
+      });
+      if (alreadyReversed) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This entry has already been reversed." });
+      }
+
+      const lines = (existing as { lines: Array<{ accountId: string; debit: unknown; credit: unknown; description: string | null }> }).lines;
       const entryCount = await db.journalEntry.count({ where: { tenantId: ctx.tenantId } });
       const entryNumber = `JE-${String(entryCount + 1).padStart(4, "0")}`;
 
-      const reversal = await db.journalEntry.create({
-        data: {
-          tenantId: ctx.tenantId,
-          entryNumber,
-          fiscalYearId: existing.fiscalYearId,
-          date: new Date(),
-          description: `Reversal of ${existing.description}`,
-          referenceType: "reversal",
-          referenceId: existing.id,
-          status: "posted",
-          postedAt: new Date(),
-          createdById: ctx.userId ?? "system",
-          lines: {
-            create: existing.lines.map((line) => ({
-              tenantId: ctx.tenantId,
-              accountId: line.accountId,
-              debit: Number(line.credit),
-              credit: Number(line.debit),
-              description: line.description,
-            })),
+      return db.$transaction(async (tx) => {
+        const reversal = await tx.journalEntry.create({
+          data: {
+            tenantId: ctx.tenantId,
+            entryNumber,
+            fiscalYearId: existing.fiscalYearId,
+            date: new Date(),
+            description: `Reversal of ${existing.description}`,
+            referenceType: "reversal",
+            referenceId: existing.id,
+            reversalOfId: existing.id,
+            status: "posted",
+            postedAt: new Date(),
+            postedById: ctx.userId,
+            createdById: ctx.userId ?? "system",
+            lines: {
+              create: lines.map((line) => ({
+                tenantId: ctx.tenantId,
+                accountId: line.accountId,
+                debit: Number(line.credit),
+                credit: Number(line.debit),
+                description: line.description,
+              })),
+            },
           },
+          include: { lines: true },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "REVERSE",
+          entity: "JournalEntry",
+          entityId: input.id,
+          before: { status: "posted" },
+          after: { reversedBy: reversal.id },
+        });
+        // NOTE: original stays POSTED — do NOT update its status
+        return reversal;
+      });
+    }),
+
+  trialBalance: protectedProcedure
+    .input(z.object({ fiscalYearId: z.string().min(1).optional() }))
+    .query(async ({ input, ctx }) => {
+      const where = {
+        tenantId: ctx.tenantId,
+        journalEntry: {
+          status: "posted" as const,
+          tenantId: ctx.tenantId,
+          ...(input.fiscalYearId !== undefined ? { fiscalYearId: input.fiscalYearId } : {}),
         },
-        include: { lines: true },
+      };
+      const lines = await db.journalLine.findMany({
+        where,
+        include: {
+          account: { select: { id: true, code: true, name: true, type: true } },
+        },
       });
 
-      await db.journalEntry.update({
-        where: { id: existing.id },
-        data: { status: "void" },
-      });
+      // Aggregate per account
+      const byAccount = new Map<string, { account: { id: string; code: string; name: string; type: string }; debit: number; credit: number }>();
+      for (const line of lines) {
+        const existing = byAccount.get(line.accountId) ?? { account: line.account, debit: 0, credit: 0 };
+        byAccount.set(line.accountId, {
+          account: line.account,
+          debit: existing.debit + Number(line.debit),
+          credit: existing.credit + Number(line.credit),
+        });
+      }
 
-      return reversal;
+      const rows = Array.from(byAccount.values())
+        .map((r) => ({ ...r, balance: r.debit - r.credit }))
+        .sort((a, b) => a.account.code.localeCompare(b.account.code));
+
+      const totalDebit = rows.reduce((s, r) => s + r.debit, 0);
+      const totalCredit = rows.reduce((s, r) => s + r.credit, 0);
+      return { rows, totalDebit, totalCredit, isBalanced: Math.abs(totalDebit - totalCredit) < 0.01 };
+    }),
+
+  generalLedger: protectedProcedure
+    .input(
+      z.object({
+        accountId: z.string().min(1),
+        fiscalYearId: z.string().min(1).optional(),
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(200).default(50),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      await loadAccountForTenant(input.accountId, ctx);
+      const where = {
+        tenantId: ctx.tenantId,
+        accountId: input.accountId,
+        journalEntry: {
+          status: "posted" as const,
+          tenantId: ctx.tenantId,
+          ...(input.fiscalYearId !== undefined ? { fiscalYearId: input.fiscalYearId } : {}),
+        },
+      };
+      const [lines, total] = await Promise.all([
+        db.journalLine.findMany({
+          where,
+          skip: (input.page - 1) * input.limit,
+          take: input.limit,
+          orderBy: { journalEntry: { date: "asc" } },
+          include: {
+            journalEntry: {
+              select: { id: true, entryNumber: true, date: true, description: true },
+            },
+          },
+        }),
+        db.journalLine.count({ where }),
+      ]);
+      return { lines, total, page: input.page, limit: input.limit };
     }),
 });
 
