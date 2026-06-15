@@ -4,59 +4,55 @@
 
 @layer base {
   :root {
-    /* ── VoltAgent dark theme — mapped to shadcn/ui CSS variable system ── */
+    /* ── shadcn/ui default dark theme — neutral base ── */
 
-    /* Surfaces */
-    --background: 240 6% 3%;        /* Abyss Black #050507 */
-    --foreground: 0 0% 95%;         /* Snow White #f2f2f2 */
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
 
-    --card: 0 0% 6%;                /* Carbon Surface #101010 */
-    --card-foreground: 0 0% 95%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 6%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
 
-    /* Brand accent — Emerald Signal Green #00d992 */
-    --primary: 161 100% 43%;
-    --primary-foreground: 240 6% 3%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
 
-    /* Muted elements */
-    --secondary: 0 0% 6%;
-    --secondary-foreground: 36 4% 70%; /* Warm Parchment #b8b3b0 */
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 0 0% 8%;
-    --muted-foreground: 214 12% 56%;  /* Steel Slate #8b949e */
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
 
-    /* Accent (same as primary for VoltAgent single-accent identity) */
-    --accent: 161 100% 43%;
-    --accent-foreground: 240 6% 3%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
 
-    /* Destructive — Danger Coral #fb565b */
-    --destructive: 358 94% 66%;
-    --destructive-foreground: 0 0% 95%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
 
-    /* Border — Warm Charcoal #3d3a39 */
-    --border: 13 4% 23%;
-    --input: 13 4% 23%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
 
-    /* Focus ring — Signal Green */
-    --ring: 161 100% 43%;
-
-    /* Border radius scale (shadcn default = 0.5rem; VoltAgent uses 8px cards) */
     --radius: 0.5rem;
 
-    /* Sidebar (shadcn sidebar primitive variables) */
-    --sidebar-background: 0 0% 6%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 161 100% 43%;
-    --sidebar-primary-foreground: 240 6% 3%;
-    --sidebar-accent: 0 0% 8%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 13 4% 23%;
-    --sidebar-ring: 161 100% 43%;
-  }
+    /* Chart tokens — shadcn dark stock */
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
 
-  /* VoltAgent is dark-first — no separate .dark class overrides needed */
+    /* Sidebar — neutral dark to match stock theme */
+    --sidebar-background: 0 0% 3.9%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 0 0% 98%;
+    --sidebar-primary-foreground: 0 0% 9%;
+    --sidebar-accent: 0 0% 14.9%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 14.9%;
+    --sidebar-ring: 0 0% 83.1%;
+  }
 }
 
 @layer base {
@@ -78,17 +74,7 @@
 }
 
 @layer utilities {
-  /* Signal Glow — pulsing emerald drop-shadow for brand elements */
-  @keyframes signal-glow {
-    0%, 100% { filter: drop-shadow(0 0 2px #00d992); }
-    50%       { filter: drop-shadow(0 0 8px #00d992); }
-  }
-
-  .signal-glow {
-    animation: signal-glow 2.5s ease-in-out infinite;
-  }
-
-  /* Typography weight utilities mapped to VoltAgent's weight system */
+  /* Typography weight utilities */
   .w-510 { font-weight: 500; }
   .w-590 { font-weight: 600; }
 

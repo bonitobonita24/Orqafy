@@ -72,7 +72,7 @@ export default async function POSNewSalePage({
         <h1 className="mt-2 text-2xl font-bold tracking-tight">New Sale</h1>
         <p className="text-sm text-muted-foreground">
           Ring up products, accept payment, and the sale will post to{" "}
-          <code className="font-mono text-[#00d992]">pos.sale.create</code>{" "}
+          <code className="font-mono text-primary">pos.sale.create</code>{" "}
           atomically with inventory decrement.
         </p>
       </div>

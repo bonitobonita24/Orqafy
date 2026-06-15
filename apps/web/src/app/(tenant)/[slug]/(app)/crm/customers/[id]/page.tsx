@@ -55,7 +55,7 @@ const TIER_LABELS: Record<string, string> = {
 const TIER_COLORS: Record<string, string> = {
   regular: "text-muted-foreground bg-muted border-border",
   vip: "text-yellow-400 bg-yellow-400/10 border-yellow-400/30",
-  authorized_dealer: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
+  authorized_dealer: "text-primary bg-primary/10 border-primary/30",
 };
 
 interface Props {
@@ -109,7 +109,7 @@ export default async function CustomerDetailPage({ params }: Props) {
             {tierLabel}
           </span>
           {customer.isActive ? (
-            <span className="rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992]">
+            <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
               Active
             </span>
           ) : (

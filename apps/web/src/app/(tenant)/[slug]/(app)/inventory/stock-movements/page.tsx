@@ -12,7 +12,7 @@ const TYPE_OPTIONS = ["all", "in", "out", "transfer", "adjustment"] as const;
 type TypeOption = (typeof TYPE_OPTIONS)[number];
 
 const TYPE_STYLES: Record<string, string> = {
-  in: "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992]",
+  in: "border-primary/30 bg-primary/10 text-primary",
   out: "border-orange-500/30 bg-orange-500/10 text-orange-600 dark:text-orange-400",
   transfer: "border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400",
   adjustment: "border-purple-500/30 bg-purple-500/10 text-purple-600 dark:text-purple-400",
@@ -158,16 +158,16 @@ export default async function StockMovementsPage({
       </div>
 
       {product !== null && (
-        <div className="flex items-center justify-between rounded-md border border-[#00d992]/30 bg-[#00d992]/10 px-4 py-2 text-sm">
-          <span className="text-[#00d992]">
+        <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/10 px-4 py-2 text-sm">
+          <span className="text-primary">
             Filtered by product: <span className="font-medium">{product.name}</span>
             {product.sku !== null && (
-              <span className="ml-2 text-xs text-[#00d992]/80">{product.sku}</span>
+              <span className="ml-2 text-xs text-primary/80">{product.sku}</span>
             )}
           </span>
           <Link
             href={clearProductHref}
-            className="text-xs font-medium text-[#00d992] underline-offset-2 hover:underline"
+            className="text-xs font-medium text-primary underline-offset-2 hover:underline"
           >
             Clear
           </Link>
@@ -184,7 +184,7 @@ export default async function StockMovementsPage({
                 href={buildHref(t)}
                 className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                   isActive
-                    ? "border-[#00d992] bg-[#00d992]/10 text-[#00d992]"
+                    ? "border-primary bg-primary/10 text-primary"
                     : "border-border bg-card text-muted-foreground hover:bg-muted/30"
                 }`}
               >

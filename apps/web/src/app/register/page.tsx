@@ -32,8 +32,8 @@ export default async function RegisterPage({
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-md space-y-6">
         <div className="space-y-2 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg border border-[#00d992] bg-card signal-glow">
-            <span className="text-2xl font-bold text-[#00d992]">O</span>
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg border border-primary bg-card signal-glow">
+            <span className="text-2xl font-bold text-primary">O</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Create your workspace</h1>
           <p className="text-sm text-muted-foreground">
@@ -45,7 +45,7 @@ export default async function RegisterPage({
         </div>
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <a href="/login" className="text-[#00d992] hover:underline">
+          <a href="/login" className="text-primary hover:underline">
             Sign in
           </a>
         </p>

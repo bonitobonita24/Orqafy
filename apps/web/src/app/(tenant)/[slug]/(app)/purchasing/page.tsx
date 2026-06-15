@@ -20,8 +20,8 @@ const STATUS_BADGE: Record<string, string> = {
   pending_approval: "border-amber-500/30 bg-amber-500/10 text-amber-400",
   approved: "border-blue-500/30 bg-blue-500/10 text-blue-400",
   ordered: "border-purple-500/30 bg-purple-500/10 text-purple-400",
-  partially_received: "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992]",
-  received: "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992]",
+  partially_received: "border-primary/30 bg-primary/10 text-primary",
+  received: "border-primary/30 bg-primary/10 text-primary",
   cancelled: "border-red-500/30 bg-red-500/10 text-red-400",
 };
 
@@ -89,7 +89,7 @@ export default async function PurchaseOrdersPage({
             href={`?status=${tab.key}`}
             className={`rounded px-3 py-1 text-sm transition-colors ${
               activeStatus === tab.key
-                ? "bg-[#00d992]/10 text-[#00d992]"
+                ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -125,7 +125,7 @@ export default async function PurchaseOrdersPage({
                   <td className="px-4 py-3">
                     <Link
                       href={`purchasing/orders/${order.id}`}
-                      className="font-mono text-xs font-medium text-[#00d992] hover:underline"
+                      className="font-mono text-xs font-medium text-primary hover:underline"
                     >
                       {order.poNumber}
                     </Link>

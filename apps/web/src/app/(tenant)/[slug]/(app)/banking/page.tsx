@@ -145,7 +145,7 @@ function KPICard({
 }) {
   const toneClass =
     tone === "positive"
-      ? "text-[#00d992]"
+      ? "text-primary"
       : tone === "negative"
         ? "text-red-400"
         : tone === "warning"
@@ -186,14 +186,14 @@ export default async function BankingDashboardPage({
             {" · "}
             <Link
               href={`/${slug}/banking/fund-sources`}
-              className="text-[#00d992] hover:underline"
+              className="text-primary hover:underline"
             >
               Manage sources
             </Link>
             {" · "}
             <Link
               href={`/${slug}/banking/transactions`}
-              className="text-[#00d992] hover:underline"
+              className="text-primary hover:underline"
             >
               All transactions
             </Link>
@@ -242,7 +242,7 @@ export default async function BankingDashboardPage({
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
               Income (incl. refunds)
             </p>
-            <p className="mt-2 text-xl font-semibold text-[#00d992]">
+            <p className="mt-2 text-xl font-semibold text-primary">
               {formatPHP(data.thisMonthIncome)}
             </p>
           </div>
@@ -261,7 +261,7 @@ export default async function BankingDashboardPage({
             <p
               className={`mt-2 text-xl font-semibold ${
                 data.thisMonthIncome - data.thisMonthExpense >= 0
-                  ? "text-[#00d992]"
+                  ? "text-primary"
                   : "text-red-400"
               }`}
             >
@@ -287,7 +287,7 @@ export default async function BankingDashboardPage({
             No active fund sources. Add one in{" "}
             <Link
               href={`/${slug}/banking/fund-sources`}
-              className="text-[#00d992] hover:underline"
+              className="text-primary hover:underline"
             >
               fund sources
             </Link>
@@ -322,7 +322,7 @@ export default async function BankingDashboardPage({
                     </td>
                     <td
                       className={`px-4 py-2 text-right font-mono text-xs ${
-                        isLiability ? "text-orange-400" : "text-[#00d992]"
+                        isLiability ? "text-orange-400" : "text-primary"
                       }`}
                     >
                       {formatPHP(displayBalance)}
@@ -375,7 +375,7 @@ export default async function BankingDashboardPage({
                 const sign = dir === "in" ? "+" : dir === "out" ? "−" : "";
                 const amtColor =
                   dir === "in"
-                    ? "text-[#00d992]"
+                    ? "text-primary"
                     : dir === "out"
                       ? "text-red-400"
                       : "text-muted-foreground";

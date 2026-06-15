@@ -383,7 +383,7 @@ export function CheckoutForm({
           <button
             type="submit"
             disabled={disabled || state.items.length === 0 || turnstileToken === ""}
-            className="mt-5 w-full rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-4 py-3 text-sm font-medium text-[#00d992] transition hover:bg-[#00d992]/20 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-5 w-full rounded-md border border-primary/40 bg-primary/10 px-4 py-3 text-sm font-medium text-primary transition hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {placeOrder.isPending ? "Placing order…" : "Place order"}
           </button>

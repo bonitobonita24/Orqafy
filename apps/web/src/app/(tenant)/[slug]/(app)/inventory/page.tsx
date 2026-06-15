@@ -70,7 +70,7 @@ export default async function InventoryPage({ params }: PageProps) {
           </Link>
           <Link
             href={`/${slug}/inventory/products/new`}
-            className="rounded-md border border-[#00d992] bg-[#00d992]/10 px-3 py-2 text-sm font-medium text-[#00d992] transition-colors hover:bg-[#00d992]/20"
+            className="rounded-md border border-primary bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
           >
             + Add Product
           </Link>
@@ -83,7 +83,7 @@ export default async function InventoryPage({ params }: PageProps) {
             No products yet.{" "}
             <Link
               href={`/${slug}/inventory/products/new`}
-              className="text-[#00d992] hover:underline"
+              className="text-primary hover:underline"
             >
               Add one
             </Link>
@@ -111,7 +111,7 @@ export default async function InventoryPage({ params }: PageProps) {
                     <Link
                       href={`/${slug}/inventory/stock-movements?productId=${p.id}`}
                       title="View stock movements for this product"
-                      className="font-medium transition-colors hover:text-[#00d992]"
+                      className="font-medium transition-colors hover:text-primary"
                     >
                       {p.name}
                     </Link>
@@ -139,7 +139,7 @@ export default async function InventoryPage({ params }: PageProps) {
                   <td className="px-4 py-3">
                     <Link
                       href={`/${slug}/inventory/products/${p.id}/edit`}
-                      className="text-xs text-muted-foreground transition-colors hover:text-[#00d992]"
+                      className="text-xs text-muted-foreground transition-colors hover:text-primary"
                     >
                       Edit
                     </Link>

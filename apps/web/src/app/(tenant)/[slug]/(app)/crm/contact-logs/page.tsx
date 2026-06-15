@@ -13,7 +13,7 @@ type ContactLogType = (typeof CONTACT_LOG_TYPES)[number];
 const TYPE_COLORS: Record<ContactLogType, string> = {
   call: "text-sky-400 bg-sky-400/10 border-sky-400/30",
   email: "text-purple-400 bg-purple-400/10 border-purple-400/30",
-  meeting: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
+  meeting: "text-primary bg-primary/10 border-primary/30",
   note: "text-muted-foreground bg-muted border-border",
 };
 
@@ -146,7 +146,7 @@ export default async function ContactLogsPage({ params, searchParams }: PageProp
           href={buildFilterHref(slug, { customerId })}
           className={`rounded-full border px-3 py-1 text-xs font-medium ${
             type === undefined
-              ? "border-[#00d992] bg-[#00d992]/10 text-[#00d992]"
+              ? "border-primary bg-primary/10 text-primary"
               : "border-border bg-card text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -216,7 +216,7 @@ export default async function ContactLogsPage({ params, searchParams }: PageProp
                       {log.customer !== null ? (
                         <Link
                           href={`/${slug}/crm/customers/${log.customer.id}`}
-                          className="text-[#00d992] hover:underline"
+                          className="text-primary hover:underline"
                         >
                           {customerLabel(log.customer)}
                         </Link>

@@ -24,7 +24,7 @@ const STATUS_BADGE: Record<string, string> = {
   open: "border-blue-500/30 bg-blue-500/10 text-blue-400",
   in_progress: "border-amber-500/30 bg-amber-500/10 text-amber-400",
   waiting: "border-purple-500/30 bg-purple-500/10 text-purple-400",
-  resolved: "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992]",
+  resolved: "border-primary/30 bg-primary/10 text-primary",
   closed: "border-border bg-muted text-muted-foreground",
 };
 
@@ -97,7 +97,7 @@ export default async function SupportTicketsPage({
             href={`?status=${tab.key}`}
             className={`rounded px-3 py-1 text-sm transition-colors ${
               activeStatus === tab.key
-                ? "bg-[#00d992]/10 text-[#00d992]"
+                ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -133,7 +133,7 @@ export default async function SupportTicketsPage({
                   <td className="px-4 py-3">
                     <Link
                       href={`support/${t.id}`}
-                      className="font-mono text-xs font-medium text-[#00d992] hover:underline"
+                      className="font-mono text-xs font-medium text-primary hover:underline"
                     >
                       {t.ticketNumber}
                     </Link>

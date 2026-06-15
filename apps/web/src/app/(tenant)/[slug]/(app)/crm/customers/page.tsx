@@ -35,7 +35,7 @@ const TIER_LABELS: Record<string, string> = {
 const TIER_COLORS: Record<string, string> = {
   regular: "text-muted-foreground bg-muted border-border",
   vip: "text-yellow-400 bg-yellow-400/10 border-yellow-400/30",
-  authorized_dealer: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
+  authorized_dealer: "text-primary bg-primary/10 border-primary/30",
 };
 
 export default async function CustomersPage({
@@ -63,7 +63,7 @@ export default async function CustomersPage({
         </div>
         <Link
           href={`/${slug}/crm/customers/new`}
-          className="rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20"
+          className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
         >
           + New Customer
         </Link>
@@ -112,7 +112,7 @@ export default async function CustomersPage({
                       >
                         {c.companyName !== null ? (
                           <>
-                            <div className="font-medium text-[#00d992]">
+                            <div className="font-medium text-primary">
                               {c.companyName}
                             </div>
                             <div className="text-xs text-muted-foreground">
@@ -120,7 +120,7 @@ export default async function CustomersPage({
                             </div>
                           </>
                         ) : (
-                          <div className="font-medium text-[#00d992]">
+                          <div className="font-medium text-primary">
                             {fullName}
                           </div>
                         )}
@@ -147,7 +147,7 @@ export default async function CustomersPage({
                     </td>
                     <td className="px-4 py-3">
                       {c.isActive ? (
-                        <span className="rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992]">
+                        <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                           Active
                         </span>
                       ) : (

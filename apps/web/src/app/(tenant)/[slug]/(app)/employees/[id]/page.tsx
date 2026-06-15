@@ -80,7 +80,7 @@ export default async function EmployeeDetailPage({
               Terminated
             </span>
           ) : (
-            <span className="rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-3 py-1 text-xs font-medium text-[#00d992]">
+            <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
               Active
             </span>
           )}

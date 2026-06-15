@@ -82,7 +82,7 @@ export function FulfillmentForm({
             onChange={(e) => setTrackingNumber(e.target.value)}
             placeholder="e.g. LBC-123456789"
             maxLength={200}
-            className="mt-1 block w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#00d992]"
+            className="mt-1 block w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </label>
         <label className="block">
@@ -95,7 +95,7 @@ export function FulfillmentForm({
             onChange={(e) => setPaymentMethod(e.target.value)}
             placeholder="e.g. bank_transfer, gcash, credit_card"
             maxLength={100}
-            className="mt-1 block w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#00d992]"
+            className="mt-1 block w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </label>
       </div>
@@ -103,7 +103,7 @@ export function FulfillmentForm({
         <button
           type="submit"
           disabled={!dirty || update.isPending}
-          className="rounded-md border border-[#00d992] bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-md border border-primary bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {update.isPending ? "Saving…" : "Save fulfillment"}
         </button>

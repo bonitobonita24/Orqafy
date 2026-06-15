@@ -23,10 +23,10 @@ const STATUS_COLORS: Record<string, string> = {
   received: "text-sky-400 bg-sky-400/10 border-sky-400/30",
   diagnosing: "text-amber-400 bg-amber-400/10 border-amber-400/30",
   quoted: "text-purple-400 bg-purple-400/10 border-purple-400/30",
-  approved: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
+  approved: "text-primary bg-primary/10 border-primary/30",
   in_progress: "text-sky-400 bg-sky-400/10 border-sky-400/30",
   testing: "text-orange-400 bg-orange-400/10 border-orange-400/30",
-  completed: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
+  completed: "text-primary bg-primary/10 border-primary/30",
   released: "text-muted-foreground bg-muted border-border",
   cancelled: "text-red-400 bg-red-400/10 border-red-400/30",
 };

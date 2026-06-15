@@ -69,11 +69,11 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  deposit: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
-  income: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
-  transfer_in: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
-  loan_payback: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
-  credit_card_payment: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
+  deposit: "text-primary bg-primary/10 border-primary/30",
+  income: "text-primary bg-primary/10 border-primary/30",
+  transfer_in: "text-primary bg-primary/10 border-primary/30",
+  loan_payback: "text-primary bg-primary/10 border-primary/30",
+  credit_card_payment: "text-primary bg-primary/10 border-primary/30",
   withdrawal: "text-red-400 bg-red-400/10 border-red-400/30",
   expense: "text-red-400 bg-red-400/10 border-red-400/30",
   transfer_out: "text-orange-400 bg-orange-400/10 border-orange-400/30",
@@ -250,7 +250,7 @@ export default async function TransactionsLedgerPage({ searchParams }: PageProps
                     </td>
                     <td
                       className={`px-4 py-3 text-right font-mono text-xs ${
-                        isCredit ? "text-[#00d992]" : "text-red-400"
+                        isCredit ? "text-primary" : "text-red-400"
                       }`}
                     >
                       {isCredit ? "+" : "-"}

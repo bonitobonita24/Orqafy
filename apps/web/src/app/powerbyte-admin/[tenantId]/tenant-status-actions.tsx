@@ -138,7 +138,7 @@ export function TenantStatusActions({
           <DialogTrigger asChild>
             <button
               type="button"
-              className="rounded-md bg-[#00d992] px-4 py-2 text-sm font-semibold text-background transition-all hover:bg-[#2fd6a1]"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-background transition-all hover:bg-primary"
             >
               Reactivate workspace
             </button>
@@ -186,7 +186,7 @@ export function TenantStatusActions({
                 disabled={
                   reactivate.isPending || reactivateReason.trim().length === 0
                 }
-                className="bg-[#00d992] text-gray-950 hover:bg-[#2fd6a1]"
+                className="bg-primary text-primary-foreground hover:bg-primary"
               >
                 {reactivate.isPending ? "Reactivating…" : "Confirm Reactivate"}
               </Button>

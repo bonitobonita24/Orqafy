@@ -26,7 +26,7 @@ interface CreditPanelProps {
 }
 
 const inputCls =
-  "w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-[#00d992] focus:outline-none";
+  "w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none";
 
 function fmt(n: number) {
   return `₱${n.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
@@ -89,7 +89,7 @@ function CreditUpsertDialog({
       <DialogTrigger asChild>
         <button
           type="button"
-          className="rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20"
+          className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
         >
           {isNew ? "Configure Credit" : "Edit Credit"}
         </button>
@@ -123,7 +123,7 @@ function CreditUpsertDialog({
               type="checkbox"
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
-              className="accent-[#00d992]"
+              className="accent-primary"
             />
             Credit account active
           </label>
@@ -141,7 +141,7 @@ function CreditUpsertDialog({
             type="button"
             disabled={upsert.isPending}
             onClick={submit}
-            className="rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {upsert.isPending ? "Saving…" : "Save"}
           </button>
@@ -184,7 +184,7 @@ function CreditToggleDialog({
           className={
             isActive
               ? "rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
-              : "rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20"
+              : "rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
           }
         >
           {isActive ? "Deactivate Credit" : "Activate Credit"}
@@ -216,7 +216,7 @@ function CreditToggleDialog({
             className={
               isActive
                 ? "rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-                : "rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20 disabled:cursor-not-allowed disabled:opacity-50"
+                : "rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
             }
           >
             {toggle.isPending
@@ -273,7 +273,7 @@ export function CreditPanel({ customerId, creditAccount }: CreditPanelProps) {
             <dt className="text-xs text-muted-foreground">Status</dt>
             <dd className="mt-0.5">
               {creditAccount.isActive ? (
-                <span className="rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992]">
+                <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                   Active
                 </span>
               ) : (

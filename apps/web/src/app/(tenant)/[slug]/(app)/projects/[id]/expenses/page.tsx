@@ -165,7 +165,7 @@ export default async function ProjectExpensesPage({
       <div>
         <Link
           href={`/${slug}/projects/${id}?tab=expenses`}
-          className="text-sm text-muted-foreground hover:text-[#00d992] transition-colors"
+          className="text-sm text-muted-foreground hover:text-primary transition-colors"
         >
           ← {project.projectNumber} — {project.name}
         </Link>
@@ -183,7 +183,7 @@ export default async function ProjectExpensesPage({
             <p className="text-xs text-muted-foreground uppercase tracking-wide">
               {typeFilter !== undefined ? "Filtered total" : "Total spent"}
             </p>
-            <p className="text-2xl font-bold text-[#00d992]">
+            <p className="text-2xl font-bold text-primary">
               {totalAmount !== null ? formatAmount(totalAmount) : "₱0.00"}
             </p>
           </div>
@@ -196,8 +196,8 @@ export default async function ProjectExpensesPage({
           href={buildPageUrl(1)}
           className={`px-3 py-1 rounded-full text-sm border transition-colors ${
             typeFilter === undefined
-              ? "bg-[#00d992] text-[#050507] border-[#00d992]"
-              : "bg-muted border-border hover:border-[#00d992]/50"
+              ? "bg-primary text-[#050507] border-primary"
+              : "bg-muted border-border hover:border-primary/50"
           }`}
         >
           All ({allCount})
@@ -208,8 +208,8 @@ export default async function ProjectExpensesPage({
             href={buildPageUrl(1, t)}
             className={`px-3 py-1 rounded-full text-sm border transition-colors ${
               typeFilter === t
-                ? "bg-[#00d992] text-[#050507] border-[#00d992]"
-                : "bg-muted border-border hover:border-[#00d992]/50"
+                ? "bg-primary text-[#050507] border-primary"
+                : "bg-muted border-border hover:border-primary/50"
             }`}
           >
             {EXPENSE_TYPE_LABELS[t] ?? t} ({typeCounts[t] ?? 0})
@@ -285,7 +285,7 @@ export default async function ProjectExpensesPage({
             {page > 1 && (
               <Link
                 href={buildPageUrl(page - 1, typeFilter)}
-                className="px-3 py-1 rounded border border-border hover:border-[#00d992]/50 transition-colors"
+                className="px-3 py-1 rounded border border-border hover:border-primary/50 transition-colors"
               >
                 ← Previous
               </Link>
@@ -293,7 +293,7 @@ export default async function ProjectExpensesPage({
             {page < totalPages && (
               <Link
                 href={buildPageUrl(page + 1, typeFilter)}
-                className="px-3 py-1 rounded border border-border hover:border-[#00d992]/50 transition-colors"
+                className="px-3 py-1 rounded border border-border hover:border-primary/50 transition-colors"
               >
                 Next →
               </Link>

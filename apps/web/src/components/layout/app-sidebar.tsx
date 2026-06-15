@@ -59,8 +59,8 @@ export function AppSidebar({ slug }: AppSidebarProps) {
       {/* Logo */}
       <div className="flex h-14 items-center gap-2 border-b border-border px-4">
         <span
-          className="flex h-7 w-7 items-center justify-center rounded-md bg-[#00d992]/10 text-base font-bold text-[#00d992]"
-          style={{ filter: "drop-shadow(0 0 4px #00d992)" }}
+          className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-base font-bold text-primary"
+          style={{ filter: "drop-shadow(0 0 4px hsl(var(--ring)))" }}
         >
           O
         </span>
@@ -80,7 +80,7 @@ export function AppSidebar({ slug }: AppSidebarProps) {
                   className={cn(
                     "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors",
                     isActive
-                      ? "bg-[#00d992]/10 text-[#00d992]"
+                      ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >

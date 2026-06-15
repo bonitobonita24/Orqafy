@@ -36,8 +36,8 @@ export default function LoginPage() {
   return (
     <div className="w-full max-w-sm space-y-6">
       <div className="space-y-2 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg border border-[#00d992] bg-card signal-glow">
-          <span className="text-2xl font-bold text-[#00d992]">O</span>
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg border border-primary bg-card signal-glow">
+          <span className="text-2xl font-bold text-primary">O</span>
         </div>
         <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
         <p className="text-sm text-muted-foreground">

@@ -66,7 +66,7 @@ export default async function UsersSettingsPage({
                   {user.isActive ? (
                     <Badge
                       variant="outline"
-                      className="border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992] text-xs"
+                      className="border-primary/30 bg-primary/10 text-primary text-xs"
                     >
                       Active
                     </Badge>

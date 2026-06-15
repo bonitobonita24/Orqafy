@@ -104,7 +104,7 @@ export function RegisterForm({ plans, defaultPlan }: Props) {
 
   const slugBorderColor =
     slugState === "available"
-      ? "border-[#00d992]"
+      ? "border-primary"
       : slugState === "taken" || slugState === "invalid"
         ? "border-destructive"
         : "border-input";
@@ -130,7 +130,7 @@ export function RegisterForm({ plans, defaultPlan }: Props) {
         {slugMessage !== "" && (
           <p
             className={`text-xs ${
-              slugState === "available" ? "text-[#00d992]" : "text-destructive"
+              slugState === "available" ? "text-primary" : "text-destructive"
             }`}
           >
             {slugState === "checking" ? "Checking…" : slugMessage}
@@ -244,7 +244,7 @@ export function RegisterForm({ plans, defaultPlan }: Props) {
       <button
         type="submit"
         disabled={isPending || slugState === "checking" || slug === ""}
-        className="w-full rounded-md bg-[#00d992] px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-[#2fd6a1] disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isPending ? "Creating workspace…" : "Create workspace"}
       </button>

@@ -29,7 +29,7 @@ const ACTIONS_BY_STATUS: Record<OrderStatus, ActionConfig[]> = {
       label: "Confirm",
       pendingLabel: "Confirming…",
       className:
-        "border-[#00d992] bg-[#00d992]/10 text-[#00d992] hover:bg-[#00d992]/20",
+        "border-primary bg-primary/10 text-primary hover:bg-primary/20",
     },
     {
       next: "cancelled",
@@ -77,7 +77,7 @@ const ACTIONS_BY_STATUS: Record<OrderStatus, ActionConfig[]> = {
       label: "Mark delivered",
       pendingLabel: "Marking…",
       className:
-        "border-[#00d992] bg-[#00d992]/10 text-[#00d992] hover:bg-[#00d992]/20",
+        "border-primary bg-primary/10 text-primary hover:bg-primary/20",
     },
   ],
   delivered: [

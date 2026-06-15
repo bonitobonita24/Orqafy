@@ -103,7 +103,7 @@ export function QuickAddContactLog({ customerId }: QuickAddContactLogProps) {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20"
+          className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
         >
           + Log touchpoint
         </button>
@@ -147,7 +147,7 @@ export function QuickAddContactLog({ customerId }: QuickAddContactLogProps) {
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="Brief summary"
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-[#00d992] focus:outline-none"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
               maxLength={255}
             />
           </div>
@@ -161,7 +161,7 @@ export function QuickAddContactLog({ customerId }: QuickAddContactLogProps) {
               onChange={(e) => setBody(e.target.value)}
               placeholder="Details, follow-ups, etc."
               rows={4}
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-[#00d992] focus:outline-none"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
               maxLength={5000}
             />
           </div>
@@ -174,7 +174,7 @@ export function QuickAddContactLog({ customerId }: QuickAddContactLogProps) {
               type="date"
               value={occurredAt}
               onChange={(e) => setOccurredAt(e.target.value)}
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-[#00d992] focus:outline-none"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
             />
           </div>
 
@@ -195,7 +195,7 @@ export function QuickAddContactLog({ customerId }: QuickAddContactLogProps) {
             type="button"
             disabled={create.isPending}
             onClick={submit}
-            className="rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {create.isPending ? "Saving…" : "Save touchpoint"}
           </button>

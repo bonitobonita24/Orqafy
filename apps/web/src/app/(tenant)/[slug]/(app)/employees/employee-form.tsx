@@ -467,7 +467,7 @@ export function EmployeeForm({
         <Button
           type="submit"
           disabled={isPending}
-          className="bg-[#00d992] text-black hover:bg-[#00d992]/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
         >
           {isPending
             ? mode === "create"

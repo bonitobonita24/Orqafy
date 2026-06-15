@@ -42,7 +42,7 @@ export function ProductToggle({ id, name, isActive }: ProductToggleProps) {
           type="button"
           className={`rounded-full border px-2 py-0.5 text-xs font-medium transition-colors hover:opacity-80 ${
             isActive
-              ? "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992]"
+              ? "border-primary/30 bg-primary/10 text-primary"
               : "border-border bg-muted text-muted-foreground"
           }`}
         >
@@ -76,7 +76,7 @@ export function ProductToggle({ id, name, isActive }: ProductToggleProps) {
             className={`rounded-md border px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 ${
               isActive
                 ? "border-red-400/30 bg-red-400/10 text-red-400 hover:bg-red-400/20"
-                : "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992] hover:bg-[#00d992]/20"
+                : "border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
             }`}
           >
             {toggle.isPending

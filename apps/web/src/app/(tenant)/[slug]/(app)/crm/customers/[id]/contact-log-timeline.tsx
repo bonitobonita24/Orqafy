@@ -18,7 +18,7 @@ const TYPE_LABELS: Record<ContactLogType, string> = {
 const TYPE_BADGE: Record<ContactLogType, string> = {
   call: "text-sky-400 bg-sky-400/10 border-sky-400/30",
   email: "text-violet-400 bg-violet-400/10 border-violet-400/30",
-  meeting: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
+  meeting: "text-primary bg-primary/10 border-primary/30",
   note: "text-muted-foreground bg-muted border-border",
 };
 
@@ -192,7 +192,7 @@ function FilterChip({
       onClick={onClick}
       className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
         active
-          ? "border-[#00d992]/40 bg-[#00d992]/10 text-[#00d992]"
+          ? "border-primary/40 bg-primary/10 text-primary"
           : "border-border bg-card text-muted-foreground hover:bg-muted"
       }`}
     >

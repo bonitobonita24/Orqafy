@@ -98,7 +98,7 @@ export default async function SettingsPage({
             <p className="text-xs text-muted-foreground">Status</p>
             <div className="mt-0.5">
               {tenant?.status === "active" ? (
-                <span className="rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992]">
+                <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                   Active
                 </span>
               ) : (
@@ -128,7 +128,7 @@ export default async function SettingsPage({
                 </p>
                 <div className="mt-4 flex justify-end">
                   {card.live ? (
-                    <span className="rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992]">
+                    <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                       Live
                     </span>
                   ) : (

@@ -33,7 +33,7 @@ export function PayWithXendit({
       type="button"
       onClick={() => create.mutate({ orderId })}
       disabled={create.isPending}
-      className="mt-3 inline-flex items-center justify-center rounded-md border border-[#00d992] bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20 disabled:cursor-not-allowed disabled:opacity-50"
+      className="mt-3 inline-flex items-center justify-center rounded-md border border-primary bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {create.isPending ? "Creating invoice…" : "Pay with Xendit"}
     </button>

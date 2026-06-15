@@ -37,7 +37,7 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   confirmed: "text-sky-400 bg-sky-400/10 border-sky-400/30",
   processing: "text-blue-400 bg-blue-400/10 border-blue-400/30",
   shipped: "text-violet-400 bg-violet-400/10 border-violet-400/30",
-  delivered: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
+  delivered: "text-primary bg-primary/10 border-primary/30",
   cancelled: "text-muted-foreground bg-muted border-border",
   refunded: "text-rose-400 bg-rose-400/10 border-rose-400/30",
 };
@@ -151,7 +151,7 @@ export default async function EcommerceOrderDetailPage({ params }: PageProps) {
           ) : null}
           <Link
             href={`/${slug}/crm/customers/${order.customer.id}`}
-            className="mt-3 inline-block text-xs text-[#00d992] hover:underline"
+            className="mt-3 inline-block text-xs text-primary hover:underline"
           >
             View customer →
           </Link>

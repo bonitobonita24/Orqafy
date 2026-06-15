@@ -18,8 +18,8 @@ export default async function LandingPage() {
       {/* Nav */}
       <header className="flex items-center justify-between px-6 py-4 border-b border-border">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded border border-[#00d992] bg-card signal-glow">
-            <span className="text-sm font-bold text-[#00d992]">O</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded border border-primary bg-card signal-glow">
+            <span className="text-sm font-bold text-primary">O</span>
           </div>
           <span className="font-semibold tracking-tight">Orqafy</span>
         </div>
@@ -38,7 +38,7 @@ export default async function LandingPage() {
           </Link>
           <Link
             href="/register"
-            className="rounded-md border border-[#00d992] bg-transparent px-4 py-1.5 text-sm font-medium text-[#00d992] transition-all hover:bg-[#00d992]/10"
+            className="rounded-md border border-primary bg-transparent px-4 py-1.5 text-sm font-medium text-primary transition-all hover:bg-primary/10"
           >
             Get started
           </Link>
@@ -47,14 +47,14 @@ export default async function LandingPage() {
 
       {/* Hero */}
       <section className="mx-auto max-w-4xl px-6 py-24 text-center">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#00d992]/30 bg-[#00d992]/5 px-3 py-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#00d992] signal-glow" />
-          <span className="text-xs text-[#00d992]">Multi-tenant operations platform</span>
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-3 py-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary signal-glow" />
+          <span className="text-xs text-primary">Multi-tenant operations platform</span>
         </div>
         <h1 className="mb-6 text-5xl font-bold leading-tight tracking-tight">
           Run your entire business
           <br />
-          <span className="text-[#00d992]">from one platform</span>
+          <span className="text-primary">from one platform</span>
         </h1>
         <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground">
           Field operations, HR, inventory, invoicing, and payroll — unified under one workspace.
@@ -63,13 +63,13 @@ export default async function LandingPage() {
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <Link
             href="/register"
-            className="rounded-md bg-[#00d992] px-6 py-3 text-sm font-semibold text-background transition-all hover:bg-[#2fd6a1] hover:shadow-[0_0_16px_#00d99240]"
+            className="rounded-md bg-primary px-6 py-3 text-sm font-semibold text-background transition-all hover:bg-primary hover:shadow-none"
           >
             Start free trial
           </Link>
           <Link
             href="/demo-login"
-            className="rounded-md border border-border bg-card px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-[#00d992]/50 hover:text-[#00d992]"
+            className="rounded-md border border-border bg-card px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary/50 hover:text-primary"
           >
             Explore demo →
           </Link>
@@ -138,23 +138,23 @@ export default async function LandingPage() {
                     </div>
                     <ul className="mb-6 flex-1 space-y-2">
                       <li className="flex items-center gap-2 text-sm">
-                        <span className="text-[#00d992]">✓</span>
+                        <span className="text-primary">✓</span>
                         <span>Up to {plan.maxUsers} users</span>
                       </li>
                       <li className="flex items-center gap-2 text-sm">
-                        <span className="text-[#00d992]">✓</span>
+                        <span className="text-primary">✓</span>
                         <span>{Math.round(plan.maxStorageMb / 1024)} GB storage</span>
                       </li>
                       {features.slice(0, 3).map((f, i) => (
                         <li key={i} className="flex items-center gap-2 text-sm">
-                          <span className="text-[#00d992]">✓</span>
+                          <span className="text-primary">✓</span>
                           <span>{f}</span>
                         </li>
                       ))}
                     </ul>
                     <Link
                       href={`/register?plan=${plan.slug}`}
-                      className="block rounded-md border border-[#00d992] px-4 py-2 text-center text-sm font-medium text-[#00d992] transition-all hover:bg-[#00d992]/10"
+                      className="block rounded-md border border-primary px-4 py-2 text-center text-sm font-medium text-primary transition-all hover:bg-primary/10"
                     >
                       Get started
                     </Link>

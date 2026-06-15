@@ -95,7 +95,7 @@ export default async function POSSessionDetailPage({
               {session.sessionNumber}
             </h1>
             {isOpen ? (
-              <span className="rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992]">
+              <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                 Open
               </span>
             ) : (
@@ -283,7 +283,7 @@ function DrawerStat({
   const cls = danger
     ? "text-red-500"
     : accent
-      ? "text-[#00d992]"
+      ? "text-primary"
       : "text-foreground";
   return (
     <div>
@@ -298,7 +298,7 @@ function DrawerStat({
 function SaleStatus({ status }: { status: string }) {
   if (status === "completed") {
     return (
-      <span className="rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992]">
+      <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
         Completed
       </span>
     );

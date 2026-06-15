@@ -416,7 +416,7 @@ export function CartClient({ openSessions, warehouses, products }: Props) {
               type="button"
               onClick={handleSubmit}
               disabled={!validation.canCheckout || createSale.isPending}
-              className="w-full rounded-md bg-[#00d992] px-4 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {createSale.isPending ? "Processing…" : "Complete Sale"}
             </button>

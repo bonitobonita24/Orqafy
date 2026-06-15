@@ -92,9 +92,9 @@ export default async function DemoPage({ params }: { params: Promise<Params> }) 
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <div className="inline-flex items-center gap-2 rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-3 py-1">
-          <Sparkles className="h-3.5 w-3.5 text-[#00d992]" />
-          <span className="text-xs font-medium text-[#00d992]">Demo Mode</span>
+        <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1">
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
+          <span className="text-xs font-medium text-primary">Demo Mode</span>
         </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Welcome to Orqafy</h1>
@@ -114,7 +114,7 @@ export default async function DemoPage({ params }: { params: Promise<Params> }) 
           <div className="flex items-center gap-4 text-right">
             <div>
               <div className="text-xs uppercase tracking-wider text-muted-foreground">Status</div>
-              <span className="mt-1 inline-flex rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992]">
+              <span className="mt-1 inline-flex rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                 {tenant?.status ?? "demo"}
               </span>
             </div>
@@ -145,11 +145,11 @@ export default async function DemoPage({ params }: { params: Promise<Params> }) 
             <Link
               key={href}
               href={`/${slug}/${href}`}
-              className="group flex items-start gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-[#00d992]/40 hover:bg-muted/30"
+              className="group flex items-start gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/30"
             >
-              <Icon className="mt-0.5 h-5 w-5 text-[#00d992]" />
+              <Icon className="mt-0.5 h-5 w-5 text-primary" />
               <div>
-                <div className="font-medium group-hover:text-[#00d992]">{label}</div>
+                <div className="font-medium group-hover:text-primary">{label}</div>
                 <div className="text-xs text-muted-foreground">{blurb}</div>
               </div>
             </Link>

@@ -25,7 +25,7 @@ const STATUS_BADGE: Record<string, string> = {
   draft: "border-border bg-muted text-muted-foreground",
   processing: "border-amber-500/30 bg-amber-500/10 text-amber-400",
   approved: "border-blue-500/30 bg-blue-500/10 text-blue-400",
-  paid: "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992]",
+  paid: "border-primary/30 bg-primary/10 text-primary",
   void: "border-red-500/30 bg-red-500/10 text-red-400",
 };
 
@@ -145,7 +145,7 @@ export default async function PayrollDetailPage({
           <div className="text-xs uppercase tracking-wide text-muted-foreground">
             Total Net
           </div>
-          <div className="mt-2 font-mono text-lg font-semibold text-[#00d992]">
+          <div className="mt-2 font-mono text-lg font-semibold text-primary">
             {formatMoney(payroll.totalNet, payroll.currency)}
           </div>
         </div>
@@ -215,7 +215,7 @@ export default async function PayrollDetailPage({
                   <td className="px-4 py-3 text-right font-mono text-xs text-red-400">
                     {formatMoney(ps.totalDeductions, payroll.currency)}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs font-semibold text-[#00d992]">
+                  <td className="px-4 py-3 text-right font-mono text-xs font-semibold text-primary">
                     {formatMoney(ps.netPay, payroll.currency)}
                   </td>
                 </tr>

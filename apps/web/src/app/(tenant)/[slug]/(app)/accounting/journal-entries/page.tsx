@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "border-border bg-muted text-muted-foreground",
-  posted: "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992]",
+  posted: "border-primary/30 bg-primary/10 text-primary",
   void: "border-destructive/30 bg-destructive/10 text-destructive",
 };
 

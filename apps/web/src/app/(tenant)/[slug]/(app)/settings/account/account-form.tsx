@@ -118,7 +118,7 @@ export function AccountForm({
         <Button
           type="submit"
           disabled={update.isPending}
-          className="bg-[#00d992]/10 text-[#00d992] hover:bg-[#00d992]/20 border border-[#00d992]/30"
+          className="bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30"
           variant="outline"
         >
           {update.isPending ? "Saving…" : "Save changes"}

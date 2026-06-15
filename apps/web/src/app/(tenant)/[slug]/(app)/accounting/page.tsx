@@ -91,7 +91,7 @@ export default async function AccountingPage() {
                   </td>
                   <td className="px-4 py-3">
                     {a.isActive ? (
-                      <span className="rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992]">
+                      <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                         Active
                       </span>
                     ) : (

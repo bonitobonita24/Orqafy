@@ -21,7 +21,7 @@ async function getAllTenants() {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  active: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
+  active: "text-primary bg-primary/10 border-primary/30",
   provisioning: "text-yellow-400 bg-yellow-400/10 border-yellow-400/30",
   suspended: "text-destructive bg-destructive/10 border-destructive/30",
   demo: "text-blue-400 bg-blue-400/10 border-blue-400/30",
@@ -89,7 +89,7 @@ export default async function PlatformAdminPage() {
                     <td className="px-4 py-3 text-right">
                       <Link
                         href={`/powerbyte-admin/${tenant.id}`}
-                        className="text-xs text-[#00d992] hover:underline"
+                        className="text-xs text-primary hover:underline"
                       >
                         Manage →
                       </Link>
