@@ -21,7 +21,7 @@ const STATUS_COLORS: Record<string, string> = {
   draft: "text-muted-foreground bg-muted border-border",
   sent: "text-blue-400 bg-blue-400/10 border-blue-400/30",
   partially_paid: "text-yellow-400 bg-yellow-400/10 border-yellow-400/30",
-  paid: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
+  paid: "text-primary bg-primary/10 border-primary/30",
   overdue: "text-red-400 bg-red-400/10 border-red-400/30",
   void: "text-muted-foreground bg-muted border-border line-through",
   cancelled: "text-muted-foreground bg-muted border-border line-through",
@@ -285,7 +285,7 @@ export default async function InvoiceDetailPage({ params }: Props) {
             {amountPaid > 0 && (
               <div className="flex justify-between text-sm">
                 <dt className="text-muted-foreground">Amount Paid</dt>
-                <dd className="tabular-nums text-[#00d992]">
+                <dd className="tabular-nums text-primary">
                   {formatCurrency(invoice.amountPaid, invoice.currency)}
                 </dd>
               </div>
@@ -337,7 +337,7 @@ export default async function InvoiceDetailPage({ params }: Props) {
                   <td className="px-4 py-3 text-muted-foreground">
                     {formatDate(payment.paidAt)}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-[#00d992]">
+                  <td className="px-4 py-3 text-right tabular-nums text-primary">
                     {formatCurrency(payment.amount, payment.currency)}
                   </td>
                   <td className="px-4 py-3">

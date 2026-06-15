@@ -120,7 +120,7 @@ export function LeaveRequestForm() {
       <DialogTrigger asChild>
         <Button
           size="sm"
-          className="bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90 h-7 px-3 text-xs font-medium"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 h-7 px-3 text-xs font-medium"
         >
           Request Leave
         </Button>
@@ -255,7 +255,7 @@ export function LeaveRequestForm() {
             size="sm"
             onClick={handleSubmit}
             disabled={create.isPending}
-            className="bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {create.isPending ? "Submitting…" : "Submit"}
           </Button>

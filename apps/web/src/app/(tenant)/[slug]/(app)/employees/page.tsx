@@ -20,7 +20,7 @@ const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
 };
 
 const TYPE_BADGE: Record<string, string> = {
-  full_time: "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992]",
+  full_time: "border-primary/30 bg-primary/10 text-primary",
   part_time: "border-blue-500/30 bg-blue-500/10 text-blue-400",
   contract: "border-amber-500/30 bg-amber-500/10 text-amber-400",
   probationary: "border-purple-500/30 bg-purple-500/10 text-purple-400",
@@ -80,7 +80,7 @@ export default async function EmployeesPage({
         </div>
         <Link
           href={`/${slug}/employees/new`}
-          className="rounded-md bg-[#00d992]/10 border border-[#00d992]/30 px-3 py-1.5 text-xs font-medium text-[#00d992] transition-colors hover:bg-[#00d992]/20"
+          className="rounded-md bg-primary/10 border border-primary/30 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
         >
           + New Employee
         </Link>
@@ -93,7 +93,7 @@ export default async function EmployeesPage({
             href={`?filter=${tab.key}`}
             className={`rounded px-3 py-1 text-sm transition-colors ${
               filter === tab.key
-                ? "bg-[#00d992]/10 text-[#00d992]"
+                ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -129,7 +129,7 @@ export default async function EmployeesPage({
                   <td className="px-4 py-3">
                     <Link
                       href={`employees/${e.id}`}
-                      className="font-mono text-xs font-medium text-[#00d992] hover:underline"
+                      className="font-mono text-xs font-medium text-primary hover:underline"
                     >
                       {e.employeeNumber}
                     </Link>
@@ -159,7 +159,7 @@ export default async function EmployeesPage({
                         Terminated
                       </span>
                     ) : (
-                      <span className="rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992]">
+                      <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                         Active
                       </span>
                     )}

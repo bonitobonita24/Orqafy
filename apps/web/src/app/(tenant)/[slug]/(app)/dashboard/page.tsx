@@ -137,7 +137,7 @@ const INVOICE_STATUS_COLORS: Record<string, string> = {
   draft: "text-muted-foreground bg-muted border-border",
   sent: "text-blue-400 bg-blue-400/10 border-blue-400/30",
   partially_paid: "text-yellow-400 bg-yellow-400/10 border-yellow-400/30",
-  paid: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
+  paid: "text-primary bg-primary/10 border-primary/30",
   overdue: "text-red-400 bg-red-400/10 border-red-400/30",
   void: "text-muted-foreground bg-muted border-border",
   cancelled: "text-muted-foreground bg-muted border-border",
@@ -147,7 +147,7 @@ const EXPENSE_STATUS_COLORS: Record<string, string> = {
   pending: "text-yellow-400 bg-yellow-400/10 border-yellow-400/30",
   approved: "text-blue-400 bg-blue-400/10 border-blue-400/30",
   rejected: "text-red-400 bg-red-400/10 border-red-400/30",
-  reimbursed: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
+  reimbursed: "text-primary bg-primary/10 border-primary/30",
 };
 
 export default async function DashboardPage({
@@ -189,7 +189,7 @@ export default async function DashboardPage({
       value: formatCurrency(data.paidThisMonth),
       sub: `${data.paidCount} settled`,
       icon: Briefcase,
-      accent: "text-[#00d992]",
+      accent: "text-primary",
       href: `/${slug}/invoices`,
     },
   ];
@@ -212,7 +212,7 @@ export default async function DashboardPage({
             <Link
               key={kpi.label}
               href={kpi.href}
-              className="group rounded-lg border border-border bg-card p-5 transition-colors hover:border-[#00d992]/30 hover:bg-card/80"
+              className="group rounded-lg border border-border bg-card p-5 transition-colors hover:border-primary/30 hover:bg-card/80"
             >
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
@@ -237,7 +237,7 @@ export default async function DashboardPage({
             <h2 className="text-sm font-semibold">Recent invoices</h2>
             <Link
               href={`/${slug}/invoices`}
-              className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-[#00d992]"
+              className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-primary"
             >
               View all
               <ArrowRight className="h-3 w-3" />
@@ -291,7 +291,7 @@ export default async function DashboardPage({
             <h2 className="text-sm font-semibold">Recent expenses</h2>
             <Link
               href={`/${slug}/expenses`}
-              className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-[#00d992]"
+              className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-primary"
             >
               View all
               <ArrowRight className="h-3 w-3" />

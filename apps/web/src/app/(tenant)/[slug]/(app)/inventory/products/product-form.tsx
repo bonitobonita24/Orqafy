@@ -287,7 +287,7 @@ export function ProductForm(props: Props) {
           checked={isSerialTracked}
           onChange={(e) => setIsSerialTracked(e.target.checked)}
           disabled={isPending || mode === "edit"}
-          className="h-4 w-4 rounded border-border accent-[#00d992]"
+          className="h-4 w-4 rounded border-border accent-primary"
         />
         <Label htmlFor="isSerialTracked" className="cursor-pointer">
           Serial tracked
@@ -303,7 +303,7 @@ export function ProductForm(props: Props) {
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-md border border-[#00d992] bg-[#00d992]/10 px-4 py-2 text-sm font-medium text-[#00d992] hover:bg-[#00d992]/20 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-md border border-primary bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isPending
             ? mode === "create"

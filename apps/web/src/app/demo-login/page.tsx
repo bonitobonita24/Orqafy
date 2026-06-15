@@ -32,8 +32,8 @@ export default function DemoLoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-sm space-y-6">
         <div className="space-y-2 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg border border-[#00d992] bg-card signal-glow">
-            <span className="text-2xl font-bold text-[#00d992]">O</span>
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg border border-primary bg-card signal-glow">
+            <span className="text-2xl font-bold text-primary">O</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Explore Orqafy</h1>
           <p className="text-sm text-muted-foreground">
@@ -44,15 +44,15 @@ export default function DemoLoginPage() {
         <div className="rounded-lg border border-border bg-card p-6 space-y-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#00d992] signal-glow" />
+              <span className="h-1.5 w-1.5 rounded-full bg-primary signal-glow" />
               Pre-loaded with sample data
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#00d992] signal-glow" />
+              <span className="h-1.5 w-1.5 rounded-full bg-primary signal-glow" />
               Full access to all modules
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#00d992] signal-glow" />
+              <span className="h-1.5 w-1.5 rounded-full bg-primary signal-glow" />
               Resets automatically each day
             </div>
           </div>
@@ -60,7 +60,7 @@ export default function DemoLoginPage() {
           <form action={enterDemo}>
             <button
               type="submit"
-              className="w-full rounded-md bg-[#00d992] px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-[#2fd6a1] hover:shadow-[0_0_16px_#00d99240]"
+              className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-background transition-all hover:bg-primary hover:shadow-none"
             >
               Enter demo workspace →
             </button>
@@ -69,7 +69,7 @@ export default function DemoLoginPage() {
 
         <p className="text-center text-xs text-muted-foreground">
           Ready to use your own workspace?{" "}
-          <a href="/register" className="text-[#00d992] hover:underline">
+          <a href="/register" className="text-primary hover:underline">
             Create one free
           </a>
         </p>

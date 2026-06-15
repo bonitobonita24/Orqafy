@@ -152,7 +152,7 @@ export function InvoiceForm({ slug, customers, projects }: InvoiceFormProps) {
   }
 
   const inputCls =
-    "w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-[#00d992] focus:outline-none";
+    "w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none";
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -310,7 +310,7 @@ export function InvoiceForm({ slug, customers, projects }: InvoiceFormProps) {
           type="button"
           disabled={isPending}
           onClick={submit}
-          className="rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-4 py-2 text-sm font-medium text-[#00d992] hover:bg-[#00d992]/20 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-md border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isPending ? "Saving…" : "Create Invoice"}
         </button>

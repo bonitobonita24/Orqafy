@@ -15,7 +15,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   planning: "text-blue-400 bg-blue-400/10 border-blue-400/30",
-  active: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
+  active: "text-primary bg-primary/10 border-primary/30",
   on_hold: "text-yellow-400 bg-yellow-400/10 border-yellow-400/30",
   completed: "text-muted-foreground bg-muted border-border",
   cancelled: "text-red-400 bg-red-400/10 border-red-400/30",
@@ -47,7 +47,7 @@ const TASK_STATUS_COLORS: Record<string, string> = {
   todo: "text-muted-foreground bg-muted border-border",
   in_progress: "text-blue-400 bg-blue-400/10 border-blue-400/30",
   review: "text-yellow-400 bg-yellow-400/10 border-yellow-400/30",
-  done: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
+  done: "text-primary bg-primary/10 border-primary/30",
   blocked: "text-red-400 bg-red-400/10 border-red-400/30",
 };
 
@@ -270,7 +270,7 @@ export default async function ProjectDetailPage({
             href={buildTabUrl(tab)}
             className={`px-4 py-2 text-sm font-medium capitalize rounded-t-md border-b-2 transition-colors ${
               activeTab === tab
-                ? "border-[#00d992] text-[#00d992]"
+                ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
             }`}
           >
@@ -316,7 +316,7 @@ export default async function ProjectDetailPage({
               </p>
               <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-[#00d992] rounded-full"
+                  className="h-full bg-primary rounded-full"
                   style={{ width: "0%" }}
                 />
               </div>
@@ -462,7 +462,7 @@ export default async function ProjectDetailPage({
             </div>
             <Link
               href={`/${slug}/projects/${id}/expenses`}
-              className="px-4 py-2 rounded-md border border-border text-sm hover:border-[#00d992]/50 transition-colors"
+              className="px-4 py-2 rounded-md border border-border text-sm hover:border-primary/50 transition-colors"
             >
               View All Expenses →
             </Link>
@@ -535,13 +535,13 @@ export default async function ProjectDetailPage({
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span
-                        className={`w-2 h-2 rounded-full ${milestone.completedAt !== null ? "bg-[#00d992]" : "bg-muted-foreground"}`}
+                        className={`w-2 h-2 rounded-full ${milestone.completedAt !== null ? "bg-primary" : "bg-muted-foreground"}`}
                       />
                       <p className="font-medium text-sm">{milestone.name}</p>
                     </div>
                     <div className="text-right">
                       {milestone.completedAt !== null ? (
-                        <span className="text-xs text-[#00d992]">
+                        <span className="text-xs text-primary">
                           Completed {formatDate(milestone.completedAt)}
                         </span>
                       ) : (
@@ -558,7 +558,7 @@ export default async function ProjectDetailPage({
                     </div>
                     <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-[#00d992] rounded-full transition-all"
+                        className="h-full bg-primary rounded-full transition-all"
                         style={{ width: `${milestone.progress}%` }}
                       />
                     </div>

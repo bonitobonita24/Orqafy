@@ -230,7 +230,7 @@ export function InvoiceActions({
           <DialogTrigger asChild>
             <button
               type="button"
-              className="rounded border border-[#00d992]/40 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Record Payment
             </button>
@@ -373,7 +373,7 @@ export function InvoiceActions({
                 size="sm"
                 onClick={handleRecordSubmit}
                 disabled={recordPayment.isPending}
-                className="bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 {recordPayment.isPending ? "Recording…" : "Record Payment"}
               </Button>
@@ -388,7 +388,7 @@ export function InvoiceActions({
           <DialogTrigger asChild>
             <button
               type="button"
-              className="rounded border border-[#00d992]/40 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Mark Paid
             </button>
@@ -417,7 +417,7 @@ export function InvoiceActions({
                 size="sm"
                 onClick={() => markPaid.mutate({ id: invoiceId })}
                 disabled={markPaid.isPending}
-                className="bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 {markPaid.isPending ? "Processing…" : "Confirm Mark Paid"}
               </Button>

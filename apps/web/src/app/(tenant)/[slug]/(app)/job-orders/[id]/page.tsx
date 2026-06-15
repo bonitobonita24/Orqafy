@@ -41,8 +41,8 @@ const STATUS_BADGE: Record<string, string> = {
   approved: "border-cyan-500/30 bg-cyan-500/10 text-cyan-400",
   in_progress: "border-amber-500/30 bg-amber-500/10 text-amber-400",
   testing: "border-amber-500/30 bg-amber-500/10 text-amber-400",
-  completed: "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992]",
-  released: "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992]",
+  completed: "border-primary/30 bg-primary/10 text-primary",
+  released: "border-primary/30 bg-primary/10 text-primary",
   cancelled: "border-red-500/30 bg-red-500/10 text-red-400",
 };
 
@@ -148,7 +148,7 @@ export default async function JobOrderDetailPage({
                   key={s}
                   className={`flex items-center gap-1 rounded-md border px-2 py-1 text-xs ${
                     reached
-                      ? "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992]"
+                      ? "border-primary/30 bg-primary/10 text-primary"
                       : "border-border bg-muted/30 text-muted-foreground"
                   }`}
                 >

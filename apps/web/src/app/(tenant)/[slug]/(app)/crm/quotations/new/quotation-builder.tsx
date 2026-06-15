@@ -569,7 +569,7 @@ export function QuotationBuilder({ slug, customers, initialQuotation }: Quotatio
             type="button"
             onClick={handleSubmit}
             disabled={!validation.ok || create.isPending || update.isPending}
-            className="mt-2 inline-flex w-full justify-center rounded-md bg-[#00d992] px-4 py-2 text-sm font-medium text-black hover:bg-[#00d992]/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-2 inline-flex w-full justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-black hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isEditMode
               ? update.isPending

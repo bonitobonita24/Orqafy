@@ -33,7 +33,7 @@ const COLUMNS: { key: string; label: string }[] = [
 const PRIORITY_BADGE: Record<string, string> = {
   low: "border-border bg-muted text-muted-foreground",
   medium: "border-border bg-muted text-foreground",
-  high: "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992]",
+  high: "border-primary/30 bg-primary/10 text-primary",
   critical: "border-red-500/30 bg-red-500/10 text-red-400",
 };
 
@@ -99,7 +99,7 @@ export default async function TasksPage({
             href={`?${params.projectId !== undefined ? `projectId=${params.projectId}&` : ""}view=kanban`}
             className={`rounded px-3 py-1 transition-colors ${
               view === "kanban"
-                ? "bg-[#00d992]/10 text-[#00d992]"
+                ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -109,7 +109,7 @@ export default async function TasksPage({
             href={`?${params.projectId !== undefined ? `projectId=${params.projectId}&` : ""}view=calendar`}
             className={`rounded px-3 py-1 transition-colors ${
               view === "calendar"
-                ? "bg-[#00d992]/10 text-[#00d992]"
+                ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -146,7 +146,7 @@ export default async function TasksPage({
                     items.map((t) => (
                       <div
                         key={t.id}
-                        className="rounded-md border border-border bg-background p-3 transition-colors hover:border-[#00d992]/40"
+                        className="rounded-md border border-border bg-background p-3 transition-colors hover:border-primary/40"
                       >
                         <div className="text-sm font-medium leading-snug">
                           {t.title}

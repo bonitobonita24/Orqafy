@@ -54,7 +54,7 @@ export default async function VendorsPage({
           href="?filter=active"
           className={`rounded px-3 py-1 text-sm transition-colors ${
             activeOnly
-              ? "bg-[#00d992]/10 text-[#00d992]"
+              ? "bg-primary/10 text-primary"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -64,7 +64,7 @@ export default async function VendorsPage({
           href="?filter=all"
           className={`rounded px-3 py-1 text-sm transition-colors ${
             !activeOnly
-              ? "bg-[#00d992]/10 text-[#00d992]"
+              ? "bg-primary/10 text-primary"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -119,7 +119,7 @@ export default async function VendorsPage({
                   </td>
                   <td className="px-4 py-3">
                     {vendor.isActive ? (
-                      <span className="rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992]">
+                      <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                         Active
                       </span>
                     ) : (

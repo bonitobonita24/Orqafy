@@ -29,7 +29,7 @@ interface ContactsPanelProps {
 }
 
 const inputCls =
-  "w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-[#00d992] focus:outline-none";
+  "w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none";
 
 /* ── Add Contact Dialog ───────────────────────────────────────────────── */
 
@@ -92,7 +92,7 @@ function AddContactDialog({ customerId }: { customerId: string }) {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20"
+          className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
         >
           + Add Contact
         </button>
@@ -130,7 +130,7 @@ function AddContactDialog({ customerId }: { customerId: string }) {
               type="checkbox"
               checked={isPrimary}
               onChange={(e) => setIsPrimary(e.target.checked)}
-              className="accent-[#00d992]"
+              className="accent-primary"
             />
             Primary contact
           </label>
@@ -148,7 +148,7 @@ function AddContactDialog({ customerId }: { customerId: string }) {
             type="button"
             disabled={create.isPending}
             onClick={submit}
-            className="rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {create.isPending ? "Saving…" : "Add Contact"}
           </button>
@@ -254,7 +254,7 @@ function EditContactDialog({ contact }: { contact: Contact }) {
               type="checkbox"
               checked={isPrimary}
               onChange={(e) => setIsPrimary(e.target.checked)}
-              className="accent-[#00d992]"
+              className="accent-primary"
             />
             Primary contact
           </label>
@@ -272,7 +272,7 @@ function EditContactDialog({ contact }: { contact: Contact }) {
             type="button"
             disabled={update.isPending}
             onClick={submit}
-            className="rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {update.isPending ? "Saving…" : "Save Changes"}
           </button>
@@ -378,7 +378,7 @@ export function ContactsPanel({ customerId, initialContacts }: ContactsPanelProp
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{contact.name}</span>
                     {contact.isPrimary && (
-                      <span className="rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#00d992]">
+                      <span className="rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                         Primary
                       </span>
                     )}

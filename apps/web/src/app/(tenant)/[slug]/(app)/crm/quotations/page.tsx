@@ -21,7 +21,7 @@ type QuotationStatus = (typeof STATUS_OPTIONS)[number];
 const STATUS_COLORS: Record<QuotationStatus, string> = {
   draft: "text-muted-foreground bg-muted border-border",
   sent: "text-sky-400 bg-sky-400/10 border-sky-400/30",
-  accepted: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
+  accepted: "text-primary bg-primary/10 border-primary/30",
   rejected: "text-red-400 bg-red-400/10 border-red-400/30",
   expired: "text-orange-400 bg-orange-400/10 border-orange-400/30",
   converted: "text-purple-400 bg-purple-400/10 border-purple-400/30",
@@ -96,7 +96,7 @@ export default async function QuotationsPage({ params, searchParams }: PageProps
         </div>
         <Link
           href={`/${slug}/crm/quotations/new`}
-          className="inline-flex items-center gap-2 rounded-md bg-[#00d992] px-4 py-2 text-sm font-medium text-black hover:bg-[#00d992]/90"
+          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-black hover:bg-primary/90"
         >
           New quotation
         </Link>
@@ -107,7 +107,7 @@ export default async function QuotationsPage({ params, searchParams }: PageProps
           href={`/${slug}/crm/quotations`}
           className={`rounded-full border px-3 py-1 text-xs font-medium ${
             status === undefined
-              ? "border-[#00d992] bg-[#00d992]/10 text-[#00d992]"
+              ? "border-primary bg-primary/10 text-primary"
               : "border-border bg-card text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -155,7 +155,7 @@ export default async function QuotationsPage({ params, searchParams }: PageProps
                     <td className="px-4 py-3 font-mono text-xs">
                       <Link
                         href={`/${slug}/crm/quotations/${q.id}`}
-                        className="text-[#00d992] hover:underline"
+                        className="text-primary hover:underline"
                       >
                         {q.quotationNumber}
                       </Link>

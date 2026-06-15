@@ -32,7 +32,7 @@ export function CartDrawer(): React.ReactNode {
           <ShoppingCart className="h-4 w-4" />
           <span>Cart</span>
           {hydrated && itemCount > 0 ? (
-            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#00d992] px-1 text-xs font-semibold text-black">
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-xs font-semibold text-black">
               {itemCount}
             </span>
           ) : null}
@@ -128,7 +128,7 @@ export function CartDrawer(): React.ReactNode {
               setOpen(false);
             }}
             aria-disabled={!hydrated || state.items.length === 0}
-            className={`w-full rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-4 py-3 text-center text-sm font-medium text-[#00d992] transition hover:bg-[#00d992]/20 ${
+            className={`w-full rounded-md border border-primary/40 bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary transition hover:bg-primary/20 ${
               !hydrated || state.items.length === 0
                 ? "pointer-events-none opacity-50"
                 : ""

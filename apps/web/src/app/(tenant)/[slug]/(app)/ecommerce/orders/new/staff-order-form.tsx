@@ -248,7 +248,7 @@ export function StaffOrderForm({ slug }: StaffOrderFormProps) {
           <Button
             type="button"
             variant="outline"
-            className="h-7 px-2 text-xs border-[#00d992]/40 text-[#00d992] hover:bg-[#00d992]/10"
+            className="h-7 px-2 text-xs border-primary/40 text-primary hover:bg-primary/10"
             onClick={() =>
               append({ productId: "", productName: "", quantity: "1", unitPrice: "0" })
             }
@@ -439,7 +439,7 @@ export function StaffOrderForm({ slug }: StaffOrderFormProps) {
         {/* order total */}
         <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
           <span className="text-sm text-muted-foreground">Order total</span>
-          <span className="text-lg font-semibold text-[#00d992]">
+          <span className="text-lg font-semibold text-primary">
             ₱
             {grandTotal.toLocaleString("en-PH", {
               minimumFractionDigits: 2,
@@ -468,7 +468,7 @@ export function StaffOrderForm({ slug }: StaffOrderFormProps) {
         <Button
           type="submit"
           disabled={placeMutation.isPending}
-          className="bg-[#00d992]/10 text-[#00d992] border border-[#00d992]/40 hover:bg-[#00d992]/20"
+          className="bg-primary/10 text-primary border border-primary/40 hover:bg-primary/20"
           variant="outline"
         >
           {placeMutation.isPending ? "Placing order…" : "Place order"}

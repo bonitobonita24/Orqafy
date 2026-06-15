@@ -25,7 +25,7 @@ const STATUS_BADGE: Record<string, string> = {
   open: "border-blue-500/30 bg-blue-500/10 text-blue-400",
   in_progress: "border-amber-500/30 bg-amber-500/10 text-amber-400",
   waiting: "border-purple-500/30 bg-purple-500/10 text-purple-400",
-  resolved: "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992]",
+  resolved: "border-primary/30 bg-primary/10 text-primary",
   closed: "border-border bg-muted text-muted-foreground",
 };
 
@@ -115,7 +115,7 @@ export default async function SupportTicketDetailPage({
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <span className="font-mono text-xs text-[#00d992]">{ticket.ticketNumber}</span>
+            <span className="font-mono text-xs text-primary">{ticket.ticketNumber}</span>
             <span
               className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
                 STATUS_BADGE[ticket.status] ?? STATUS_BADGE["open"]
@@ -192,7 +192,7 @@ export default async function SupportTicketDetailPage({
                   href={a.fileUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[#00d992] hover:underline"
+                  className="text-primary hover:underline"
                 >
                   {a.fileName}
                 </a>

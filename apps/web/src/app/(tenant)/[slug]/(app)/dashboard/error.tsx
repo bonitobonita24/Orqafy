@@ -12,7 +12,7 @@ export default function DashboardError({
       <p className="text-sm text-muted-foreground">{error.message || "Something went wrong."}</p>
       <button
         onClick={reset}
-        className="text-xs text-[#00d992] underline-offset-4 hover:underline"
+        className="text-xs text-primary underline-offset-4 hover:underline"
       >
         Try again
       </button>

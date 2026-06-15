@@ -237,7 +237,7 @@ function ConfirmStep({
           size="sm"
           onClick={onConfirm}
           disabled={isPending}
-          className="bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
         >
           {isPending ? "Processing…" : `Confirm ${label}`}
         </Button>
@@ -302,7 +302,7 @@ function RecordIncomeForm({
         isPending={mutate.isPending}
       >
         <p>Fund Source: <span className="text-foreground">{src?.name ?? fundSourceId}</span></p>
-        <p>Amount: <span className="text-[#00d992] font-mono">+{amount}</span></p>
+        <p>Amount: <span className="text-primary font-mono">+{amount}</span></p>
         {description && <p>Description: <span className="text-foreground">{description}</span></p>}
         {category && <p>Category: <span className="text-foreground">{category}</span></p>}
         <p>Date: <span className="text-foreground">{transactionDate}</span></p>
@@ -329,7 +329,7 @@ function RecordIncomeForm({
             setError(null);
             setStep("confirm");
           }}
-          className="bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
         >
           Next
         </Button>
@@ -419,7 +419,7 @@ function RecordExpenseForm({
             setError(null);
             setStep("confirm");
           }}
-          className="bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
         >
           Next
         </Button>
@@ -512,7 +512,7 @@ function TransferForm({
             setError(null);
             setStep("confirm");
           }}
-          className="bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
         >
           Next
         </Button>
@@ -618,7 +618,7 @@ function CreditCardChargeForm({
             setError(null);
             setStep("confirm");
           }}
-          className="bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
         >
           Next
         </Button>
@@ -755,7 +755,7 @@ function PayCreditCardForm({
             setError(null);
             setStep("confirm");
           }}
-          className="bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
         >
           Next
         </Button>
@@ -878,7 +878,7 @@ function LoanMoneyOutToForm({
             setError(null);
             setStep("confirm");
           }}
-          className="bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
         >
           Next
         </Button>
@@ -1001,7 +1001,7 @@ function LoanMoneyInForm({
             setError(null);
             setStep("confirm");
           }}
-          className="bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
         >
           Next
         </Button>
@@ -1066,7 +1066,7 @@ function RecordRefundForm({
         isPending={mutate.isPending}
       >
         <p>Fund Source: <span className="text-foreground">{src?.name ?? fundSourceId}</span></p>
-        <p>Refund Amount: <span className="text-[#00d992] font-mono">+{amount}</span></p>
+        <p>Refund Amount: <span className="text-primary font-mono">+{amount}</span></p>
         {originalTransactionId && <p>Original Tx ID: <span className="text-foreground font-mono text-xs">{originalTransactionId}</span></p>}
         {description && <p>Description: <span className="text-foreground">{description}</span></p>}
         <p>Date: <span className="text-foreground">{transactionDate}</span></p>
@@ -1104,7 +1104,7 @@ function RecordRefundForm({
             setError(null);
             setStep("confirm");
           }}
-          className="bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
         >
           Next
         </Button>
@@ -1180,7 +1180,7 @@ function RecordAdjustmentForm({
         <p>Fund Source: <span className="text-foreground">{src?.name ?? fundSourceId}</span></p>
         <p>
           Delta:{" "}
-          <span className={`font-mono ${deltaNum > 0 ? "text-[#00d992]" : "text-red-400"}`}>
+          <span className={`font-mono ${deltaNum > 0 ? "text-primary" : "text-red-400"}`}>
             {deltaNum > 0 ? "+" : ""}{delta}
           </span>
         </p>
@@ -1244,7 +1244,7 @@ function RecordAdjustmentForm({
             setError(null);
             setStep("confirm");
           }}
-          className="bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
         >
           Next
         </Button>
@@ -1313,7 +1313,7 @@ export function NewTransactionButton({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded border border-[#00d992]/40 bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20"
+          className="inline-flex items-center gap-1.5 rounded border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
         >
           New Transaction
         </button>

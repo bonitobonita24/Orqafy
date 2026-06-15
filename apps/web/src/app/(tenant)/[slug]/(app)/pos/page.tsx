@@ -76,7 +76,7 @@ export default async function POSSessionsPage({
           <OpenSessionDialog slug={slug} />
           <Link
             href={`/${slug}/pos/new-sale`}
-            className="rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-4 py-2 text-sm font-medium text-[#00d992] transition-colors hover:bg-[#00d992]/20"
+            className="rounded-md border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
           >
             New Sale →
           </Link>
@@ -125,7 +125,7 @@ export default async function POSSessionsPage({
                   <td className="px-4 py-3 font-mono text-xs">
                     <Link
                       href={`/${slug}/pos/${s.id}`}
-                      className="font-medium text-[#00d992] hover:underline"
+                      className="font-medium text-primary hover:underline"
                     >
                       {s.sessionNumber}
                     </Link>
@@ -170,7 +170,7 @@ function FilterTab({
       href={href}
       className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
         active
-          ? "border-[#00d992] text-[#00d992]"
+          ? "border-primary text-primary"
           : "border-transparent text-muted-foreground hover:text-foreground"
       }`}
     >
@@ -182,7 +182,7 @@ function FilterTab({
 function StatusBadge({ status }: { status: string }) {
   if (status === "open") {
     return (
-      <span className="rounded-full border border-[#00d992]/30 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992]">
+      <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
         Open
       </span>
     );

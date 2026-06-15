@@ -21,8 +21,8 @@ const STATUS_BADGE: Record<string, string> = {
   pending_approval: "border-amber-500/30 bg-amber-500/10 text-amber-400",
   approved: "border-blue-500/30 bg-blue-500/10 text-blue-400",
   ordered: "border-purple-500/30 bg-purple-500/10 text-purple-400",
-  partially_received: "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992]",
-  received: "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992]",
+  partially_received: "border-primary/30 bg-primary/10 text-primary",
+  received: "border-primary/30 bg-primary/10 text-primary",
   cancelled: "border-red-500/30 bg-red-500/10 text-red-400",
 };
 
@@ -188,7 +188,7 @@ export default async function PurchaseOrderDetailPage({
             </div>
             <div className="flex justify-between">
               <dt className="text-muted-foreground">Total Amount</dt>
-              <dd className="font-medium text-[#00d992]">
+              <dd className="font-medium text-primary">
                 {order.totalAmount !== null
                   ? `₱${Number(order.totalAmount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`
                   : "—"}
@@ -287,7 +287,7 @@ export default async function PurchaseOrderDetailPage({
                         <span
                           className={
                             fullyReceived
-                              ? "text-[#00d992]"
+                              ? "text-primary"
                               : received > 0
                                 ? "text-amber-400"
                                 : "text-muted-foreground"
@@ -319,7 +319,7 @@ export default async function PurchaseOrderDetailPage({
                     >
                       Total
                     </td>
-                    <td className="px-4 py-3 text-right text-sm font-semibold text-[#00d992]">
+                    <td className="px-4 py-3 text-right text-sm font-semibold text-primary">
                       ₱
                       {Number(order.totalAmount).toLocaleString("en-PH", {
                         minimumFractionDigits: 2,
@@ -347,7 +347,7 @@ export default async function PurchaseOrderDetailPage({
               >
                 <div className="flex items-center justify-between border-b border-border px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <span className="font-mono text-sm font-medium text-[#00d992]">
+                    <span className="font-mono text-sm font-medium text-primary">
                       {gr.grNumber}
                     </span>
                     <span className="text-sm text-muted-foreground">
@@ -379,7 +379,7 @@ export default async function PurchaseOrderDetailPage({
                               ? grItem.product.name
                               : grItem.description}
                           </td>
-                          <td className="px-4 py-2 text-right font-medium text-[#00d992]">
+                          <td className="px-4 py-2 text-right font-medium text-primary">
                             {Number(grItem.quantityReceived)}
                           </td>
                         </tr>

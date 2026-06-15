@@ -293,7 +293,7 @@ function RecordMovementDialog({
             <button
               type="submit"
               disabled={create.isPending}
-              className="rounded-md border border-[#00d992] bg-[#00d992]/10 px-3 py-1.5 text-sm font-medium text-[#00d992] hover:bg-[#00d992]/20 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-primary bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {create.isPending ? "Recording…" : "Record"}
             </button>

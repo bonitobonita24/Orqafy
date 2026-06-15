@@ -15,7 +15,7 @@ function SubmitButton() {
     <Button
       type="submit"
       disabled={pending}
-      className="w-full bg-[#00d992] text-background font-semibold hover:bg-[#2fd6a1] hover:shadow-[0_0_16px_#00d99240] transition-all"
+      className="w-full bg-primary text-background font-semibold hover:bg-primary hover:shadow-none transition-all"
     >
       {pending ? "Signing in…" : "Sign in →"}
     </Button>
@@ -76,7 +76,7 @@ export function LoginForm({ action }: LoginFormProps) {
 
       <p className="text-center text-xs text-muted-foreground">
         Don&apos;t have a workspace yet?{" "}
-        <Link href="/register" className="text-[#00d992] hover:underline">
+        <Link href="/register" className="text-primary hover:underline">
           Create one free
         </Link>
       </p>

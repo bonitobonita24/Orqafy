@@ -9,8 +9,8 @@ export const metadata: Metadata = { title: "DTR" };
 export const dynamic = "force-dynamic";
 
 const STATUS_BADGE: Record<string, string> = {
-  present: "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992]",
-  approved: "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992]",
+  present: "border-primary/30 bg-primary/10 text-primary",
+  approved: "border-primary/30 bg-primary/10 text-primary",
   pending: "border-amber-500/30 bg-amber-500/10 text-amber-400",
   rejected: "border-red-500/30 bg-red-500/10 text-red-400",
   absent: "border-red-500/30 bg-red-500/10 text-red-400",

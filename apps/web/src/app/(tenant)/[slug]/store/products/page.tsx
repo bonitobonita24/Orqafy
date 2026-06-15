@@ -110,11 +110,11 @@ export default async function PublicStorefrontProductsPage({
             name="q"
             defaultValue={search ?? ""}
             placeholder="Search by name or SKU…"
-            className="w-64 rounded-md border border-border bg-card px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#00d992]"
+            className="w-64 rounded-md border border-border bg-card px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
           />
           <button
             type="submit"
-            className="rounded-md border border-[#00d992] bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20"
+            className="rounded-md border border-primary bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
           >
             Search
           </button>
@@ -130,7 +130,7 @@ export default async function PublicStorefrontProductsPage({
             href={buildCategoryHref(null)}
             className={
               categorySlug === undefined || categorySlug.length === 0
-                ? "rounded-md border border-[#00d992] bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992]"
+                ? "rounded-md border border-primary bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary"
                 : "rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
             }
           >
@@ -144,7 +144,7 @@ export default async function PublicStorefrontProductsPage({
                 href={buildCategoryHref(c.slug)}
                 className={
                   active
-                    ? "rounded-md border border-[#00d992] bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992]"
+                    ? "rounded-md border border-primary bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary"
                     : "rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
                 }
               >
@@ -176,7 +176,7 @@ export default async function PublicStorefrontProductsPage({
               <Link
                 key={product.id}
                 href={`/${slug}/store/products/${product.id}`}
-                className="flex flex-col overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-[#00d992]/40"
+                className="flex flex-col overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-primary/40"
               >
                 <div className="aspect-square bg-muted">
                   {img !== null ? (

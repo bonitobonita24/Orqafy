@@ -17,7 +17,7 @@ const STATUS_BADGE: Record<string, string> = {
   draft: "border-border bg-muted text-muted-foreground",
   processing: "border-amber-500/30 bg-amber-500/10 text-amber-400",
   approved: "border-blue-500/30 bg-blue-500/10 text-blue-400",
-  paid: "border-[#00d992]/30 bg-[#00d992]/10 text-[#00d992]",
+  paid: "border-primary/30 bg-primary/10 text-primary",
   void: "border-red-500/30 bg-red-500/10 text-red-400",
 };
 
@@ -74,7 +74,7 @@ export default async function PayrollPage({
             href={`?status=${tab.key}`}
             className={`rounded px-3 py-1 text-sm transition-colors ${
               activeStatus === tab.key
-                ? "bg-[#00d992]/10 text-[#00d992]"
+                ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -110,7 +110,7 @@ export default async function PayrollPage({
                   <td className="px-4 py-3">
                     <Link
                       href={`payroll/${p.id}`}
-                      className="font-mono text-xs font-medium text-[#00d992] hover:underline"
+                      className="font-mono text-xs font-medium text-primary hover:underline"
                     >
                       {p.payrollNumber}
                     </Link>

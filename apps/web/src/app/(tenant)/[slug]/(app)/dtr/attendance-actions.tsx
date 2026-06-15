@@ -67,7 +67,7 @@ export function AttendanceActions({
         <DialogTrigger asChild>
           <button
             type="button"
-            className="rounded border border-[#00d992]/40 bg-[#00d992]/10 px-2 py-0.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Approve
           </button>
@@ -92,7 +92,7 @@ export function AttendanceActions({
               size="sm"
               onClick={() => approve.mutate({ attendanceId })}
               disabled={approve.isPending}
-              className="bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {approve.isPending ? "Approving…" : "Confirm Approve"}
             </Button>

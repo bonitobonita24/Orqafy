@@ -142,7 +142,7 @@ export function AddFundSourceButton() {
       <DialogTrigger asChild>
         <Button
           size="sm"
-          className="bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90 h-7 px-3 text-xs font-medium"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 h-7 px-3 text-xs font-medium"
         >
           Add Fund Source
         </Button>
@@ -348,7 +348,7 @@ export function AddFundSourceButton() {
             size="sm"
             onClick={handleSubmit}
             disabled={create.isPending}
-            className="bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {create.isPending ? "Creating…" : "Create"}
           </Button>
@@ -602,7 +602,7 @@ export function EditFundSourceButton({ fundSource }: EditFundSourceButtonProps) 
             size="sm"
             onClick={handleSubmit}
             disabled={update.isPending}
-            className="bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {update.isPending ? "Saving…" : "Save"}
           </Button>
@@ -646,7 +646,7 @@ export function ToggleFundSourceButton({
           className={`rounded border px-2 py-0.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50 ${
             isActive
               ? "border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20"
-              : "border-[#00d992]/40 bg-[#00d992]/10 text-[#00d992] hover:bg-[#00d992]/20"
+              : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
           }`}
         >
           {isActive ? "Deactivate" : "Activate"}
@@ -679,7 +679,7 @@ export function ToggleFundSourceButton({
             disabled={toggle.isPending}
             className={
               !isActive
-                ? "bg-[#00d992] text-gray-950 hover:bg-[#00d992]/90"
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
                 : undefined
             }
           >

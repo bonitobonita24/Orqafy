@@ -4,93 +4,92 @@
 
 /* ============================================================
    ORQAFY DESIGN TOKENS — shadcn/ui CSS variable system
-   Primary palette: VoltAgent (dark, enterprise SaaS)
-   Light mode: accessible inversion of the brand palette
+   shadcn/ui default neutral dark (stock)
    ============================================================ */
 
 @layer base {
   :root {
-    /* Light mode defaults */
-    --background: 0 0% 100%;
-    --foreground: 240 10% 4%;
+    /* shadcn/ui default neutral dark — stock values */
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 4%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 4%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
 
-    /* Brand green: #00d992 → hsl(160 100% 43%) */
-    --primary: 160 100% 43%;
-    --primary-foreground: 240 17% 2%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
 
-    /* Accent is a light tint of primary */
-    --accent: 160 60% 94%;
-    --accent-foreground: 160 100% 25%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 160 100% 43%;
-
-    /* Custom brand tokens */
-    --brand-muted: 161 67% 51%;   /* #2fd6a1 — lighter primary */
-    --surface: 210 40% 96%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
 
     --radius: 0.5rem;
+
+    /* Chart tokens — shadcn dark stock */
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+
+    /* Neutral surface alias (used by legacy references) */
+    --surface: 0 0% 14.9%;
   }
 
   .dark {
-    /* ── VoltAgent dark palette ──────────────────────────
-       background:       #050507  → hsl(240 17%  2%)
-       surface / card:   #101010  → hsl(  0  0%  6%)
-       border:           #3d3a39  → hsl( 15  3% 23%)
-       primary:          #00d992  → hsl(160 100% 43%)
-       primary_text:     #2fd6a1  → hsl(161 67% 51%)
-       body_text:        #f2f2f2  → hsl(  0  0% 95%)
-       secondary_text:   #b8b3b0  → hsl( 23  5% 71%)
-       tertiary_text:    #8b949e  → hsl(212  9% 58%)
-    ─────────────────────────────────────────────────── */
-    --background: 240 17% 2%;
-    --foreground: 0 0% 95%;
+    /* shadcn/ui default neutral dark — identical to :root (dark-first app) */
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
 
-    --card: 0 0% 6%;
-    --card-foreground: 0 0% 95%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 6%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 160 100% 43%;
-    --primary-foreground: 240 17% 2%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
 
-    --secondary: 0 0% 9%;
-    --secondary-foreground: 0 0% 95%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 0 0% 9%;
-    --muted-foreground: 23 5% 71%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
 
-    --accent: 0 0% 9%;
-    --accent-foreground: 161 67% 51%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
 
-    /* Destructive stays readable on dark surfaces */
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 0 0% 95%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 15 3% 23%;
-    --input: 15 3% 23%;
-    --ring: 160 100% 43%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
 
-    /* Custom brand tokens */
-    --brand-muted: 161 67% 51%;
-    --surface: 0 0% 6%;
+    /* Chart tokens — shadcn dark stock */
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+
+    /* Neutral surface alias */
+    --surface: 0 0% 14.9%;
   }
 }
 

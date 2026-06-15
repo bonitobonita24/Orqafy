@@ -33,7 +33,7 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   confirmed: "text-sky-400 bg-sky-400/10 border-sky-400/30",
   processing: "text-blue-400 bg-blue-400/10 border-blue-400/30",
   shipped: "text-violet-400 bg-violet-400/10 border-violet-400/30",
-  delivered: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
+  delivered: "text-primary bg-primary/10 border-primary/30",
   cancelled: "text-muted-foreground bg-muted border-border",
   refunded: "text-rose-400 bg-rose-400/10 border-rose-400/30",
 };
@@ -166,7 +166,7 @@ export default async function EcommerceOrdersPage({ params, searchParams }: Page
         </div>
         <Link
           href={`/${slug}/ecommerce/orders/new`}
-          className="rounded-md border border-[#00d992]/40 bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20"
+          className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
         >
           + Place order
         </Link>
@@ -178,7 +178,7 @@ export default async function EcommerceOrdersPage({ params, searchParams }: Page
           href={hrefFor(slug, { paymentStatus, paymentMethod })}
           className={`rounded-full border px-3 py-1 text-xs font-medium ${
             status === undefined
-              ? "border-[#00d992] bg-[#00d992]/10 text-[#00d992]"
+              ? "border-primary bg-primary/10 text-primary"
               : "border-border bg-card text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -286,7 +286,7 @@ export default async function EcommerceOrdersPage({ params, searchParams }: Page
                     <td className="px-4 py-3 font-mono text-xs">
                       <Link
                         href={`/${slug}/ecommerce/orders/${order.id}`}
-                        className="text-[#00d992] hover:underline"
+                        className="text-primary hover:underline"
                       >
                         {order.orderNumber}
                       </Link>

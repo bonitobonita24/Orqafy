@@ -22,14 +22,14 @@ export default async function StoreLayout({
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
             <Link
               href={`/${slug}/store/products`}
-              className="text-sm font-semibold transition hover:text-[#00d992]"
+              className="text-sm font-semibold transition hover:text-primary"
             >
               Shop
             </Link>
             <div className="flex items-center gap-4">
               <Link
                 href={`/${slug}/store/orders/track`}
-                className="text-sm text-muted-foreground transition hover:text-[#00d992]"
+                className="text-sm text-muted-foreground transition hover:text-primary"
               >
                 Track order
               </Link>

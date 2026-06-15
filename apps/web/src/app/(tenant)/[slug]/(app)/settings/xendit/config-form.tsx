@@ -126,7 +126,7 @@ export function XenditConfigForm() {
           </div>
           {hasConfig &&
             (verifiedBadge ? (
-              <span className="rounded-md border border-[#00d992] bg-[#00d992]/10 px-2 py-1 text-xs font-medium text-[#00d992]">
+              <span className="rounded-md border border-primary bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
                 ✓ Verified
               </span>
             ) : (
@@ -254,7 +254,7 @@ export function XenditConfigForm() {
           <button
             type="submit"
             disabled={upsert.isPending}
-            className="rounded-md border border-[#00d992] bg-[#00d992]/10 px-3 py-1.5 text-xs font-medium text-[#00d992] hover:bg-[#00d992]/20 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md border border-primary bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {upsert.isPending ? "Saving…" : "Save credentials"}
           </button>

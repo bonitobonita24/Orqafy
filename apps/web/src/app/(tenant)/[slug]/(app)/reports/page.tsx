@@ -332,7 +332,7 @@ export default async function ReportsPage() {
                   <td className="px-4 py-2 text-right text-muted-foreground">
                     {formatInt(c.invoiceCount)}
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-xs text-[#00d992]">
+                  <td className="px-4 py-2 text-right font-mono text-xs text-primary">
                     {formatAmount(c.revenue)}
                   </td>
                 </tr>
@@ -423,7 +423,7 @@ function KpiCard({
   const valueClass = danger
     ? "text-red-500"
     : accent
-      ? "text-[#00d992]"
+      ? "text-primary"
       : "text-foreground";
   return (
     <div className="rounded-lg border border-border bg-card px-5 py-4">
@@ -453,7 +453,7 @@ function PayrollStat({
         {label}
       </div>
       <div
-        className={`mt-1 text-lg font-semibold ${accent ? "text-[#00d992]" : ""}`}
+        className={`mt-1 text-lg font-semibold ${accent ? "text-primary" : ""}`}
       >
         {value}
       </div>

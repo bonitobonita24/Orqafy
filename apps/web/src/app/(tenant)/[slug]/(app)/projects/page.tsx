@@ -17,7 +17,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   planning: "text-blue-400 bg-blue-400/10 border-blue-400/30",
-  active: "text-[#00d992] bg-[#00d992]/10 border-[#00d992]/30",
+  active: "text-primary bg-primary/10 border-primary/30",
   on_hold: "text-yellow-400 bg-yellow-400/10 border-yellow-400/30",
   completed: "text-muted-foreground bg-muted border-border",
   cancelled: "text-red-400 bg-red-400/10 border-red-400/30",
@@ -192,7 +192,7 @@ export default async function ProjectsPage({ params, searchParams }: PageProps) 
         </div>
         <Link
           href={`/${slug}/projects/new`}
-          className="px-4 py-2 rounded-md bg-[#00d992] text-[#050507] text-sm font-medium hover:bg-[#00d992]/90 transition-colors"
+          className="px-4 py-2 rounded-md bg-primary text-[#050507] text-sm font-medium hover:bg-primary/90 transition-colors"
         >
           New Project
         </Link>
@@ -204,8 +204,8 @@ export default async function ProjectsPage({ params, searchParams }: PageProps) 
           href="?"
           className={`px-3 py-1 rounded-full text-sm border transition-colors ${
             statusFilter === undefined
-              ? "bg-[#00d992] text-[#050507] border-[#00d992]"
-              : "bg-muted border-border hover:border-[#00d992]/50"
+              ? "bg-primary text-[#050507] border-primary"
+              : "bg-muted border-border hover:border-primary/50"
           }`}
         >
           All (
@@ -217,8 +217,8 @@ export default async function ProjectsPage({ params, searchParams }: PageProps) 
             href={buildPageUrl(1, s)}
             className={`px-3 py-1 rounded-full text-sm border transition-colors ${
               statusFilter === s
-                ? "bg-[#00d992] text-[#050507] border-[#00d992]"
-                : "bg-muted border-border hover:border-[#00d992]/50"
+                ? "bg-primary text-[#050507] border-primary"
+                : "bg-muted border-border hover:border-primary/50"
             }`}
           >
             {STATUS_LABELS[s]} ({statusCounts[s] ?? 0})
@@ -232,7 +232,7 @@ export default async function ProjectsPage({ params, searchParams }: PageProps) 
           <p>No projects yet.</p>
           <Link
             href={`/${slug}/projects/new`}
-            className="mt-2 inline-block text-sm text-[#00d992] hover:underline"
+            className="mt-2 inline-block text-sm text-primary hover:underline"
           >
             Create your first project →
           </Link>
@@ -277,7 +277,7 @@ export default async function ProjectsPage({ params, searchParams }: PageProps) 
                   <td className="px-4 py-3">
                     <Link
                       href={`/${slug}/projects/${project.id}`}
-                      className="font-medium hover:text-[#00d992] transition-colors"
+                      className="font-medium hover:text-primary transition-colors"
                     >
                       {project.name}
                     </Link>
@@ -324,7 +324,7 @@ export default async function ProjectsPage({ params, searchParams }: PageProps) 
             {page > 1 && (
               <Link
                 href={buildPageUrl(page - 1, statusFilter)}
-                className="px-3 py-1 rounded border border-border hover:border-[#00d992]/50 transition-colors"
+                className="px-3 py-1 rounded border border-border hover:border-primary/50 transition-colors"
               >
                 ← Previous
               </Link>
@@ -332,7 +332,7 @@ export default async function ProjectsPage({ params, searchParams }: PageProps) 
             {page < totalPages && (
               <Link
                 href={buildPageUrl(page + 1, statusFilter)}
-                className="px-3 py-1 rounded border border-border hover:border-[#00d992]/50 transition-colors"
+                className="px-3 py-1 rounded border border-border hover:border-primary/50 transition-colors"
               >
                 Next →
               </Link>
