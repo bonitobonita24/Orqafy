@@ -27,6 +27,7 @@ async function getGoodsReceipt(id: string) {
       id: true,
       grNumber: true,
       status: true,
+      tenantId: true,
       receivedAt: true,
       notes: true,
       createdAt: true,
@@ -59,9 +60,12 @@ export default async function GoodsReceiptDetailPage({
   params: Promise<{ slug: string; grId: string }>;
 }) {
   const { slug, grId } = await params;
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (!tenant) notFound();
   const gr = await getGoodsReceipt(grId);
 
-  if (gr === null) notFound();
+  // tenant-scoped: prevents cross-tenant data leak
+  if (gr === null || gr.tenantId !== tenant!.id) notFound();
 
   const totalExpected = gr.items.reduce((sum, i) => sum + Number(i.quantityExpected), 0);
   const totalReceived = gr.items.reduce((sum, i) => sum + Number(i.quantityReceived), 0);

@@ -21,9 +21,13 @@ export default async function POSNewSalePage({
 }) {
   const { slug } = await params;
 
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (!tenant) return <div>Tenant not found</div>;
+
   const [openSessions, warehouses, productsRaw] = await Promise.all([
     prisma.pOSSession.findMany({
-      where: { status: "open" },
+      // tenant-scoped: prevents cross-tenant data leak
+      where: { tenantId: tenant.id, status: "open" },
       orderBy: { openedAt: "desc" },
       take: 20,
       include: {
@@ -33,12 +37,14 @@ export default async function POSNewSalePage({
       },
     }),
     prisma.warehouse.findMany({
-      where: { isActive: true },
+      // tenant-scoped: prevents cross-tenant data leak
+      where: { tenantId: tenant.id, isActive: true },
       orderBy: [{ isDefault: "desc" }, { code: "asc" }],
       select: { id: true, name: true, code: true, isDefault: true },
     }),
     prisma.product.findMany({
-      where: { isActive: true },
+      // tenant-scoped: prevents cross-tenant data leak
+      where: { tenantId: tenant.id, isActive: true },
       orderBy: { name: "asc" },
       take: 200,
       select: {

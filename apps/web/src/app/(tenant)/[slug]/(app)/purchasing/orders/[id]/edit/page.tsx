@@ -14,6 +14,7 @@ async function getPoForEdit(id: string) {
       id: true,
       poNumber: true,
       status: true,
+      tenantId: true,
       vendorId: true,
       currency: true,
       notes: true,
@@ -30,9 +31,10 @@ async function getPoForEdit(id: string) {
   });
 }
 
-async function getActiveVendors() {
+async function getActiveVendors(tenantId: string) {
   return prisma.vendor.findMany({
-    where: { isActive: true },
+    // tenant-scoped: prevents cross-tenant data leak
+    where: { tenantId, isActive: true },
     orderBy: { companyName: "asc" },
     select: { id: true, companyName: true },
   });
@@ -44,9 +46,12 @@ export default async function EditPoPage({
   params: Promise<{ slug: string; id: string }>;
 }) {
   const { slug, id } = await params;
-  const [po, vendors] = await Promise.all([getPoForEdit(id), getActiveVendors()]);
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (!tenant) notFound();
+  const [po, vendors] = await Promise.all([getPoForEdit(id), getActiveVendors(tenant!.id)]);
 
-  if (po === null) notFound();
+  // tenant-scoped: prevents cross-tenant data leak
+  if (po === null || po.tenantId !== tenant!.id) notFound();
 
   // Only draft POs are editable — hold all other transitions for owner approval rules
   if (po.status !== "draft") {

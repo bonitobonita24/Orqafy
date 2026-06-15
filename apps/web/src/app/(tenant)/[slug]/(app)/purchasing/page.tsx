@@ -36,10 +36,11 @@ const STATUS_TABS = [
   { key: "cancelled", label: "Cancelled" },
 ];
 
-async function getPurchaseOrders(status: string | undefined) {
-  const filter = status !== undefined && status !== "all" ? { status } : undefined;
+async function getPurchaseOrders(tenantId: string, status: string | undefined) {
+  const statusFilter = status !== undefined && status !== "all" ? { status } : {};
   return prisma.purchaseOrder.findMany({
-    ...(filter !== undefined ? { where: filter } : {}),
+    // tenant-scoped: prevents cross-tenant data leak
+    where: { tenantId, ...statusFilter },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -64,7 +65,11 @@ export default async function PurchaseOrdersPage({
   const { slug } = await params;
   const sp = await searchParams;
   const activeStatus = sp.status ?? "all";
-  const orders = await getPurchaseOrders(activeStatus);
+
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (!tenant) return <div>Tenant not found</div>;
+
+  const orders = await getPurchaseOrders(tenant.id, activeStatus);
 
   return (
     <div className="space-y-6">

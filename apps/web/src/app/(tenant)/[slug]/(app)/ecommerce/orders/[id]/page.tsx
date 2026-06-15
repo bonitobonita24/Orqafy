@@ -80,6 +80,9 @@ interface PageProps {
 export default async function EcommerceOrderDetailPage({ params }: PageProps) {
   const { slug, id } = await params;
 
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (!tenant) notFound();
+
   const order = await prisma.ecommerceOrder.findUnique({
     where: { id },
     include: {
@@ -101,7 +104,8 @@ export default async function EcommerceOrderDetailPage({ params }: PageProps) {
     },
   });
 
-  if (order === null) {
+  // tenant-scoped: prevents cross-tenant data leak
+  if (order === null || order.tenantId !== tenant!.id) {
     notFound();
   }
 

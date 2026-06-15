@@ -14,9 +14,10 @@ export const dynamic = "force-dynamic";
  */
 const RECEIVABLE_STATUSES = ["approved", "ordered", "partially_received"];
 
-async function getReceivablePos() {
+async function getReceivablePos(tenantId: string) {
   return prisma.purchaseOrder.findMany({
-    where: { status: { in: RECEIVABLE_STATUSES } },
+    // tenant-scoped: prevents cross-tenant data leak
+    where: { tenantId, status: { in: RECEIVABLE_STATUSES } },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -42,7 +43,9 @@ export default async function NewGrPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const receivablePos = await getReceivablePos();
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (!tenant) return <div>Tenant not found</div>;
+  const receivablePos = await getReceivablePos(tenant.id);
 
   return (
     <div className="space-y-6">

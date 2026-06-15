@@ -50,6 +50,9 @@ export default async function POSSessionDetailPage({
 }) {
   const { slug, id } = await params;
 
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (!tenant) notFound();
+
   const session = await prisma.pOSSession.findUnique({
     where: { id },
     include: {
@@ -63,7 +66,8 @@ export default async function POSSessionDetailPage({
     },
   });
 
-  if (session === null) {
+  // tenant-scoped: prevents cross-tenant data leak
+  if (session === null || session.tenantId !== tenant!.id) {
     notFound();
   }
 

@@ -33,6 +33,7 @@ async function getPurchaseOrder(id: string) {
       id: true,
       poNumber: true,
       status: true,
+      tenantId: true,
       orderedAt: true,
       expectedDelivery: true,
       totalAmount: true,
@@ -90,9 +91,12 @@ export default async function PurchaseOrderDetailPage({
   params: Promise<{ id: string; slug: string }>;
 }) {
   const { id, slug } = await params;
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (!tenant) notFound();
   const order = await getPurchaseOrder(id);
 
-  if (order === null) {
+  // tenant-scoped: prevents cross-tenant data leak
+  if (order === null || order.tenantId !== tenant!.id) {
     notFound();
   }
 

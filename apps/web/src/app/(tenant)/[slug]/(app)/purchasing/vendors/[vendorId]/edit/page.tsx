@@ -24,6 +24,7 @@ async function getVendor(id: string) {
       paymentTerms: true,
       notes: true,
       isActive: true,
+      tenantId: true,
     },
   });
 }
@@ -34,9 +35,12 @@ export default async function EditVendorPage({
   params: Promise<{ slug: string; vendorId: string }>;
 }) {
   const { slug, vendorId } = await params;
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (!tenant) notFound();
   const vendor = await getVendor(vendorId);
 
-  if (vendor === null) {
+  // tenant-scoped: prevents cross-tenant data leak
+  if (vendor === null || vendor.tenantId !== tenant!.id) {
     notFound();
   }
 

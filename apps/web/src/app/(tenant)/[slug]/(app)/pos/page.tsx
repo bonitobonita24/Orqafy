@@ -46,9 +46,14 @@ export default async function POSSessionsPage({
   const sp = await searchParams;
   const filter = sp.status === "open" || sp.status === "closed" ? sp.status : null;
 
-  const where = filter !== null ? { status: filter } : {};
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (!tenant) return <div>Tenant not found</div>;
+
+  const baseWhere = { tenantId: tenant.id };
+  const where = filter !== null ? { ...baseWhere, status: filter } : baseWhere;
   const [sessions, openCount, closedCount] = await Promise.all([
     prisma.pOSSession.findMany({
+      // tenant-scoped: prevents cross-tenant data leak
       where,
       orderBy: { openedAt: "desc" },
       take: 50,
@@ -59,8 +64,8 @@ export default async function POSSessionsPage({
         _count: { select: { sales: true } },
       },
     }),
-    prisma.pOSSession.count({ where: { status: "open" } }),
-    prisma.pOSSession.count({ where: { status: "closed" } }),
+    prisma.pOSSession.count({ where: { tenantId: tenant.id, status: "open" } }), // tenant-scoped: prevents cross-tenant data leak
+    prisma.pOSSession.count({ where: { tenantId: tenant.id, status: "closed" } }), // tenant-scoped: prevents cross-tenant data leak
   ]);
 
   return (

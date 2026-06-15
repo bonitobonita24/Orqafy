@@ -26,10 +26,10 @@ function statusBadge(status: string): string {
  * Fetch the Employee row for the currently logged-in user, if one exists.
  * Returns null for admin-only accounts that have no employee record.
  */
-async function getMyEmployee(userId: string | null) {
+async function getMyEmployee(userId: string | null, tenantId: string) {
   if (userId === null) return null;
   return prisma.employee.findFirst({
-    where: { userId },
+    where: { userId, tenantId },
     select: { id: true },
   });
 }
@@ -47,11 +47,11 @@ async function getMyTodayRecord(employeeId: string) {
   });
 }
 
-async function getRecentAttendance() {
+async function getRecentAttendance(tenantId: string) {
   const since = new Date();
   since.setUTCDate(since.getUTCDate() - 7);
   return prisma.attendanceRecord.findMany({
-    where: { date: { gte: since } },
+    where: { tenantId, date: { gte: since } },
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],
     take: 30,
     select: {
@@ -74,8 +74,9 @@ async function getRecentAttendance() {
   });
 }
 
-async function getLeaveRequests() {
+async function getLeaveRequests(tenantId: string) {
   return prisma.leaveRequest.findMany({
+    where: { tenantId },
     orderBy: [{ status: "asc" }, { startDate: "desc" }],
     take: 30,
     select: {
@@ -101,15 +102,29 @@ async function getLeaveRequests() {
 export default async function DtrPage() {
   const session = await auth();
   const currentUserId = session?.user?.id ?? null;
+  const tenantId = session?.user?.tenantId ?? null;
+
+  // No tenant on the session → nothing to show. Never fall through to an
+  // unscoped query (that would expose every tenant's attendance + leave data).
+  if (tenantId === null || tenantId.length === 0) {
+    return (
+      <div className="space-y-8">
+        <h1 className="text-2xl font-bold tracking-tight">Daily Time Record</h1>
+        <p className="text-sm text-muted-foreground">
+          No tenant context on this session.
+        </p>
+      </div>
+    );
+  }
 
   // Employee lookup runs first so the result can feed getMyTodayRecord.
-  const myEmployee = await getMyEmployee(currentUserId);
+  const myEmployee = await getMyEmployee(currentUserId, tenantId);
   const myTodayRecord =
     myEmployee !== null ? await getMyTodayRecord(myEmployee.id) : null;
 
   const [attendance, leaves] = await Promise.all([
-    getRecentAttendance(),
-    getLeaveRequests(),
+    getRecentAttendance(tenantId),
+    getLeaveRequests(tenantId),
   ]);
 
   return (

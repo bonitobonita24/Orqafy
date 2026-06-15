@@ -5,9 +5,10 @@ import { prisma } from "@orqafy/db";
 export const metadata: Metadata = { title: "Vendors" };
 export const dynamic = "force-dynamic";
 
-async function getVendors(activeOnly: boolean) {
+async function getVendors(tenantId: string, activeOnly: boolean) {
   return prisma.vendor.findMany({
-    ...(activeOnly ? { where: { isActive: true } } : {}),
+    // tenant-scoped: prevents cross-tenant data leak
+    where: activeOnly ? { tenantId, isActive: true } : { tenantId },
     orderBy: { companyName: "asc" },
     select: {
       id: true,
@@ -31,7 +32,11 @@ export default async function VendorsPage({
   const { slug } = await params;
   const sp = await searchParams;
   const activeOnly = sp.filter !== "all";
-  const vendors = await getVendors(activeOnly);
+
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (!tenant) return <div>Tenant not found</div>;
+
+  const vendors = await getVendors(tenant.id, activeOnly);
 
   return (
     <div className="space-y-6">

@@ -19,8 +19,10 @@ const GR_STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
-async function getGoodsReceipts() {
+async function getGoodsReceipts(tenantId: string) {
   return prisma.goodsReceipt.findMany({
+    // tenant-scoped: prevents cross-tenant data leak
+    where: { tenantId },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -42,7 +44,9 @@ export default async function GoodsReceiptsPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const receipts = await getGoodsReceipts();
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (!tenant) return <div>Tenant not found</div>;
+  const receipts = await getGoodsReceipts(tenant.id);
 
   return (
     <div className="space-y-6">

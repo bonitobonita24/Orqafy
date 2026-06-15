@@ -130,13 +130,17 @@ export default async function EcommerceOrdersPage({ params, searchParams }: Page
   const parsedPage = typeof rawPage === "string" ? Number.parseInt(rawPage, 10) : 1;
   const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
 
-  const where: Record<string, unknown> = {};
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (!tenant) return <div>Tenant not found</div>;
+
+  const where: Record<string, unknown> = { tenantId: tenant.id };
   if (status !== undefined) where.status = status;
   if (paymentStatus !== undefined) where.paymentStatus = paymentStatus;
   if (paymentMethod !== undefined) where.paymentMethod = paymentMethod;
 
   const [items, total] = await Promise.all([
     prisma.ecommerceOrder.findMany({
+      // tenant-scoped: prevents cross-tenant data leak
       where,
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * DEFAULT_LIMIT,
@@ -147,7 +151,7 @@ export default async function EcommerceOrdersPage({ params, searchParams }: Page
         },
       },
     }),
-    prisma.ecommerceOrder.count({ where }),
+    prisma.ecommerceOrder.count({ where }), // tenant-scoped: prevents cross-tenant data leak
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / DEFAULT_LIMIT));

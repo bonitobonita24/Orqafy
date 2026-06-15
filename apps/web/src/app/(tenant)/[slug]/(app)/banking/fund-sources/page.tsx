@@ -2,12 +2,19 @@ import type { Metadata } from "next";
 import { prisma } from "@orqafy/db";
 import { AddFundSourceButton, EditFundSourceButton, ToggleFundSourceButton } from "./fund-source-form";
 
+async function getTenantId(slug: string) {
+  const t = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  return t?.id ?? null;
+}
+
 export const metadata: Metadata = { title: "Fund Sources" };
 
 export const dynamic = "force-dynamic";
 
-async function getFundSources() {
+async function getFundSources(tenantId: string) {
   return prisma.fundSource.findMany({
+    // tenant-scoped: prevents cross-tenant data leak
+    where: { tenantId },
     orderBy: { name: "asc" },
     select: {
       id: true,
@@ -47,8 +54,15 @@ function formatBalance(balance: unknown, currency: string): string {
   }).format(num);
 }
 
-export default async function FundSourcesPage() {
-  const fundSources = await getFundSources();
+export default async function FundSourcesPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const tenantId = await getTenantId(slug);
+  if (tenantId === null) return <div>Tenant not found</div>;
+  const fundSources = await getFundSources(tenantId);
   const active = fundSources.filter((f) => f.isActive);
 
   return (

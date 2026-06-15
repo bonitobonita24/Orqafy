@@ -6,9 +6,10 @@ import { PoForm } from "./po-form";
 export const metadata: Metadata = { title: "New Purchase Order" };
 export const dynamic = "force-dynamic";
 
-async function getActiveVendors() {
+async function getActiveVendors(tenantId: string) {
   return prisma.vendor.findMany({
-    where: { isActive: true },
+    // tenant-scoped: prevents cross-tenant data leak
+    where: { tenantId, isActive: true },
     orderBy: { companyName: "asc" },
     select: { id: true, companyName: true },
   });
@@ -20,7 +21,9 @@ export default async function NewPoPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const vendors = await getActiveVendors();
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (!tenant) return <div>Tenant not found</div>;
+  const vendors = await getActiveVendors(tenant.id);
 
   return (
     <div className="space-y-6">

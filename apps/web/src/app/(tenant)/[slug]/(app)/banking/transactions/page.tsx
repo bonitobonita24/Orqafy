@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import { prisma } from "@orqafy/db";
 import { NewTransactionButton } from "./transaction-form";
 
+async function getTenantId(slug: string) {
+  const t = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  return t?.id ?? null;
+}
+
 export const metadata: Metadata = { title: "Transactions Ledger" };
 
 export const dynamic = "force-dynamic";
@@ -9,18 +14,21 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 50;
 
 interface PageProps {
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ page?: string; type?: string; fundSourceId?: string }>;
 }
 
-async function getTransactions(page: number, type?: string, fundSourceId?: string) {
+async function getTransactions(tenantId: string, page: number, type?: string, fundSourceId?: string) {
   const skip = (page - 1) * PAGE_SIZE;
   const where = {
+    tenantId,
     ...(type !== undefined && { type }),
     ...(fundSourceId !== undefined && { fundSourceId }),
   };
 
   const [transactions, total] = await Promise.all([
     prisma.fundTransaction.findMany({
+      // tenant-scoped: prevents cross-tenant data leak
       where,
       orderBy: { transactionDate: "desc" },
       skip,
@@ -38,15 +46,16 @@ async function getTransactions(page: number, type?: string, fundSourceId?: strin
         createdBy: { select: { firstName: true, lastName: true, displayName: true } },
       },
     }),
-    prisma.fundTransaction.count({ where }),
+    prisma.fundTransaction.count({ where }), // tenant-scoped: prevents cross-tenant data leak
   ]);
 
   return { transactions, total };
 }
 
-async function getFundSources() {
+async function getFundSources(tenantId: string) {
   return prisma.fundSource.findMany({
-    where: { isActive: true },
+    // tenant-scoped: prevents cross-tenant data leak
+    where: { tenantId, isActive: true },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
@@ -112,15 +121,19 @@ const CREDIT_TYPES = new Set([
   "refund",
 ]);
 
-export default async function TransactionsLedgerPage({ searchParams }: PageProps) {
-  const params = await searchParams;
-  const page = Math.max(1, Number(params.page ?? "1"));
-  const typeFilter = params.type ?? undefined;
-  const fundSourceFilter = params.fundSourceId ?? undefined;
+export default async function TransactionsLedgerPage({ params: paramsPromise, searchParams }: PageProps) {
+  const { slug } = await paramsPromise;
+  const sp = await searchParams;
+  const page = Math.max(1, Number(sp.page ?? "1"));
+  const typeFilter = sp.type ?? undefined;
+  const fundSourceFilter = sp.fundSourceId ?? undefined;
+
+  const tenantId = await getTenantId(slug);
+  if (tenantId === null) return <div>Tenant not found</div>;
 
   const [{ transactions, total }, fundSources] = await Promise.all([
-    getTransactions(page, typeFilter, fundSourceFilter),
-    getFundSources(),
+    getTransactions(tenantId, page, typeFilter, fundSourceFilter),
+    getFundSources(tenantId),
   ]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);

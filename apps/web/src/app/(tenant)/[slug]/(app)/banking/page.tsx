@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@orqafy/db";
 
+async function getTenantId(slug: string) {
+  const t = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  return t?.id ?? null;
+}
+
 export const metadata: Metadata = { title: "Banking & Finance" };
 export const dynamic = "force-dynamic";
 
@@ -61,14 +66,15 @@ const TX_TYPE_DIR: Record<string, "in" | "out" | "neutral"> = {
   adjustment: "neutral",
 };
 
-async function getDashboardData() {
+async function getDashboardData(tenantId: string) {
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
   const [activeSources, monthTxs, recentTxs] = await Promise.all([
     prisma.fundSource.findMany({
-      where: { isActive: true },
+      // tenant-scoped: prevents cross-tenant data leak
+      where: { tenantId, isActive: true },
       select: {
         id: true,
         name: true,
@@ -82,10 +88,13 @@ async function getDashboardData() {
       orderBy: { name: "asc" },
     }),
     prisma.fundTransaction.findMany({
-      where: { transactionDate: { gte: monthStart } },
+      // tenant-scoped: prevents cross-tenant data leak
+      where: { tenantId, transactionDate: { gte: monthStart } },
       select: { type: true, amount: true },
     }),
     prisma.fundTransaction.findMany({
+      // tenant-scoped: prevents cross-tenant data leak
+      where: { tenantId },
       orderBy: { transactionDate: "desc" },
       take: 10,
       include: {
@@ -170,7 +179,9 @@ export default async function BankingDashboardPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const data = await getDashboardData();
+  const tenantId = await getTenantId(slug);
+  if (tenantId === null) return <div>Tenant not found</div>;
+  const data = await getDashboardData(tenantId);
   const monthLabel = new Intl.DateTimeFormat("en-PH", {
     month: "long",
     year: "numeric",

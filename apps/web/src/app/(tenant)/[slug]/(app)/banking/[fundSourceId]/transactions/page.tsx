@@ -14,7 +14,7 @@ interface PageProps {
   searchParams: Promise<{ page?: string; type?: string }>;
 }
 
-async function getFundSource(fundSourceId: string) {
+async function getFundSource(fundSourceId: string, tenantId: string) {
   return prisma.fundSource.findUnique({
     where: { id: fundSourceId },
     select: {
@@ -26,19 +26,22 @@ async function getFundSource(fundSourceId: string) {
       bankName: true,
       accountNumber: true,
       isActive: true,
+      tenantId: true,
     },
   });
 }
 
-async function getTransactions(fundSourceId: string, page: number, type?: string) {
+async function getTransactions(tenantId: string, fundSourceId: string, page: number, type?: string) {
   const skip = (page - 1) * PAGE_SIZE;
   const where = {
+    tenantId,
     fundSourceId,
     ...(type !== undefined && { type }),
   };
 
   const [transactions, total] = await Promise.all([
     prisma.fundTransaction.findMany({
+      // tenant-scoped: prevents cross-tenant data leak
       where,
       orderBy: { transactionDate: "desc" },
       skip,
@@ -55,7 +58,7 @@ async function getTransactions(fundSourceId: string, page: number, type?: string
         createdBy: { select: { firstName: true, lastName: true, displayName: true } },
       },
     }),
-    prisma.fundTransaction.count({ where }),
+    prisma.fundTransaction.count({ where }), // tenant-scoped: prevents cross-tenant data leak
   ]);
 
   return { transactions, total };
@@ -130,17 +133,21 @@ const CREDIT_TYPES = new Set([
 ]);
 
 export default async function AccountTransactionsPage({ params, searchParams }: PageProps) {
-  const { fundSourceId } = await params;
+  const { slug, fundSourceId } = await params;
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page ?? "1"));
   const typeFilter = sp.type ?? undefined;
 
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (!tenant) notFound();
+
   const [fundSource, { transactions, total }] = await Promise.all([
-    getFundSource(fundSourceId),
-    getTransactions(fundSourceId, page, typeFilter),
+    getFundSource(fundSourceId, tenant.id),
+    getTransactions(tenant.id, fundSourceId, page, typeFilter),
   ]);
 
-  if (!fundSource) {
+  // tenant-scoped: prevents cross-tenant data leak
+  if (!fundSource || fundSource.tenantId !== tenant.id) {
     notFound();
   }
 
