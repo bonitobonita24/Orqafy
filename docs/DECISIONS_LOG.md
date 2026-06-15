@@ -645,3 +645,40 @@ sensible default wired with `createNotification`.
 **Incidental governance note:** the pre-existing `purchasing.ts` router lacks L5 `writeAuditLog` (predates the Epic-1 audit-hardening). Flagged for an audit-hardening pass; not added in this UI-scaffolding scope.
 
 **Phase:** Phase 7 (finance scaffolding)
+
+---
+
+## 2026-06-15 — Finance business RULES (Claude-provided, owner-delegated) — build the HELD logic
+
+**Decision (owner, 2026-06-15):** owner delegated the finance business rules to Claude ("start on a set of finance rules you provide"). The rules below are Claude-authored sensible/standard defaults; they UNBLOCK the `// HOLD(owner-rule)` logic scaffolded earlier. Built in dependency order: **Accounting posting → Purchasing approval/posting → Payroll computation.** Owner may override any rule; statutory rate constants are stored editable (see Payroll).
+
+### A) Accounting — Journal Entry posting (build FIRST; others post into it)
+- **Lifecycle:** DRAFT → POSTED → (REVERSED). 
+- **Post preconditions:** balanced (Σdebit == Σcredit), ≥2 lines, all referenced accounts active, entry date within an OPEN fiscal period.
+- **Post effect:** status=POSTED, entry becomes immutable, stamp `postedAt`/`postedById`. No separate ledger table — account balances, GL, and trial balance are DERIVED by aggregating POSTED journal lines (DRAFT excluded).
+- **Reverse:** create a NEW POSTED mirror entry (debit/credit swapped), link `reversalOfId`; original stays POSTED. Posted entries are NEVER deleted (audit integrity).
+- **Void/delete:** DRAFT entries only.
+- **Trial balance:** Σ POSTED debits == Σ POSTED credits (must net zero); per-account = posted lines aggregated.
+- **Fiscal period close:** OPEN→CLOSED blocks new postings dated within the period; reopen = Administrator only; both audited.
+
+### B) Purchasing — PO approval + receipt posting (depends on A)
+- **PO lifecycle:** DRAFT → SUBMITTED → APPROVED → ORDERED → PARTIALLY_RECEIVED → RECEIVED → CLOSED; CANCELLED allowed from any pre-RECEIVED state.
+- **Approval threshold:** per-tenant configurable `poApprovalThreshold` (default **₱10,000**). PO total ≤ threshold → auto-APPROVE on submit; above → requires an approver role (Administrator/Manager/purchasing approver) to APPROVE.
+- **Goods receipt:** increments Inventory stock for received qty on lines allocated to `stock`; partial receipts allowed (→ PARTIALLY_RECEIVED until fully received).
+- **Accounting posting (honors PRODUCT.md: expense at PURCHASE time, not consumption):** on goods receipt, post a JE — DR Inventory-asset (stock lines) / Expense account (company/project-expense lines), CR Accounts Payable (or the chosen FundSource if paid immediately). Later inventory consumption posts **NO** JE (prevents double-expense, per PRODUCT.md L97-98).
+- **3-way match:** non-blocking flag if receipt qty ≠ PO qty.
+
+### C) Payroll — computation (PH statutory; configurable, depends on A)
+- **Run lifecycle:** DRAFT → PROCESSED (computed) → APPROVED → PAID.
+- **Per-payslip:** gross = basic + allowances + overtime + adjustments. employee deductions = SSS-EE + PhilHealth-EE + Pag-IBIG-EE + withholding-tax + cash-advance-recovery + other. net = gross − deductions. Employer shares (SSS-ER/PhilHealth-ER/Pag-IBIG-ER) tracked as employer cost (not deducted from employee).
+- **Statutory rates → stored in a CONFIGURABLE `StatutoryRate` table** (owner-editable), seeded with CITED **2025** PH values (statutory tables change annually — owner MUST verify):
+  - **SSS (2025):** 15% of MSC; EE 5% / ER 10%; MSC floor ₱5,000, ceiling ₱35,000 (incl. WISP/MPF above ₱20,000).
+  - **PhilHealth (2024/2025):** 5% of monthly basic; EE 2.5%; floor ₱10,000, ceiling ₱100,000.
+  - **Pag-IBIG:** EE 2% / ER 2%; comp cap ₱10,000 → max EE ₱200 (editable for voluntary higher).
+  - **Withholding tax:** BIR TRAIN revised withholding table (2023+), applied per pay frequency (monthly / semi-monthly); brackets stored in the configurable table.
+- **APPROVED→PAID:** deduct chosen FundSource for net pay + employer remittances; post payroll JE (DR salaries-expense + employer-statutory-expense, CR cash/FundSource + statutory-payables + withholding-payable) per PRODUCT.md Core Flow 8.
+- **Cash-advance recovery:** per-run installment deducted from linked advances (manual amount per PRODUCT.md L581).
+
+**Build status:** rules recorded; Accounting posting build NEXT (this session). Purchasing + Payroll waves follow.
+
+**Phase:** Phase 7 (finance logic)
