@@ -78,7 +78,8 @@ export function NewJobOrderForm({
       estimatedCost.trim() !== "" ? parseFloat(estimatedCost) : undefined;
     if (
       estimatedCost.trim() !== "" &&
-      (Number.isNaN(estimatedCostNum) || (estimatedCostNum !== undefined && estimatedCostNum < 0))
+      (Number.isNaN(estimatedCostNum) ||
+        (estimatedCostNum !== undefined && estimatedCostNum < 0))
     ) {
       setError("Estimated cost must be a non-negative number.");
       return;

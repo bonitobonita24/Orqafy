@@ -180,13 +180,11 @@ describe("Job Order tenant parity (K-prime closure)", () => {
     expect(mockJobOrderCreate).toHaveBeenCalledOnce();
     const callArg = mockJobOrderCreate.mock.calls[0]![0] as any;
     expect(callArg.data.tenantId).toBe("tenant-A");
-    // Input cannot supply tenantId — it is not in jobOrderInput schema
     expect(callArg.data.createdById).toBe("user-1");
   });
 
   // ── 2. byId: IDOR guard ─────────────────────────────────────────────────────
   it("jobOrder.byId throws NOT_FOUND when job order belongs to tenant-B but ctx is tenant-A", async () => {
-    // loadJobOrderForTenant calls findUnique; returns a record owned by tenant-B.
     mockJobOrderFindUnique.mockResolvedValueOnce(jobOrderOnTenantB);
 
     const caller = createCaller(ctxForTenant("tenant-A"));
@@ -270,7 +268,7 @@ describe("Job Order tenant parity (K-prime closure)", () => {
   });
 
   // ── 8. removePart: IDOR guard via parent tenantId ──────────────────────────
-  it("jobOrder.removePart throws NOT_FOUND when part's parent job order belongs to different tenant", async () => {
+  it("jobOrder.removePart throws NOT_FOUND when part parent job order belongs to different tenant", async () => {
     mockJobOrderPartFindUnique.mockResolvedValueOnce({
       id: PART_CUID,
       jobOrder: { status: "diagnosing", tenantId: "tenant-B" },
@@ -284,7 +282,7 @@ describe("Job Order tenant parity (K-prime closure)", () => {
   });
 
   // ── 9. removeServiceLine: IDOR guard via parent tenantId ───────────────────
-  it("jobOrder.removeServiceLine throws NOT_FOUND when line's parent job order belongs to different tenant", async () => {
+  it("jobOrder.removeServiceLine throws NOT_FOUND when line parent job order belongs to different tenant", async () => {
     mockJobOrderServiceLineFindUnique.mockResolvedValueOnce({
       id: LINE_CUID,
       jobOrder: { status: "diagnosing", tenantId: "tenant-B" },

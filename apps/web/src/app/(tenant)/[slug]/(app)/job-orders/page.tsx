@@ -101,8 +101,8 @@ export default async function JobOrdersPage({
   ]);
   const activeStatus = searchParamsResolved.status ?? "all";
 
-  // Resolve tenant for scoped query — middleware already verifies the slug is
-  // valid, but we need the tenantId for the Prisma filter.
+  // Resolve tenant to scope the query — middleware already validates the slug,
+  // but we need the tenantId for the Prisma where clause.
   const tenant = await prisma.tenant.findUnique({
     where: { slug },
     select: { id: true },

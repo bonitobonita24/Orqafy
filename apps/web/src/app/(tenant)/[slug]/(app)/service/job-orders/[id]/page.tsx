@@ -70,8 +70,7 @@ export default async function JobOrderDetailPage({ params }: PageProps) {
         serviceLines: { orderBy: { sortOrder: "asc" } },
       },
     }),
-    // Load tenant users for the assign-technician control.
-    // Tenant isolation: scoped via the tenant record that owns this slug.
+    // Tenant-scoped user list for the assign-technician control.
     prisma.tenant.findUnique({ where: { slug }, select: { id: true } }).then(
       (tenant) =>
         tenant === null
