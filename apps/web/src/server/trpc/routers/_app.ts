@@ -27,6 +27,9 @@ import { supportRouter } from "./support";
 import { posRouter } from "./pos";
 import { storefrontRouter } from "./storefront";
 import { adminXenditConfigRouter } from "./admin-xendit-config";
+import { departmentRouter } from "./department";
+import { expenseCategoryRouter } from "./expense-category";
+import { smtpConfigRouter } from "./smtp-config";
 
 export const appRouter = createTRPCRouter({
   auth: authRouter,
@@ -57,6 +60,9 @@ export const appRouter = createTRPCRouter({
   pos: posRouter,
   storefront: storefrontRouter,
   adminXenditConfig: adminXenditConfigRouter,
+  department: departmentRouter,
+  expenseCategory: expenseCategoryRouter,
+  smtpConfig: smtpConfigRouter,
 });
 
 export type AppRouter = typeof appRouter;
