@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
-import { prisma as db } from "@orqafy/db";
+import { prisma as db, writeAuditLog } from "@orqafy/db";
 import { sanitizePlainText } from "@/server/lib/sanitize";
 
 const customerInput = z.object({
@@ -54,21 +54,38 @@ export const clientRouter = createTRPCRouter({
     .input(customerInput)
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
-      return db.customer.create({
-        data: {
-          tenantId: ctx.tenantId,
-          firstName: sanitizePlainText(input.firstName),
-          lastName: sanitizePlainText(input.lastName),
-          companyName: input.companyName !== undefined ? sanitizePlainText(input.companyName) : null,
-          email: input.email ?? null,
-          phone: input.phone ?? null,
-          address: input.address ?? null,
-          city: input.city ?? null,
-          province: input.province ?? null,
-          postalCode: input.postalCode ?? null,
-          taxId: input.taxId ?? null,
-          notes: input.notes !== undefined ? sanitizePlainText(input.notes) : null,
-        },
+      return db.$transaction(async (tx) => {
+        const created = await tx.customer.create({
+          data: {
+            tenantId: ctx.tenantId,
+            firstName: sanitizePlainText(input.firstName),
+            lastName: sanitizePlainText(input.lastName),
+            companyName: input.companyName !== undefined ? sanitizePlainText(input.companyName) : null,
+            email: input.email ?? null,
+            phone: input.phone ?? null,
+            address: input.address ?? null,
+            city: input.city ?? null,
+            province: input.province ?? null,
+            postalCode: input.postalCode ?? null,
+            taxId: input.taxId ?? null,
+            notes: input.notes !== undefined ? sanitizePlainText(input.notes) : null,
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "Customer",
+          entityId: created.id,
+          before: null,
+          after: {
+            id: created.id,
+            firstName: created.firstName,
+            lastName: created.lastName,
+            companyName: created.companyName,
+            tenantId: created.tenantId,
+          },
+        });
+        return created;
       });
     }),
 
@@ -79,21 +96,44 @@ export const clientRouter = createTRPCRouter({
       const { id, ...rest } = input;
       const existing = await db.customer.findFirst({ where: { id, tenantId: ctx.tenantId } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      return db.customer.update({
-        where: { id },
-        data: {
-          ...(rest.firstName !== undefined ? { firstName: sanitizePlainText(rest.firstName) } : {}),
-          ...(rest.lastName !== undefined ? { lastName: sanitizePlainText(rest.lastName) } : {}),
-          ...(rest.companyName !== undefined ? { companyName: rest.companyName !== "" ? sanitizePlainText(rest.companyName) : null } : {}),
-          ...(rest.email !== undefined ? { email: rest.email ?? null } : {}),
-          ...(rest.phone !== undefined ? { phone: rest.phone ?? null } : {}),
-          ...(rest.address !== undefined ? { address: rest.address ?? null } : {}),
-          ...(rest.city !== undefined ? { city: rest.city ?? null } : {}),
-          ...(rest.province !== undefined ? { province: rest.province ?? null } : {}),
-          ...(rest.postalCode !== undefined ? { postalCode: rest.postalCode ?? null } : {}),
-          ...(rest.taxId !== undefined ? { taxId: rest.taxId ?? null } : {}),
-          ...(rest.notes !== undefined ? { notes: rest.notes !== "" ? sanitizePlainText(rest.notes) : null } : {}),
-        },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.customer.update({
+          where: { id },
+          data: {
+            ...(rest.firstName !== undefined ? { firstName: sanitizePlainText(rest.firstName) } : {}),
+            ...(rest.lastName !== undefined ? { lastName: sanitizePlainText(rest.lastName) } : {}),
+            ...(rest.companyName !== undefined ? { companyName: rest.companyName !== "" ? sanitizePlainText(rest.companyName) : null } : {}),
+            ...(rest.email !== undefined ? { email: rest.email ?? null } : {}),
+            ...(rest.phone !== undefined ? { phone: rest.phone ?? null } : {}),
+            ...(rest.address !== undefined ? { address: rest.address ?? null } : {}),
+            ...(rest.city !== undefined ? { city: rest.city ?? null } : {}),
+            ...(rest.province !== undefined ? { province: rest.province ?? null } : {}),
+            ...(rest.postalCode !== undefined ? { postalCode: rest.postalCode ?? null } : {}),
+            ...(rest.taxId !== undefined ? { taxId: rest.taxId ?? null } : {}),
+            ...(rest.notes !== undefined ? { notes: rest.notes !== "" ? sanitizePlainText(rest.notes) : null } : {}),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Customer",
+          entityId: id,
+          before: {
+            firstName: existing.firstName,
+            lastName: existing.lastName,
+            companyName: existing.companyName,
+            email: existing.email,
+            phone: existing.phone,
+          },
+          after: {
+            firstName: updated.firstName,
+            lastName: updated.lastName,
+            companyName: updated.companyName,
+            email: updated.email,
+            phone: updated.phone,
+          },
+        });
+        return updated;
       });
     }),
 
@@ -103,6 +143,21 @@ export const clientRouter = createTRPCRouter({
       if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
       const existing = await db.customer.findFirst({ where: { id: input.id, tenantId: ctx.tenantId } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      return db.customer.delete({ where: { id: input.id } });
+      return db.$transaction(async (tx) => {
+        const deleted = await tx.customer.delete({ where: { id: input.id } });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "DELETE",
+          entity: "Customer",
+          entityId: input.id,
+          before: {
+            firstName: existing.firstName,
+            lastName: existing.lastName,
+            companyName: existing.companyName,
+          },
+          after: null,
+        });
+        return deleted;
+      });
     }),
 });
