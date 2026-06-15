@@ -266,6 +266,7 @@ operations and financial traceability without the complexity.
   auto-generates draft invoice 3 days before nextBillingDate
 
 ### Purchasing
+> **Build status (2026-06-15, see DECISIONS_LOG):** data-entry CRUD scaffolded (Vendor CRUD, PO drafts, Goods Receipt entry). Business logic — PO approval workflow / status beyond draft, auto-post to Inventory, auto-post to Accounting, tax auto-calc / 3-way match — is **HELD pending owner rules** (marked `// HOLD(owner-rule)` in code).
 - Vendors: two types — ECommerceSeller (Shopee/Lazada/TikTok Shop/Zalora/FB Marketplace/
   other) and DirectSupplier (local or remote physical vendors)
 - Purchase Orders (Direct Supplier flow): user fills PO form → adds line items with

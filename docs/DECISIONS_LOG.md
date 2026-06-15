@@ -623,3 +623,25 @@ sensible default wired with `createNotification`.
   assignment — and its notification — can never cross tenants.
 
 **Phase:** Phase 7 (D7 build)
+
+---
+
+## 2026-06-15 — Finance domains (Purchasing, Accounting, Payroll): scaffold data-entry CRUD now, HOLD business logic
+
+**Decision (owner, 2026-06-15):** For the three remaining finance domains, build the **safe data-entry CRUD/UI scaffolding now**, but **HOLD all business logic** pending owner-supplied rules. Chosen over "build everything with best-guess defaults" specifically to avoid guessing financial computation (esp. payroll pay math), which would be harmful if wrong.
+
+**In scope (built autonomously):**
+- **Purchasing:** Vendor CRUD; Purchase Order as DRAFT records (header + line items); Goods Receipt record-entry. (Shipped `a4fc63b`.)
+- **Accounting:** Chart-of-Accounts CRUD; Journal Entry as DRAFT records (debit==credit enforced as a form-level data-validation rule only).
+- **Payroll:** Payroll Run records (period + draft status) + manual payroll-line entry.
+
+**HELD pending owner rules (marked `// HOLD(owner-rule)` in code):**
+- Purchasing: PO approval workflow / status transitions beyond draft; auto-post received PO to Inventory; auto-post to Accounting; tax auto-calc / 3-way match / budget checks.
+- Accounting: posting journals to the ledger; trial balance / GL rollups / financial statements; auto-posting from invoices/purchasing/payroll; period/year close.
+- Payroll: pay computation (gross/net/tax/deductions); approval/markPaid lifecycle; auto-calc from DTR/attendance; FundSource deduction + Journal posting (PRODUCT.md Core Flow 8).
+
+**OWNER follow-up needed:** supply the business rules for each HELD item above (approval workflows, posting rules, payroll computation formula incl. PH tax/deductions) to unblock the logic build.
+
+**Incidental governance note:** the pre-existing `purchasing.ts` router lacks L5 `writeAuditLog` (predates the Epic-1 audit-hardening). Flagged for an audit-hardening pass; not added in this UI-scaffolding scope.
+
+**Phase:** Phase 7 (finance scaffolding)
