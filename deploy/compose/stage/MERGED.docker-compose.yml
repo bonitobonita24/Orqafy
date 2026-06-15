@@ -60,8 +60,8 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "${DB_PORT}:5432"
+    # No host port published — reachable internally as ${COMPOSE_PROJECT_NAME}_postgres:5432.
+    # Avoids host-port collisions with sibling staging stacks (e.g. marine-guardian uses 5433).
     networks: [app_network]
     restart: unless-stopped
     healthcheck:
@@ -81,8 +81,7 @@ services:
       MAX_CLIENT_CONN: 100
       DEFAULT_POOL_SIZE: 20
       AUTH_TYPE: scram-sha-256
-    ports:
-      - "${PGBOUNCER_PORT}:5432"
+    # No host port published — reachable internally as ${COMPOSE_PROJECT_NAME}_pgbouncer:5432.
     networks: [app_network]
     depends_on:
       postgres: { condition: service_healthy }
@@ -97,8 +96,7 @@ services:
     command: valkey-server --requirepass ${REDIS_PASSWORD} --appendonly yes
     volumes:
       - valkey_data:/data
-    ports:
-      - "${REDIS_PORT}:6379"
+    # No host port published — reachable internally as ${COMPOSE_PROJECT_NAME}_valkey:6379.
     networks: [app_network]
     restart: unless-stopped
     healthcheck:
@@ -119,13 +117,12 @@ services:
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
-    ports:
-      - "${STORAGE_PORT}:9000"
-      - "${STORAGE_CONSOLE_PORT}:9001"
+    # No host ports published — S3 API (9000) + console (9001) stay internal to app_network.
+    # Inspect via `docker compose exec minio mc ...` or an SSH tunnel; never expose MinIO publicly.
     networks: [app_network]
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -145,14 +142,13 @@ services:
       - pgadmin_data:/var/lib/pgadmin
       # pgadmin-servers.json bind-mount removed — register postgres server
       # manually in pgAdmin UI after first deploy. See header comment.
-    ports:
-      - "${PGADMIN_PORT}:80"
+    # No host port published — reach pgAdmin via an SSH tunnel to ${COMPOSE_PROJECT_NAME}_pgadmin:80.
     networks: [app_network]
     depends_on:
       - postgres
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-O", "-", "http://localhost:80/misc/ping"]
+      test: ["CMD", "wget", "-O", "-", "http://127.0.0.1:80/misc/ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -175,7 +171,7 @@ services:
       valkey:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:${WORKER_PORT}/api/health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:${WORKER_PORT}/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -198,7 +194,7 @@ services:
       valkey:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:${APP_PORT}/api/health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:${APP_PORT}/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -206,5 +202,6 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.rule=Host(`${APP_DOMAIN}`)"
       - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.tls.certresolver=letsEncrypt"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.tls=true"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.tls.certresolver=letsencrypt"
       - "traefik.http.services.${COMPOSE_PROJECT_NAME}_app.loadbalancer.server.port=3000"

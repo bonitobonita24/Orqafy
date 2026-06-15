@@ -17,8 +17,11 @@
 set -e
 
 # ── Config ──
-IMAGE_BASE="${DOCKERHUB_USERNAME:-bonitobonita24}/orqafy"
+DOCKER_USER="${DOCKERHUB_USERNAME:-bonitobonita24}"
+IMAGE_BASE="${DOCKER_USER}/orqafy"
+WORKER_IMAGE_BASE="${DOCKER_USER}/orqafy-worker"
 DOCKERFILE="apps/web/Dockerfile"
+WORKER_DOCKERFILE="apps/worker/Dockerfile"
 SHORT_SHA=$(git rev-parse --short HEAD)
 TIMESTAMP=$(date +%Y%m%d-%H%M)
 
@@ -29,9 +32,14 @@ if ! grep -q "publish: true" inputs.yml 2>/dev/null; then
 fi
 
 # ── Guard: docker login check ──
+# NOTE: `docker info | grep Username` is a FALSE-NEGATIVE when logged in via
+# `docker login --password-stdin` (it only populates Username for interactive
+# logins). Treat as a warning, not a hard stop — the push will fail loudly
+# anyway if creds are truly missing.
 if ! docker info 2>/dev/null | grep -q "Username"; then
-  echo "❌ Not logged in to Docker Hub. Run: docker login"
-  exit 1
+  echo "⚠  Could not confirm Docker Hub login via 'docker info' (this is a known"
+  echo "   false-negative with --password-stdin). Continuing; push will fail if"
+  echo "   credentials are actually missing."
 fi
 
 TARGET=${1:-dev}
@@ -39,11 +47,19 @@ TARGET=${1:-dev}
 case "$TARGET" in
 
   dev)
-    echo "🔨 Building dev image from source..."
+    echo "🔨 Building dev app image from source..."
     docker build \
       --file "$DOCKERFILE" \
       --tag "${IMAGE_BASE}:dev-latest" \
       --tag "${IMAGE_BASE}:dev-sha-${SHORT_SHA}" \
+      --platform linux/amd64 \
+      .
+
+    echo "🔨 Building dev worker image from source..."
+    docker build \
+      --file "$WORKER_DOCKERFILE" \
+      --tag "${WORKER_IMAGE_BASE}:dev-latest" \
+      --tag "${WORKER_IMAGE_BASE}:dev-sha-${SHORT_SHA}" \
       --platform linux/amd64 \
       .
 
@@ -58,28 +74,40 @@ case "$TARGET" in
       }
     bash deploy/compose/start.sh dev down
 
-    echo "📤 Pushing dev image to Docker Hub..."
+    echo "📤 Pushing dev images to Docker Hub..."
     docker push "${IMAGE_BASE}:dev-latest"
     docker push "${IMAGE_BASE}:dev-sha-${SHORT_SHA}"
+    docker push "${WORKER_IMAGE_BASE}:dev-latest"
+    docker push "${WORKER_IMAGE_BASE}:dev-sha-${SHORT_SHA}"
 
-    echo "✅ Dev image pushed:"
+    echo "✅ Dev images pushed:"
     echo "   ${IMAGE_BASE}:dev-latest"
     echo "   ${IMAGE_BASE}:dev-sha-${SHORT_SHA}"
+    echo "   ${WORKER_IMAGE_BASE}:dev-latest"
+    echo "   ${WORKER_IMAGE_BASE}:dev-sha-${SHORT_SHA}"
     echo ""
     echo "▶  To promote to staging: bash deploy/compose/push.sh staging"
     ;;
 
   staging)
-    echo "🔁 Promoting dev image → staging..."
+    echo "🔁 Promoting dev images → staging..."
     docker pull "${IMAGE_BASE}:dev-latest"
     docker tag  "${IMAGE_BASE}:dev-latest" "${IMAGE_BASE}:staging-latest"
     docker tag  "${IMAGE_BASE}:dev-latest" "${IMAGE_BASE}:staging-sha-${SHORT_SHA}"
     docker push "${IMAGE_BASE}:staging-latest"
     docker push "${IMAGE_BASE}:staging-sha-${SHORT_SHA}"
 
-    echo "✅ Staging image pushed:"
+    docker pull "${WORKER_IMAGE_BASE}:dev-latest"
+    docker tag  "${WORKER_IMAGE_BASE}:dev-latest" "${WORKER_IMAGE_BASE}:staging-latest"
+    docker tag  "${WORKER_IMAGE_BASE}:dev-latest" "${WORKER_IMAGE_BASE}:staging-sha-${SHORT_SHA}"
+    docker push "${WORKER_IMAGE_BASE}:staging-latest"
+    docker push "${WORKER_IMAGE_BASE}:staging-sha-${SHORT_SHA}"
+
+    echo "✅ Staging images pushed:"
     echo "   ${IMAGE_BASE}:staging-latest"
     echo "   ${IMAGE_BASE}:staging-sha-${SHORT_SHA}"
+    echo "   ${WORKER_IMAGE_BASE}:staging-latest"
+    echo "   ${WORKER_IMAGE_BASE}:staging-sha-${SHORT_SHA}"
     echo ""
     echo "📋 On your staging server, run:"
     echo "   docker compose -f deploy/compose/stage/docker-compose.app.yml pull"
@@ -89,16 +117,24 @@ case "$TARGET" in
     ;;
 
   prod)
-    echo "🚀 Promoting staging image → production..."
+    echo "🚀 Promoting staging images → production..."
     docker pull "${IMAGE_BASE}:staging-latest"
     docker tag  "${IMAGE_BASE}:staging-latest" "${IMAGE_BASE}:latest"
     docker tag  "${IMAGE_BASE}:staging-latest" "${IMAGE_BASE}:prod-sha-${SHORT_SHA}"
     docker push "${IMAGE_BASE}:latest"
     docker push "${IMAGE_BASE}:prod-sha-${SHORT_SHA}"
 
-    echo "✅ Production image pushed:"
+    docker pull "${WORKER_IMAGE_BASE}:staging-latest"
+    docker tag  "${WORKER_IMAGE_BASE}:staging-latest" "${WORKER_IMAGE_BASE}:latest"
+    docker tag  "${WORKER_IMAGE_BASE}:staging-latest" "${WORKER_IMAGE_BASE}:prod-sha-${SHORT_SHA}"
+    docker push "${WORKER_IMAGE_BASE}:latest"
+    docker push "${WORKER_IMAGE_BASE}:prod-sha-${SHORT_SHA}"
+
+    echo "✅ Production images pushed:"
     echo "   ${IMAGE_BASE}:latest"
     echo "   ${IMAGE_BASE}:prod-sha-${SHORT_SHA}"
+    echo "   ${WORKER_IMAGE_BASE}:latest"
+    echo "   ${WORKER_IMAGE_BASE}:prod-sha-${SHORT_SHA}"
     echo ""
     echo "📋 On your production server, run:"
     echo "   docker compose -f deploy/compose/prod/docker-compose.app.yml pull"
