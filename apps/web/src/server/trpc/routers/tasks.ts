@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
-import { prisma as db } from "@orqafy/db";
+import { prisma as db, writeAuditLog } from "@orqafy/db";
 import { createNotification } from "@/server/notifications/create";
 
 const TASK_STATUS = z.enum(["todo", "in_progress", "review", "done", "blocked"]);
@@ -43,6 +43,30 @@ async function loadToDoForUser(id: string, ctx: { tenantId: string; userId: stri
 }
 
 export const tasksRouter = createTRPCRouter({
+  // Cross-project query — returns all tasks for the tenant, optionally filtered by project.
+  taskListAll: protectedProcedure
+    .input(z.object({
+      projectId: z.string().min(1).optional(),
+      status: TASK_STATUS.optional(),
+    }))
+    .query(async ({ input, ctx }) => {
+      const where: Record<string, unknown> = { tenantId: ctx.tenantId };
+      if (input.projectId !== undefined) where["projectId"] = input.projectId;
+      if (input.status !== undefined) where["status"] = input.status;
+      return db.task.findMany({
+        where,
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+        include: {
+          project: { select: { id: true, name: true } },
+          assignments: {
+            select: {
+              user: { select: { id: true, firstName: true, lastName: true, displayName: true } },
+            },
+          },
+        },
+      });
+    }),
+
   taskList: protectedProcedure
     .input(z.object({
       projectId: z.string().min(1),
@@ -85,19 +109,32 @@ export const tasksRouter = createTRPCRouter({
       title: z.string().min(1),
       description: z.string().min(1).optional(),
       priority: TASK_PRIORITY.optional(),
+      dueDate: z.coerce.date().optional(),
       parentTaskId: z.string().min(1).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       await loadProjectForTenant(input.projectId, ctx);
-      return db.task.create({
-        data: {
-          projectId: input.projectId,
-          title: input.title,
-          tenantId: ctx.tenantId,
-          ...(input.description !== undefined && { description: input.description }),
-          ...(input.priority !== undefined && { priority: input.priority }),
-          ...(input.parentTaskId !== undefined && { parentTaskId: input.parentTaskId }),
-        },
+      return db.$transaction(async (tx) => {
+        const created = await tx.task.create({
+          data: {
+            projectId: input.projectId,
+            title: input.title,
+            tenantId: ctx.tenantId,
+            ...(input.description !== undefined && { description: input.description }),
+            ...(input.priority !== undefined && { priority: input.priority }),
+            ...(input.dueDate !== undefined && { dueDate: input.dueDate }),
+            ...(input.parentTaskId !== undefined && { parentTaskId: input.parentTaskId }),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "Task",
+          entityId: created.id,
+          before: null,
+          after: { id: created.id, projectId: created.projectId, title: created.title, status: created.status, priority: created.priority },
+        });
+        return created;
       });
     }),
 
@@ -107,16 +144,29 @@ export const tasksRouter = createTRPCRouter({
       title: z.string().min(1).optional(),
       description: z.string().min(1).optional(),
       priority: TASK_PRIORITY.optional(),
+      dueDate: z.coerce.date().nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      await loadTaskForTenant(input.id, ctx);
-      return db.task.update({
-        where: { id: input.id },
-        data: {
-          ...(input.title !== undefined && { title: input.title }),
-          ...(input.description !== undefined && { description: input.description }),
-          ...(input.priority !== undefined && { priority: input.priority }),
-        },
+      const before = await loadTaskForTenant(input.id, ctx);
+      return db.$transaction(async (tx) => {
+        const updated = await tx.task.update({
+          where: { id: input.id },
+          data: {
+            ...(input.title !== undefined && { title: input.title }),
+            ...(input.description !== undefined && { description: input.description }),
+            ...(input.priority !== undefined && { priority: input.priority }),
+            ...(input.dueDate !== undefined && { dueDate: input.dueDate }),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Task",
+          entityId: updated.id,
+          before: { title: (before as { title: string }).title, priority: (before as { priority: string }).priority, dueDate: (before as { dueDate: Date | null }).dueDate },
+          after: { title: updated.title, priority: updated.priority, dueDate: updated.dueDate },
+        });
+        return updated;
       });
     }),
 
@@ -135,7 +185,57 @@ export const tasksRouter = createTRPCRouter({
           message: `Invalid status transition: ${current} → ${input.status}.`,
         });
       }
-      return db.task.update({ where: { id: input.id }, data: { status: input.status } });
+      return db.$transaction(async (tx) => {
+        const updated = await tx.task.update({ where: { id: input.id }, data: { status: input.status } });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Task",
+          entityId: updated.id,
+          before: { status: current },
+          after: { status: input.status },
+        });
+        return updated;
+      });
+    }),
+
+  taskDelete: writeProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ input, ctx }) => {
+      const task = await loadTaskForTenant(input.id, ctx);
+      return db.$transaction(async (tx) => {
+        await tx.task.delete({ where: { id: input.id } });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "DELETE",
+          entity: "Task",
+          entityId: input.id,
+          before: { title: (task as { title: string }).title, status: (task as { status: string }).status },
+          after: null,
+        });
+        return { success: true };
+      });
+    }),
+
+  taskSetDueDate: writeProcedure
+    .input(z.object({
+      id: z.string().min(1),
+      dueDate: z.coerce.date().nullable(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const before = await loadTaskForTenant(input.id, ctx);
+      return db.$transaction(async (tx) => {
+        const updated = await tx.task.update({ where: { id: input.id }, data: { dueDate: input.dueDate } });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Task",
+          entityId: updated.id,
+          before: { dueDate: (before as { dueDate: Date | null }).dueDate },
+          after: { dueDate: input.dueDate },
+        });
+        return updated;
+      });
     }),
 
   taskAssign: writeProcedure

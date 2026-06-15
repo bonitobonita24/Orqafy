@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 
 export const metadata: Metadata = { title: "Support Tickets" };
@@ -44,10 +45,10 @@ const STATUS_TABS = [
   { key: "closed", label: "Closed" },
 ];
 
-async function getTickets(status: string | undefined) {
-  const filter = status !== undefined && status !== "all" ? { status } : undefined;
+async function getTickets(tenantId: string, status: string | undefined) {
+  const filter = status !== undefined && status !== "all" ? { status } : {};
   return prisma.supportTicket.findMany({
-    ...(filter !== undefined ? { where: filter } : {}),
+    where: { tenantId, ...filter },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -72,22 +73,39 @@ async function getTickets(status: string | undefined) {
 }
 
 export default async function SupportTicketsPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ status?: string }>;
 }) {
-  const params = await searchParams;
-  const activeStatus = params.status ?? "all";
-  const tickets = await getTickets(activeStatus);
+  const { slug } = await params;
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (tenant === null) notFound();
+
+  const sp = await searchParams;
+  const activeStatus = sp.status ?? "all";
+  const tickets = await getTickets(tenant.id, activeStatus);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Support Tickets</h1>
-        <p className="text-sm text-muted-foreground">
-          {tickets.length} ticket{tickets.length === 1 ? "" : "s"}
-          {activeStatus !== "all" ? ` — ${STATUS_LABELS[activeStatus] ?? activeStatus}` : ""}
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Support Tickets</h1>
+          <p className="text-sm text-muted-foreground">
+            {tickets.length} ticket{tickets.length === 1 ? "" : "s"}
+            {activeStatus !== "all" ? ` — ${STATUS_LABELS[activeStatus] ?? activeStatus}` : ""}
+          </p>
+        </div>
+        <Link
+          href={`/${slug}/support/new`}
+          className="rounded-md border border-primary bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+        >
+          + New Ticket
+        </Link>
       </div>
 
       <div className="flex flex-wrap gap-1 rounded-md border border-border bg-card p-1">
