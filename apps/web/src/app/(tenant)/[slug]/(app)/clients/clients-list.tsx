@@ -37,13 +37,21 @@ export function ClientsList({ slug }: { slug: string }) {
             {isPending ? "Loading…" : `${total} total`}
           </p>
         </div>
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search clients…"
-          className="h-9 w-64 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary/50"
-        />
+        <div className="flex items-center gap-3">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search clients…"
+            className="h-9 w-64 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary/50"
+          />
+          <Link
+            href={`/${slug}/clients/new`}
+            className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            + New Client
+          </Link>
+        </div>
       </div>
 
       <div className="rounded-lg border border-border bg-card">
@@ -68,6 +76,7 @@ export function ClientsList({ slug }: { slug: string }) {
                 <th className="px-4 py-3 font-medium">Location</th>
                 <th className="px-4 py-3 font-medium">Tier</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
             <tbody>
@@ -88,7 +97,7 @@ export function ClientsList({ slug }: { slug: string }) {
                   >
                     <td className="px-4 py-3">
                       <Link
-                        href={`/${slug}/crm/customers/${c.id}`}
+                        href={`/${slug}/clients/${c.id}/edit`}
                         className="hover:underline"
                       >
                         {c.companyName !== null ? (
@@ -136,6 +145,14 @@ export function ClientsList({ slug }: { slug: string }) {
                           Inactive
                         </span>
                       )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/${slug}/clients/${c.id}/edit`}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Edit
+                      </Link>
                     </td>
                   </tr>
                 );
