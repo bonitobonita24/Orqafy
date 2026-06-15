@@ -55,12 +55,15 @@ async function getPurchaseOrders(status: string | undefined) {
 }
 
 export default async function PurchaseOrdersPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ status?: string }>;
 }) {
-  const params = await searchParams;
-  const activeStatus = params.status ?? "all";
+  const { slug } = await params;
+  const sp = await searchParams;
+  const activeStatus = sp.status ?? "all";
   const orders = await getPurchaseOrders(activeStatus);
 
   return (
@@ -73,12 +76,26 @@ export default async function PurchaseOrdersPage({
             {activeStatus !== "all" ? ` — ${STATUS_LABELS[activeStatus] ?? activeStatus}` : ""}
           </p>
         </div>
-        <Link
-          href="purchasing/vendors"
-          className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
-        >
-          Vendors →
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/${slug}/purchasing/vendors`}
+            className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
+          >
+            Vendors →
+          </Link>
+          <Link
+            href={`/${slug}/purchasing/receipts`}
+            className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
+          >
+            Goods Receipts →
+          </Link>
+          <Link
+            href={`/${slug}/purchasing/orders/new`}
+            className="rounded-md border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+          >
+            + New PO
+          </Link>
+        </div>
       </div>
 
       {/* Status filter tabs */}
@@ -124,7 +141,7 @@ export default async function PurchaseOrdersPage({
                 >
                   <td className="px-4 py-3">
                     <Link
-                      href={`purchasing/orders/${order.id}`}
+                      href={`/${slug}/purchasing/orders/${order.id}`}
                       className="font-mono text-xs font-medium text-primary hover:underline"
                     >
                       {order.poNumber}

@@ -22,12 +22,15 @@ async function getVendors(activeOnly: boolean) {
 }
 
 export default async function VendorsPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ filter?: string }>;
 }) {
-  const params = await searchParams;
-  const activeOnly = params.filter !== "all";
+  const { slug } = await params;
+  const sp = await searchParams;
+  const activeOnly = sp.filter !== "all";
   const vendors = await getVendors(activeOnly);
 
   return (
@@ -40,12 +43,20 @@ export default async function VendorsPage({
             {activeOnly ? " — active only" : ""}
           </p>
         </div>
-        <Link
-          href="../purchasing"
-          className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
-        >
-          ← Purchase Orders
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/${slug}/purchasing`}
+            className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
+          >
+            ← Purchase Orders
+          </Link>
+          <Link
+            href={`/${slug}/purchasing/vendors/new`}
+            className="rounded-md border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+          >
+            + New Vendor
+          </Link>
+        </div>
       </div>
 
       {/* Filter tabs */}
@@ -75,7 +86,13 @@ export default async function VendorsPage({
       <div className="rounded-lg border border-border bg-card">
         {vendors.length === 0 ? (
           <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No vendors found.
+            No vendors found.{" "}
+            <Link
+              href={`/${slug}/purchasing/vendors/new`}
+              className="text-primary hover:underline"
+            >
+              Create your first vendor.
+            </Link>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -87,6 +104,7 @@ export default async function VendorsPage({
                 <th className="px-4 py-3 font-medium">Phone</th>
                 <th className="px-4 py-3 font-medium">POs</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
             <tbody>
@@ -127,6 +145,14 @@ export default async function VendorsPage({
                         Inactive
                       </span>
                     )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Link
+                      href={`/${slug}/purchasing/vendors/${vendor.id}/edit`}
+                      className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                    >
+                      Edit
+                    </Link>
                   </td>
                 </tr>
               ))}

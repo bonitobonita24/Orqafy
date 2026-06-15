@@ -89,7 +89,7 @@ export default async function PurchaseOrderDetailPage({
 }: {
   params: Promise<{ id: string; slug: string }>;
 }) {
-  const { id } = await params;
+  const { id, slug } = await params;
   const order = await getPurchaseOrder(id);
 
   if (order === null) {
@@ -126,12 +126,25 @@ export default async function PurchaseOrderDetailPage({
             Created {order.createdAt.toLocaleDateString()}
           </p>
         </div>
-        <Link
-          href="../"
-          className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
-        >
-          ← Purchase Orders
-        </Link>
+        <div className="flex items-center gap-2">
+          {order.status === "draft" && (
+            <Link
+              href={`/${slug}/purchasing/orders/${id}/edit`}
+              className="rounded-md border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+            >
+              Edit Draft
+            </Link>
+          )}
+          {/* HOLD(owner-rule): submit/approve/order/cancel action buttons.
+              Owner must define approval authority, thresholds, and status-transition rules
+              before these actions can be wired. */}
+          <Link
+            href={`/${slug}/purchasing`}
+            className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
+          >
+            ← Purchase Orders
+          </Link>
+        </div>
       </div>
 
       {/* PO Info Grid */}
