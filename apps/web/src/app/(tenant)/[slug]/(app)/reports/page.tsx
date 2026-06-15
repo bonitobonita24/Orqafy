@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 import { auth } from "@/server/auth";
+import { RevenueChart } from "./revenue-chart";
+import { ExpensesChart } from "./expenses-chart";
 
 export const metadata: Metadata = { title: "Reports" };
 export const dynamic = "force-dynamic";
@@ -164,7 +166,12 @@ async function getPayrollSummary(tenantId: string) {
   };
 }
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
   // Tenant isolation: scope every aggregate to the signed-in user's tenant.
   // Mirrors reportRouter's ctx.tenantId scoping — without it these cross-module
   // aggregates would span ALL tenants (cross-tenant data leak).
@@ -223,6 +230,12 @@ export default async function ReportsPage() {
           sub={`${formatInt(kpis.projects)} projects · ${formatInt(kpis.employees)} employees`}
         />
       </div>
+
+      {/* Revenue over time — client chart (date-range filter, Recharts AreaChart) */}
+      <RevenueChart slug={slug} />
+
+      {/* Expenses by category — client chart (date-range filter, Recharts BarChart) */}
+      <ExpensesChart slug={slug} />
 
       {/* Invoice + Job Order status breakdowns */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
