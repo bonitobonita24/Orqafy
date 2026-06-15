@@ -30,36 +30,50 @@ import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 // ---------------------------------------------------------------------------
 // Mock heavy dependencies so unit tests don't need real DB / Redis
 // ---------------------------------------------------------------------------
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    account: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      count: vi.fn(),
+vi.mock("@orqafy/db", () => {
+  const accountCreate = vi.fn();
+  const accountUpdate = vi.fn();
+  const journalEntryCreate = vi.fn();
+  const journalEntryUpdate = vi.fn();
+  const journalLineDeleteMany = vi.fn();
+  const mockTx = {
+    account: { create: accountCreate, update: accountUpdate },
+    journalEntry: { create: journalEntryCreate, update: journalEntryUpdate },
+    journalLine: { deleteMany: journalLineDeleteMany },
+  };
+  return {
+    prisma: {
+      account: {
+        findMany: vi.fn(),
+        findUnique: vi.fn(),
+        create: accountCreate,
+        update: accountUpdate,
+        count: vi.fn(),
+      },
+      journalEntry: {
+        findMany: vi.fn(),
+        findUnique: vi.fn(),
+        create: journalEntryCreate,
+        update: journalEntryUpdate,
+        count: vi.fn(),
+      },
+      fiscalYear: {
+        findMany: vi.fn(),
+        findUnique: vi.fn(),
+        create: vi.fn(),
+        count: vi.fn(),
+      },
+      taxRate: {
+        findMany: vi.fn(),
+        findUnique: vi.fn(),
+        create: vi.fn(),
+        count: vi.fn(),
+      },
+      $transaction: vi.fn().mockImplementation(async (fn: (tx: typeof mockTx) => Promise<unknown>) => fn(mockTx)),
     },
-    journalEntry: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      count: vi.fn(),
-    },
-    fiscalYear: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      count: vi.fn(),
-    },
-    taxRate: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      count: vi.fn(),
-    },
-  },
-}));
+    writeAuditLog: vi.fn(),
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Context factory helpers

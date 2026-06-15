@@ -591,6 +591,7 @@ operations and financial traceability without the complexity.
 - Receipt generation
 
 ### Accounting
+> **Build status (2026-06-15, see DECISIONS_LOG):** data-entry CRUD scaffolded (Chart of Accounts CRUD, Journal Entry drafts with debit==credit form validation). Business logic — posting journals to ledger, trial balance / GL rollups / financial statements (P&L, balance sheet), auto-posting from invoices/purchasing/payroll, period/year close — is **HELD pending owner rules** (marked `// HOLD(owner-rule)` in code).
 - Chart of Accounts: asset/liability/equity/income/expense
 - Journal Entries auto-posted on every money movement (payments, expenses, payroll,
   cash advances, credit card payments, credit transactions)
