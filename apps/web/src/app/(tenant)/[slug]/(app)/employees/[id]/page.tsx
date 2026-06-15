@@ -28,9 +28,9 @@ function formatMoney(value: unknown, currency = "PHP"): string {
   return `${currency} ${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-async function getEmployee(id: string) {
-  return prisma.employee.findUnique({
-    where: { id },
+async function getEmployee(id: string, tenantId: string) {
+  return prisma.employee.findFirst({
+    where: { id, tenantId },
     include: {
       user: {
         select: {
@@ -52,7 +52,9 @@ export default async function EmployeeDetailPage({
   params: Promise<{ slug: string; id: string }>;
 }) {
   const { slug, id } = await params;
-  const employee = await getEmployee(id);
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (tenant === null) notFound();
+  const employee = await getEmployee(id, tenant.id);
   if (employee === null) notFound();
 
   const terminated = employee.dateTerminated !== null;

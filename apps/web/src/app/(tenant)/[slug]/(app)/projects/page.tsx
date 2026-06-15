@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 
 export const metadata: Metadata = { title: "Projects" };
@@ -23,9 +24,15 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "text-red-400 bg-red-400/10 border-red-400/30",
 };
 
-async function getStatusCounts(): Promise<Record<string, number>> {
+async function getTenantId(slug: string): Promise<string | null> {
+  const t = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  return t?.id ?? null;
+}
+
+async function getStatusCounts(tenantId: string): Promise<Record<string, number>> {
   const grouped = await prisma.project.groupBy({
     by: ["status"],
+    where: { tenantId },
     _count: { id: true },
   });
   const counts: Record<string, number> = {
@@ -48,7 +55,10 @@ type CustomerSummary = {
   companyName: string | null;
 };
 
-async function fetchProjects(page: number, where: { status?: string }) {
+async function fetchProjects(
+  page: number,
+  where: { tenantId: string; status?: string },
+) {
   return prisma.project.findMany({
     where,
     skip: (page - 1) * PAGE_SIZE,
@@ -71,6 +81,7 @@ async function fetchProjects(page: number, where: { status?: string }) {
 }
 
 async function getProjects(
+  tenantId: string,
   page: number,
   status: string | undefined,
 ): Promise<{
@@ -78,7 +89,8 @@ async function getProjects(
   total: number;
   customerMap: Map<string, CustomerSummary>;
 }> {
-  const where: { status?: string } = status !== undefined ? { status } : {};
+  const where: { tenantId: string; status?: string } =
+    status !== undefined ? { tenantId, status } : { tenantId };
 
   const [projects, total] = await Promise.all([
     fetchProjects(page, where),
@@ -91,7 +103,7 @@ async function getProjects(
   const customers =
     customerIds.length > 0
       ? await prisma.customer.findMany({
-          where: { id: { in: customerIds } },
+          where: { id: { in: customerIds }, tenantId },
           select: {
             id: true,
             firstName: true,
@@ -158,9 +170,12 @@ export default async function ProjectsPage({ params, searchParams }: PageProps) 
       ? rawParams.status
       : undefined;
 
+  const tenantId = await getTenantId(slug);
+  if (tenantId === null) notFound();
+
   const [statusCounts, projectsResult] = await Promise.all([
-    getStatusCounts(),
-    getProjects(page, statusFilter),
+    getStatusCounts(tenantId),
+    getProjects(tenantId, page, statusFilter),
   ]);
   const { projects, total, customerMap } = projectsResult;
 

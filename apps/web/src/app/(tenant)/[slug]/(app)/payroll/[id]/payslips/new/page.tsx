@@ -14,8 +14,10 @@ export default async function AddPayslipPage({
 }) {
   const { slug, id } = await params;
 
-  const payroll = await prisma.payroll.findUnique({
-    where: { id },
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (tenant === null) notFound();
+  const payroll = await prisma.payroll.findFirst({
+    where: { id, tenantId: tenant.id },
     select: { id: true, payrollNumber: true, status: true, currency: true },
   });
   if (payroll === null) notFound();

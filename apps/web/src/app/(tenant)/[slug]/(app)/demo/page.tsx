@@ -20,18 +20,32 @@ export const dynamic = "force-dynamic";
 type Params = { slug: string };
 
 async function getDemoState(slug: string) {
-  const [tenant, customers, invoices, expenses, projects, tasks, employees] =
+  // Resolve the tenant first; all counts MUST be scoped to it so the demo
+  // workspace stats never aggregate across every tenant in the database.
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug },
+    select: { id: true, name: true, slug: true, status: true, createdAt: true },
+  });
+  if (tenant === null) {
+    return {
+      tenant: null,
+      customers: 0,
+      invoices: 0,
+      expenses: 0,
+      projects: 0,
+      tasks: 0,
+      employees: 0,
+    };
+  }
+  const where = { tenantId: tenant.id };
+  const [customers, invoices, expenses, projects, tasks, employees] =
     await Promise.all([
-      prisma.tenant.findUnique({
-        where: { slug },
-        select: { id: true, name: true, slug: true, status: true, createdAt: true },
-      }),
-      prisma.customer.count(),
-      prisma.invoice.count(),
-      prisma.expense.count(),
-      prisma.project.count(),
-      prisma.task.count(),
-      prisma.employee.count(),
+      prisma.customer.count({ where }),
+      prisma.invoice.count({ where }),
+      prisma.expense.count({ where }),
+      prisma.project.count({ where }),
+      prisma.task.count({ where }),
+      prisma.employee.count({ where }),
     ]);
   return { tenant, customers, invoices, expenses, projects, tasks, employees };
 }

@@ -36,9 +36,9 @@ function formatMoney(value: unknown, currency: string): string {
   return `${currency} ${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-async function getPayroll(id: string) {
-  return prisma.payroll.findUnique({
-    where: { id },
+async function getPayroll(id: string, tenantId: string) {
+  return prisma.payroll.findFirst({
+    where: { id, tenantId },
     include: {
       payslips: {
         include: {
@@ -61,7 +61,9 @@ export default async function PayrollDetailPage({
   params: Promise<{ slug: string; id: string }>;
 }) {
   const { slug, id } = await params;
-  const payroll = await getPayroll(id);
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (tenant === null) notFound();
+  const payroll = await getPayroll(id, tenant.id);
   if (payroll === null) notFound();
 
   return (

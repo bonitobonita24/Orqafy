@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 
 export const metadata: Metadata = { title: "Payroll" };
@@ -44,10 +45,10 @@ function formatPeriod(start: Date, end: Date): string {
   return `${start.toLocaleDateString()} – ${end.toLocaleDateString()}`;
 }
 
-async function getPayrolls(status: string) {
-  const filter = status !== "all" ? { status } : undefined;
+async function getPayrolls(tenantId: string, status: string) {
+  const where = status !== "all" ? { tenantId, status } : { tenantId };
   return prisma.payroll.findMany({
-    ...(filter !== undefined ? { where: filter } : {}),
+    where,
     orderBy: { periodStart: "desc" },
     include: { _count: { select: { payslips: true } } },
   });
@@ -63,7 +64,9 @@ export default async function PayrollPage({
   const { slug } = await routeParams;
   const sp = await searchParams;
   const activeStatus = sp.status ?? "all";
-  const payrolls = await getPayrolls(activeStatus);
+  const tenantId = await getTenantId(slug);
+  if (tenantId === null) notFound();
+  const payrolls = await getPayrolls(tenantId, activeStatus);
 
   return (
     <div className="space-y-6">

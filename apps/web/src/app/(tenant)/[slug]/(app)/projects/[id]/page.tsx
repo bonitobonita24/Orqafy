@@ -100,11 +100,12 @@ function getManagerName(manager: {
   return `${manager.firstName} ${manager.lastName}`;
 }
 
-async function getProject(id: string) {
-  return prisma.project.findUnique({
+async function getProject(id: string, tenantId: string) {
+  const project = await prisma.project.findUnique({
     where: { id },
     select: {
       id: true,
+      tenantId: true,
       projectNumber: true,
       name: true,
       description: true,
@@ -121,12 +122,14 @@ async function getProject(id: string) {
       },
     },
   });
+  if (project === null || project.tenantId !== tenantId) return null;
+  return project;
 }
 
-async function getCustomer(customerId: string | null) {
+async function getCustomer(customerId: string | null, tenantId: string) {
   if (customerId === null) return null;
-  return prisma.customer.findUnique({
-    where: { id: customerId },
+  return prisma.customer.findFirst({
+    where: { id: customerId, tenantId },
     select: {
       id: true,
       firstName: true,
@@ -196,9 +199,11 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string; id: string }>;
 }): Promise<Metadata> {
-  const { id } = await params;
-  const project = await prisma.project.findUnique({
-    where: { id },
+  const { slug, id } = await params;
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (tenant === null) return { title: "Project Not Found" };
+  const project = await prisma.project.findFirst({
+    where: { id, tenantId: tenant.id },
     select: { name: true, projectNumber: true },
   });
   if (project === null) return { title: "Project Not Found" };
@@ -218,10 +223,13 @@ export default async function ProjectDetailPage({
   const rawParams = await searchParams;
   const activeTab: Tab = isValidTab(rawParams.tab) ? rawParams.tab : "overview";
 
-  const project = await getProject(id);
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (tenant === null) notFound();
+
+  const project = await getProject(id, tenant.id);
   if (project === null) notFound();
 
-  const customer = await getCustomer(project.customerId);
+  const customer = await getCustomer(project.customerId, tenant.id);
 
   // Conditionally fetch tab data
   const tasks =

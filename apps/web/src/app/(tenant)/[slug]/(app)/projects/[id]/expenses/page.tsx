@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 
-type ExpenseWhere = { projectId: string; type?: string };
+type ExpenseWhere = { projectId: string; tenantId: string; type?: string };
 
 export const dynamic = "force-dynamic";
 
@@ -27,19 +27,22 @@ const EXPENSE_TYPE_COLORS: Record<string, string> = {
   other: "text-muted-foreground bg-muted border-border",
 };
 
-async function getProjectHeader(id: string) {
-  return prisma.project.findUnique({
+async function getProjectHeader(id: string, tenantId: string) {
+  const project = await prisma.project.findUnique({
     where: { id },
-    select: { id: true, projectNumber: true, name: true },
+    select: { id: true, tenantId: true, projectNumber: true, name: true },
   });
+  if (project === null || project.tenantId !== tenantId) return null;
+  return project;
 }
 
 async function getExpenseTypeCounts(
   projectId: string,
+  tenantId: string,
 ): Promise<Record<string, number>> {
   const grouped = await prisma.projectExpense.groupBy({
     by: ["type"],
-    where: { projectId },
+    where: { projectId, tenantId },
     _count: { id: true },
   });
   const counts: Record<string, number> = {};
@@ -71,6 +74,7 @@ async function fetchExpenses(
 
 async function getExpenses(
   projectId: string,
+  tenantId: string,
   page: number,
   typeFilter: string | undefined,
 ): Promise<{
@@ -79,7 +83,9 @@ async function getExpenses(
   totalAmount: unknown;
 }> {
   const where: ExpenseWhere =
-    typeFilter !== undefined ? { projectId, type: typeFilter } : { projectId };
+    typeFilter !== undefined
+      ? { projectId, tenantId, type: typeFilter }
+      : { projectId, tenantId };
 
   const [expenses, total, aggregate] = await Promise.all([
     fetchExpenses(projectId, page, where),
@@ -112,9 +118,11 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string; id: string }>;
 }): Promise<Metadata> {
-  const { id } = await params;
-  const project = await prisma.project.findUnique({
-    where: { id },
+  const { slug, id } = await params;
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (tenant === null) return { title: "Expenses" };
+  const project = await prisma.project.findFirst({
+    where: { id, tenantId: tenant.id },
     select: { name: true, projectNumber: true },
   });
   if (project === null) return { title: "Expenses" };
@@ -138,11 +146,14 @@ export default async function ProjectExpensesPage({
       ? rawParams.type
       : undefined;
 
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (tenant === null) notFound();
+
   const [project, typeCounts, { expenses, total, totalAmount }] =
     await Promise.all([
-      getProjectHeader(id),
-      getExpenseTypeCounts(id),
-      getExpenses(id, page, typeFilter),
+      getProjectHeader(id, tenant.id),
+      getExpenseTypeCounts(id, tenant.id),
+      getExpenses(id, tenant.id, page, typeFilter),
     ]);
 
   if (project === null) notFound();

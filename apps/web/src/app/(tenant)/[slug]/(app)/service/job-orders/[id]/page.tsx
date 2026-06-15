@@ -59,9 +59,13 @@ interface PageProps {
 
 export default async function JobOrderDetailPage({ params }: PageProps) {
   const { slug, id } = await params;
+  // Resolve tenant first so the jobOrder fetch is tenant-scoped (no cross-tenant
+  // IDOR via the [id] route param) and the user list reuses the same tenant.
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (tenant === null) notFound();
   const [jobOrder, users] = await Promise.all([
-    prisma.jobOrder.findUnique({
-      where: { id },
+    prisma.jobOrder.findFirst({
+      where: { id, tenantId: tenant.id },
       include: {
         customer: true,
         createdBy: { select: { firstName: true, lastName: true, displayName: true } },
@@ -71,17 +75,12 @@ export default async function JobOrderDetailPage({ params }: PageProps) {
       },
     }),
     // Tenant-scoped user list for the assign-technician control.
-    prisma.tenant.findUnique({ where: { slug }, select: { id: true } }).then(
-      (tenant) =>
-        tenant === null
-          ? []
-          : prisma.user.findMany({
-              where: { tenantId: tenant.id, isActive: true },
-              select: { id: true, firstName: true, lastName: true, displayName: true },
-              orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
-              take: 200,
-            }),
-    ),
+    prisma.user.findMany({
+      where: { tenantId: tenant.id, isActive: true },
+      select: { id: true, firstName: true, lastName: true, displayName: true },
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+      take: 200,
+    }),
   ]);
   if (jobOrder === null) notFound();
 

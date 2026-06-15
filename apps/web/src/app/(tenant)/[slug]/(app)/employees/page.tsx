@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 
 export const metadata: Metadata = { title: "Employees" };
@@ -32,15 +33,20 @@ const TABS = [
   { key: "terminated", label: "Terminated" },
 ];
 
-async function getEmployees(filter: string) {
+async function getTenantId(slug: string) {
+  const t = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  return t?.id ?? null;
+}
+
+async function getEmployees(tenantId: string, filter: string) {
   const where =
     filter === "active"
-      ? { dateTerminated: null }
+      ? { tenantId, dateTerminated: null }
       : filter === "terminated"
-        ? { dateTerminated: { not: null } }
-        : undefined;
+        ? { tenantId, dateTerminated: { not: null } }
+        : { tenantId };
   return prisma.employee.findMany({
-    ...(where !== undefined ? { where } : {}),
+    where,
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -67,7 +73,9 @@ export default async function EmployeesPage({
   const { slug } = await routeParams;
   const params = await searchParams;
   const filter = params.filter ?? "all";
-  const employees = await getEmployees(filter);
+  const tenantId = await getTenantId(slug);
+  if (tenantId === null) notFound();
+  const employees = await getEmployees(tenantId, filter);
 
   return (
     <div className="space-y-6">

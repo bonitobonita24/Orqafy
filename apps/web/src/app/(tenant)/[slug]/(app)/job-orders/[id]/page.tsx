@@ -71,9 +71,9 @@ function formatMoney(value: unknown, currency: string): string {
   return `${currency} ${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-async function getJobOrder(id: string) {
-  return prisma.jobOrder.findUnique({
-    where: { id },
+async function getJobOrder(id: string, tenantId: string) {
+  return prisma.jobOrder.findFirst({
+    where: { id, tenantId },
     include: {
       customer: true,
       createdBy: { select: { firstName: true, lastName: true, displayName: true } },
@@ -95,8 +95,10 @@ export default async function JobOrderDetailPage({
 }: {
   params: Promise<{ slug: string; id: string }>;
 }) {
-  const { id } = await params;
-  const jo = await getJobOrder(id);
+  const { slug, id } = await params;
+  const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (tenant === null) notFound();
+  const jo = await getJobOrder(id, tenant.id);
   if (jo === null) notFound();
 
   const currentStepIdx = STATUS_ORDER.indexOf(jo.status);
