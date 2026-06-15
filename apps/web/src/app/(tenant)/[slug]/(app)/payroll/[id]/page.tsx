@@ -59,7 +59,7 @@ export default async function PayrollDetailPage({
 }: {
   params: Promise<{ slug: string; id: string }>;
 }) {
-  const { id } = await params;
+  const { slug, id } = await params;
   const payroll = await getPayroll(id);
   if (payroll === null) notFound();
 
@@ -68,7 +68,7 @@ export default async function PayrollDetailPage({
       <div className="flex items-start justify-between">
         <div>
           <Link
-            href=".."
+            href={`/${slug}/payroll`}
             className="text-xs text-muted-foreground hover:text-foreground"
           >
             ← Back to Payroll
@@ -80,13 +80,23 @@ export default async function PayrollDetailPage({
             {payroll.payrollNumber}
           </p>
         </div>
-        <span
-          className={`rounded-full border px-3 py-1 text-xs font-medium ${
-            STATUS_BADGE[payroll.status] ?? STATUS_BADGE["draft"]
-          }`}
-        >
-          {STATUS_LABELS[payroll.status] ?? payroll.status}
-        </span>
+        <div className="flex items-center gap-2">
+          {payroll.status === "draft" && (
+            <Link
+              href={`/${slug}/payroll/${id}/payslips/new`}
+              className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              + Add Payslip
+            </Link>
+          )}
+          <span
+            className={`rounded-full border px-3 py-1 text-xs font-medium ${
+              STATUS_BADGE[payroll.status] ?? STATUS_BADGE["draft"]
+            }`}
+          >
+            {STATUS_LABELS[payroll.status] ?? payroll.status}
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">

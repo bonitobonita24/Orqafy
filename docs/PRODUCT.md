@@ -578,6 +578,7 @@ operations and financial traceability without the complexity.
   is recognized. This ensures accurate P&L reporting.
 
 ### HR & Payroll
+> **Build status (2026-06-15, see DECISIONS_LOG):** data-entry CRUD scaffolded (Payroll Run CRUD — create/edit/list/detail with status, period, currency; manual payslip line entry per employee on draft runs with gross/deductions/net form-level preview). Business logic — pay computation (gross/net/tax/PH statutory deductions SSS/PhilHealth/Pag-IBIG/withholding), approval/process/markPaid lifecycle, auto-calc from DTR/attendance, FundSource deduction, Journal Entry posting (Core Flow 8), cash-advance recovery — is **HELD pending owner rules** (marked `// HOLD(owner-rule)` in code).
 - Employee linked to User (isEmployee toggle); read-only for employee, editable by admin/HR
 - Cash Advances: project-linked or general; manual recovery per payroll run
 - Payroll runs with payslips; FundSource deducted on release

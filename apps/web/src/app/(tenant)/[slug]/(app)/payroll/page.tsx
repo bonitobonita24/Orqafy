@@ -5,6 +5,11 @@ import { prisma } from "@orqafy/db";
 export const metadata: Metadata = { title: "Payroll" };
 export const dynamic = "force-dynamic";
 
+async function getTenantId(slug: string) {
+  const t = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
+  return t?.id ?? null;
+}
+
 const STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
   processing: "Processing",
@@ -49,22 +54,33 @@ async function getPayrolls(status: string) {
 }
 
 export default async function PayrollPage({
+  params: routeParams,
   searchParams,
 }: {
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ status?: string }>;
 }) {
-  const params = await searchParams;
-  const activeStatus = params.status ?? "all";
+  const { slug } = await routeParams;
+  const sp = await searchParams;
+  const activeStatus = sp.status ?? "all";
   const payrolls = await getPayrolls(activeStatus);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Payroll</h1>
-        <p className="text-sm text-muted-foreground">
-          {payrolls.length} payroll run{payrolls.length === 1 ? "" : "s"}
-          {activeStatus !== "all" ? ` — ${STATUS_LABELS[activeStatus] ?? activeStatus}` : ""}
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Payroll</h1>
+          <p className="text-sm text-muted-foreground">
+            {payrolls.length} payroll run{payrolls.length === 1 ? "" : "s"}
+            {activeStatus !== "all" ? ` — ${STATUS_LABELS[activeStatus] ?? activeStatus}` : ""}
+          </p>
+        </div>
+        <Link
+          href={`/${slug}/payroll/new`}
+          className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          + New Payroll Run
+        </Link>
       </div>
 
       <div className="flex flex-wrap gap-1 rounded-md border border-border bg-card p-1">
