@@ -74,36 +74,39 @@ async function main() {
   console.log(`  ✅ ${planData.length} plans seeded`);
 
   // ── Create demo tenant schema + seed tenant-scoped data ──
+  // The demo schema mirrors public's table structure via CREATE TABLE ... LIKE.
+  // It MUST be rebuilt from public on every seed run: a schema snapshotted before
+  // a later migration (e.g. departments.tenant_id) goes stale and the tenant-scoped
+  // INSERTs below fail with "column ... does not exist". Since t_demo holds only
+  // regenerable dev demo data (the seed is idempotent downstream), the safe,
+  // drift-proof fix is to DROP + recreate it from the current public schema.
+  // Guarded to ONLY ever touch t_demo — never public.
   const schemaName = 't_demo';
-  const schemaExists = await prisma.$queryRaw<Array<{ exists: boolean }>>`
-    SELECT EXISTS (
-      SELECT 1 FROM information_schema.schemata
-      WHERE schema_name = ${schemaName}
-    ) AS "exists"
+  if (schemaName !== 't_demo') {
+    throw new Error('Refusing to drop a non-demo schema');
+  }
+
+  await prisma.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
+  await prisma.$executeRawUnsafe(`CREATE SCHEMA "${schemaName}"`);
+
+  const tables = await prisma.$queryRaw<Array<{ tablename: string }>>`
+    SELECT tablename FROM pg_tables
+    WHERE schemaname = 'public'
+      AND tablename NOT IN (
+        'tenants', 'plans', 'tenant_subscriptions', 'tenant_invoices',
+        'tenant_payments', 'tenant_smtp_configs', 'tenant_xendit_configs',
+        'tenant_audit_logs', '_prisma_migrations'
+      )
   `;
 
-  if (schemaExists[0]?.exists !== true) {
-    await prisma.$executeRawUnsafe(`CREATE SCHEMA "${schemaName}"`);
-
-    const tables = await prisma.$queryRaw<Array<{ tablename: string }>>`
-      SELECT tablename FROM pg_tables
-      WHERE schemaname = 'public'
-        AND tablename NOT IN (
-          'tenants', 'plans', 'tenant_subscriptions', 'tenant_invoices',
-          'tenant_payments', 'tenant_smtp_configs', 'tenant_xendit_configs',
-          'tenant_audit_logs', '_prisma_migrations'
-        )
-    `;
-
-    for (const { tablename } of tables) {
-      await prisma.$executeRawUnsafe(
-        `CREATE TABLE "${schemaName}"."${tablename}" (LIKE public."${tablename}" INCLUDING ALL)`
-      );
-    }
-    console.log(`  ✅ Schema "${schemaName}" created with ${tables.length} tables`);
-  } else {
-    console.log(`  ℹ️  Schema "${schemaName}" already exists — skipping creation`);
+  for (const { tablename } of tables) {
+    await prisma.$executeRawUnsafe(
+      `CREATE TABLE "${schemaName}"."${tablename}" (LIKE public."${tablename}" INCLUDING ALL)`
+    );
   }
+  console.log(
+    `  ✅ Schema "${schemaName}" rebuilt from public with ${tables.length} tables`
+  );
 
   // Switch to demo schema for tenant-scoped seeding
   await prisma.$executeRawUnsafe(`SET search_path TO "${schemaName}", public`);
@@ -225,7 +228,7 @@ async function main() {
     await prisma.$executeRawUnsafe(`
       INSERT INTO "${schemaName}".expense_categories (id, tenant_id, name, code, is_active, sort_order, created_at, updated_at)
       VALUES ('${createId()}', '${demoTenant.id}', '${name}', '${code}', true, ${i}, NOW(), NOW())
-      ON CONFLICT (tenant_id, code) DO NOTHING
+      ON CONFLICT (code) DO NOTHING
     `);
   }
   console.log(`  ✅ ${expenseCats.length} expense categories seeded`);
@@ -234,7 +237,7 @@ async function main() {
   await prisma.$executeRawUnsafe(`
     INSERT INTO "${schemaName}".tax_rates (id, tenant_id, name, code, rate, is_default, is_active, created_at, updated_at)
     VALUES ('${createId()}', '${demoTenant.id}', 'VAT', 'vat-12', 12.00, true, true, NOW(), NOW())
-    ON CONFLICT (tenant_id, code) DO NOTHING
+    ON CONFLICT (code) DO NOTHING
   `);
   console.log('  ✅ Default tax rate (VAT 12%) seeded');
 
@@ -242,7 +245,7 @@ async function main() {
   await prisma.$executeRawUnsafe(`
     INSERT INTO "${schemaName}".warehouses (id, tenant_id, name, code, is_default, is_active, created_at, updated_at)
     VALUES ('${createId()}', '${demoTenant.id}', 'Main Warehouse', 'main-warehouse', true, true, NOW(), NOW())
-    ON CONFLICT (tenant_id, code) DO NOTHING
+    ON CONFLICT (code) DO NOTHING
   `);
   console.log('  ✅ Default warehouse seeded');
 
@@ -299,7 +302,7 @@ async function main() {
     await prisma.$executeRawUnsafe(`
       INSERT INTO "${schemaName}".accounts (id, tenant_id, code, name, type, is_system, parent_id, is_active, created_at, updated_at)
       VALUES ('${id}', '${demoTenant.id}', '${acct.code}', '${safeName}', '${acct.type}', ${acct.isGroup}, ${parentId !== null ? `'${parentId}'` : 'NULL'}, true, NOW(), NOW())
-      ON CONFLICT (tenant_id, code) DO NOTHING
+      ON CONFLICT (code) DO NOTHING
     `);
   }
   console.log(`  ✅ ${accounts.length} chart of accounts entries seeded`);
