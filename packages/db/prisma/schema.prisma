@@ -121,6 +121,7 @@ model Tenant {
   journalLines                 JournalLine[]                 @relation("TenantJournalLines")
   taxRates                     TaxRate[]                     @relation("TenantTaxRates")
   fiscalYears                  FiscalYear[]                  @relation("TenantFiscalYears")
+  statutoryRates               StatutoryRate[]               @relation("TenantStatutoryRates")
   supportTickets               SupportTicket[]               @relation("TenantSupportTickets")
   ticketComments               TicketComment[]               @relation("TenantTicketComments")
   ticketAttachments            TicketAttachment[]            @relation("TenantTicketAttachments")
@@ -1810,6 +1811,10 @@ model Payslip {
   otherDeductions      Decimal  @default(0) @map("other_deductions") @db.Decimal(12, 2)
   totalDeductions      Decimal  @map("total_deductions") @db.Decimal(12, 2)
   netPay               Decimal  @map("net_pay") @db.Decimal(12, 2)
+  // Employer statutory shares — tracked as employer cost, NOT deducted from employee net.
+  sssEmployerShare        Decimal @default(0) @map("sss_employer_share") @db.Decimal(12, 2)
+  philhealthEmployerShare Decimal @default(0) @map("philhealth_employer_share") @db.Decimal(12, 2)
+  pagibigEmployerShare    Decimal @default(0) @map("pagibig_employer_share") @db.Decimal(12, 2)
   deductionDetails     Json?    @map("deduction_details")
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")
@@ -2117,10 +2122,35 @@ model AccountingSettings {
   tenantId             String   @unique @map("tenant_id")
   tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   poApprovalThreshold  Decimal  @default(10000) @map("po_approval_threshold") @db.Decimal(12, 2)
+  // Default GL account mapping for JE auto-post (goods receipt + payroll). Nullable until owner configures.
+  defaultInventoryAccountId String? @map("default_inventory_account_id")
+  defaultApAccountId        String? @map("default_ap_account_id")
+  defaultExpenseAccountId   String? @map("default_expense_account_id")
+  defaultFiscalYearId       String? @map("default_fiscal_year_id")
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")
 
   @@map("accounting_settings")
+  @@schema("public")
+}
+
+// Configurable, tenant-scoped, owner-editable statutory rate tables (PH payroll).
+// Effective-dated + cited so seeded 2025 values are auditable and overridable per tenant.
+model StatutoryRate {
+  id            String   @id @default(cuid())
+  tenantId      String   @map("tenant_id")
+  tenant        Tenant   @relation("TenantStatutoryRates", fields: [tenantId], references: [id], onDelete: Cascade)
+  type          String   // sss | philhealth | pagibig | withholding
+  config        Json     // rate/bracket structure consumed by the payroll compute lib
+  source        String   // citation: issuing circular / year (e.g. "SSS Circular 2024-006, eff. Jan 2025")
+  effectiveFrom DateTime @map("effective_from") @db.Date
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([tenantId, type, isActive])
+  @@map("statutory_rates")
   @@schema("public")
 }
 

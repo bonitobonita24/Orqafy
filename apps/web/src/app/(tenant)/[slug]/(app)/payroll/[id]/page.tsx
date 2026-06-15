@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PayrollActions } from "./payroll-actions";
 
 export const metadata: Metadata = { title: "Payroll Run" };
 export const dynamic = "force-dynamic";
@@ -89,6 +90,7 @@ export default async function PayrollDetailPage({
               + Add Payslip
             </Link>
           )}
+          <PayrollActions payrollId={id} status={payroll.status} />
           <span
             className={`rounded-full border px-3 py-1 text-xs font-medium ${
               STATUS_BADGE[payroll.status] ?? STATUS_BADGE["draft"]
@@ -192,6 +194,10 @@ export default async function PayrollDetailPage({
                 <th className="px-4 py-3 font-medium text-right">Overtime</th>
                 <th className="px-4 py-3 font-medium text-right">Allowances</th>
                 <th className="px-4 py-3 font-medium text-right">Gross</th>
+                <th className="px-4 py-3 font-medium text-right">SSS</th>
+                <th className="px-4 py-3 font-medium text-right">PhilHealth</th>
+                <th className="px-4 py-3 font-medium text-right">Pag-IBIG</th>
+                <th className="px-4 py-3 font-medium text-right">W/Tax</th>
                 <th className="px-4 py-3 font-medium text-right">Deductions</th>
                 <th className="px-4 py-3 font-medium text-right">Net</th>
               </tr>
@@ -221,6 +227,18 @@ export default async function PayrollDetailPage({
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-xs">
                     {formatMoney(ps.grossPay, payroll.currency)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
+                    {formatMoney(ps.sssDeduction, payroll.currency)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
+                    {formatMoney(ps.philhealthDeduction, payroll.currency)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
+                    {formatMoney(ps.pagibigDeduction, payroll.currency)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
+                    {formatMoney(ps.taxDeduction, payroll.currency)}
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-xs text-red-400">
                     {formatMoney(ps.totalDeductions, payroll.currency)}

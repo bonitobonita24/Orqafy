@@ -83,11 +83,20 @@ export default async function AccountingPage({
             Per-account aggregation of posted debit/credit lines with balance verification.
           </p>
         </Link>
+        <Link
+          href={`/${slug}/accounting/settings`}
+          className="group rounded-lg border border-border bg-card p-6 transition-colors hover:bg-muted/30"
+        >
+          <h2 className="font-semibold group-hover:text-primary">Settings →</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Default GL account mapping for JE auto-post (inventory, AP, expense) + default fiscal year.
+          </p>
+        </Link>
       </div>
 
       <div className="rounded-md border border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-        Financial statements, GL rollups, and auto-posting from other modules are pending
-        owner-supplied rules (see DECISIONS_LOG §A).
+        Goods-receipt and payroll auto-posting are now active once the default account mapping is
+        configured in Settings (see DECISIONS_LOG §B/§C).
       </div>
     </div>
   );

@@ -2,6 +2,11 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
 import { prisma as db, writeAuditLog } from "@orqafy/db";
+import {
+  resolveAccountingDefaults,
+  postJournalEntryTx,
+  type JournalPostLine,
+} from "@/server/lib/journal-posting";
 
 // ── Sequence helpers ──────────────────────────────────────────────────────────
 
@@ -731,6 +736,10 @@ export const goodsReceiptRouter = createTRPCRouter({
       const grNumber = await generateGrNumber();
 
       return db.$transaction(async (tx) => {
+        // JE auto-post accumulators (§B): DR Inventory (stock allocs) /
+        // DR Expense (company + project_expense allocs), CR AP for the total received value.
+        let inventoryDebit = 0;
+        let expenseDebit = 0;
         const gr = await tx.goodsReceipt.create({
           data: {
             tenantId: ctx.tenantId,
@@ -780,7 +789,10 @@ export const goodsReceiptRouter = createTRPCRouter({
             const proportion = Number(alloc.quantity) / totalAllocQty;
             const allocatedQty = grItem.quantityReceived * proportion;
 
+            const allocValue = allocatedQty * Number(matchingPoItem.unitPrice);
             if (alloc.type === "stock") {
+              // Stock allocations capitalize to the Inventory asset account.
+              inventoryDebit += allocValue;
               // Only create stock movement when productId is available
               const productId = grItem.productId ?? matchingPoItem.productId;
               if (productId === null || productId === undefined) continue;
@@ -806,10 +818,12 @@ export const goodsReceiptRouter = createTRPCRouter({
                 data: { processedAt: new Date() },
               });
             } else if (alloc.type === "project_expense") {
+              // Expense at PURCHASE time (per PRODUCT.md): debit the Expense account.
+              expenseDebit += allocValue;
               if (alloc.projectId === null || alloc.projectId === undefined) continue;
 
               // Calculate expense amount proportionally from PO item unit price
-              const expenseAmount = allocatedQty * Number(matchingPoItem.unitPrice);
+              const expenseAmount = allocValue;
 
               await tx.projectExpense.create({
                 data: {
@@ -829,10 +843,11 @@ export const goodsReceiptRouter = createTRPCRouter({
                 data: { processedAt: new Date() },
               });
             }
-            // company_expense: no separate action needed (expense recorded on PO creation)
-            // HOLD(owner-rule): JE auto-post on goods receipt (DR Inventory/Expense CR AP) is deferred.
-            // Requires: AccountingSettings.defaultInventoryAccountId, defaultApAccountId, defaultExpenseAccountId
-            // + a default FiscalYear pointer on AccountingSettings. Owner must configure these first.
+            else if (alloc.type === "company_expense") {
+              // company_expense: no separate stock/expense record, but it still
+              // capitalizes as an expense in the JE (expense at purchase time).
+              expenseDebit += allocValue;
+            }
           }
 
           // Update PO item quantityReceived
@@ -862,6 +877,47 @@ export const goodsReceiptRouter = createTRPCRouter({
           where: { id: input.purchaseOrderId },
           data: { status: newPoStatus },
         });
+
+        // ── JE auto-post (§B): DR Inventory + DR Expense, CR Accounts Payable ──
+        // Only attempt when the tenant has configured default-account mapping.
+        // If mapping is partially configured, resolveAccountingDefaults throws a
+        // clear BAD_REQUEST directing the user to Accounting → Settings.
+        const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+        const inv = round2(inventoryDebit);
+        const exp = round2(expenseDebit);
+        const settings = await tx.accountingSettings.findUnique({ where: { tenantId: ctx.tenantId } });
+        const mappingConfigured =
+          settings != null &&
+          settings.defaultApAccountId != null &&
+          settings.defaultFiscalYearId != null &&
+          (inv === 0 || settings.defaultInventoryAccountId != null) &&
+          (exp === 0 || settings.defaultExpenseAccountId != null);
+        if ((inv > 0 || exp > 0) && mappingConfigured) {
+          const defaults = await resolveAccountingDefaults(
+            tx,
+            ctx.tenantId,
+            [
+              "ap",
+              "fiscalYear",
+              ...(inv > 0 ? (["inventory"] as const) : []),
+              ...(exp > 0 ? (["expense"] as const) : []),
+            ],
+          );
+          const lines: JournalPostLine[] = [];
+          if (inv > 0) lines.push({ accountId: defaults.inventoryAccountId!, debit: inv, description: "Inventory received" });
+          if (exp > 0) lines.push({ accountId: defaults.expenseAccountId!, debit: exp, description: "Purchase expense" });
+          lines.push({ accountId: defaults.apAccountId!, credit: round2(inv + exp), description: "Accounts payable" });
+          await postJournalEntryTx(tx, {
+            tenantId: ctx.tenantId,
+            userId: ctx.userId,
+            fiscalYearId: defaults.fiscalYearId!,
+            date: new Date(),
+            description: `Goods receipt ${gr.grNumber}`,
+            referenceType: "goods_receipt",
+            referenceId: gr.id,
+            lines,
+          });
+        }
 
         await writeAuditLog(tx, {
           userId: ctx.userId,

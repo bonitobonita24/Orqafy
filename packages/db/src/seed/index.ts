@@ -304,6 +304,60 @@ async function main() {
   }
   console.log(`  ✅ ${accounts.length} chart of accounts entries seeded`);
 
+  // ── Statutory rates (PH 2025, cited) — owner-editable per tenant (DECISIONS_LOG §C) ──
+  const statutoryRates: Array<{ type: string; config: unknown; source: string }> = [
+    {
+      type: 'sss',
+      config: { totalRate: 0.15, employeeRate: 0.05, employerRate: 0.1, mscFloor: 5000, mscCeiling: 35000 },
+      source:
+        'SSS Circular 2024-006 — 15% contribution rate eff. Jan 2025; MSC PHP 5,000–35,000 (incl. WISP/MPF above 20,000)',
+    },
+    {
+      type: 'philhealth',
+      config: { premiumRate: 0.05, employeeRate: 0.025, floor: 10000, ceiling: 100000 },
+      source:
+        'PhilHealth (Universal Health Care Act) — 5% premium, salary floor PHP 10,000 / ceiling 100,000 (2024/2025 schedule)',
+    },
+    {
+      type: 'pagibig',
+      config: { employeeRate: 0.02, employerRate: 0.02, compensationCap: 10000 },
+      source: 'HDMF (Pag-IBIG) Circular — EE 2% / ER 2%, compensation cap PHP 10,000 (max EE PHP 200)',
+    },
+    {
+      type: 'withholding',
+      config: {
+        frequency: 'monthly',
+        brackets: [
+          { lower: 0, baseTax: 0, rate: 0 },
+          { lower: 20833, baseTax: 0, rate: 0.15 },
+          { lower: 33333, baseTax: 1875, rate: 0.2 },
+          { lower: 66667, baseTax: 8541.8, rate: 0.25 },
+          { lower: 166667, baseTax: 33541.8, rate: 0.3 },
+          { lower: 666667, baseTax: 183541.8, rate: 0.35 },
+        ],
+      },
+      source: 'BIR Revised Withholding Tax Table under RA 10963 (TRAIN), eff. Jan 2023 onward — monthly brackets',
+    },
+  ];
+  for (const r of statutoryRates) {
+    const existing = await prisma.statutoryRate.findFirst({
+      where: { tenantId: demoTenant.id, type: r.type },
+    });
+    if (existing === null) {
+      await prisma.statutoryRate.create({
+        data: {
+          tenantId: demoTenant.id,
+          type: r.type,
+          config: r.config as object,
+          source: r.source,
+          effectiveFrom: new Date('2025-01-01'),
+          isActive: true,
+        },
+      });
+    }
+  }
+  console.log(`  ✅ ${statutoryRates.length} statutory rates seeded (PH 2025, cited)`);
+
   // Reset search_path
   await prisma.$executeRawUnsafe('SET search_path TO public');
 

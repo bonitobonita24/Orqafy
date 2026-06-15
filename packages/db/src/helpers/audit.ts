@@ -3,7 +3,17 @@ import type { PrismaClient } from '@prisma/client';
 
 interface AuditLogEntry {
   userId: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE';
+  action:
+    | 'CREATE'
+    | 'UPDATE'
+    | 'DELETE'
+    | 'ACTIVATE'
+    | 'DEACTIVATE'
+    | 'POST'
+    | 'REVERSE'
+    | 'PROCESS'
+    | 'APPROVE'
+    | 'MARK_PAID';
   entity: string;
   entityId: string;
   before?: Record<string, unknown> | null;

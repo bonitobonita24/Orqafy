@@ -112,6 +112,7 @@ function rewireDefaultTransaction() {
       goodsReceiptItem: { create: mockGrItemCreate },
       stockMovement: { create: vi.fn() },
       projectExpense: { create: vi.fn() },
+      accountingSettings: { findUnique: vi.fn().mockResolvedValue(null) },
       auditLog: { create: vi.fn().mockResolvedValue({}) },
     }),
   );
@@ -274,6 +275,7 @@ describe("goodsReceipt.create — cross-tenant PO guard", () => {
         goodsReceiptItem: { create: mockGrItemCreate.mockResolvedValueOnce({}) },
         purchaseOrderItem: { findMany: mockPoItemFindMany.mockResolvedValueOnce([]) },
         purchaseOrder: { update: mockPoUpdate.mockResolvedValueOnce({}) },
+        accountingSettings: { findUnique: vi.fn().mockResolvedValue(null) },
         auditLog: { create: vi.fn().mockResolvedValue({}) },
       }),
     );
@@ -288,5 +290,72 @@ describe("goodsReceipt.create — cross-tenant PO guard", () => {
         data: expect.objectContaining({ tenantId: "tenant-A" }),
       }),
     );
+  });
+
+  it("auto-posts JE (DR inventory, CR AP) when default-account mapping is configured (§B)", async () => {
+    mockPoFindUnique
+      .mockResolvedValueOnce({ ...fakePoA, status: "approved" })
+      .mockResolvedValueOnce({
+        ...fakePoA,
+        status: "approved",
+        currency: "PHP",
+        items: [
+          {
+            id: "poi-1",
+            tenantId: "tenant-A",
+            description: "Widget A",
+            quantity: 10,
+            quantityReceived: 0,
+            unitPrice: 100,
+            totalPrice: 1000,
+            productId: "prod-1",
+            allocations: [{ id: "alloc-1", type: "stock", quantity: 10, warehouseId: "wh-1", projectId: null }],
+          },
+        ],
+      });
+    mockGrFindFirst.mockResolvedValueOnce(null);
+    const fakeGr = { id: "gr-2", tenantId: "tenant-A", grNumber: "GR-2401-0002", purchaseOrderId: "po-A", status: "accepted" };
+    const jeCreate = vi.fn().mockResolvedValue({ id: "je-1", entryNumber: "JE-0001" });
+    mockTransaction.mockImplementation((fn: any) =>
+      fn({
+        goodsReceipt: { create: mockGrCreate.mockResolvedValueOnce(fakeGr), findUnique: vi.fn().mockResolvedValue({ ...fakeGr, items: [] }) },
+        goodsReceiptItem: { create: mockGrItemCreate.mockResolvedValueOnce({}) },
+        stockMovement: { create: vi.fn() },
+        projectExpense: { create: vi.fn() },
+        purchaseOrderItemAllocation: { update: vi.fn() },
+        purchaseOrderItem: { findMany: mockPoItemFindMany.mockResolvedValueOnce([{ quantityReceived: 10, quantity: 10 }]), update: vi.fn() },
+        purchaseOrder: { update: mockPoUpdate.mockResolvedValueOnce({}) },
+        accountingSettings: {
+          findUnique: vi.fn().mockResolvedValue({
+            tenantId: "tenant-A",
+            defaultInventoryAccountId: "acct-inv",
+            defaultApAccountId: "acct-ap",
+            defaultExpenseAccountId: "acct-exp",
+            defaultFiscalYearId: "fy-1",
+          }),
+        },
+        fiscalYear: { findUnique: vi.fn().mockResolvedValue({ id: "fy-1", tenantId: "tenant-A", isClosed: false }) },
+        account: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: "acct-inv", tenantId: "tenant-A", isActive: true, name: "Inventory" },
+            { id: "acct-ap", tenantId: "tenant-A", isActive: true, name: "AP" },
+          ]),
+        },
+        journalEntry: { count: vi.fn().mockResolvedValue(0), create: jeCreate },
+        auditLog: { create: vi.fn().mockResolvedValue({}) },
+      }),
+    );
+
+    await createCaller(ctx("tenant-A")).purchasing.goodsReceipt.create({
+      purchaseOrderId: "po-A",
+      items: [{ description: "Widget A", productId: "prod-1", quantityExpected: 10, quantityReceived: 10 }],
+    });
+
+    // JE posted: DR Inventory 1000 / CR AP 1000, tenant-scoped.
+    expect(jeCreate).toHaveBeenCalled();
+    const jeArgs = jeCreate.mock.calls[0]?.[0] as { data: { tenantId: string; status: string; referenceType: string } };
+    expect(jeArgs.data.tenantId).toBe("tenant-A");
+    expect(jeArgs.data.status).toBe("posted");
+    expect(jeArgs.data.referenceType).toBe("goods_receipt");
   });
 });

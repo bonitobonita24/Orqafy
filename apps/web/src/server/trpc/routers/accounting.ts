@@ -685,9 +685,97 @@ const taxRateRouter = createTRPCRouter({
     }),
 });
 
+// ── Accounting settings sub-router (default GL account mapping for JE auto-post) ──
+const settingsRouter = createTRPCRouter({
+  get: protectedProcedure.query(async ({ ctx }) => {
+    const existing = await db.accountingSettings.findUnique({ where: { tenantId: ctx.tenantId } });
+    if (existing) return existing;
+    // Surface a stable default-shaped object even before first save.
+    return {
+      tenantId: ctx.tenantId,
+      poApprovalThreshold: 10000,
+      defaultInventoryAccountId: null,
+      defaultApAccountId: null,
+      defaultExpenseAccountId: null,
+      defaultFiscalYearId: null,
+    };
+  }),
+
+  update: accountantWriteProcedure
+    .input(
+      z.object({
+        poApprovalThreshold: z.number().min(0).optional(),
+        defaultInventoryAccountId: z.string().nullable().optional(),
+        defaultApAccountId: z.string().nullable().optional(),
+        defaultExpenseAccountId: z.string().nullable().optional(),
+        defaultFiscalYearId: z.string().nullable().optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      // Validate referenced accounts/fiscal year belong to this tenant.
+      const checkAccount = async (id: string | null | undefined) => {
+        if (id == null || id === "") return;
+        await loadAccountForTenant(id, ctx);
+      };
+      await checkAccount(input.defaultInventoryAccountId);
+      await checkAccount(input.defaultApAccountId);
+      await checkAccount(input.defaultExpenseAccountId);
+      if (input.defaultFiscalYearId != null && input.defaultFiscalYearId !== "") {
+        await loadFiscalYearForTenant(input.defaultFiscalYearId, ctx);
+      }
+
+      const emptyToNull = (v: string | null | undefined): string | null =>
+        v === undefined || v === null || v === "" ? null : v;
+      const data = {
+        ...(input.poApprovalThreshold !== undefined ? { poApprovalThreshold: input.poApprovalThreshold } : {}),
+        ...(input.defaultInventoryAccountId !== undefined
+          ? { defaultInventoryAccountId: emptyToNull(input.defaultInventoryAccountId) }
+          : {}),
+        ...(input.defaultApAccountId !== undefined ? { defaultApAccountId: emptyToNull(input.defaultApAccountId) } : {}),
+        ...(input.defaultExpenseAccountId !== undefined
+          ? { defaultExpenseAccountId: emptyToNull(input.defaultExpenseAccountId) }
+          : {}),
+        ...(input.defaultFiscalYearId !== undefined
+          ? { defaultFiscalYearId: emptyToNull(input.defaultFiscalYearId) }
+          : {}),
+      };
+
+      return db.$transaction(async (tx) => {
+        const before = await tx.accountingSettings.findUnique({ where: { tenantId: ctx.tenantId } });
+        const updated = await tx.accountingSettings.upsert({
+          where: { tenantId: ctx.tenantId },
+          update: data,
+          create: { tenantId: ctx.tenantId, ...data },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: before ? "UPDATE" : "CREATE",
+          entity: "AccountingSettings",
+          entityId: updated.id,
+          before: before
+            ? {
+                defaultInventoryAccountId: before.defaultInventoryAccountId,
+                defaultApAccountId: before.defaultApAccountId,
+                defaultExpenseAccountId: before.defaultExpenseAccountId,
+                defaultFiscalYearId: before.defaultFiscalYearId,
+              }
+            : null,
+          after: {
+            defaultInventoryAccountId: updated.defaultInventoryAccountId,
+            defaultApAccountId: updated.defaultApAccountId,
+            defaultExpenseAccountId: updated.defaultExpenseAccountId,
+            defaultFiscalYearId: updated.defaultFiscalYearId,
+          },
+        });
+        return updated;
+      });
+    }),
+});
+
 export const accountingRouter = createTRPCRouter({
   account: accountRouter,
   journalEntry: journalEntryRouter,
   fiscalYear: fiscalYearRouter,
   taxRate: taxRateRouter,
+  settings: settingsRouter,
 });

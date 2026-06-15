@@ -13,13 +13,25 @@ vi.mock("@orqafy/db", () => ({
       create: vi.fn(),
       update: vi.fn(),
     },
+    payslip: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn() },
+    statutoryRate: { findMany: vi.fn().mockResolvedValue([]) },
+    fundSource: { findUnique: vi.fn() },
+    accountingSettings: { findUnique: vi.fn().mockResolvedValue(null) },
     $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) =>
       fn({
         payroll: {
           create: vi.fn().mockResolvedValue({ id: "ck1234567890123456789012a", status: "draft", payrollNumber: "PAY-0001" }),
-          update: vi.fn().mockResolvedValue({ id: "ck1234567890123456789012a", status: "draft" }),
+          // Echo input data so callers reading the returned object see what was written.
+          update: vi.fn().mockImplementation((args: any) => Promise.resolve({ id: "ck1234567890123456789012a", ...args.data })),
         },
-        payslip: { create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+        payslip: { create: vi.fn(), update: vi.fn(), delete: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
+        fundSource: { update: vi.fn() },
+        fundTransaction: { create: vi.fn() },
+        statutoryRate: { create: vi.fn(), createMany: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
+        accountingSettings: { findUnique: vi.fn().mockResolvedValue(null) },
+        fiscalYear: { findUnique: vi.fn().mockResolvedValue({ id: "fy-1", tenantId: "acme-tenant-id", isClosed: false }) },
+        account: { findMany: vi.fn().mockResolvedValue([{ id: "acct-exp", tenantId: "acme-tenant-id", isActive: true, name: "Expense" }, { id: "acct-ap", tenantId: "acme-tenant-id", isActive: true, name: "AP" }]) },
+        journalEntry: { count: vi.fn().mockResolvedValue(0), create: vi.fn().mockResolvedValue({ id: "je-1", entryNumber: "JE-0001" }) },
       })
     ),
   },
@@ -67,6 +79,10 @@ const mockDb = db as unknown as {
     create: any;
     update: any;
   };
+  payslip: { findMany: any; findUnique: any };
+  statutoryRate: { findMany: any };
+  fundSource: { findUnique: any };
+  accountingSettings: { findUnique: any };
 };
 
 const PAYROLL_CUID = "ck1234567890123456789012a";
@@ -191,12 +207,12 @@ describe("payroll router", () => {
   describe("state machine: process → approve → markPaid", () => {
     it("process: draft → processing succeeds and sets processedAt", async () => {
       mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, tenantId: "acme-tenant-id", status: "draft" });
-      mockDb.payroll.update.mockResolvedValue({ id: PAYROLL_CUID, status: "processing" });
+      mockDb.statutoryRate.findMany.mockResolvedValue([]);
+      mockDb.payslip.findMany.mockResolvedValue([]);
       const caller = createCaller(authenticatedCtx());
-      await caller.payroll.process({ id: PAYROLL_CUID });
-      const callArgs = mockDb.payroll.update.mock.calls[0][0];
-      expect(callArgs.data.status).toBe("processing");
-      expect(callArgs.data.processedAt).toBeInstanceOf(Date);
+      const res = await caller.payroll.process({ id: PAYROLL_CUID });
+      expect(res.status).toBe("processing");
+      expect(res.processedAt).toBeInstanceOf(Date);
     });
 
     it("process: rejects when not in draft status", async () => {
@@ -234,31 +250,66 @@ describe("payroll router", () => {
       });
     });
 
-    it("markPaid: approved → paid succeeds and sets paidAt", async () => {
-      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, tenantId: "acme-tenant-id", status: "approved" });
-      mockDb.payroll.update.mockResolvedValue({ id: PAYROLL_CUID, status: "paid" });
+    const FUND_CUID = "ck1234567890123456789012b";
+
+    it("markPaid: approved → paid succeeds, deducts fund source, posts JE", async () => {
+      mockDb.payroll.findUnique.mockResolvedValue({
+        id: PAYROLL_CUID,
+        tenantId: "acme-tenant-id",
+        status: "approved",
+        payrollNumber: "PAY-0001",
+      });
+      mockDb.fundSource.findUnique.mockResolvedValue({
+        id: FUND_CUID,
+        tenantId: "acme-tenant-id",
+        currentBalance: 100000,
+      });
+      mockDb.payslip.findMany.mockResolvedValue([
+        {
+          netPay: 18000,
+          grossPay: 20000,
+          totalDeductions: 2000,
+          sssEmployerShare: 1000,
+          philhealthEmployerShare: 250,
+          pagibigEmployerShare: 200,
+        },
+      ]);
+      // Default account mapping configured → JE auto-post enabled.
+      mockDb.accountingSettings.findUnique.mockResolvedValue({
+        tenantId: "acme-tenant-id",
+        defaultExpenseAccountId: "acct-exp",
+        defaultApAccountId: "acct-ap",
+        defaultFiscalYearId: "fy-1",
+      });
       const caller = createCaller(authenticatedCtx());
-      await caller.payroll.markPaid({ id: PAYROLL_CUID });
-      const callArgs = mockDb.payroll.update.mock.calls[0][0];
-      expect(callArgs.data.status).toBe("paid");
-      expect(callArgs.data.paidAt).toBeInstanceOf(Date);
+      const res = await caller.payroll.markPaid({ id: PAYROLL_CUID, fundSourceId: FUND_CUID });
+      expect(res.status).toBe("paid");
     });
 
     it("markPaid: rejects when not approved", async () => {
       mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, tenantId: "acme-tenant-id", status: "processing" });
       const caller = createCaller(authenticatedCtx());
-      await expect(caller.payroll.markPaid({ id: PAYROLL_CUID })).rejects.toMatchObject({
+      await expect(caller.payroll.markPaid({ id: PAYROLL_CUID, fundSourceId: FUND_CUID })).rejects.toMatchObject({
         code: "BAD_REQUEST",
       });
     });
 
-    it("markPaid: uses provided paidAt when given", async () => {
-      mockDb.payroll.findUnique.mockResolvedValue({ id: PAYROLL_CUID, tenantId: "acme-tenant-id", status: "approved" });
-      mockDb.payroll.update.mockResolvedValue({ id: PAYROLL_CUID });
+    it("markPaid: fails with clear error when default-account mapping unset", async () => {
+      mockDb.payroll.findUnique.mockResolvedValue({
+        id: PAYROLL_CUID,
+        tenantId: "acme-tenant-id",
+        status: "approved",
+        payrollNumber: "PAY-0001",
+      });
+      mockDb.fundSource.findUnique.mockResolvedValue({ id: FUND_CUID, tenantId: "acme-tenant-id", currentBalance: 100000 });
+      mockDb.payslip.findMany.mockResolvedValue([
+        { netPay: 18000, grossPay: 20000, totalDeductions: 2000, sssEmployerShare: 0, philhealthEmployerShare: 0, pagibigEmployerShare: 0 },
+      ]);
+      mockDb.accountingSettings.findUnique.mockResolvedValue(null); // unconfigured
       const caller = createCaller(authenticatedCtx());
-      const customDate = new Date("2026-06-01");
-      await caller.payroll.markPaid({ id: PAYROLL_CUID, paidAt: customDate });
-      expect(mockDb.payroll.update.mock.calls[0][0].data.paidAt).toEqual(customDate);
+      await expect(caller.payroll.markPaid({ id: PAYROLL_CUID, fundSourceId: FUND_CUID })).rejects.toMatchObject({
+        code: "BAD_REQUEST",
+      });
     });
 
     it("forbids skipping states: draft cannot go directly to approved", async () => {

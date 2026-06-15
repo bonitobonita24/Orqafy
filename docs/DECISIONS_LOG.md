@@ -685,3 +685,36 @@ sensible default wired with `createNotification`.
 **Build status:** rules recorded; Accounting posting build NEXT (this session). Purchasing + Payroll waves follow.
 
 **Phase:** Phase 7 (finance logic)
+
+---
+
+## 2026-06-16 — F3 Payroll computation (§C) + JE auto-post default-account mapping (§B unblocked) — BUILT
+
+**Decision (owner-delegated):** implement the HELD §C payroll computation and unblock the §B goods-receipt JE auto-post, sharing one `AccountingSettings` migration. Claude-authored per the §A/§B/§C rules above.
+
+### Schema (one migration: `20260615020000_add_payroll_statutory_and_je_mapping`, create-only; dev synced via `prisma db push` against the direct postgres `orqafy_dev_postgres:5432`)
+- **`AccountingSettings`** + `defaultInventoryAccountId`, `defaultApAccountId`, `defaultExpenseAccountId`, `defaultFiscalYearId` (all nullable) — default GL account mapping for JE auto-post.
+- **`Payslip`** + `sssEmployerShare`, `philhealthEmployerShare`, `pagibigEmployerShare` (Decimal, default 0) — employer cost, NOT deducted from employee net.
+- **NEW `StatutoryRate`** — tenant-scoped, owner-editable, effective-dated, **cited** (`source`) rate tables; `config` JSON consumed by the compute lib. Seeded with cited 2025 PH values (SSS Circular 2024-006; PhilHealth UHC 5%; HDMF Pag-IBIG; BIR TRAIN withholding). Indexed `(tenantId, type, isActive)`.
+
+### Payroll computation (§C) — `apps/web/src/server/lib/payroll-compute.ts` (pure, unit-tested)
+- gross → SSS-EE/PhilHealth-EE/Pag-IBIG-EE + BIR withholding (on gross less mandatory EE contributions) → net; employer shares tracked separately. Cited 2025 constants double as seed source + fallback (`resolveRatesFromRows` prefers the most recent active effective row per type, else default).
+- `payroll.process` (DRAFT→PROCESSING): computes every payslip in the run from the tenant's `StatutoryRate` rows, persists deductions + employer shares + `deductionDetails` breakdown, rolls up run totals. Audited (`PROCESS`).
+- `payroll.markPaid` (APPROVED→PAID): deducts the chosen FundSource for net pay (records a `FundTransaction`) and posts the payroll JE (DR salaries + employer-statutory expense, CR Accounts Payable) per Core Flow 8, resolving expense/AP/fiscal-year from `AccountingSettings` (clear error if unset). Requires a `fundSourceId`. Audited (`MARK_PAID`).
+- `payroll.statutoryRate.{list,resolved,upsert,seedDefaults}` — owner-configurable rates.
+
+### JE auto-post (§B unblocked) — `apps/web/src/server/lib/journal-posting.ts` (shared by GR + payroll)
+- `resolveAccountingDefaults` (clear BAD_REQUEST listing missing mapping keys) + `postJournalEntryTx` (≥2 lines, balanced, active accounts, open FY, status=posted).
+- Goods receipt (`purchasing.ts`): accumulates DR Inventory (stock allocs) + DR Expense (company/project-expense allocs), CR AP for the total; **only posts when mapping is configured** (auto-post skipped otherwise → preserves prior GR behavior; partial config → clear error).
+- New `accounting.settings.{get,update}` procedures + Accounting → Settings UI to configure the mapping.
+
+### UI
+- Payroll detail page: per-payslip SSS/PhilHealth/Pag-IBIG/withholding columns + lifecycle actions (Process / Approve / Mark Paid with fund-source picker).
+- Accounting → Settings page: default account mapping + fiscal year selectors.
+
+### Gate / caveats
+- `prisma generate` + web typecheck (no net-new tsc errors vs baseline) + lint (new code clean) + full vitest suite **1026 passing** (was 1003; +23: payroll-compute unit tests, finance statutory/settings parity, GR auto-post positive test, updated markPaid/process tests).
+- **Migration:** create-only; applied to dev via `db push` only (staging/prod credential-gated, not attempted). Pre-existing `seed/index.ts` departments `tenant_id` raw-SQL drift is unrelated and still fails the full seed before reaching the StatutoryRate block (StatutoryRate seed verified independently against dev DB).
+- **Owner action:** statutory rate tables change annually — verify the seeded 2025 values; configure the default account mapping per tenant to enable auto-post.
+
+**Phase:** Phase 7 (finance logic)

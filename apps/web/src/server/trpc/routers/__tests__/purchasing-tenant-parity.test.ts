@@ -225,6 +225,10 @@ async function rewireTransaction() {
       goodsReceiptItem: {
         create: mockGoodsReceiptItemCreate,
       },
+      // JE auto-post (§B): unset mapping → auto-post skipped, original behavior preserved.
+      accountingSettings: { findUnique: mockAccountingSettingsFindUnique },
+      stockMovement: { create: vi.fn() },
+      projectExpense: { create: vi.fn() },
       auditLog: { create: mockAuditLogCreate },
     };
     return fn(mockDb);
