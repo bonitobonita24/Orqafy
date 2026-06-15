@@ -718,3 +718,48 @@ sensible default wired with `createNotification`.
 - **Owner action:** statutory rate tables change annually — verify the seeded 2025 values; configure the default account mapping per tenant to enable auto-post.
 
 **Phase:** Phase 7 (finance logic)
+
+---
+
+## Decision — 2026-06-16 — Phase 8 completeness sweep: tenant-scope server-component leaks + fix seed drift
+
+**Context:** Phase 8 (PRODUCT.md ↔ code completeness check) surfaced two real gaps. Both are
+technical (HOW-to-build), so they were fixed autonomously.
+
+**1. Cross-tenant data exposure in Next.js server components (SECURITY 🔴).**
+Orqafy is shared-schema multi-tenancy (every table has `tenant_id`; isolation is by explicit
+`where:{tenantId}`). tRPC routers are correctly scoped, but ~30 Server Components (`page.tsx`)
+imported the global `prisma` client and queried WITHOUT a tenant filter — two leak shapes:
+(a) list/aggregate pages whose `where` carried only status/date filters → returned every tenant's
+rows; (b) `[id]` detail pages doing `findUnique({where:{id}})` with no tenant check → classic IDOR
+(read another tenant's record by id). Parent-chain leaks in `projects/[id]` + `.../expenses`
+(unverified parent project → children scoped off it). Fixed across DTR, banking, POS, purchasing,
+ecommerce, projects, payroll, employees, job-orders, and the demo workspace counts — following the
+in-repo pattern (lists `where:{tenantId}`; detail `findFirst{id,tenantId}` or post-fetch
+`tenantId !== tenant.id → notFound()`; parents tenant-verified before children). Commits `1bdc224`,
+`1187bfc`. Correctly-scoped modules (accounting, crm, inventory, reports, dashboard, tasks, support,
+invoices, expenses) needed no change. The unused `createTenantPrisma`/`tenantGuardExtension`
+schema-switch path was NOT adopted — explicit `where:{tenantId}` is the established convention.
+
+**2. `pnpm seed` drift (TECHNICAL).** Supersedes the prior note that the seed "still fails." Root
+cause: the demo schema `t_demo` was snapshotted once and never reconciled, so after later migrations
+(e.g. `departments.tenant_id`) it went stale → `column tenant_id does not exist`. Also four
+`ON CONFLICT (tenant_id, code)` targets referenced a constraint that doesn't exist — the models
+declare `code @unique` (global), only `Department` is `@@unique([tenantId, code])`. Fix: rebuild
+`t_demo` from current `public` on every seed run (guarded to t_demo only); correct the four
+ON CONFLICT targets to `(code)` for expense_categories/tax_rates/warehouses/accounts. `pnpm seed`
+now runs end-to-end through the StatutoryRate block. Commit `de19377`.
+
+**Gate:** prisma generate + web typecheck (28 pre-existing tsc errors, **zero net-new**) + full
+vitest suite **1026 passing** (unchanged — server-component + seed fixes, no unit-test regression).
+UI-only changes; no schema migration.
+
+**Owner action / follow-ups (NOT done — listed for owner):** The shared-schema `code @unique`
+(global) vs tenant-scoped uniqueness on ExpenseCategory/TaxRate/Warehouse/Account is a data-model
+inconsistency worth an owner decision (would need a migration). 28 pre-existing TypeScript errors
+(form `exactOptionalPropertyTypes` + `nodemailer` types) predate this sweep and remain. The
+"deferred leave self-cancel UI" (owner-decision-3) was found ALREADY BUILT and wired
+(`dtr/leave-request-actions.tsx` cancel dialog gated on `isOwn`, backed by tested
+`leaveRequestCancel`) — no work needed (phantom gap).
+
+**Phase:** Phase 8 (completeness sweep)

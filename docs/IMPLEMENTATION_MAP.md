@@ -11,6 +11,13 @@ surfaces (those are logged as Phase 7 feature-builds). Outcome:
 - **Shipped (in scope):** W11 reports tenant-isolation 🔴 security fix; dead-nav/dead-link
   fixes (W9 job-order breadcrumb, W10 storefront "Track order" link, W11 four settings hrefs).
   Most domains were found **already fully wired** (RSC pages reading Prisma directly).
+- **Phase 8 sweep (2026-06-16, commits `de19377`/`1bdc224`/`1187bfc`):** broadened the W11
+  finding — ~30 RSC `page.tsx` were reading the global Prisma client WITHOUT `where:{tenantId}`
+  (cross-tenant list leaks + `[id]` IDOR). Tenant-scoped DTR, banking, POS, purchasing, ecommerce,
+  projects, payroll, employees, job-orders + demo counts (lists `where:{tenantId}`; detail
+  `findFirst{id,tenantId}`/post-fetch `notFound()`; parents verified before children). Also fixed
+  `pnpm seed` (rebuild `t_demo` from public each run + correct 4 ON CONFLICT targets) — now runs
+  end-to-end. 1026 tests green, zero net-new tsc errors. "Leave self-cancel UI" found already built.
 - **Deferred (out of scope):** ~100+ unsurfaced backend procedures + product/UX gaps —
   consolidated into **`docs/UI_BACKEND_GAPS.md`** (W13), the planning input for a future
   Phase 7 backend feature wave. Per-wave detail: `docs/WIRING_NEEDS_SPEC.md`.

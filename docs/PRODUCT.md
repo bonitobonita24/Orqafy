@@ -2014,6 +2014,11 @@ Komodo deployment (Scenario 32 — V27 model):
     internal network. TRAEFIK_NETWORK=proxy (locked decision). Dev compose unchanged
     (direct port mapping). .env.staging/.env.prod: TRAEFIK_NETWORK=proxy + APP_DOMAIN vars.
 Security: HTTP security headers + rate limiter + DOMPurify sanitizer scaffolded by Phase 4
+Tenant isolation (shared-schema): every tenant-owned query MUST filter by the session/slug
+  tenant — `where:{tenantId}` on lists, `findFirst{id,tenantId}` or post-fetch
+  `tenantId !== tenant.id → notFound()` on `[id]` detail pages. This applies to Next.js Server
+  Components reading the global Prisma client directly, not just tRPC routers (Phase-8 sweep
+  2026-06-16 closed ~30 such leaks). Do not rely on the unused schema-switch tenant guard.
 Cloudflare Turnstile (V27 — bot protection): enabled by default on all public forms;
   Managed mode (invisible challenge); 1 widget per app; FREE tier (prod domain as hostname,
   dev + staging use official Cloudflare test keys — no account needed for dev).
