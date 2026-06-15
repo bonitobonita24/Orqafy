@@ -505,10 +505,18 @@ export const poRouter = createTRPCRouter({
       if (po.status !== "draft") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft POs can be submitted" });
       }
+      // Approval threshold: auto-approve if totalAmount ≤ tenant poApprovalThreshold (default ₱10,000)
+      const settings = await db.accountingSettings.findUnique({ where: { tenantId: ctx.tenantId } });
+      const threshold = settings != null ? Number(settings.poApprovalThreshold) : 10000;
+      const autoApprove = Number(po.totalAmount) <= threshold;
+      const newStatus = autoApprove ? "approved" : "pending_approval";
       return db.$transaction(async (tx) => {
         const updated = await tx.purchaseOrder.update({
           where: { id: input.id },
-          data: { status: "pending_approval" },
+          data: {
+            status: newStatus,
+            ...(autoApprove ? { approvedById: ctx.userId, approvedAt: new Date() } : {}),
+          },
         });
         await writeAuditLog(tx, {
           userId: ctx.userId,
@@ -516,7 +524,7 @@ export const poRouter = createTRPCRouter({
           entity: "PurchaseOrder",
           entityId: input.id,
           before: { status: po.status },
-          after: { status: "pending_approval" },
+          after: { status: newStatus, autoApproved: autoApprove },
         });
         return updated;
       });
@@ -582,7 +590,8 @@ export const poRouter = createTRPCRouter({
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const po = await loadPoForTenant(input.id, ctx);
-      const cancellable = ["draft", "pending_approval", "approved"];
+      // CANCELLED is allowed from any pre-RECEIVED state (spec §B)
+      const cancellable = ["draft", "pending_approval", "approved", "ordered"];
       if (!cancellable.includes(po.status)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "PO cannot be cancelled in its current status" });
       }
@@ -598,6 +607,30 @@ export const poRouter = createTRPCRouter({
           entityId: input.id,
           before: { status: po.status },
           after: { status: "cancelled" },
+        });
+        return updated;
+      });
+    }),
+
+  close: writeProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const po = await loadPoForTenant(input.id, ctx);
+      if (po.status !== "received") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only fully received POs can be closed" });
+      }
+      return db.$transaction(async (tx) => {
+        const updated = await tx.purchaseOrder.update({
+          where: { id: input.id },
+          data: { status: "closed" },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "PurchaseOrder",
+          entityId: input.id,
+          before: { status: po.status },
+          after: { status: "closed" },
         });
         return updated;
       });
@@ -796,7 +829,10 @@ export const goodsReceiptRouter = createTRPCRouter({
                 data: { processedAt: new Date() },
               });
             }
-            // company_expense: skip in Phase 1
+            // company_expense: no separate action needed (expense recorded on PO creation)
+            // HOLD(owner-rule): JE auto-post on goods receipt (DR Inventory/Expense CR AP) is deferred.
+            // Requires: AccountingSettings.defaultInventoryAccountId, defaultApAccountId, defaultExpenseAccountId
+            // + a default FiscalYear pointer on AccountingSettings. Owner must configure these first.
           }
 
           // Update PO item quantityReceived

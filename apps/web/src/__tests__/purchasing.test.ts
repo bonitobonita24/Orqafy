@@ -66,6 +66,9 @@ vi.mock("@orqafy/db", () => {
     auditLog: {
       create: vi.fn(),
     },
+    accountingSettings: {
+      findUnique: vi.fn(),
+    },
   };
   return {
     prisma: {
@@ -93,6 +96,7 @@ const mockDb = db as unknown as {
   stockMovement: { create: MockFn };
   projectExpense: { create: MockFn };
   auditLog: { create: MockFn };
+  accountingSettings: { findUnique: MockFn };
   $transaction: MockFn;
 };
 
@@ -416,11 +420,12 @@ describe("purchasing.po.update", () => {
 });
 
 describe("purchasing.po.submit", () => {
-  it("transitions draft → pending_approval", async () => {
-    mockDb.purchaseOrder.findUnique.mockResolvedValue(fakePoBase);
-    mockDb.purchaseOrder.update.mockResolvedValue({ ...fakePoBase, status: "pending_approval" });
+  it("transitions draft → approved (auto-approve: totalAmount 250 ≤ default threshold 10000)", async () => {
+    (mockDb as any).accountingSettings.findUnique.mockResolvedValue(null); // no custom settings → default 10000
+    mockDb.purchaseOrder.findUnique.mockResolvedValue(fakePoBase); // totalAmount: 250
+    mockDb.purchaseOrder.update.mockResolvedValue({ ...fakePoBase, status: "approved", approvedById: "user-admin" });
     const result = await createCaller(adminCtx()).purchasing.po.submit({ id: "po-1" });
-    expect(result.status).toBe("pending_approval");
+    expect(result.status).toBe("approved");
   });
 
   it("rejects when not in draft", async () => {
@@ -1031,6 +1036,100 @@ describe("purchasing.goodsReceipt — Direction I-5b GoodsReceiptItem tenantId s
         data: expect.objectContaining({ tenantId: "tenant-acme" }),
       }),
     );
+  });
+});
+
+// ─── Approval Threshold Tests ──────────────────────────────────────────────────
+
+describe("purchasing.po.submit — approval threshold auto-approve", () => {
+  beforeEach(() => {
+    mockDb.purchaseOrder.findUnique.mockResolvedValue({ ...fakePoBase, status: "draft", totalAmount: 5000 });
+    mockDb.purchaseOrder.update.mockResolvedValue({ ...fakePoBase, status: "approved", approvedById: "user-admin" });
+  });
+
+  it("auto-approves PO when totalAmount ≤ threshold (≤ 10000 default)", async () => {
+    (mockDb as any).accountingSettings.findUnique.mockResolvedValue(null); // no custom settings → default 10000
+    mockDb.$transaction.mockImplementation((fn: (tx: unknown) => Promise<unknown>): unknown => fn(mockDb));
+    const result = await createCaller(adminCtx()).purchasing.po.submit({ id: "po-1" });
+    expect(result.status).toBe("approved");
+    expect(mockDb.purchaseOrder.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "approved" }),
+      }),
+    );
+  });
+
+  it("goes to pending_approval when totalAmount > threshold", async () => {
+    (mockDb as any).accountingSettings.findUnique.mockResolvedValue(null);
+    mockDb.purchaseOrder.findUnique.mockResolvedValue({ ...fakePoBase, status: "draft", totalAmount: 15000 });
+    mockDb.purchaseOrder.update.mockResolvedValue({ ...fakePoBase, status: "pending_approval" });
+    mockDb.$transaction.mockImplementation((fn: (tx: unknown) => Promise<unknown>): unknown => fn(mockDb));
+    const result = await createCaller(adminCtx()).purchasing.po.submit({ id: "po-1" });
+    expect(result.status).toBe("pending_approval");
+    expect(mockDb.purchaseOrder.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "pending_approval" }),
+      }),
+    );
+  });
+
+  it("respects custom tenant threshold (e.g. ₱50,000)", async () => {
+    (mockDb as any).accountingSettings.findUnique.mockResolvedValue({ poApprovalThreshold: 50000 });
+    mockDb.purchaseOrder.findUnique.mockResolvedValue({ ...fakePoBase, status: "draft", totalAmount: 30000 });
+    mockDb.purchaseOrder.update.mockResolvedValue({ ...fakePoBase, status: "approved" });
+    mockDb.$transaction.mockImplementation((fn: (tx: unknown) => Promise<unknown>): unknown => fn(mockDb));
+    const result = await createCaller(adminCtx()).purchasing.po.submit({ id: "po-1" });
+    expect(result.status).toBe("approved");
+  });
+});
+
+// ─── Cancel from ordered state ─────────────────────────────────────────────────
+
+describe("purchasing.po.cancel — cancels ordered PO (pre-RECEIVED)", () => {
+  it("cancels an ordered PO", async () => {
+    mockDb.purchaseOrder.findUnique.mockResolvedValue({ ...fakePoBase, status: "ordered" });
+    mockDb.purchaseOrder.update.mockResolvedValue({ ...fakePoBase, status: "cancelled" });
+    mockDb.$transaction.mockImplementation((fn: (tx: unknown) => Promise<unknown>): unknown => fn(mockDb));
+    const result = await createCaller(adminCtx()).purchasing.po.cancel({ id: "po-1" });
+    expect(result.status).toBe("cancelled");
+  });
+
+  it("still rejects cancel of partially_received PO", async () => {
+    mockDb.purchaseOrder.findUnique.mockResolvedValue({ ...fakePoBase, status: "partially_received" });
+    await expect(
+      createCaller(adminCtx()).purchasing.po.cancel({ id: "po-1" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+
+// ─── Close transition ──────────────────────────────────────────────────────────
+
+describe("purchasing.po.close", () => {
+  it("closes a fully received PO", async () => {
+    mockDb.purchaseOrder.findUnique.mockResolvedValue({ ...fakePoBase, status: "received" });
+    mockDb.purchaseOrder.update.mockResolvedValue({ ...fakePoBase, status: "closed" });
+    mockDb.$transaction.mockImplementation((fn: (tx: unknown) => Promise<unknown>): unknown => fn(mockDb));
+    const result = await createCaller(adminCtx()).purchasing.po.close({ id: "po-1" });
+    expect(result.status).toBe("closed");
+    expect(mockDb.purchaseOrder.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "closed" }),
+      }),
+    );
+  });
+
+  it("rejects close when status is not received", async () => {
+    mockDb.purchaseOrder.findUnique.mockResolvedValue({ ...fakePoBase, status: "approved" });
+    await expect(
+      createCaller(adminCtx()).purchasing.po.close({ id: "po-cross" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("tenant isolation: close throws NOT_FOUND when PO belongs to another tenant", async () => {
+    mockDb.purchaseOrder.findUnique.mockResolvedValue({ ...fakePoBase, tenantId: "tenant-other", status: "received" });
+    await expect(
+      createCaller(adminCtx()).purchasing.po.close({ id: "po-cross" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });
 

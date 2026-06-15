@@ -266,7 +266,7 @@ operations and financial traceability without the complexity.
   auto-generates draft invoice 3 days before nextBillingDate
 
 ### Purchasing
-> **Build status (2026-06-15, see DECISIONS_LOG):** data-entry CRUD scaffolded (Vendor CRUD, PO drafts, Goods Receipt entry). Business logic — PO approval workflow / status beyond draft, auto-post to Inventory, auto-post to Accounting, tax auto-calc / 3-way match — is **HELD pending owner rules** (marked `// HOLD(owner-rule)` in code).
+> **Build status (2026-06-15, see DECISIONS_LOG §B):** **BUILT** — Vendor CRUD; PO full lifecycle (DRAFT→SUBMITTED→APPROVED→ORDERED→PARTIALLY_RECEIVED→RECEIVED→CLOSED; CANCELLED from any pre-RECEIVED state); per-tenant configurable `poApprovalThreshold` (default ₱10,000, stored in `AccountingSettings`): POs at-or-below auto-approve on submit, above requires Administrator/Purchasing Manager; Goods Receipt increments Inventory StockMovement for stock allocations + partial-receipt tracking. **HELD** — JE auto-post on goods receipt (DR Inventory/Expense CR AP): deferred pending owner-configured default account mapping (see DECISIONS_LOG §B open item); tax auto-calc / 3-way match / budget checks remain out of scope for this phase.
 - Vendors: two types — ECommerceSeller (Shopee/Lazada/TikTok Shop/Zalora/FB Marketplace/
   other) and DirectSupplier (local or remote physical vendors)
 - Purchase Orders (Direct Supplier flow): user fills PO form → adds line items with

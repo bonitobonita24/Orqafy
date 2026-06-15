@@ -34,6 +34,7 @@ const {
   mockGoodsReceiptFindUnique,
   mockGoodsReceiptItemCreate,
   mockAuditLogCreate,
+  mockAccountingSettingsFindUnique,
 } = vi.hoisted(() => ({
   mockVendorFindUnique: vi.fn(),
   mockVendorCreate: vi.fn(),
@@ -50,6 +51,7 @@ const {
   mockGoodsReceiptFindUnique: vi.fn(),
   mockGoodsReceiptItemCreate: vi.fn(),
   mockAuditLogCreate: vi.fn(),
+  mockAccountingSettingsFindUnique: vi.fn(),
 }));
 
 vi.mock("@orqafy/db", () => {
@@ -82,6 +84,7 @@ vi.mock("@orqafy/db", () => {
       create: mockGoodsReceiptItemCreate,
     },
     auditLog: { create: mockAuditLogCreate },
+    accountingSettings: { findUnique: mockAccountingSettingsFindUnique },
   };
   return {
     prisma: {
@@ -435,9 +438,11 @@ describe("Purchasing tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolati
       expect(mockPurchaseOrderUpdate).not.toHaveBeenCalled();
     });
 
-    it("writes audit log with action UPDATE status=pending_approval", async () => {
+    it("writes audit log with action UPDATE (auto-approved: totalAmount ≤ threshold)", async () => {
+      // PO_DRAFT.totalAmount=100 ≤ default threshold 10000 → auto-approve
+      mockAccountingSettingsFindUnique.mockResolvedValueOnce(null);
       mockPurchaseOrderFindUnique.mockResolvedValueOnce(PO_DRAFT);
-      const submitted = { ...PO_DRAFT, status: "pending_approval" };
+      const submitted = { ...PO_DRAFT, status: "approved", approvedById: "user-admin" };
       mockPurchaseOrderUpdate.mockResolvedValueOnce(submitted);
       mockAuditLogCreate.mockResolvedValueOnce({});
 
@@ -448,7 +453,7 @@ describe("Purchasing tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolati
       const auditArg = mockAuditLogCreate.mock.calls[0]![0];
       expect(auditArg.data.action).toBe("UPDATE");
       expect(auditArg.data.entity).toBe("PurchaseOrder");
-      expect(auditArg.data.after).toMatchObject({ status: "pending_approval" });
+      expect(auditArg.data.after).toMatchObject({ status: "approved", autoApproved: true });
     });
   });
 

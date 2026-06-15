@@ -44,6 +44,7 @@ model Tenant {
   payments                     TenantPayment[]
   auditLogs                    TenantAuditLog[]
   smtpConfig                   TenantSmtpConfig?
+  accountingSettings           AccountingSettings?
   xenditConfig                 TenantXenditConfig?
   ecommerceOrders              EcommerceOrder[]
   ecommerceOrderItems          EcommerceOrderItem[]
@@ -2108,6 +2109,18 @@ model FiscalYear {
 
   @@index([tenantId])
   @@map("fiscal_years")
+  @@schema("public")
+}
+
+model AccountingSettings {
+  id                   String   @id @default(cuid())
+  tenantId             String   @unique @map("tenant_id")
+  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  poApprovalThreshold  Decimal  @default(10000) @map("po_approval_threshold") @db.Decimal(12, 2)
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@map("accounting_settings")
   @@schema("public")
 }
 

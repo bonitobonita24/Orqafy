@@ -666,7 +666,10 @@ sensible default wired with `createNotification`.
 - **Approval threshold:** per-tenant configurable `poApprovalThreshold` (default **₱10,000**). PO total ≤ threshold → auto-APPROVE on submit; above → requires an approver role (Administrator/Manager/purchasing approver) to APPROVE.
 - **Goods receipt:** increments Inventory stock for received qty on lines allocated to `stock`; partial receipts allowed (→ PARTIALLY_RECEIVED until fully received).
 - **Accounting posting (honors PRODUCT.md: expense at PURCHASE time, not consumption):** on goods receipt, post a JE — DR Inventory-asset (stock lines) / Expense account (company/project-expense lines), CR Accounts Payable (or the chosen FundSource if paid immediately). Later inventory consumption posts **NO** JE (prevents double-expense, per PRODUCT.md L97-98).
+  - **⚠ OPEN OWNER ITEM — JE auto-post deferred (2026-06-15):** The goods-receipt JE auto-post requires the owner to configure default GL account mapping on `AccountingSettings`: `defaultInventoryAccountId` (asset), `defaultApAccountId` (liability), `defaultExpenseAccountId` (expense), and a default `FiscalYear` pointer. Without this mapping the system cannot unambiguously resolve which `Account` records to debit/credit. The inventory increment and PO workflow are BUILT; the auto-post is behind `// HOLD(owner-rule)` in `goodsReceiptRouter.create`. Owner must add the account-mapping fields (or manually wire accounts) before this can be enabled.
 - **3-way match:** non-blocking flag if receipt qty ≠ PO qty.
+
+**Build status (2026-06-15):** PO lifecycle BUILT (submit/approve/markOrdered/cancel/close + auto-approve threshold + GR→Inventory). JE auto-post HELD pending account-mapping (see open item above).
 
 ### C) Payroll — computation (PH statutory; configurable, depends on A)
 - **Run lifecycle:** DRAFT → PROCESSED (computed) → APPROVED → PAID.
