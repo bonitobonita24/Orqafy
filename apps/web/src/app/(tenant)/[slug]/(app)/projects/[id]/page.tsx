@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { ProjectActions } from "./project-actions";
+import { MilestoneActions } from "./milestone-actions";
+import { AddMilestoneForm } from "./add-milestone-form";
 
 export const dynamic = "force-dynamic";
 
@@ -259,6 +262,7 @@ export default async function ProjectDetailPage({
           >
             {PRIORITY_LABELS[project.priority] ?? project.priority}
           </span>
+          <ProjectActions projectId={project.id} status={project.status} slug={slug} />
         </div>
       </div>
 
@@ -520,7 +524,13 @@ export default async function ProjectDetailPage({
 
       {/* Milestones tab */}
       {activeTab === "milestones" && milestones !== null && (
-        <div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-muted-foreground">
+              {milestones.length} milestone{milestones.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+          <AddMilestoneForm projectId={id} />
           {milestones.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
               <p>No milestones yet.</p>
@@ -539,16 +549,22 @@ export default async function ProjectDetailPage({
                       />
                       <p className="font-medium text-sm">{milestone.name}</p>
                     </div>
-                    <div className="text-right">
-                      {milestone.completedAt !== null ? (
-                        <span className="text-xs text-primary">
-                          Completed {formatDate(milestone.completedAt)}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          Due {formatDate(milestone.dueDate)}
-                        </span>
-                      )}
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        {milestone.completedAt !== null ? (
+                          <span className="text-xs text-primary">
+                            Completed {formatDate(milestone.completedAt)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            Due {formatDate(milestone.dueDate)}
+                          </span>
+                        )}
+                      </div>
+                      <MilestoneActions
+                        milestoneId={milestone.id}
+                        isCompleted={milestone.completedAt !== null}
+                      />
                     </div>
                   </div>
                   <div className="space-y-1">

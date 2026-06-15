@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
-import { prisma as db } from "@orqafy/db";
+import { prisma as db, writeAuditLog } from "@orqafy/db";
 import { sanitizePlainText } from "@/server/lib/sanitize";
 
 const REAL_CASH_TYPES = new Set(["cash_on_hand", "bank", "e_wallet"]);
@@ -133,6 +133,20 @@ const expenseRouter = createTRPCRouter({
           });
         }
 
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "ProjectExpense",
+          entityId: updatedExpense.id,
+          before: null,
+          after: {
+            projectId: input.projectId,
+            type: input.type,
+            amount: input.amount,
+            description: cleanDescription,
+          },
+        });
+
         return { expense: updatedExpense, transaction };
       });
     }),
@@ -162,17 +176,28 @@ const milestoneRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await loadProjectForTenant(input.projectId, ctx);
 
-      return db.milestone.create({
-        data: {
-          projectId: input.projectId,
-          tenantId: ctx.tenantId,
-          name: sanitizePlainText(input.name),
-          dueDate: input.dueDate ?? null,
-          description: input.description !== undefined ? sanitizePlainText(input.description) : null,
-          sortOrder: input.sortOrder ?? 0,
-          progress: 0,
-          completedAt: null,
-        },
+      return db.$transaction(async (tx) => {
+        const created = await tx.milestone.create({
+          data: {
+            projectId: input.projectId,
+            tenantId: ctx.tenantId,
+            name: sanitizePlainText(input.name),
+            dueDate: input.dueDate ?? null,
+            description: input.description !== undefined ? sanitizePlainText(input.description) : null,
+            sortOrder: input.sortOrder ?? 0,
+            progress: 0,
+            completedAt: null,
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "Milestone",
+          entityId: created.id,
+          before: null,
+          after: { projectId: created.projectId, name: created.name },
+        });
+        return created;
       });
     }),
 
@@ -193,15 +218,26 @@ const milestoneRouter = createTRPCRouter({
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
       await loadProjectForTenant(existing.projectId, ctx);
 
-      return db.milestone.update({
-        where: { id: milestoneId },
-        data: {
-          ...(rest.name !== undefined ? { name: sanitizePlainText(rest.name) } : {}),
-          ...(rest.dueDate !== undefined ? { dueDate: rest.dueDate } : {}),
-          ...(rest.description !== undefined ? { description: sanitizePlainText(rest.description) } : {}),
-          ...(rest.progress !== undefined ? { progress: rest.progress } : {}),
-          ...(rest.sortOrder !== undefined ? { sortOrder: rest.sortOrder } : {}),
-        },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.milestone.update({
+          where: { id: milestoneId },
+          data: {
+            ...(rest.name !== undefined ? { name: sanitizePlainText(rest.name) } : {}),
+            ...(rest.dueDate !== undefined ? { dueDate: rest.dueDate } : {}),
+            ...(rest.description !== undefined ? { description: sanitizePlainText(rest.description) } : {}),
+            ...(rest.progress !== undefined ? { progress: rest.progress } : {}),
+            ...(rest.sortOrder !== undefined ? { sortOrder: rest.sortOrder } : {}),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Milestone",
+          entityId: updated.id,
+          before: { name: existing.name, progress: existing.progress },
+          after: { name: updated.name, progress: updated.progress },
+        });
+        return updated;
       });
     }),
 
@@ -215,9 +251,41 @@ const milestoneRouter = createTRPCRouter({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Milestone already completed." });
       }
 
-      return db.milestone.update({
-        where: { id: input.milestoneId },
-        data: { progress: 100, completedAt: new Date() },
+      return db.$transaction(async (tx) => {
+        const completed = await tx.milestone.update({
+          where: { id: input.milestoneId },
+          data: { progress: 100, completedAt: new Date() },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Milestone",
+          entityId: completed.id,
+          before: { progress: existing.progress, completedAt: null },
+          after: { progress: 100, completedAt: completed.completedAt },
+        });
+        return completed;
+      });
+    }),
+
+  delete: writeProcedure
+    .input(z.object({ milestoneId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const existing = await db.milestone.findUnique({ where: { id: input.milestoneId } });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      await loadProjectForTenant(existing.projectId, ctx);
+
+      return db.$transaction(async (tx) => {
+        await tx.milestone.delete({ where: { id: input.milestoneId } });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "DELETE",
+          entity: "Milestone",
+          entityId: input.milestoneId,
+          before: { name: existing.name, projectId: existing.projectId },
+          after: null,
+        });
+        return { success: true };
       });
     }),
 });
@@ -271,19 +339,30 @@ export const projectRouter = createTRPCRouter({
           throw new TRPCError({ code: "BAD_REQUEST", message: "Customer not found." });
       }
       const projectNumber = `PRJ-${Date.now()}`;
-      return db.project.create({
-        data: {
-          tenantId: ctx.tenantId,
-          name: sanitizePlainText(input.name),
-          customerId: input.customerId ?? null,
-          description: input.description !== undefined ? sanitizePlainText(input.description) : null,
-          status: input.status,
-          startDate: input.startDate ?? null,
-          targetEndDate: input.targetEndDate ?? null,
-          budget: input.budget ?? null,
-          projectNumber,
-          managerId: ctx.userId,
-        },
+      return db.$transaction(async (tx) => {
+        const created = await tx.project.create({
+          data: {
+            tenantId: ctx.tenantId,
+            name: sanitizePlainText(input.name),
+            customerId: input.customerId ?? null,
+            description: input.description !== undefined ? sanitizePlainText(input.description) : null,
+            status: input.status,
+            startDate: input.startDate ?? null,
+            targetEndDate: input.targetEndDate ?? null,
+            budget: input.budget ?? null,
+            projectNumber,
+            managerId: ctx.userId,
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "Project",
+          entityId: created.id,
+          before: null,
+          after: { id: created.id, name: created.name, status: created.status, projectNumber: created.projectNumber },
+        });
+        return created;
       });
     }),
 
@@ -303,26 +382,37 @@ export const projectRouter = createTRPCRouter({
         }
       }
 
-      return db.project.update({
-        where: { id },
-        data: {
-          ...(rest.name !== undefined ? { name: sanitizePlainText(rest.name) } : {}),
-          ...(rest.customerId !== undefined ? { customerId: rest.customerId ?? null } : {}),
-          ...(rest.description !== undefined
-            ? { description: rest.description !== "" ? sanitizePlainText(rest.description) : null }
-            : {}),
-          ...(rest.status !== undefined ? { status: rest.status } : {}),
-          ...(rest.startDate !== undefined ? { startDate: rest.startDate ?? null } : {}),
-          ...(rest.targetEndDate !== undefined ? { targetEndDate: rest.targetEndDate ?? null } : {}),
-          ...(rest.budget !== undefined ? { budget: rest.budget ?? null } : {}),
-        },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.project.update({
+          where: { id },
+          data: {
+            ...(rest.name !== undefined ? { name: sanitizePlainText(rest.name) } : {}),
+            ...(rest.customerId !== undefined ? { customerId: rest.customerId ?? null } : {}),
+            ...(rest.description !== undefined
+              ? { description: rest.description !== "" ? sanitizePlainText(rest.description) : null }
+              : {}),
+            ...(rest.status !== undefined ? { status: rest.status } : {}),
+            ...(rest.startDate !== undefined ? { startDate: rest.startDate ?? null } : {}),
+            ...(rest.targetEndDate !== undefined ? { targetEndDate: rest.targetEndDate ?? null } : {}),
+            ...(rest.budget !== undefined ? { budget: rest.budget ?? null } : {}),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Project",
+          entityId: updated.id,
+          before: { name: existing.name, status: existing.status },
+          after: { name: updated.name, status: updated.status },
+        });
+        return updated;
       });
     }),
 
   archive: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      await loadProjectForTenant(input.id, ctx);
+      const existing = await loadProjectForTenant(input.id, ctx);
 
       const expenseCount = await db.projectExpense.count({ where: { projectId: input.id } });
       if (expenseCount > 0) {
@@ -332,9 +422,20 @@ export const projectRouter = createTRPCRouter({
         });
       }
 
-      return db.project.update({
-        where: { id: input.id },
-        data: { status: "cancelled" },
+      return db.$transaction(async (tx) => {
+        const archived = await tx.project.update({
+          where: { id: input.id },
+          data: { status: "cancelled" },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Project",
+          entityId: archived.id,
+          before: { status: existing.status },
+          after: { status: "cancelled" },
+        });
+        return archived;
       });
     }),
 
