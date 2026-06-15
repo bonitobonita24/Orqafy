@@ -19,8 +19,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { purchasingRouter } from "@/server/trpc/routers/purchasing";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
+vi.mock("@orqafy/db", () => {
+  const innerDb = {
     vendor: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
@@ -63,9 +63,20 @@ vi.mock("@orqafy/db", () => ({
     projectExpense: {
       create: vi.fn(),
     },
-    $transaction: vi.fn(),
-  },
-}));
+    auditLog: {
+      create: vi.fn(),
+    },
+  };
+  return {
+    prisma: {
+      ...innerDb,
+      $transaction: vi.fn((fn: any) => fn(innerDb)),
+    },
+    writeAuditLog: async (tx: any, entry: any) => {
+      await tx.auditLog.create({ data: entry });
+    },
+  };
+});
 
 const testRouter = createTRPCRouter({ purchasing: purchasingRouter });
 const createCaller = createCallerFactory(testRouter);
@@ -81,6 +92,7 @@ const mockDb = db as unknown as {
   goodsReceiptItem: { create: MockFn };
   stockMovement: { create: MockFn };
   projectExpense: { create: MockFn };
+  auditLog: { create: MockFn };
   $transaction: MockFn;
 };
 
@@ -158,6 +170,9 @@ const fakePoBase = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Re-wire $transaction after clearAllMocks so it always passes mockDb to the callback.
+  // Individual tests that need custom tx behaviour override this with their own mockImplementation.
+  mockDb.$transaction.mockImplementation((fn: any) => fn(mockDb));
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

@@ -15,8 +15,9 @@ const { mockVendorCreate, mockVendorFindUnique } = vi.hoisted(() => ({
   mockVendorFindUnique: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
+vi.mock("@orqafy/db", () => {
+  const mockAuditLogCreate = vi.fn();
+  const mockDb = {
     vendor: {
       findMany: vi.fn(),
       findUnique: mockVendorFindUnique,
@@ -59,9 +60,18 @@ vi.mock("@orqafy/db", () => ({
     projectExpense: {
       create: vi.fn(),
     },
-    $transaction: vi.fn(),
-  },
-}));
+    auditLog: { create: mockAuditLogCreate },
+  };
+  return {
+    prisma: {
+      ...mockDb,
+      $transaction: vi.fn((fn: any) => fn(mockDb)),
+    },
+    writeAuditLog: async (tx: any, entry: any) => {
+      await tx.auditLog.create({ data: entry });
+    },
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: { api: { check: vi.fn() }, public: { check: vi.fn() } },

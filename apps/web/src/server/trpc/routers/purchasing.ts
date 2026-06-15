@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
-import { prisma as db } from "@orqafy/db";
+import { prisma as db, writeAuditLog } from "@orqafy/db";
 
 // ── Sequence helpers ──────────────────────────────────────────────────────────
 
@@ -162,25 +162,36 @@ export const vendorRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      return db.vendor.create({
-        data: {
-          tenantId: ctx.tenantId,
-          type: input.type,
-          companyName: input.companyName,
-          ...(input.contactName !== undefined ? { contactName: input.contactName } : {}),
-          ...(input.email !== undefined ? { email: input.email } : {}),
-          ...(input.phone !== undefined ? { phone: input.phone } : {}),
-          ...(input.address !== undefined ? { address: input.address } : {}),
-          ...(input.city !== undefined ? { city: input.city } : {}),
-          ...(input.province !== undefined ? { province: input.province } : {}),
-          ...(input.postalCode !== undefined ? { postalCode: input.postalCode } : {}),
-          country: input.country,
-          ...(input.taxId !== undefined ? { taxId: input.taxId } : {}),
-          ...(input.platformUrl !== undefined ? { platformUrl: input.platformUrl } : {}),
-          ...(input.platformName !== undefined ? { platformName: input.platformName } : {}),
-          ...(input.paymentTerms !== undefined ? { paymentTerms: input.paymentTerms } : {}),
-          ...(input.notes !== undefined ? { notes: input.notes } : {}),
-        },
+      return db.$transaction(async (tx) => {
+        const created = await tx.vendor.create({
+          data: {
+            tenantId: ctx.tenantId,
+            type: input.type,
+            companyName: input.companyName,
+            ...(input.contactName !== undefined ? { contactName: input.contactName } : {}),
+            ...(input.email !== undefined ? { email: input.email } : {}),
+            ...(input.phone !== undefined ? { phone: input.phone } : {}),
+            ...(input.address !== undefined ? { address: input.address } : {}),
+            ...(input.city !== undefined ? { city: input.city } : {}),
+            ...(input.province !== undefined ? { province: input.province } : {}),
+            ...(input.postalCode !== undefined ? { postalCode: input.postalCode } : {}),
+            country: input.country,
+            ...(input.taxId !== undefined ? { taxId: input.taxId } : {}),
+            ...(input.platformUrl !== undefined ? { platformUrl: input.platformUrl } : {}),
+            ...(input.platformName !== undefined ? { platformName: input.platformName } : {}),
+            ...(input.paymentTerms !== undefined ? { paymentTerms: input.paymentTerms } : {}),
+            ...(input.notes !== undefined ? { notes: input.notes } : {}),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "Vendor",
+          entityId: created.id,
+          before: null,
+          after: { id: created.id, companyName: created.companyName, type: created.type },
+        });
+        return created;
       });
     }),
 
@@ -208,35 +219,57 @@ export const vendorRouter = createTRPCRouter({
     )
     .mutation(async ({ input, ctx }) => {
       const { id, ...rest } = input;
-      await loadVendorForTenant(id, ctx);
-      return db.vendor.update({
-        where: { id },
-        data: {
-          ...(rest.type !== undefined ? { type: rest.type } : {}),
-          ...(rest.companyName !== undefined ? { companyName: rest.companyName } : {}),
-          ...(rest.contactName !== undefined ? { contactName: rest.contactName } : {}),
-          ...(rest.email !== undefined ? { email: rest.email } : {}),
-          ...(rest.phone !== undefined ? { phone: rest.phone } : {}),
-          ...(rest.address !== undefined ? { address: rest.address } : {}),
-          ...(rest.city !== undefined ? { city: rest.city } : {}),
-          ...(rest.province !== undefined ? { province: rest.province } : {}),
-          ...(rest.postalCode !== undefined ? { postalCode: rest.postalCode } : {}),
-          ...(rest.country !== undefined ? { country: rest.country } : {}),
-          ...(rest.taxId !== undefined ? { taxId: rest.taxId } : {}),
-          ...(rest.platformUrl !== undefined ? { platformUrl: rest.platformUrl } : {}),
-          ...(rest.platformName !== undefined ? { platformName: rest.platformName } : {}),
-          ...(rest.paymentTerms !== undefined ? { paymentTerms: rest.paymentTerms } : {}),
-          ...(rest.notes !== undefined ? { notes: rest.notes } : {}),
-          ...(rest.isActive !== undefined ? { isActive: rest.isActive } : {}),
-        },
+      const existing = await loadVendorForTenant(id, ctx);
+      return db.$transaction(async (tx) => {
+        const updated = await tx.vendor.update({
+          where: { id },
+          data: {
+            ...(rest.type !== undefined ? { type: rest.type } : {}),
+            ...(rest.companyName !== undefined ? { companyName: rest.companyName } : {}),
+            ...(rest.contactName !== undefined ? { contactName: rest.contactName } : {}),
+            ...(rest.email !== undefined ? { email: rest.email } : {}),
+            ...(rest.phone !== undefined ? { phone: rest.phone } : {}),
+            ...(rest.address !== undefined ? { address: rest.address } : {}),
+            ...(rest.city !== undefined ? { city: rest.city } : {}),
+            ...(rest.province !== undefined ? { province: rest.province } : {}),
+            ...(rest.postalCode !== undefined ? { postalCode: rest.postalCode } : {}),
+            ...(rest.country !== undefined ? { country: rest.country } : {}),
+            ...(rest.taxId !== undefined ? { taxId: rest.taxId } : {}),
+            ...(rest.platformUrl !== undefined ? { platformUrl: rest.platformUrl } : {}),
+            ...(rest.platformName !== undefined ? { platformName: rest.platformName } : {}),
+            ...(rest.paymentTerms !== undefined ? { paymentTerms: rest.paymentTerms } : {}),
+            ...(rest.notes !== undefined ? { notes: rest.notes } : {}),
+            ...(rest.isActive !== undefined ? { isActive: rest.isActive } : {}),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Vendor",
+          entityId: id,
+          before: { companyName: existing.companyName, type: existing.type, isActive: existing.isActive },
+          after: { companyName: updated.companyName, type: updated.type, isActive: updated.isActive },
+        });
+        return updated;
       });
     }),
 
   deactivate: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
-      await loadVendorForTenant(input.id, ctx);
-      return db.vendor.update({ where: { id: input.id }, data: { isActive: false } });
+      const existing = await loadVendorForTenant(input.id, ctx);
+      return db.$transaction(async (tx) => {
+        const updated = await tx.vendor.update({ where: { id: input.id }, data: { isActive: false } });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Vendor",
+          entityId: input.id,
+          before: { isActive: existing.isActive },
+          after: { isActive: false },
+        });
+        return updated;
+      });
     }),
 });
 
@@ -411,6 +444,14 @@ export const poRouter = createTRPCRouter({
           }
         }
 
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "PurchaseOrder",
+          entityId: po.id,
+          before: null,
+          after: { id: po.id, poNumber: po.poNumber, vendorId: po.vendorId, status: po.status, totalAmount: po.totalAmount },
+        });
         return tx.purchaseOrder.findUnique({
           where: { id: po.id },
           include: { items: { include: { allocations: true } } },
@@ -433,16 +474,27 @@ export const poRouter = createTRPCRouter({
       if (po.status !== "draft") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft POs can be edited" });
       }
-      return db.purchaseOrder.update({
-        where: { id: input.id },
-        data: {
-          ...(input.vendorId !== undefined ? { vendorId: input.vendorId } : {}),
-          ...(input.expectedDelivery !== undefined
-            ? { expectedDelivery: new Date(input.expectedDelivery) }
-            : {}),
-          ...(input.currency !== undefined ? { currency: input.currency } : {}),
-          ...(input.notes !== undefined ? { notes: input.notes } : {}),
-        },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.purchaseOrder.update({
+          where: { id: input.id },
+          data: {
+            ...(input.vendorId !== undefined ? { vendorId: input.vendorId } : {}),
+            ...(input.expectedDelivery !== undefined
+              ? { expectedDelivery: new Date(input.expectedDelivery) }
+              : {}),
+            ...(input.currency !== undefined ? { currency: input.currency } : {}),
+            ...(input.notes !== undefined ? { notes: input.notes } : {}),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "PurchaseOrder",
+          entityId: input.id,
+          before: { vendorId: po.vendorId, currency: po.currency, notes: po.notes },
+          after: { vendorId: updated.vendorId, currency: updated.currency, notes: updated.notes },
+        });
+        return updated;
       });
     }),
 
@@ -453,9 +505,20 @@ export const poRouter = createTRPCRouter({
       if (po.status !== "draft") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft POs can be submitted" });
       }
-      return db.purchaseOrder.update({
-        where: { id: input.id },
-        data: { status: "pending_approval" },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.purchaseOrder.update({
+          where: { id: input.id },
+          data: { status: "pending_approval" },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "PurchaseOrder",
+          entityId: input.id,
+          before: { status: po.status },
+          after: { status: "pending_approval" },
+        });
+        return updated;
       });
     }),
 
@@ -470,13 +533,24 @@ export const poRouter = createTRPCRouter({
       if (po.status !== "pending_approval") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only pending_approval POs can be approved" });
       }
-      return db.purchaseOrder.update({
-        where: { id: input.id },
-        data: {
-          status: "approved",
-          approvedById: ctx.userId,
-          approvedAt: new Date(),
-        },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.purchaseOrder.update({
+          where: { id: input.id },
+          data: {
+            status: "approved",
+            approvedById: ctx.userId,
+            approvedAt: new Date(),
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "PurchaseOrder",
+          entityId: input.id,
+          before: { status: po.status, approvedById: po.approvedById },
+          after: { status: "approved", approvedById: ctx.userId },
+        });
+        return updated;
       });
     }),
 
@@ -487,9 +561,20 @@ export const poRouter = createTRPCRouter({
       if (po.status !== "approved") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only approved POs can be marked as ordered" });
       }
-      return db.purchaseOrder.update({
-        where: { id: input.id },
-        data: { status: "ordered", orderedAt: new Date() },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.purchaseOrder.update({
+          where: { id: input.id },
+          data: { status: "ordered", orderedAt: new Date() },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "PurchaseOrder",
+          entityId: input.id,
+          before: { status: po.status },
+          after: { status: "ordered" },
+        });
+        return updated;
       });
     }),
 
@@ -501,9 +586,20 @@ export const poRouter = createTRPCRouter({
       if (!cancellable.includes(po.status)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "PO cannot be cancelled in its current status" });
       }
-      return db.purchaseOrder.update({
-        where: { id: input.id },
-        data: { status: "cancelled" },
+      return db.$transaction(async (tx) => {
+        const updated = await tx.purchaseOrder.update({
+          where: { id: input.id },
+          data: { status: "cancelled" },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "PurchaseOrder",
+          entityId: input.id,
+          before: { status: po.status },
+          after: { status: "cancelled" },
+        });
+        return updated;
       });
     }),
 });
@@ -731,6 +827,14 @@ export const goodsReceiptRouter = createTRPCRouter({
           data: { status: newPoStatus },
         });
 
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "GoodsReceipt",
+          entityId: gr.id,
+          before: null,
+          after: { id: gr.id, grNumber: gr.grNumber, purchaseOrderId: gr.purchaseOrderId, status: gr.status },
+        });
         return tx.goodsReceipt.findUnique({
           where: { id: gr.id },
           include: { items: true },

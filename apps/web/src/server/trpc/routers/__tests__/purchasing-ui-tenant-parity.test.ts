@@ -56,7 +56,11 @@ vi.mock("@orqafy/db", () => ({
     goodsReceiptItem: { create: mockGrItemCreate },
     stockMovement: { create: vi.fn() },
     projectExpense: { create: vi.fn() },
+    auditLog: { create: vi.fn() },
     $transaction: mockTransaction,
+  },
+  writeAuditLog: async (tx: any, entry: any) => {
+    await tx.auditLog.create({ data: entry });
   },
 }));
 
@@ -92,9 +96,30 @@ const fakeVendorB = { id: "vendor-B", tenantId: "tenant-B", companyName: "Other 
 const fakePoA = { id: "po-A", tenantId: "tenant-A", poNumber: "PO-2401-0001", status: "draft", vendorId: "vendor-A" };
 const fakePoB = { id: "po-B", tenantId: "tenant-B", poNumber: "PO-2401-0002", status: "draft", vendorId: "vendor-B" };
 
+/**
+ * Re-wire mockTransaction after vi.resetAllMocks() so it passes an appropriate
+ * tx object to the callback. Each test that needs specific tx behaviour overrides
+ * this with its own mockImplementation.
+ */
+function rewireDefaultTransaction() {
+  mockTransaction.mockImplementation((fn: any) =>
+    fn({
+      vendor: { findUnique: mockVendorFindUnique, create: vi.fn(), update: mockVendorUpdate },
+      purchaseOrder: { findUnique: mockPoFindUnique, create: mockPoCreate, update: mockPoUpdate },
+      purchaseOrderItem: { findMany: mockPoItemFindMany, create: mockPoItemCreate },
+      purchaseOrderItemAllocation: { create: mockPoItemAllocCreate },
+      goodsReceipt: { create: mockGrCreate, findUnique: vi.fn().mockResolvedValue(null) },
+      goodsReceiptItem: { create: mockGrItemCreate },
+      stockMovement: { create: vi.fn() },
+      projectExpense: { create: vi.fn() },
+      auditLog: { create: vi.fn().mockResolvedValue({}) },
+    }),
+  );
+}
+
 // ── vendor.update ─────────────────────────────────────────────────────────────
 describe("vendor.update — tenant guard", () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => { vi.resetAllMocks(); rewireDefaultTransaction(); });
 
   it("allows update when vendor belongs to caller's tenant", async () => {
     mockVendorFindUnique.mockResolvedValueOnce(fakeVendorA);
@@ -125,7 +150,7 @@ describe("vendor.update — tenant guard", () => {
 
 // ── vendor.deactivate ─────────────────────────────────────────────────────────
 describe("vendor.deactivate — tenant guard", () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => { vi.resetAllMocks(); rewireDefaultTransaction(); });
 
   it("deactivates when vendor belongs to caller's tenant", async () => {
     mockVendorFindUnique.mockResolvedValueOnce(fakeVendorA);
@@ -152,7 +177,7 @@ describe("vendor.deactivate — tenant guard", () => {
 
 // ── po.update ─────────────────────────────────────────────────────────────────
 describe("po.update — tenant guard", () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => { vi.resetAllMocks(); rewireDefaultTransaction(); });
 
   it("allows update when PO belongs to caller's tenant (header only)", async () => {
     mockPoFindUnique.mockResolvedValueOnce(fakePoA); // loadPoForTenant — same tenant
@@ -185,7 +210,7 @@ describe("po.update — tenant guard", () => {
 
 // ── po.create — tenantId from ctx ─────────────────────────────────────────────
 describe("po.create — tenantId from ctx", () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => { vi.resetAllMocks(); rewireDefaultTransaction(); });
 
   it("injects ctx.tenantId (not from input) into purchaseOrder.create", async () => {
     mockVendorFindUnique.mockResolvedValueOnce({ id: "vendor-A", isActive: true, tenantId: "tenant-A" });
@@ -199,6 +224,7 @@ describe("po.create — tenantId from ctx", () => {
         },
         purchaseOrderItem: { create: mockPoItemCreate.mockResolvedValueOnce({ id: "poi-1" }) },
         purchaseOrderItemAllocation: { create: mockPoItemAllocCreate.mockResolvedValueOnce({}) },
+        auditLog: { create: vi.fn().mockResolvedValue({}) },
       }),
     );
 
@@ -217,7 +243,7 @@ describe("po.create — tenantId from ctx", () => {
 
 // ── goodsReceipt.create — cross-tenant PO guard ───────────────────────────────
 describe("goodsReceipt.create — cross-tenant PO guard", () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => { vi.resetAllMocks(); rewireDefaultTransaction(); });
 
   it("throws NOT_FOUND when PO belongs to a different tenant", async () => {
     // loadPoForTenant is called first — returns a PO owned by tenant-B
@@ -248,6 +274,7 @@ describe("goodsReceipt.create — cross-tenant PO guard", () => {
         goodsReceiptItem: { create: mockGrItemCreate.mockResolvedValueOnce({}) },
         purchaseOrderItem: { findMany: mockPoItemFindMany.mockResolvedValueOnce([]) },
         purchaseOrder: { update: mockPoUpdate.mockResolvedValueOnce({}) },
+        auditLog: { create: vi.fn().mockResolvedValue({}) },
       }),
     );
 
