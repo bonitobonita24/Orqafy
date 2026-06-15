@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { TicketActions } from "./ticket-actions";
 
 export const metadata: Metadata = { title: "Support Ticket" };
 export const dynamic = "force-dynamic";
@@ -42,9 +43,9 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-async function getTicket(id: string) {
+async function getTicket(id: string, tenantId: string) {
   return prisma.supportTicket.findUnique({
-    where: { id },
+    where: { id, tenantId },
     select: {
       id: true,
       ticketNumber: true,
@@ -102,12 +103,16 @@ export default async function SupportTicketDetailPage({
 }: {
   params: Promise<{ id: string; slug: string }>;
 }) {
-  const { id } = await params;
-  const ticket = await getTicket(id);
+  const { id, slug } = await params;
 
-  if (ticket === null) {
-    notFound();
-  }
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (tenant === null) notFound();
+
+  const ticket = await getTicket(id, tenant.id);
+  if (ticket === null) notFound();
 
   return (
     <div className="space-y-6">
@@ -139,12 +144,19 @@ export default async function SupportTicketDetailPage({
           </p>
         </div>
         <Link
-          href="../"
+          href={`/${slug}/support`}
           className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
         >
           ← All tickets
         </Link>
       </div>
+
+      {/* Mutation actions — Client Component */}
+      <TicketActions
+        ticketId={ticket.id}
+        currentStatus={ticket.status}
+        assignedToId={ticket.assignedToId}
+      />
 
       {/* Meta grid */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
