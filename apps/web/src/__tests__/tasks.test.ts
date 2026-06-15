@@ -14,8 +14,8 @@ vi.mock("@/server/notifications/create", () => ({
   createNotification: vi.fn().mockResolvedValue({ id: "notif-test" }),
 }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
+vi.mock("@orqafy/db", () => {
+  const mockPrisma = {
     project: {
       findUnique: vi.fn(),
     },
@@ -25,6 +25,7 @@ vi.mock("@orqafy/db", () => ({
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
     },
     taskAssignment: {
       findFirst: vi.fn(),
@@ -51,8 +52,17 @@ vi.mock("@orqafy/db", () => ({
     plan: {
       findFirst: vi.fn(),
     },
-  },
-}));
+    auditLog: {
+      create: vi.fn(),
+    },
+    // Pass-through $transaction so router mutations that wrap in a transaction work in tests.
+    $transaction: vi.fn((fn: any) => fn(mockPrisma)),
+  };
+  return {
+    prisma: mockPrisma,
+    writeAuditLog: vi.fn(),
+  };
+});
 
 import type { NextRequest } from "next/server";
 function makeReq(): NextRequest {
