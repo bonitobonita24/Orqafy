@@ -4,8 +4,10 @@ import { projectRouter } from "@/server/trpc/routers/project";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
+vi.mock("@orqafy/db", () => {
+  // mockDb is shared between the $transaction pass-through and the named mockDb reference below.
+  // $transaction delegates to these same mocks so router code inside a transaction resolves correctly.
+  const innerDb = {
     project: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
@@ -28,6 +30,7 @@ vi.mock("@orqafy/db", () => ({
       findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
     },
     fundSource: {
       findUnique: vi.fn(),
@@ -39,9 +42,23 @@ vi.mock("@orqafy/db", () => ({
     customer: {
       findUnique: vi.fn(),
     },
-    $transaction: vi.fn(),
-  },
-}));
+    auditLog: {
+      create: vi.fn(),
+    },
+  };
+  return {
+    prisma: {
+      ...innerDb,
+      // Default pass-through: passes innerDb as the tx argument so router transaction callbacks
+      // resolve against the same vi.fn() mocks. Individual tests may override this via
+      // mockDb.$transaction.mockImplementation(...) when they need custom tx sub-mocks.
+      $transaction: vi.fn((fn: (tx: typeof innerDb) => Promise<unknown>) => fn(innerDb)),
+    },
+    writeAuditLog: async (tx: { auditLog: { create: (args: unknown) => Promise<unknown> } }, entry: unknown) => {
+      await tx.auditLog.create({ data: entry });
+    },
+  };
+});
 
 const testRouter = createTRPCRouter({ project: projectRouter });
 const createCaller = createCallerFactory(testRouter);
@@ -71,6 +88,7 @@ const mockDb = db as unknown as {
     findFirst: MockFn;
     create: MockFn;
     update: MockFn;
+    delete: MockFn;
   };
   fundSource: {
     findUnique: MockFn;
@@ -81,6 +99,9 @@ const mockDb = db as unknown as {
   };
   customer: {
     findUnique: MockFn;
+  };
+  auditLog: {
+    create: MockFn;
   };
   $transaction: MockFn;
 };
@@ -151,6 +172,11 @@ const fakeCreditSource = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Re-wire $transaction after clearAllMocks resets its implementation.
+  // Default: pass-through that delegates to the same mockDb models.
+  // Individual tests override this via mockDb.$transaction.mockImplementation(...)
+  // when they need custom per-call tx sub-mocks (e.g. expense tests with local vi.fn()).
+  mockDb.$transaction.mockImplementation((fn: (tx: typeof mockDb) => Promise<unknown>) => fn(mockDb));
 });
 
 // ─── project.update ───────────────────────────────────────────────────────────
@@ -366,6 +392,7 @@ describe("expense.recordProjectExpense", () => {
         fundSource: {
           update: vi.fn().mockResolvedValue({ ...fakeBankSource, currentBalance: 4000 }),
         },
+        auditLog: { create: vi.fn() },
       });
     });
 
@@ -425,6 +452,7 @@ describe("expense.recordProjectExpense", () => {
         fundSource: {
           update: vi.fn().mockResolvedValue(fakeCreditSource),
         },
+        auditLog: { create: vi.fn() },
       });
     });
 
