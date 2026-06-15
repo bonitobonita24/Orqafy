@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 
 export const metadata: Metadata = { title: "Job Orders" };
@@ -61,10 +62,12 @@ const STATUS_TABS = [
   { key: "released", label: "Released" },
 ];
 
-async function getJobOrders(status: string) {
-  const filter = status !== "all" ? { status } : undefined;
+async function getJobOrders(tenantId: string, status: string) {
   return prisma.jobOrder.findMany({
-    ...(filter !== undefined ? { where: filter } : {}),
+    where: {
+      tenantId,
+      ...(status !== "all" ? { status } : {}),
+    },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -86,22 +89,44 @@ async function getJobOrders(status: string) {
 }
 
 export default async function JobOrdersPage({
+  params: paramsPromise,
   searchParams,
 }: {
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ status?: string }>;
 }) {
-  const params = await searchParams;
-  const activeStatus = params.status ?? "all";
-  const jobOrders = await getJobOrders(activeStatus);
+  const [{ slug }, searchParamsResolved] = await Promise.all([
+    paramsPromise,
+    searchParams,
+  ]);
+  const activeStatus = searchParamsResolved.status ?? "all";
+
+  // Resolve tenant to scope the query — middleware already validates the slug,
+  // but we need the tenantId for the Prisma where clause.
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (tenant === null) notFound();
+
+  const jobOrders = await getJobOrders(tenant.id, activeStatus);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Job Orders</h1>
-        <p className="text-sm text-muted-foreground">
-          {jobOrders.length} job order{jobOrders.length === 1 ? "" : "s"}
-          {activeStatus !== "all" ? ` — ${STATUS_LABELS[activeStatus] ?? activeStatus}` : ""}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Job Orders</h1>
+          <p className="text-sm text-muted-foreground">
+            {jobOrders.length} job order{jobOrders.length === 1 ? "" : "s"}
+            {activeStatus !== "all" ? ` — ${STATUS_LABELS[activeStatus] ?? activeStatus}` : ""}
+          </p>
+        </div>
+        <Link
+          href={`/${slug}/service/job-orders/new`}
+          className="rounded-md border border-primary bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+        >
+          + New Job Order
+        </Link>
       </div>
 
       <div className="flex flex-wrap gap-1 rounded-md border border-border bg-card p-1">

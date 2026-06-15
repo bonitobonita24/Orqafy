@@ -5,6 +5,7 @@ import { prisma } from "@orqafy/db";
 import { JobOrderLineItems } from "./job-order-line-items";
 import { JobOrderStatusActions } from "./job-order-status-actions";
 import { SignaturePad } from "./signature-pad";
+import { AssignTechnician } from "./assign-technician";
 
 export const metadata: Metadata = { title: "Job Order" };
 
@@ -58,16 +59,30 @@ interface PageProps {
 
 export default async function JobOrderDetailPage({ params }: PageProps) {
   const { slug, id } = await params;
-  const jobOrder = await prisma.jobOrder.findUnique({
-    where: { id },
-    include: {
-      customer: true,
-      createdBy: { select: { firstName: true, lastName: true, displayName: true } },
-      technician: { select: { firstName: true, lastName: true, displayName: true } },
-      parts: { orderBy: { createdAt: "asc" } },
-      serviceLines: { orderBy: { sortOrder: "asc" } },
-    },
-  });
+  const [jobOrder, users] = await Promise.all([
+    prisma.jobOrder.findUnique({
+      where: { id },
+      include: {
+        customer: true,
+        createdBy: { select: { firstName: true, lastName: true, displayName: true } },
+        technician: { select: { firstName: true, lastName: true, displayName: true } },
+        parts: { orderBy: { createdAt: "asc" } },
+        serviceLines: { orderBy: { sortOrder: "asc" } },
+      },
+    }),
+    // Tenant-scoped user list for the assign-technician control.
+    prisma.tenant.findUnique({ where: { slug }, select: { id: true } }).then(
+      (tenant) =>
+        tenant === null
+          ? []
+          : prisma.user.findMany({
+              where: { tenantId: tenant.id, isActive: true },
+              select: { id: true, firstName: true, lastName: true, displayName: true },
+              orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+              take: 200,
+            }),
+    ),
+  ]);
   if (jobOrder === null) notFound();
 
   const canEditLineItems = LINE_ITEM_EDITABLE_STATUSES.has(jobOrder.status);
@@ -114,8 +129,14 @@ export default async function JobOrderDetailPage({ params }: PageProps) {
               <span>Priority: {jobOrder.priority}</span>
               <span>•</span>
               <span>Customer: {customerLabel(jobOrder.customer)}</span>
-              <span>•</span>
-              <span>Technician: {userLabel(jobOrder.technician)}</span>
+            </div>
+            <div className="flex items-center gap-2 pt-1 text-sm">
+              <span className="text-muted-foreground">Technician:</span>
+              <AssignTechnician
+                jobOrderId={jobOrder.id}
+                currentTechnicianId={jobOrder.technicianId}
+                users={users}
+              />
             </div>
           </div>
           <JobOrderStatusActions
