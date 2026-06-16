@@ -30,7 +30,17 @@ function getStorageClient() {
 
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE.DEFAULT;
 
-const ENTITY_TYPES = ["customer", "project", "job_order", "task", "expense"] as const;
+const ENTITY_TYPES = [
+  "customer",
+  "project",
+  "job_order",
+  "task",
+  "expense",
+  "invoice",
+  "employee",
+  "purchase_order",
+  "goods_receipt",
+] as const;
 
 async function getStorageQuota(tenantId: string): Promise<{ usedBytes: bigint; maxBytes: bigint; planName: string }> {
   const tenant = await db.tenant.findUnique({

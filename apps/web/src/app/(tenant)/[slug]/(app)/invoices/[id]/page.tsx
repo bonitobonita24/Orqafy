@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 import { InvoiceActions } from "./invoice-actions";
+import { InvoiceAttachments } from "./invoice-attachments";
 
 export const metadata: Metadata = { title: "Invoice Detail" };
 
@@ -300,6 +301,11 @@ export default async function InvoiceDetailPage({ params }: Props) {
             )}
           </dl>
         </div>
+      </div>
+
+      {/* Attachments */}
+      <div className="rounded-lg border border-border bg-card p-6">
+        <InvoiceAttachments invoiceId={invoice.id} />
       </div>
 
       {/* Payments History */}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PurchaseOrderAttachments } from "./po-attachments";
 
 export const metadata: Metadata = { title: "Purchase Order" };
 export const dynamic = "force-dynamic";
@@ -414,6 +415,11 @@ export default async function PurchaseOrderDetailPage({
           </div>
         </div>
       )}
+
+      {/* Attachments */}
+      <div className="rounded-lg border border-border bg-card p-6">
+        <PurchaseOrderAttachments purchaseOrderId={order.id} />
+      </div>
     </div>
   );
 }

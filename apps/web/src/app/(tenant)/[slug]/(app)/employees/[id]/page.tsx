@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 import { EmployeeTerminate } from "./employee-terminate";
+import { EmployeeAttachments } from "./employee-attachments";
 
 export const metadata: Metadata = { title: "Employee Details" };
 export const dynamic = "force-dynamic";
@@ -173,6 +174,10 @@ export default async function EmployeeDetailPage({
               <dd className="font-mono text-xs">{employee.tinNumber ?? "—"}</dd>
             </div>
           </dl>
+        </section>
+
+        <section className="rounded-lg border border-border bg-card p-5 md:col-span-2">
+          <EmployeeAttachments employeeId={employee.id} />
         </section>
 
         <section className="rounded-lg border border-border bg-card p-5">

@@ -24,7 +24,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Trash2 } from "lucide-react";
+import { Paperclip, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { TaskAttachments } from "./task-attachments";
 
 interface ProjectOption {
   id: string;
@@ -90,6 +97,7 @@ export function TaskBoard({ slug, initialTasks, projects, projectId }: TaskBoard
   const router = useRouter();
   const [tasks, setTasks] = useState<TaskRow[]>(initialTasks);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [attachmentTaskId, setAttachmentTaskId] = useState<string | null>(null);
 
   const updateStatusMutation = trpc.tasks.taskUpdateStatus.useMutation({
     onSuccess: (updated) => {
@@ -221,7 +229,14 @@ export function TaskBoard({ slug, initialTasks, projects, projectId }: TaskBoard
                           </div>
                         )}
 
-                        <div className="mt-1.5 flex justify-end">
+                        <div className="mt-1.5 flex items-center justify-between">
+                          <button
+                            className="rounded p-1 text-muted-foreground transition-colors hover:text-primary"
+                            aria-label="Attachments"
+                            onClick={() => { setAttachmentTaskId(t.id); }}
+                          >
+                            <Paperclip className="h-3 w-3" />
+                          </button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <button
@@ -254,6 +269,7 @@ export function TaskBoard({ slug, initialTasks, projects, projectId }: TaskBoard
                     );
                   })
                 )}
+
               </div>
             </div>
           );
@@ -270,6 +286,20 @@ export function TaskBoard({ slug, initialTasks, projects, projectId }: TaskBoard
           setTasks((prev) => [newTask as TaskRow, ...prev]);
         }}
       />
+
+      <Dialog
+        open={attachmentTaskId !== null}
+        onOpenChange={(open) => { if (!open) setAttachmentTaskId(null); }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Task Attachments</DialogTitle>
+          </DialogHeader>
+          {attachmentTaskId !== null && (
+            <TaskAttachments taskId={attachmentTaskId} />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

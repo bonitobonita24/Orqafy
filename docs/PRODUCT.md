@@ -2100,12 +2100,20 @@ Paths: <tenant_slug>/receipts/<type>/<id>/<filename>;
   <tenant_slug>/ecommerce/products/<id>/<filename>;
   <tenant_slug>/transactions/<id>/<filename>;
   <tenant_slug>/customers/<id>/documents/<filename>
-Generic Attachment paths (from Attachment model, 2026-06-16):
-  <tenant_slug>/customer/<entity_id>/<uuid>.<ext>
-  <tenant_slug>/project/<entity_id>/<uuid>.<ext>
-  <tenant_slug>/job_order/<entity_id>/<uuid>.<ext>
-  <tenant_slug>/task/<entity_id>/<uuid>.<ext>
-  <tenant_slug>/expense/<entity_id>/<uuid>.<ext>
+Generic Attachment paths (from Attachment model, 2026-06-16; expanded 2026-06-16):
+  <tenant_slug>/customer/<entity_id>/<uuid>.<ext>       — wired: CRM customers [id] detail
+  <tenant_slug>/project/<entity_id>/<uuid>.<ext>        — wired: Projects [id] detail (overview tab)
+  <tenant_slug>/job_order/<entity_id>/<uuid>.<ext>      — wired: Service / Job Orders [id] detail
+  <tenant_slug>/task/<entity_id>/<uuid>.<ext>           — wired: Tasks Kanban (Paperclip button per card → Dialog)
+  <tenant_slug>/expense/<entity_id>/<uuid>.<ext>        — wired: Expenses list (Paperclip button per row → Dialog)
+  <tenant_slug>/invoice/<entity_id>/<uuid>.<ext>        — wired: Invoices [id] detail (Attachments section)
+  <tenant_slug>/employee/<entity_id>/<uuid>.<ext>       — wired: Employees [id] detail (Attachments card)
+  <tenant_slug>/purchase_order/<entity_id>/<uuid>.<ext> — wired: Purchasing / Orders [id] detail
+  <tenant_slug>/goods_receipt/<entity_id>/<uuid>.<ext>  — wired: Purchasing / Receipts [grId] detail
+Owner decision 2026-06-16: surface attachments on ALL relevant entities — receipts, attachments,
+  and signatures per scope above. All 9 entity types share the same Attachment model, storage
+  router (storage.getUploadUrl / confirmUpload / list / getDownloadUrl / delete), and
+  AttachmentsPanel + FileUpload UI components.
 Mobile: expense photos via pre-signed R2 URL; offline → stored in WatermelonDB,
   uploaded on reconnect
 Quota enforcement: per-tenant plan.maxStorageMb limit; checked server-side at presign

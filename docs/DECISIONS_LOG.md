@@ -937,3 +937,39 @@ which rows have been included in a digest email.
 (mocked Prisma + nodemailer + crypto); all passing. Web app: 1026 tests passing, 0 regressions.
 
 **Phase:** Phase 7 (feature update) / Phase 8 (completeness)
+
+## 2026-06-16 — Attachments UI wired on ALL entity surfaces
+
+**Owner decision:** Surface file attachments (upload + list + download + delete) on every
+entity that has an attachment requirement per PRODUCT.md — "all of them."
+
+**Surfaces wired:**
+
+| Entity | Route | UI pattern | entityType |
+|--------|-------|-----------|------------|
+| Customer | `/crm/customers/[id]` | Inline panel (already existed) | `customer` |
+| Project | `/projects/[id]` overview tab | Inline panel (already existed) | `project` |
+| Job Order | `/service/job-orders/[id]` | Inline panel (already existed) | `job_order` |
+| Task | `/tasks` Kanban | Paperclip button per card → Dialog | `task` |
+| Expense | `/expenses` list | Paperclip button per row → Dialog | `expense` |
+| Invoice | `/invoices/[id]` | Inline panel (new section above Payment History) | `invoice` |
+| Employee | `/employees/[id]` | Inline panel (full-width card, new) | `employee` |
+| Purchase Order | `/purchasing/orders/[id]` | Inline panel (bottom of page) | `purchase_order` |
+| Goods Receipt | `/purchasing/receipts/[grId]` | Inline panel (bottom of page) | `goods_receipt` |
+
+**Implementation notes:**
+- All 9 entity types share the single `Attachment` Prisma model + `storage` tRPC router.
+  No new backend or migration required — the `entityType` field is a plain `String` (not
+  a DB enum), so new values are additive without a schema change.
+- `ENTITY_TYPES` const extended in 3 files: `storage.ts` (router), `attachments-panel.tsx`,
+  `file-upload.tsx`. All must stay in sync.
+- `AttachmentsPanel` + `FileUpload` are the single reusable components; per-surface wrappers
+  are thin pass-throughs (`InvoiceAttachments`, `EmployeeAttachments`, etc.).
+- Tenant isolation preserved: all queries filter on `tenantId`; presign enforces
+  `isKeyOwnedByTenant`; download URL checks `tenantId` on the Attachment row.
+- Plan gating preserved: quota checked at presign time server-side.
+
+**Build result:** next build clean (0 errors), tsc --noEmit clean, 57 test files /
+1026 tests all passing.
+
+**Phase:** Phase 7 (feature update)

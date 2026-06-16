@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { GoodsReceiptAttachments } from "./gr-attachments";
 
 export const metadata: Metadata = { title: "Goods Receipt" };
 export const dynamic = "force-dynamic";
@@ -189,6 +190,11 @@ export default async function GoodsReceiptDetailPage({
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Attachments */}
+      <div className="rounded-lg border border-border bg-card p-6">
+        <GoodsReceiptAttachments goodsReceiptId={gr.id} />
       </div>
 
       {/* HOLD(owner-rule): GR actions (cancel, amend, link to invoice) need owner rules on
