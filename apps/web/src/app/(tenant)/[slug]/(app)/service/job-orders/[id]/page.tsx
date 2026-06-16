@@ -6,6 +6,7 @@ import { JobOrderLineItems } from "./job-order-line-items";
 import { JobOrderStatusActions } from "./job-order-status-actions";
 import { SignaturePad } from "./signature-pad";
 import { AssignTechnician } from "./assign-technician";
+import { JobOrderAttachments } from "./job-order-attachments";
 
 export const metadata: Metadata = { title: "Job Order" };
 
@@ -170,6 +171,10 @@ export default async function JobOrderDetailPage({ params }: PageProps) {
         canEdit={canEditLineItems}
         currency={jobOrder.currency}
       />
+
+      <section className="rounded-lg border border-border p-4">
+        <JobOrderAttachments jobOrderId={jobOrder.id} />
+      </section>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">

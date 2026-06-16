@@ -10,6 +10,7 @@ import { QuickAddContactLog } from "./quick-add-contact-log";
 import { CustomerToggleActive } from "./customer-toggle-active";
 import { ContactsPanel } from "./contacts-panel";
 import { CreditPanel } from "./credit-panel";
+import { CustomerAttachments } from "./customer-attachments";
 
 export const metadata: Metadata = { title: "Customer Detail" };
 
@@ -206,6 +207,11 @@ export default async function CustomerDetailPage({ params }: Props) {
             : null
         }
       />
+
+      {/* Attachments */}
+      <section className="mt-6 rounded-lg border border-border bg-card p-6">
+        <CustomerAttachments customerId={customer.id} />
+      </section>
 
       {/* Touchpoints */}
       <div className="rounded-lg border border-border bg-card">

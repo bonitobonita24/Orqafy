@@ -5,6 +5,7 @@ import { prisma } from "@orqafy/db";
 import { ProjectActions } from "./project-actions";
 import { MilestoneActions } from "./milestone-actions";
 import { AddMilestoneForm } from "./add-milestone-form";
+import { ProjectAttachments } from "./project-attachments";
 
 export const dynamic = "force-dynamic";
 
@@ -384,6 +385,11 @@ export default async function ProjectDetailPage({
               </p>
             </div>
           )}
+
+          {/* Attachments */}
+          <div className="rounded-lg border border-border p-4">
+            <ProjectAttachments projectId={project.id} />
+          </div>
         </div>
       )}
 
