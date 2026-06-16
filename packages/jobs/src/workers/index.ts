@@ -25,6 +25,7 @@ import type {
   EcommerceOrderProcessingJobData,
   XenditWebhookProcessingJobData,
   JobOrderNotificationsJobData,
+  NotificationEmailDigestJobData,
 } from "../types.js";
 
 /** Worker factory — pass in the processor function from the app layer. */
@@ -192,4 +193,11 @@ export function createJobOrderNotificationsWorker(
   connection: ConnectionOptions,
 ) {
   return new Worker<JobOrderNotificationsJobData>(QUEUE_NAMES.JOB_ORDER_NOTIFICATIONS, processor, { connection });
+}
+
+export function createNotificationEmailDigestWorker(
+  processor: Processor<NotificationEmailDigestJobData>,
+  connection: ConnectionOptions,
+) {
+  return new Worker<NotificationEmailDigestJobData>(QUEUE_NAMES.NOTIFICATION_EMAIL_DIGEST, processor, { connection });
 }

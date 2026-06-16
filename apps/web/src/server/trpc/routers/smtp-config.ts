@@ -6,6 +6,7 @@ import { requireRole } from "../middleware/rbac";
 import { writeProcedure } from "../trpc";
 import { encrypt, decrypt } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
+import { scheduleDigestsForTenant } from "@/server/notifications/digest-scheduler";
 
 // Admin-only: reads and writes require Administrator or Platform Owner.
 const adminReadProcedure = requireRole("Administrator", "Platform Owner");
@@ -145,6 +146,17 @@ export const smtpConfigRouter = createTRPCRouter({
       { tenantId: ctx.tenantId, surface: "settings.smtp", action: "testConnection" },
       "tenant smtp config connection verified",
     );
+
+    // D8 — Kick off digest scheduling for all active users in this tenant now
+    // that SMTP is verified. Fail-soft: a scheduling failure must not prevent
+    // the success response from reaching the admin who just verified SMTP.
+    void scheduleDigestsForTenant(ctx.tenantId).catch((err: unknown) => {
+      logger.error(
+        { tenantId: ctx.tenantId, surface: "settings.smtp", action: "scheduleDigests" },
+        `Failed to schedule digest jobs after SMTP verify: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    });
+
     return {
       id: verified.id,
       isVerified: verified.isVerified,

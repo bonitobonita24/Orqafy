@@ -25,6 +25,7 @@ import type {
   EcommerceOrderProcessingJobData,
   XenditWebhookProcessingJobData,
   JobOrderNotificationsJobData,
+  NotificationEmailDigestJobData,
 } from "../types.js";
 
 export const QUEUE_NAMES = {
@@ -51,6 +52,7 @@ export const QUEUE_NAMES = {
   ECOMMERCE_ORDER_PROCESSING: "ecommerce-order-processing",
   XENDIT_WEBHOOK_PROCESSING: "xendit-webhook-processing",
   JOB_ORDER_NOTIFICATIONS: "job-order-notifications",
+  NOTIFICATION_EMAIL_DIGEST: "notification-email-digest",
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
@@ -79,6 +81,7 @@ export type OrqafyQueues = {
   ecommerceOrderProcessing: Queue<EcommerceOrderProcessingJobData>;
   xenditWebhookProcessing: Queue<XenditWebhookProcessingJobData>;
   jobOrderNotifications: Queue<JobOrderNotificationsJobData>;
+  notificationEmailDigest: Queue<NotificationEmailDigestJobData>;
 };
 
 export function createQueues(connection: ConnectionOptions): OrqafyQueues {
@@ -108,6 +111,7 @@ export function createQueues(connection: ConnectionOptions): OrqafyQueues {
     ecommerceOrderProcessing: new Queue<EcommerceOrderProcessingJobData>(QUEUE_NAMES.ECOMMERCE_ORDER_PROCESSING, opts),
     xenditWebhookProcessing: new Queue<XenditWebhookProcessingJobData>(QUEUE_NAMES.XENDIT_WEBHOOK_PROCESSING, opts),
     jobOrderNotifications: new Queue<JobOrderNotificationsJobData>(QUEUE_NAMES.JOB_ORDER_NOTIFICATIONS, opts),
+    notificationEmailDigest: new Queue<NotificationEmailDigestJobData>(QUEUE_NAMES.NOTIFICATION_EMAIL_DIGEST, opts),
   };
 }
 

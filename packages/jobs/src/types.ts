@@ -157,3 +157,21 @@ export interface JobOrderNotificationsJobData extends BaseJobData {
   event: "created" | "assigned" | "started" | "completed" | "cancelled";
   recipientIds: string[];
 }
+
+/**
+ * D8 — Email digest job.
+ * Triggered on a repeatable BullMQ schedule (default: daily at 07:00 tenant
+ * timezone or UTC fallback). The processor finds all unsent notifications for
+ * a given user within the tenant, sends a batched email via the tenant's SMTP
+ * config, then stamps `email_digest_sent_at` on the included rows.
+ *
+ * `userId` / `tenantId` from `BaseJobData` identify the single recipient.
+ * `recipientEmail` + `recipientName` are carried so the processor does not
+ * need a User lookup (cheaper per-job).
+ */
+export interface NotificationEmailDigestJobData extends BaseJobData {
+  recipientEmail: string;
+  recipientName: string;
+  /** ISO-8601 cutoff: only include notifications created BEFORE this moment. */
+  cutoffAt: string;
+}

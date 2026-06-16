@@ -1504,8 +1504,10 @@ Attachment (generic, polymorphic): id, tenantId, entityType (customer|project|jo
 Nodemailer: SMTP email transport for all transactional emails — OSS (MIT license);
   platform-level emails (welcome, billing, suspension) use Powerbyte's SMTP credentials
   from platform .env; tenant-level emails (invoices, payroll, alerts, ticket updates,
-  public invoice links) use each tenant's own SMTP credentials from TenantSmtpConfig;
-  tenants without configured SMTP → emails queued but not sent, dashboard warning shown
+  public invoice links, notification email digests) use each tenant's own SMTP credentials
+  from TenantSmtpConfig; tenants without configured/verified SMTP → digest skipped
+  silently (no error, no queue backlog); notification digest worker also lives in
+  apps/worker (processNotificationEmailDigest, NOTIFICATION_EMAIL_DIGEST BullMQ queue)
 Expo Push Notifications (FCM + APNs): mobile push for task assignments, approvals,
   DTR events, payroll, credit alerts, inventory disbursement approvals/rejections — no OSS
   equivalent for cross-platform push
@@ -1729,8 +1731,14 @@ Data retention: Financial + credit records: 7 years minimum; Attendance/DTR: 5 y
                 manually dropped by platform_owner
 Compliance:     GDPR-aware (customer data exportable and deletable per tenant request);
                 no HIPAA; no PCI-DSS scope (no card number storage)
-Realtime:       SSE via Next.js route handlers for web dashboard (one-way server→client,
-                no extra infra, tenant-scoped per JWT); tRPC + React Query polling for mobile
+Realtime:       In-app notification bell: SSE via Next.js route handler (`/api/sse`);
+                Valkey pub/sub fan-out from createNotification; bell refetches tRPC
+                `notification.list` on each push; falls back to 60s poll on SSE outage.
+                Email digest: BullMQ repeatable job per user (daily 07:00 UTC, configurable
+                via DIGEST_CRON env); batches all unsent notifications into a single email
+                using tenant's own SMTP (TenantSmtpConfig); no per-event email — batch only.
+                No mobile push — Orqafy is web-only (D8 owner decision 2026-06-16).
+                tRPC + React Query polling for mobile sync (WatermelonDB delta).
 Visual Design:  See docs/DESIGN.md (VoltAgent aesthetic — dark carbon canvas + Emerald
                 Signal Green accent; extracted from VoltAgent via VoltAgent/awesome-design-md).
                 Implementation uses shadcn/ui. See docs/DECISIONS_LOG.md for the decision

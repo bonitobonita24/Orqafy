@@ -874,3 +874,66 @@ different tenants to use the same internal codes (chart of accounts code `1000`,
 all queries were already tenant-scoped.
 
 **Phase:** Phase 8 (schema correctness / completeness sweep)
+
+---
+
+## 2026-06-16 — D8: Notification Delivery — In-app Realtime + Email Digest
+
+**Owner decision:** notification delivery model = in-app realtime + email digest (no mobile
+push — Orqafy is web-only). Decision recorded from owner directive; no further discussion needed.
+
+**In-app realtime (extends D7 — no rebuild):**
+D7 already shipped the full realtime stack: `Notification` Prisma model, `createNotification()`
+helper, Valkey pub/sub publisher (`valkey.ts`), SSE endpoint (`/api/sse`), notification bell
+component (SSE + tRPC list/markRead/markAllRead), and the job-order router already calling
+`createNotification` on assignment. D8 extends this by adding `emailDigestSentAt` to track
+which rows have been included in a digest email.
+
+**Schema changes (migration: 20260616140000_add_notification_email_digest_sent_at):**
+- `Notification.emailDigestSentAt DateTime? @map("email_digest_sent_at")` — tracks digest
+  inclusion per row; null = not yet sent in any digest
+- New index: `@@index([tenantId, emailDigestSentAt])` — supports efficient unsent-rows query
+
+**Email digest — new files:**
+- `apps/web/src/server/notifications/digest-scheduler.ts` — `scheduleDigestsForTenant()`:
+  enqueues one BullMQ repeatable job per active user in a tenant (jobId =
+  `email-digest:<tenantId>:<userId>`; cron = `DIGEST_CRON` env, default `0 7 * * *` UTC);
+  `cancelDigestForUser()` for deactivation/SMTP deletion
+- `apps/web/src/server/trpc/routers/smtp-config.ts` — `testConnection` mutation extended:
+  after successful SMTP verify, calls `scheduleDigestsForTenant()` fail-soft (scheduling
+  failure never blocks the verify success response)
+- `apps/web/src/app/api/internal/schedule-digests/route.ts` — POST-only internal cron
+  endpoint; guarded by `x-internal-secret` header; sweeps all tenants with verified SMTP and
+  re-schedules any users not yet covered (handles new users added after initial SMTP verify)
+- `apps/worker/src/processors/notification-email-digest.ts` — `processNotificationEmailDigest`:
+  fetches unsent rows (emailDigestSentAt = null, createdAt < cutoff), skips if none or SMTP
+  not configured/verified, builds HTML+text batch email via nodemailer, sends, stamps rows;
+  all queries carry tenantId + recipientUserId guard
+- `apps/worker/src/index.ts` — wires `createNotificationEmailDigestWorker` + graceful shutdown
+
+**packages/jobs changes:**
+- `NotificationEmailDigestJobData` type added (types.ts)
+- `NOTIFICATION_EMAIL_DIGEST` queue name + `OrqafyQueues.notificationEmailDigest` (queues/index.ts)
+- `createNotificationEmailDigestWorker` factory (workers/index.ts)
+- Package rebuilt (dist regenerated)
+
+**Worker deps:** `nodemailer ^7.0.13` + `@types/nodemailer ^8.0.1` added to `apps/worker`
+
+**Env vars:**
+- `DIGEST_CRON` — cron pattern for digest schedule; default `0 7 * * *` (daily 07:00 UTC)
+- `INTERNAL_CRON_SECRET` — at least 16 chars; required for the schedule-digests API route
+- `ENCRYPTION_KEY` — already required by web app crypto; now also required by worker for
+  SMTP password decryption in the digest processor
+
+**Fail-safety:**
+- Valkey outage: durable Prisma row is source of truth (D7 contract preserved)
+- SMTP not configured / not verified: processor returns early — no error, no queue backlog
+- Valkey unavailable when scheduling: BullMQ connection error → caught per-user, logged, skipped
+- Email send failure: BullMQ retries (3× exponential from 5 s per DEFAULT_JOB_OPTIONS)
+- Stamp failure after successful send: retried — row may be re-included in next digest
+  (bounded double-send risk, acceptable vs. silent drop)
+
+**Tests:** `apps/worker/src/__tests__/notification-email-digest.test.ts` — 8 unit tests
+(mocked Prisma + nodemailer + crypto); all passing. Web app: 1026 tests passing, 0 regressions.
+
+**Phase:** Phase 7 (feature update) / Phase 8 (completeness)

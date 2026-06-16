@@ -1,6 +1,7 @@
 import Redis from 'ioredis';
-import { createTenantProvisioningWorker } from '@orqafy/jobs';
+import { createTenantProvisioningWorker, createNotificationEmailDigestWorker } from '@orqafy/jobs';
 import { processTenantProvisioning } from './processors/tenant-provisioning.js';
+import { processNotificationEmailDigest } from './processors/notification-email-digest.js';
 import { startHealthServer, stopHealthServer } from './health.js';
 
 const REDIS_URL = process.env['REDIS_URL'];
@@ -38,6 +39,26 @@ tenantProvisioningWorker.on('completed', (job) => {
   console.log(`[tenant-provisioning] COMPLETED job=${job.id}`);
 });
 
+// D8 — Email digest worker
+const notificationEmailDigestWorker = createNotificationEmailDigestWorker(
+  processNotificationEmailDigest,
+  connection,
+);
+
+notificationEmailDigestWorker.on('failed', (job, err) => {
+  console.error(
+    `[email-digest] FAILED job=${job?.id ?? 'unknown'} tenant=${job?.data?.tenantId ?? '?'} user=${job?.data?.userId ?? '?'} attempts=${job?.attemptsMade ?? 0} err=${err.message}`,
+  );
+});
+
+notificationEmailDigestWorker.on('error', (err) => {
+  console.error('[email-digest] worker error:', err.message);
+});
+
+notificationEmailDigestWorker.on('completed', (job) => {
+  console.log(`[email-digest] COMPLETED job=${job.id} tenant=${job.data.tenantId} user=${job.data.userId}`);
+});
+
 const PORT = Number(process.env['WORKER_PORT'] ?? 42952);
 startHealthServer(PORT);
 
@@ -47,6 +68,7 @@ async function shutdown(signal: string): Promise<void> {
   console.log(`[worker] Received ${signal} — graceful shutdown started`);
   stopHealthServer();
   await tenantProvisioningWorker.close();
+  await notificationEmailDigestWorker.close();
   await connection.quit();
   console.log('[worker] Shutdown complete');
   process.exit(0);
