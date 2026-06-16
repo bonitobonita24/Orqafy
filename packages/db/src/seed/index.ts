@@ -228,7 +228,7 @@ async function main() {
     await prisma.$executeRawUnsafe(`
       INSERT INTO "${schemaName}".expense_categories (id, tenant_id, name, code, is_active, sort_order, created_at, updated_at)
       VALUES ('${createId()}', '${demoTenant.id}', '${name}', '${code}', true, ${i}, NOW(), NOW())
-      ON CONFLICT (code) DO NOTHING
+      ON CONFLICT (tenant_id, code) DO NOTHING
     `);
   }
   console.log(`  ✅ ${expenseCats.length} expense categories seeded`);
@@ -237,7 +237,7 @@ async function main() {
   await prisma.$executeRawUnsafe(`
     INSERT INTO "${schemaName}".tax_rates (id, tenant_id, name, code, rate, is_default, is_active, created_at, updated_at)
     VALUES ('${createId()}', '${demoTenant.id}', 'VAT', 'vat-12', 12.00, true, true, NOW(), NOW())
-    ON CONFLICT (code) DO NOTHING
+    ON CONFLICT (tenant_id, code) DO NOTHING
   `);
   console.log('  ✅ Default tax rate (VAT 12%) seeded');
 
@@ -245,7 +245,7 @@ async function main() {
   await prisma.$executeRawUnsafe(`
     INSERT INTO "${schemaName}".warehouses (id, tenant_id, name, code, is_default, is_active, created_at, updated_at)
     VALUES ('${createId()}', '${demoTenant.id}', 'Main Warehouse', 'main-warehouse', true, true, NOW(), NOW())
-    ON CONFLICT (code) DO NOTHING
+    ON CONFLICT (tenant_id, code) DO NOTHING
   `);
   console.log('  ✅ Default warehouse seeded');
 
@@ -302,7 +302,7 @@ async function main() {
     await prisma.$executeRawUnsafe(`
       INSERT INTO "${schemaName}".accounts (id, tenant_id, code, name, type, is_system, parent_id, is_active, created_at, updated_at)
       VALUES ('${id}', '${demoTenant.id}', '${acct.code}', '${safeName}', '${acct.type}', ${acct.isGroup}, ${parentId !== null ? `'${parentId}'` : 'NULL'}, true, NOW(), NOW())
-      ON CONFLICT (code) DO NOTHING
+      ON CONFLICT (tenant_id, code) DO NOTHING
     `);
   }
   console.log(`  ✅ ${accounts.length} chart of accounts entries seeded`);
