@@ -763,3 +763,45 @@ inconsistency worth an owner decision (would need a migration). 28 pre-existing 
 `leaveRequestCancel`) — no work needed (phantom gap).
 
 **Phase:** Phase 8 (completeness sweep)
+
+---
+
+## Decision — 2026-06-16 — Phase 8: clear all 28 pre-existing tsc errors (technical cleanup)
+
+**Context:** The prior sweep noted "28 pre-existing TypeScript errors remain." CI gates on tests,
+not `tsc`, so they lingered. Clearing them is pure HOW-to-build technical work, so it was done
+autonomously — without weakening types (no net-new `any`, no `@ts-ignore`). Commit `cf692e8`.
+
+**Real bug found (root-cause, not cosmetic):** the tRPC root router registered a sub-router under
+the key `client` (`client: clientRouter` in `_app.ts`). In `@trpc/react-query` v11, `.client` is a
+**reserved built-in** on the React proxy, so naming a router `client` collapses the entire root
+proxy type into an error-string type — which is why `trpc.department.*` and `trpc.expenseCategory.*`
+broke at the type level (6 of the 28 errors). Fixed by renaming the registration key to `clients`
+(internal tRPC procedure-path only — no DB, REST, or product-intent change); updated `_app.ts`, the
+two clients UI surfaces, and the client-tenant-parity test caller paths.
+
+**Other fixes (all type-accurate):**
+- `accounting.ts`: self-referential `as typeof existing` cast → `Awaited<ReturnType<…>>` (matches
+  the two sibling mutations that already used the correct pattern).
+- `accounting.test.ts`: add `findFirst` to the journalEntry mock **type** (already assigned at runtime).
+- `accounting-ui-tenant-parity.test.ts`: add missing `isDemoTenant`/`session` to the test `ctx()` so
+  it satisfies `TRPCContext` (matches the other parity tests).
+- `exactOptionalPropertyTypes`: widen optional form-prop fields to `| undefined` on account-form,
+  po-form, vendor-form, task-board, create-task-dialog (accurately models "absent or undefined";
+  values are read defensively with `?? default`).
+- `po-form`: guard nullable mutation `data` in `onSuccess`.
+- `receipts/new`: serialize Prisma `Decimal` → string before passing into the client `GrForm`
+  (Decimal is not a valid RSC-boundary value — same pattern as the banking-Decimal fixes); widen
+  `PoItem.product.sku` to `string | null` (it is nullable in the schema).
+- Dependencies: add `@radix-ui/react-alert-dialog` + create the standard shadcn `alert-dialog.tsx`
+  that the tasks board imports (was a missing component → build-breaking import); add
+  `nodemailer@^7` (+ `@types/nodemailer`) actually `require()`d by the smtp-config test-connection
+  route (was unmet at runtime AND type level; pinned to `^7` to satisfy the next-auth/@auth/core
+  peer range — avoids a peer-dep conflict).
+
+**Gate (evidence):** `pnpm typecheck` → **11/11 tasks green, 0 errors** (was 28); `pnpm test` →
+**1026 web + 3 worker passing** (unchanged); `pnpm --filter @orqafy/web build` compiles + generates
+all static pages. Pre-existing **lint** debt (~28 files, OWASP-unrelated style rules; not CI-gated)
+was left as-is — my changes are lint-neutral (added zero new lint errors). No schema migration.
+
+**Phase:** Phase 8 (completeness sweep)
