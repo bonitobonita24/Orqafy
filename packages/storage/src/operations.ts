@@ -10,9 +10,9 @@ import {
   MAX_FILE_SIZE,
   PRESIGNED_DOWNLOAD_EXPIRES_SECONDS,
   PRESIGNED_URL_EXPIRES_SECONDS,
-} from "./config.js";
-import { assertMimeTypeAllowed, type UploadContext } from "./mime.js";
-import { buildStoragePath, isKeyOwnedByTenant, type StoragePathParams } from "./path.js";
+} from "./config";
+import { assertMimeTypeAllowed, type UploadContext } from "./mime";
+import { buildStoragePath, isKeyOwnedByTenant, type StoragePathParams } from "./path";
 
 export interface UploadParams extends StoragePathParams {
   bucket: string;

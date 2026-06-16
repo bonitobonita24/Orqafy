@@ -39,7 +39,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  transpilePackages: ["@orqafy/db"],
+  transpilePackages: ["@orqafy/db", "@orqafy/storage"],
   experimental: {
     // nodeMiddleware is a Next.js canary/16 feature not yet in 15.x stable types.
     // Remove suppression when Next.js types include nodeMiddleware.

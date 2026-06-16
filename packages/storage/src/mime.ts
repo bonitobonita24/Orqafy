@@ -2,7 +2,7 @@ import {
   BLOCKED_MIME_TYPES,
   DEFAULT_ALLOWED_MIME_TYPES,
   PROJECT_NOTES_ALLOWED_MIME_TYPES,
-} from "./config.js";
+} from "./config";
 
 export type UploadContext = "default" | "project-notes" | "signature";
 
