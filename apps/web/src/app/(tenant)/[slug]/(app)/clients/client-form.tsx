@@ -113,7 +113,7 @@ export function ClientForm(props: Props) {
       setValues((prev) => ({ ...prev, [field]: e.target.value }));
     };
 
-  const createMutation = trpc.client.create.useMutation({
+  const createMutation = trpc.clients.create.useMutation({
     onSuccess: (created) => {
       toast.success("Client created.");
       router.push(`/${props.slug}/clients`);
@@ -124,7 +124,7 @@ export function ClientForm(props: Props) {
     },
   });
 
-  const updateMutation = trpc.client.update.useMutation({
+  const updateMutation = trpc.clients.update.useMutation({
     onSuccess: () => {
       toast.success("Client updated.");
       router.push(`/${props.slug}/clients`);

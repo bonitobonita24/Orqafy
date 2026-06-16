@@ -94,6 +94,8 @@ function ctx(tenantId: string) {
     tenantSlug: "test-slug",
     tenantId,
     securityVersion: 1,
+    isDemoTenant: false,
+    session: null,
   };
 }
 

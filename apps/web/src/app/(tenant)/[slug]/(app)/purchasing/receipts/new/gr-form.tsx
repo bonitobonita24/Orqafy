@@ -21,7 +21,7 @@ interface PoItem {
   description: string;
   quantity: number | string;
   quantityReceived: number | string;
-  product: { id: string; name: string; sku: string } | null;
+  product: { id: string; name: string; sku: string | null } | null;
 }
 
 interface PoOption {

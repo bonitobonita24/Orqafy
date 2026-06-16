@@ -29,7 +29,7 @@ interface CreateTaskDialogProps {
   onOpenChange: (open: boolean) => void;
   slug: string;
   projects: ProjectOption[];
-  defaultProjectId?: string;
+  defaultProjectId?: string | undefined;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onCreated: (task: any) => void;
 }

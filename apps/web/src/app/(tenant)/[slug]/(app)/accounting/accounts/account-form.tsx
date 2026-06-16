@@ -26,8 +26,8 @@ interface AccountFormProps {
     code?: string;
     name?: string;
     type?: AccountType;
-    subtype?: string;
-    description?: string;
+    subtype?: string | undefined;
+    description?: string | undefined;
   };
 }
 

@@ -47,8 +47,8 @@ interface PoFormProps {
   initial?: {
     vendorId?: string;
     currency?: string;
-    notes?: string;
-    expectedDelivery?: string;
+    notes?: string | undefined;
+    expectedDelivery?: string | undefined;
     items?: LineItem[];
   };
 }
@@ -68,6 +68,7 @@ export function PoForm({ slug, vendors, poId, initial = {} }: PoFormProps) {
 
   const createMut = trpc.purchasing.po.create.useMutation({
     onSuccess: (data) => {
+      if (!data) return;
       toast.success(`Purchase order ${data.poNumber} created.`);
       router.push(`/${slug}/purchasing/orders/${data.id}`);
     },

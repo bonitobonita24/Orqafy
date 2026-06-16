@@ -311,7 +311,7 @@ const journalEntryRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const existing = await loadJournalEntryForTenant(input.id, ctx, true) as typeof existing & { lines: Array<{ accountId: string; debit: unknown; credit: unknown }> };
+      const existing = await loadJournalEntryForTenant(input.id, ctx, true) as Awaited<ReturnType<typeof loadJournalEntryForTenant>> & { lines: Array<{ accountId: string; debit: unknown; credit: unknown }> };
       if (existing.status !== "draft") {
         throw new TRPCError({
           code: "BAD_REQUEST",

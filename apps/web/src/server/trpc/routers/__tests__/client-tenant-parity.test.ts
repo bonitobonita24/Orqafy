@@ -73,7 +73,7 @@ import { clientRouter } from "@/server/trpc/routers/client";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 import type { NextRequest } from "next/server";
 
-const testRouter = createTRPCRouter({ client: clientRouter });
+const testRouter = createTRPCRouter({ clients: clientRouter });
 const createCaller = createCallerFactory(testRouter);
 
 function makeReq(): NextRequest {
@@ -149,7 +149,7 @@ describe("Client tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)"
     const caller = createCaller(ctxForTenant("tenant-A"));
 
     await expect(
-      caller.client.byId({ id: CLIENT_A.id }),
+      caller.clients.byId({ id: CLIENT_A.id }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
@@ -157,7 +157,7 @@ describe("Client tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)"
     mockCustomerFindFirst.mockResolvedValueOnce(CLIENT_A);
 
     const caller = createCaller(ctxForTenant("tenant-A"));
-    const result = await caller.client.byId({ id: CLIENT_A.id });
+    const result = await caller.clients.byId({ id: CLIENT_A.id });
 
     expect(result).toMatchObject({ id: CLIENT_A.id, tenantId: "tenant-A" });
     const callArg = mockCustomerFindFirst.mock.calls[0]![0];
@@ -170,7 +170,7 @@ describe("Client tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)"
     mockAuditLogCreate.mockResolvedValueOnce({});
 
     const caller = createCaller(ctxForTenant("tenant-A"));
-    await caller.client.create({ firstName: "Alice", lastName: "Bautista" });
+    await caller.clients.create({ firstName: "Alice", lastName: "Bautista" });
 
     expect(mockCustomerCreate).toHaveBeenCalledOnce();
     const callArg = mockCustomerCreate.mock.calls[0]![0];
@@ -182,7 +182,7 @@ describe("Client tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)"
     mockAuditLogCreate.mockResolvedValueOnce({});
 
     const caller = createCaller(ctxForTenant("tenant-A"));
-    await caller.client.create({ firstName: "Alice", lastName: "Bautista" });
+    await caller.clients.create({ firstName: "Alice", lastName: "Bautista" });
 
     expect(mockAuditLogCreate).toHaveBeenCalledOnce();
     const auditArg = mockAuditLogCreate.mock.calls[0]![0];
@@ -199,7 +199,7 @@ describe("Client tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)"
     const caller = createCaller(ctxForTenant("tenant-A"));
 
     await expect(
-      caller.client.update({ id: CLIENT_A.id, firstName: "Evil" }),
+      caller.clients.update({ id: CLIENT_A.id, firstName: "Evil" }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
     expect(mockCustomerUpdate).not.toHaveBeenCalled();
@@ -212,7 +212,7 @@ describe("Client tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)"
     mockAuditLogCreate.mockResolvedValueOnce({});
 
     const caller = createCaller(ctxForTenant("tenant-A"));
-    await caller.client.update({ id: CLIENT_A.id, firstName: "Alicia" });
+    await caller.clients.update({ id: CLIENT_A.id, firstName: "Alicia" });
 
     expect(mockCustomerUpdate).toHaveBeenCalledOnce();
     expect(mockAuditLogCreate).toHaveBeenCalledOnce();
@@ -229,7 +229,7 @@ describe("Client tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)"
     const caller = createCaller(ctxForTenant("tenant-A"));
 
     await expect(
-      caller.client.delete({ id: CLIENT_A.id }),
+      caller.clients.delete({ id: CLIENT_A.id }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
     expect(mockCustomerDelete).not.toHaveBeenCalled();
@@ -241,7 +241,7 @@ describe("Client tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)"
     mockAuditLogCreate.mockResolvedValueOnce({});
 
     const caller = createCaller(ctxForTenant("tenant-A"));
-    await caller.client.delete({ id: CLIENT_A.id });
+    await caller.clients.delete({ id: CLIENT_A.id });
 
     expect(mockCustomerDelete).toHaveBeenCalledOnce();
     expect(mockAuditLogCreate).toHaveBeenCalledOnce();
@@ -256,7 +256,7 @@ describe("Client tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)"
     const caller = createCaller(ctxForTenant("tenant-A", true /* isDemoTenant */));
 
     await expect(
-      caller.client.create({ firstName: "Test", lastName: "User" }),
+      caller.clients.create({ firstName: "Test", lastName: "User" }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
@@ -264,7 +264,7 @@ describe("Client tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)"
     const caller = createCaller(ctxForTenant("tenant-A", true /* isDemoTenant */));
 
     await expect(
-      caller.client.update({ id: CLIENT_A.id, firstName: "Test" }),
+      caller.clients.update({ id: CLIENT_A.id, firstName: "Test" }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
@@ -272,7 +272,7 @@ describe("Client tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)"
     const caller = createCaller(ctxForTenant("tenant-A", true /* isDemoTenant */));
 
     await expect(
-      caller.client.delete({ id: CLIENT_A.id }),
+      caller.clients.delete({ id: CLIENT_A.id }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

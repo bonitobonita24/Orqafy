@@ -19,7 +19,7 @@ const TIER_COLORS: Record<string, string> = {
 export function ClientsList({ slug }: { slug: string }) {
   const [search, setSearch] = useState("");
 
-  const { data, isPending, isError } = trpc.client.list.useQuery({
+  const { data, isPending, isError } = trpc.clients.list.useQuery({
     page: 1,
     limit: 50,
     ...(search !== "" ? { search } : {}),

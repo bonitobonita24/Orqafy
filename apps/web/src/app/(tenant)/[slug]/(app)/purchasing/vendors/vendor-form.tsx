@@ -25,14 +25,14 @@ interface VendorFormProps {
   initial?: {
     type?: VendorType;
     companyName?: string;
-    contactName?: string;
-    email?: string;
-    phone?: string;
-    address?: string;
-    platformUrl?: string;
-    platformName?: string;
-    paymentTerms?: string;
-    notes?: string;
+    contactName?: string | undefined;
+    email?: string | undefined;
+    phone?: string | undefined;
+    address?: string | undefined;
+    platformUrl?: string | undefined;
+    platformName?: string | undefined;
+    paymentTerms?: string | undefined;
+    notes?: string | undefined;
   };
 }
 

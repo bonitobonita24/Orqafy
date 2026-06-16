@@ -54,7 +54,7 @@ interface TaskBoardProps {
   slug: string;
   initialTasks: TaskRow[];
   projects: ProjectOption[];
-  projectId?: string;
+  projectId?: string | undefined;
 }
 
 const COLUMNS: { key: string; label: string }[] = [

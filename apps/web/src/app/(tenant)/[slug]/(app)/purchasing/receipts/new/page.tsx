@@ -45,7 +45,16 @@ export default async function NewGrPage({
   const { slug } = await params;
   const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
   if (!tenant) return <div>Tenant not found</div>;
-  const receivablePos = await getReceivablePos(tenant.id);
+  // Serialize Prisma Decimal → string so the data is safe to pass into the
+  // client GrForm (Decimal is not a serializable RSC boundary value).
+  const receivablePos = (await getReceivablePos(tenant.id)).map((po) => ({
+    ...po,
+    items: po.items.map((item) => ({
+      ...item,
+      quantity: item.quantity.toString(),
+      quantityReceived: item.quantityReceived.toString(),
+    })),
+  }));
 
   return (
     <div className="space-y-6">
