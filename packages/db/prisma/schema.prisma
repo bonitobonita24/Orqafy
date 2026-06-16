@@ -35,8 +35,9 @@ model Tenant {
   timezone    String    @default("Asia/Manila")
   locale      String    @default("en-PH")
   demoResetAt DateTime? @map("demo_reset_at")
-  metadata    Json?
-  createdAt   DateTime  @default(now()) @map("created_at")
+  metadata         Json?
+  storageBytesUsed BigInt    @default(0) @map("storage_bytes_used")
+  createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
   subscriptions                TenantSubscription[]
@@ -93,6 +94,7 @@ model Tenant {
   tasks                        Task[]                        @relation("TenantTasks")
   taskAssignments              TaskAssignment[]              @relation("TenantTaskAssignments")
   taskAttachments              TaskAttachment[]              @relation("TenantTaskAttachments")
+  attachments                  Attachment[]                  @relation("TenantAttachments")
   taskStatusReports            TaskStatusReport[]            @relation("TenantTaskStatusReports")
   toDos                        ToDo[]                        @relation("TenantToDos")
   toDoAttachments              ToDoAttachment[]              @relation("TenantToDoAttachments")
@@ -349,6 +351,7 @@ model User {
   projectNotes                    ProjectNote[]
   contactLogs                     ContactLog[]            @relation("ContactLogCreatedBy")
   notifications                   Notification[]          @relation("UserNotifications")
+  attachmentsUploaded             Attachment[]            @relation("AttachmentUploadedBy")
 
   @@index([tenantId])
   @@map("users")
@@ -1229,7 +1232,7 @@ model Warehouse {
   tenantId  String   @map("tenant_id")
   tenant    Tenant   @relation("TenantWarehouses", fields: [tenantId], references: [id])
   name      String
-  code      String   @unique
+  code      String
   address   String?
   isDefault Boolean  @default(false) @map("is_default")
   isActive  Boolean  @default(true) @map("is_active")
@@ -1242,6 +1245,7 @@ model Warehouse {
   stockMovementsTo   StockMovement[]               @relation("StockMovementTo")
   allocations        PurchaseOrderItemAllocation[]
 
+  @@unique([tenantId, code])
   @@index([tenantId])
   @@map("warehouses")
   @@schema("public")
@@ -1563,6 +1567,27 @@ model TaskAttachment {
   @@index([tenantId])
   @@index([taskId])
   @@map("task_attachments")
+  @@schema("public")
+}
+
+model Attachment {
+  id               String   @id @default(cuid())
+  tenantId         String   @map("tenant_id")
+  tenant           Tenant   @relation("TenantAttachments", fields: [tenantId], references: [id])
+  entityType       String   @map("entity_type") // customer | project | job_order | task | expense
+  entityId         String   @map("entity_id")
+  storageKey       String   @map("storage_key")
+  filename         String
+  mimeType         String   @map("mime_type")
+  sizeBytes        BigInt   @map("size_bytes")
+  uploadedByUserId String   @map("uploaded_by_user_id")
+  uploadedBy       User     @relation("AttachmentUploadedBy", fields: [uploadedByUserId], references: [id])
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([entityType, entityId])
+  @@index([tenantId, entityType, entityId])
+  @@map("attachments")
   @@schema("public")
 }
 
@@ -2008,7 +2033,7 @@ model Account {
   id          String    @id @default(cuid())
   tenantId    String    @map("tenant_id")
   tenant      Tenant    @relation("TenantAccounts", fields: [tenantId], references: [id])
-  code        String    @unique
+  code        String
   name        String
   type        String // asset | liability | equity | revenue | expense
   subtype     String?
@@ -2023,6 +2048,7 @@ model Account {
 
   journalLines JournalLine[]
 
+  @@unique([tenantId, code])
   @@index([tenantId])
   @@map("accounts")
   @@schema("public")
@@ -2085,7 +2111,7 @@ model TaxRate {
   tenantId  String   @map("tenant_id")
   tenant    Tenant   @relation("TenantTaxRates", fields: [tenantId], references: [id])
   name      String
-  code      String   @unique
+  code      String
   rate      Decimal  @db.Decimal(5, 2)
   type      String   @default("percentage") // percentage | fixed
   isDefault Boolean  @default(false) @map("is_default")
@@ -2093,6 +2119,7 @@ model TaxRate {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  @@unique([tenantId, code])
   @@index([tenantId])
   @@map("tax_rates")
   @@schema("public")
@@ -2159,7 +2186,7 @@ model ExpenseCategory {
   tenantId    String   @map("tenant_id")
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
   name        String
-  code        String   @unique
+  code        String
   description String?
   isDefault   Boolean  @default(false) @map("is_default")
   isActive    Boolean  @default(true) @map("is_active")
@@ -2169,6 +2196,7 @@ model ExpenseCategory {
 
   expenses Expense[]
 
+  @@unique([tenantId, code])
   @@index([tenantId])
   @@map("expense_categories")
   @@schema("public")

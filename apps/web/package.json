@@ -17,6 +17,7 @@
     "@blocknote/react": "^0.49.0",
     "@marsidev/react-turnstile": "^1.0.1",
     "@orqafy/db": "workspace:*",
+    "@orqafy/storage": "workspace:*",
     "@orqafy/jobs": "workspace:*",
     "@orqafy/shared": "workspace:*",
     "@orqafy/ui": "workspace:*",
