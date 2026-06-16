@@ -1489,6 +1489,17 @@ CustomerDocument: id, customerId, title (string — display name), fileUrl (R2/M
   from portal Documents submenu; used for signed proposals, payment receipts, warranty
   certificates, repair completion reports
 
+Attachment (generic, polymorphic): id, tenantId, entityType (customer|project|job_order|
+  task|expense), entityId (FK to the referenced entity), storageKey (S3 object key,
+  tenant-slug-prefixed), filename (original name for display/download), mimeType,
+  sizeBytes (BigInt), uploadedByUserId, createdAt
+  NOTE: single reusable model for attachments across 5 entity surfaces; replaces ad-hoc
+  fileUrl fields for those surfaces; quota tracked on Tenant.storageBytesUsed (BigInt);
+  enforced server-side in storage.getUploadUrl — presign rejected when
+  usedBytes + fileSizeBytes > plan.maxStorageMb × 1 MB; code values on Warehouse/Account/
+  TaxRate/ExpenseCategory are now composite-unique (tenant_id, code) — two tenants may
+  share the same code value (see 2026-06-16 DECISIONS_LOG entry)
+
 ## Integrations
 Nodemailer: SMTP email transport for all transactional emails — OSS (MIT license);
   platform-level emails (welcome, billing, suspension) use Powerbyte's SMTP credentials
@@ -1534,6 +1545,15 @@ Environments: dev / staging / prod
 Hosting:      VPS or Railway/Render (Docker Compose mono-server; K8s placeholder only)
 Dev mode:     MODE A — WSL2 native (only supported mode — pre-locked)
 Docker Hub:   enabled — hub_repo: bonitobonita24/orqafy
+Object storage: dev → MinIO (S3-compatible, local Docker service, STORAGE_ENDPOINT=
+  http://localhost:42944); prod → Cloudflare R2 (S3-compatible, zero egress);
+  selected by env vars: STORAGE_ENDPOINT, STORAGE_REGION, STORAGE_BUCKET,
+  STORAGE_ACCESS_KEY, STORAGE_SECRET_KEY (no code change required between envs);
+  client: @aws-sdk/client-s3 + @aws-sdk/s3-request-presigner via @orqafy/storage package;
+  upload flow: browser → presigned PUT URL (from storage.getUploadUrl) → direct S3 PUT
+  (no server proxy) → storage.confirmUpload records Attachment row + increments quota;
+  quota default: plan.maxStorageMb (Free plan = 500 MB, paid = per Plan row in DB);
+  Tenant.storageBytesUsed (BigInt) tracks running total; enforced server-side at presign
 
 ## Mobile Needs
 
@@ -2072,8 +2092,17 @@ Paths: <tenant_slug>/receipts/<type>/<id>/<filename>;
   <tenant_slug>/ecommerce/products/<id>/<filename>;
   <tenant_slug>/transactions/<id>/<filename>;
   <tenant_slug>/customers/<id>/documents/<filename>
+Generic Attachment paths (from Attachment model, 2026-06-16):
+  <tenant_slug>/customer/<entity_id>/<uuid>.<ext>
+  <tenant_slug>/project/<entity_id>/<uuid>.<ext>
+  <tenant_slug>/job_order/<entity_id>/<uuid>.<ext>
+  <tenant_slug>/task/<entity_id>/<uuid>.<ext>
+  <tenant_slug>/expense/<entity_id>/<uuid>.<ext>
 Mobile: expense photos via pre-signed R2 URL; offline → stored in WatermelonDB,
   uploaded on reconnect
+Quota enforcement: per-tenant plan.maxStorageMb limit; checked server-side at presign
+  (storage.getUploadUrl); plan default = 500 MB for Free; paid plans per Plan DB rows;
+  free tier: uploads blocked when quota exceeded (FORBIDDEN error with upgrade message)
 
 Realtime events (SSE on web; React Query polling on mobile):
   Task Dashboard, Invoice status/balance/creditApplied, Payment History,

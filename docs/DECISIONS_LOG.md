@@ -805,3 +805,72 @@ all static pages. Pre-existing **lint** debt (~28 files, OWASP-unrelated style r
 was left as-is — my changes are lint-neutral (added zero new lint errors). No schema migration.
 
 **Phase:** Phase 8 (completeness sweep)
+
+---
+
+## 2026-06-16 — Task A: Real presigned file uploads + Attachment model + quota enforcement
+
+**Decision:** Implement real S3-presigned upload/download across all entity surfaces (customers,
+projects, job orders, tasks, expenses). No server-side file proxy — browser PUTs directly to
+MinIO/R2 via presigned URL, then calls `storage.confirmUpload` to record the Attachment row.
+
+**Schema changes (migration: 20260616130000_add_attachment_and_storage_tracking):**
+- `Tenant.storageBytesUsed BigInt @default(0)` — running total for quota tracking
+- New `Attachment` model: tenant_id, entity_type, entity_id (polymorphic), storage_key,
+  filename, mime_type, size_bytes (BigInt), uploaded_by_user_id, created_at; indexes on
+  (tenant_id), (entity_type, entity_id), (tenant_id, entity_type, entity_id)
+
+**Storage router rewrite (`apps/web/src/server/trpc/routers/storage.ts`):**
+- `getUploadUrl` — calls `createPresignedUploadUrl` from `@orqafy/storage`; enforces per-tenant
+  quota server-side (rejects with FORBIDDEN + upgrade message when over limit)
+- `confirmUpload` — records Attachment row + increments `storageBytesUsed` in one DB transaction
+- `list` — returns attachments for an entity (tenant-scoped)
+- `getDownloadUrl` — generates presigned GET URL; tenant ownership verified via `isKeyOwnedByTenant`
+- `delete` — best-effort S3 delete + decrements `storageBytesUsed`; AuditLog on all mutations
+- `quotaInfo` — returns usedBytes/maxBytes/percentUsed for UI quota display
+
+**Plan gating:** `plan.maxStorageMb` from the Plan model (already existed); default 500 MB when
+tenant has no plan. Two tenants on the same Free plan each get their own 500 MB quota (per-tenant
+tracking via `storageBytesUsed`, not a shared pool).
+
+**UI components:**
+- `apps/web/src/components/file-upload.tsx` — drag-and-drop + XHR progress bar; calls getUploadUrl
+  → PUT to S3 → confirmUpload; quota errors shown inline
+- `apps/web/src/components/attachments-panel.tsx` — lists attachments (download/delete); embeds
+  FileUpload; used on all 5 entity surfaces
+
+**Wired surfaces:** customer detail, project detail (overview tab), job order detail, task board
+(task-attachments.tsx reusable), expense list (expense-attachments.tsx reusable)
+
+**Env vars:** `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY`,
+`STORAGE_SECRET_KEY` — already in `.env.example`; no new vars needed.
+
+**Phase:** Phase 7 (feature update) / Phase 8 (completeness)
+
+---
+
+## 2026-06-16 — Task B: Tenant-scoped composite unique on code fields
+
+**Decision:** Change global `@unique` on `code` fields to `@@unique([tenantId, code])` for
+Warehouse, Account, TaxRate, and ExpenseCategory. Two tenants may now share the same code value
+(e.g., both can have a warehouse with code `main-warehouse`).
+
+**Schema changes (migration: 20260616120000_tenant_scoped_code_unique):**
+- `Warehouse.code` — dropped `warehouses_code_key`; created `warehouses_tenant_id_code_key`
+- `Account.code` — dropped `accounts_code_key`; created `accounts_tenant_id_code_key`
+- `TaxRate.code` — dropped `tax_rates_code_key`; created `tax_rates_tenant_id_code_key`
+- `ExpenseCategory.code` — dropped `expense_categories_code_key`; created
+  `expense_categories_tenant_id_code_key`
+- `Department` already had `@@unique([tenantId, code])` — not modified
+- `Product` only has `barcode @unique` (no code field) — not modified
+
+**Seed fixes (`packages/db/src/seed/index.ts`):**
+- 4 `ON CONFLICT (code) DO NOTHING` clauses → `ON CONFLICT (tenant_id, code) DO NOTHING`
+  (expense_categories, tax_rates, warehouses, accounts); departments line already correct
+
+**Rationale:** The original global uniqueness was a design error — a multi-tenant app must allow
+different tenants to use the same internal codes (chart of accounts code `1000`, warehouse
+`main-warehouse`, VAT code `vat-12`). No application code relied on cross-tenant uniqueness —
+all queries were already tenant-scoped.
+
+**Phase:** Phase 8 (schema correctness / completeness sweep)
