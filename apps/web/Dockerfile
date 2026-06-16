@@ -20,6 +20,11 @@ COPY --from=deps /app/ ./
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV SKIP_ENV_VALIDATION=1
+# NEXT_PUBLIC_ vars are inlined at build time by Next.js — must be ARG+ENV here.
+# The real prod sitekey is injected via --build-arg in the CI workflow (docker-publish.yml).
+# If not provided, falls through to the value in .env.example (test key) — safe for staging.
+ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY
+ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
 RUN pnpm --filter @orqafy/db db:generate
 RUN pnpm --filter @orqafy/db build
 RUN pnpm --filter @orqafy/jobs build

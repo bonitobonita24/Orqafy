@@ -2041,8 +2041,13 @@ Komodo deployment (Scenario 32 — V27 model):
     @ HEAD ce1ecdc. Domain: orqafy.powerbyte.app. 27 migrations applied. DB seeded (webmaster
     + demo tenant + roles + chart of accounts + statutory rates). Object storage: Cloudflare R2
     bucket orqafy-prod. Port allocations: DB=5435, pgbouncer=6435, redis=6382.
-    Turnstile: test keys (placeholder) — owner must replace with real Cloudflare Turnstile keys
-    for orqafy.powerbyte.app before public go-live.
+    Turnstile: LIVE keys active as of 2026-06-17 — widget "Orqafy Production" created via CF
+    Account API; sitekey 0x4AAAAAADl-2c78hcloQLEc; allowed hostnames: orqafy.powerbyte.app +
+    orqafy-staging.powerbyte.app. Secret stored SOPS-encrypted in Server-Setups
+    (Powerbyte-Hostinger/secrets/orqafy-turnstile.enc.yaml). GitHub secret
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY set; Dockerfile ARG+ENV added; next Docker build will
+    inline the real sitekey into the JS bundle (NEXT_PUBLIC_ vars bake at build time).
+    pgAdmin prod login email: orqafy@powerbyteitsolutions.com (was .local — rejected by pgadmin4).
   Traefik reverse proxy (V27): staging and prod app services use Traefik labels for automatic
     HTTPS routing. App service no longer exposes host ports — Traefik routes via Docker
     internal network. TRAEFIK_NETWORK=proxy (locked decision). Dev compose unchanged
