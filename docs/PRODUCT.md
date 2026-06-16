@@ -2037,6 +2037,12 @@ Komodo deployment (Scenario 32 — V27 model):
     auto-redeploys on new image. No webhooks needed.
   Production: auto_update: false — human clicks Deploy in Komodo UI after verifying staging.
     Docker Hub is the handoff point. GitHub Actions never contacts Komodo directly.
+  FIRST PRODUCTION DEPLOY: 2026-06-16 — bonitobonita24/orqafy:latest + orqafy-worker:latest
+    @ HEAD ce1ecdc. Domain: orqafy.powerbyte.app. 27 migrations applied. DB seeded (webmaster
+    + demo tenant + roles + chart of accounts + statutory rates). Object storage: Cloudflare R2
+    bucket orqafy-prod. Port allocations: DB=5435, pgbouncer=6435, redis=6382.
+    Turnstile: test keys (placeholder) — owner must replace with real Cloudflare Turnstile keys
+    for orqafy.powerbyte.app before public go-live.
   Traefik reverse proxy (V27): staging and prod app services use Traefik labels for automatic
     HTTPS routing. App service no longer exposes host ports — Traefik routes via Docker
     internal network. TRAEFIK_NETWORK=proxy (locked decision). Dev compose unchanged
