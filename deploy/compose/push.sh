@@ -63,16 +63,32 @@ case "$TARGET" in
       --platform linux/amd64 \
       .
 
-    echo "🧪 Running full-stack tests before push..."
-    bash deploy/compose/start.sh dev up -d
-    sleep 5
-    docker compose -f deploy/compose/dev/docker-compose.app.yml \
-      exec app pnpm test --passWithNoTests || {
+    echo "🧪 Running unit tests locally before push..."
+    # NOTE: Tests run locally (not in-container) because the production runner image
+    # is a slim Node.js standalone that does not include pnpm.
+    # All tests are pure unit tests (vitest environment: 'node') — no DB/network needed.
+    # We set SKIP_ENV_VALIDATION=1 and stub the required env vars for the zod schema.
+    SKIP_ENV_VALIDATION=1 \
+    DATABASE_URL="postgresql://x:x@localhost:5432/x" \
+    DIRECT_URL="postgresql://x:x@localhost:5432/x" \
+    AUTH_SECRET="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" \
+    APP_ENCRYPTION_KEY="nRsEjjFHZIvqVl7XVFUIIPYMG2rte5S14K0ERGhlUXQ=" \
+    NEXTAUTH_URL="http://localhost:3000" \
+    REDIS_URL="redis://localhost:6379" \
+    STORAGE_ENDPOINT="http://localhost:9000" \
+    STORAGE_BUCKET="test" \
+    STORAGE_ACCESS_KEY="test-key" \
+    STORAGE_SECRET_KEY="test-secret-key-22chars" \
+    STORAGE_REGION="us-east-1" \
+    SMTP_HOST="localhost" \
+    SMTP_FROM="test@test.com" \
+    SMTP_FROM_NAME="Test" \
+    TURNSTILE_SECRET_KEY="1x0000000000000000000000000000000AA" \
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY="1x00000000000000000000AA" \
+      pnpm --filter @orqafy/web test --passWithNoTests || {
         echo "❌ Tests failed. Aborting push. Fix tests before pushing."
-        bash deploy/compose/start.sh dev down
         exit 1
       }
-    bash deploy/compose/start.sh dev down
 
     echo "📤 Pushing dev images to Docker Hub..."
     docker push "${IMAGE_BASE}:dev-latest"

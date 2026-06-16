@@ -30,7 +30,13 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+# Upgrade OS packages to pick up patched openssl (CVE-2026-45447 and any future alpine patches)
+RUN apk upgrade --no-cache && \
+    # Patch npm's bundled picomatch (CVE-2026-33671) — npm ships 4.0.3; 4.0.4 is fixed.
+    # npm is a dev tool not used at runtime, but Trivy flags it. Copy patched version over.
+    npm install -g picomatch@4.0.4 --silent && \
+    cp -r /usr/local/lib/node_modules/picomatch/. /usr/local/lib/node_modules/npm/node_modules/picomatch/ && \
+    addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /app/apps/web/public ./apps/web/public
