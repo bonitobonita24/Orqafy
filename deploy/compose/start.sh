@@ -4,7 +4,7 @@
 # Stage/Prod: pulls pre-built image from Docker Hub — never builds from source
 
 ENV=${1:-dev}
-CMD=${@:2}
+CMD="${*:2}"
 BASE=deploy/compose/$ENV
 
 case "$ENV" in

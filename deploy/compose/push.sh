@@ -23,7 +23,6 @@ WORKER_IMAGE_BASE="${DOCKER_USER}/orqafy-worker"
 DOCKERFILE="apps/web/Dockerfile"
 WORKER_DOCKERFILE="apps/worker/Dockerfile"
 SHORT_SHA=$(git rev-parse --short HEAD)
-TIMESTAMP=$(date +%Y%m%d-%H%M)
 
 # ── Guard: docker.publish check ──
 if ! grep -q "publish: true" inputs.yml 2>/dev/null; then

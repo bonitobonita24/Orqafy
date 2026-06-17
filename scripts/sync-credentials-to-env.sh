@@ -177,7 +177,7 @@ done
 # ─── Sync Third-Party API Keys (read each row from the table) ──────
 echo ""
 echo "─── Syncing Third-Party API Keys ───"
-{ awk '/^## 🔑 Third-Party/,/^---$/' "$CREDS" | grep -E "^\| [A-Z][A-Z0-9_]+" || true; } | while IFS='|' read -r _ service key value envs _; do
+{ awk '/^## 🔑 Third-Party/,/^---$/' "$CREDS" | grep -E "^\| [A-Z][A-Z0-9_]+" || true; } | while IFS='|' read -r _ _ key value envs _; do
   key=$(echo "$key" | sed 's/^ *//;s/ *$//')
   value=$(echo "$value" | sed 's/^ *//;s/ *$//')
   envs=$(echo "$envs" | sed 's/^ *//;s/ *$//')
