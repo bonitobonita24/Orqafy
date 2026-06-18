@@ -93,3 +93,18 @@ After promotion: update the `/memory` mirror index (one-line summary per fingerp
 _Promoted: 2026-06-17_
 
 ---
+
+## conductor.design-contract.reskin-without-design-md-update
+
+| Field | Value |
+|---|---|
+| **fingerprint** | `conductor.design-contract.reskin-without-design-md-update` |
+| **machine_signature** | n/a (process gap) |
+| **scope** | `conductor` |
+| **failure** | Owner-approved product-level theme reskin (VoltAgent emerald → shadcn neutral-dark, Orqafy 2026-06-18) was merged without updating `docs/DESIGN.md`. DESIGN.md continued to describe the old VoltAgent palette as the authoritative contract, making the entire V32.8 Rule 31 design-token audit appear as "massive drift" when most divergence was intentional. Root cause: no process gate requiring DESIGN.md update when a reskin PR is merged. |
+| **standing_check** | At done-claim for any PR touching `globals.css`, `tailwind.config*`, or `components.json`: verify `docs/DESIGN.md` shadcn Translation Guide values match actual CSS custom property values in `globals.css`. If they diverge, require a DESIGN.md update or a `docs/DESIGN_DEBT.md` stub in the same PR. |
+| **check_location** | `/memory` feedback file (conductor consult); also add to Phase 4 Parts 5-6 done-claim checklist in `phases.md` |
+
+_Promoted: 2026-06-18_
+
+---
