@@ -4,7 +4,7 @@
 **Audit Date:** 2026-06-18  
 **Framework Version:** V32.8 (Design-as-Contract, Rule 31 / Rule 32)  
 **Auditor:** Claude Sonnet 4.6 (static/code analysis only — no browser available)  
-**Scope:** Token-level + spec-level fidelity audit. Component-level mockup diffing NOT possible (no `docs/MOCKUP.jsx` exists — see §D).
+**Scope:** Token-level + spec-level fidelity audit. **Component-level mockup diff added in second pass** (`docs/OrqafyMockup.jsx` found — see §G).
 
 ---
 
@@ -341,16 +341,11 @@ The `docs/DESIGN.md` file was **not updated when the reskin was applied**. It st
 
 ---
 
-## §D — MOCKUP.jsx Limitation
+## §D — MOCKUP.jsx — FOUND (prior pass missed it)
 
-`docs/MOCKUP.jsx` **does not exist** in this project. The Planning Assistant did not emit a visual mockup baseline, or it was not committed.
+`docs/OrqafyMockup.jsx` **exists** and contains a full 97-screen Phase 2.8 fidelity mockup. The prior audit scan failed to locate it (filename differs from the default `MOCKUP.jsx` convention).
 
-**Impact on this audit:**
-- Component-level visual diffing (V32.8 Rule 31's `design:validate` / `npm run design:check`) cannot run — there is no reference mockup to diff against
-- Only token-level and spec-prose comparison was possible
-- Phase 3.3 gate (MOCKUP review) was either never reached or the artifact was lost
-
-**Recommended action:** Before applying V32.8 design-validate tooling, either produce a MOCKUP.jsx (via `/design-aesthetic` per Scenario 33, logged to PRODUCT.md §10) or formally waive the mockup requirement and document it in DECISIONS_LOG.md.
+Full component-level analysis performed in second pass — see §G below.
 
 ---
 
@@ -427,4 +422,220 @@ The shared `packages/ui/tailwind.config.ts` defines `brand.muted` and `surface` 
 
 ---
 
-*Audit performed on branch `chore/v328-design-audit`. Detection only — no UI changes applied. Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>*
+---
+
+## §G — Component-Level Mockup Findings (Second Pass — `docs/OrqafyMockup.jsx`)
+
+**Source:** `docs/OrqafyMockup.jsx` — 97-screen Phase 2.8 fidelity mockup.  
+**Method:** Full JSX parse + structural comparison vs `apps/web/src/components/layout/` and selected page files.  
+**Color classification rule:** Mockup uses Signal Green (`C.sig = #00d992`). Where built diverges in *color only*, classification = INTENTIONAL RESKIN (owner-approved neutral-dark). Where built diverges in *structure/layout/IA*, classification = STRUCTURAL DRIFT → FIX.
+
+---
+
+### G1. Sidebar — Flat List vs Grouped Sections [STRUCTURAL — FIXED]
+
+**Mockup (`docs/OrqafyMockup.jsx` NAV array):**
+- 16 section groups with uppercase labels (`MAIN`, `CRM / SALES`, `PURCHASING`, `INVENTORY`, `PROJECTS`, `TASKS`, `HR & PAYROLL`, `BANKING & FINANCE`, `ACCOUNTING`, `E-COMMERCE`, `REPAIRS`, `SUPPORT`, `POS`, `CUSTOMER PORTAL`, `SETTINGS`, `PLATFORM ADMIN`)
+- Each group has a label rendered as overline text above its items
+- 97 total screens across all groups
+
+**Built (before fix):**
+- Single flat `NAV_ITEMS` array — 19 items, no section labels, no grouping
+- No overline labels visible to user
+
+**Classification:** STRUCTURAL DRIFT (information architecture — the grouped/labelled sidebar is the intended IA)  
+**Fix applied:** `app-sidebar.tsx` rewritten with 11 grouped sections + uppercase overline labels (`NAV_GROUPS` array). Section groupings map existing routes to logical domains matching mockup IA.  
+**Status:** FIXED ✓
+
+---
+
+### G2. Sidebar Active Item — No Right-Border Accent [STRUCTURAL — FIXED]
+
+**Mockup:**
+```js
+borderRight: sc===item.id ? `2px solid ${C.sig}` : "2px solid transparent"
+background:  sc===item.id ? "rgba(0,217,146,0.08)" : "transparent"
+```
+Active item has a **2px right-edge accent border** as a structural UI pattern (scan indicator), in addition to tinted background.
+
+**Built (before fix):**
+- `bg-primary/10 text-primary` — tinted background only, no right-border accent structure
+
+**Classification:** STRUCTURAL DRIFT (the right-border is a layout indicator pattern, not just a color)  
+**Color note:** In neutral-dark reskin, accent border uses `border-primary` (white) not Signal Green — intentional.  
+**Fix applied:** Active nav items now include `border-r-2 border-primary bg-primary/10` vs `border-r-2 border-transparent` for inactive — preserves the structural pattern in neutral-dark colors.  
+**Status:** FIXED ✓
+
+---
+
+### G3. Sidebar Logo — Slug Shown Below App Name [STRUCTURAL — FIXED]
+
+**Mockup:**
+```jsx
+<div style={{fontSize:13,fontWeight:700}}>Orqafy</div>
+<div style={{fontSize:10,color:C.slate}}>acme-corp</div>  // ← tenant slug below name
+```
+
+**Built (before fix):**
+- App name shown: `Orqafy`
+- Tenant slug shown only in a footer bar at the bottom of the sidebar
+
+**Classification:** STRUCTURAL DRIFT (slug is contextual identity — should be co-located with the logo, not footer-banished)  
+**Fix applied:** Sidebar logo block now shows `Orqafy` (name) + `{slug}` (10px muted-foreground) below it. Footer bar replaced with "Powered by Powerbyte I.T. Solutions" attribution.  
+**Status:** FIXED ✓
+
+---
+
+### G4. Sidebar Logo — signal-glow Applied to Inline Style, Not CSS Class [STRUCTURAL — FIXED]
+
+**Mockup:**
+```jsx
+filter: "drop-shadow(0 0 4px #00d992)"  // Green glow inline
+```
+
+**Built (before fix):**
+```jsx
+style={{ filter: "drop-shadow(0 0 4px hsl(var(--ring)))" }}  // Inline, bypasses .signal-glow
+```
+
+**Classification:** STRUCTURAL (the animation class `.signal-glow` was not being used on the logo — inline style produces static shadow, not pulsing animation)  
+**Fix applied:** Sidebar logo badge now uses `className="... signal-glow"` (the CSS-class animation) instead of inline static drop-shadow. Animation uses `--ring` (neutral gray per reskin) — intentional.  
+**Status:** FIXED ✓
+
+---
+
+### G5. Header — Missing Tenant Slug Context + Tagline [STRUCTURAL — FIXED]
+
+**Mockup header (right side of top bar):**
+```jsx
+<span style={{...}}>Move as one.</span>
+<div style={{...}}>B</div>  // user avatar
+```
+**Mockup header (left side):**
+```jsx
+<button>☰</button>  // sidebar toggle
+<span style={{...}}>acme-corp</span>  // tenant slug
+```
+
+**Built (before fix):**
+- Left: page title (optional) or empty div
+- Right: notification bell only
+- No tenant context, no tagline
+
+**Classification:** STRUCTURAL DRIFT (mockup shows tenant name as header context + "Move as one." tagline as brand identity anchor)  
+**Fix applied:** `AppHeader` now accepts `tenantSlug` prop (passed from app layout). Renders slug on left (context breadcrumb) + "Move as one." tagline on right (hidden on mobile via `sm:block`). Sidebar collapse toggle deferred — requires full client-side state lift (scope too large for this pass; flagged for owner).  
+**Status:** PARTIALLY FIXED ✓ (slug + tagline added; sidebar collapse toggle deferred)
+
+---
+
+### G6. Sidebar Footer — Missing Attribution [STRUCTURAL — FIXED]
+
+**Mockup:**
+```jsx
+<div>Powered by Powerbyte I.T. Solutions</div>
+```
+
+**Built (before fix):**
+- Slug-only text in footer (`<p className="truncate text-xs text-muted-foreground">{slug}</p>`)
+- Slug moved to logo header block in fix G3
+
+**Classification:** STRUCTURAL (brand attribution is part of the mockup's footer contract)  
+**Fix applied:** Footer now shows `Powered by Powerbyte I.T. Solutions` in `text-[10px] text-muted-foreground/50`.  
+**Status:** FIXED ✓
+
+---
+
+### G7. Sidebar — Logo Color (Green Badge → Neutral) [COLOR — INTENTIONAL RESKIN, FLAGGED]
+
+**Mockup:**
+```jsx
+background: C.sig  // #00d992 Signal Green badge
+color: C.abyss     // #050507 black text on green
+filter: "drop-shadow(0 0 4px #00d992)"  // green glow
+```
+
+**Built:**
+```jsx
+className="bg-primary/10 text-primary"  // neutral white tinted badge
+```
+
+**Classification:** INTENTIONAL RESKIN — Signal Green primary is replaced with neutral white per owner-approved shadcn neutral-dark reskin. Logo badge is achromatic. Signal glow uses `--ring` (gray).  
+**Owner flag:** If you want to keep the "O" badge identifiable against the dark sidebar, consider a subtle `bg-muted border border-border` badge — the current `bg-primary/10` (≈ 10% white) is very subtle at `hsl(0 0% 3.9%)` background.  
+**Status:** NOT FIXED (intentional reskin)
+
+---
+
+### G8. Nav Item Active Background — Emerald Tint → Neutral [COLOR — INTENTIONAL RESKIN]
+
+**Mockup:**
+```js
+background: "rgba(0,217,146,0.08)"  // Signal Green 8% tint = visible green wash
+```
+
+**Built:**
+```jsx
+className="bg-primary/10"  // 10% white = extremely subtle; nearly invisible on near-black bg
+```
+
+**Classification:** INTENTIONAL RESKIN  
+**Owner flag:** At neutral-dark (`--background: 0 0% 3.9%`, `--primary: 0 0% 98%`), `bg-primary/10` ≈ `hsl(0 0% 13.7%)` which is close to `--muted`. The active vs inactive state distinction may be too subtle visually. The right-border fix (G2) partially compensates. Consider `bg-primary/15` for stronger active contrast without color change.  
+**Status:** NOT FIXED (intentional reskin) — right-border structural fix (G2) provides structural differentiation
+
+---
+
+### G9. Dashboard — KPI Grid Layout Consistent [ALIGNED ✓]
+
+**Mockup dashboard:**
+- `<KPI>` components in `display:"flex",gap:14,flexWrap:"wrap"` — flexible row with wrap
+- KPI card: `background: C.carbon`, border, padding 14px, ~180px wide
+
+**Built dashboard:**
+- `grid grid-cols-2 gap-4 sm:grid-cols-4` for metric cards
+- Cards: `rounded-lg border border-border bg-card p-4`
+
+**Classification:** ALIGNED in structure (grid/flex of KPI cards). Minor: mockup uses 4-wide flexible wrap; built uses fixed `sm:grid-cols-4`. Functionally equivalent. No fix needed.
+
+---
+
+### G10. Login Page — Centered Form Layout [ALIGNED ✓]
+
+**Mockup:** Full-screen centered login form with logo badge, app name, tagline, email/password/workspace inputs in a card.
+
+**Built:** `flex min-h-screen items-center justify-center` auth layout + `max-w-sm space-y-6` form — structurally matches mockup intent. Logo uses `signal-glow` class (now has keyframes ✓).
+
+**Classification:** ALIGNED
+
+---
+
+## §H — Regression Fixes Applied (This Pass)
+
+| ID | Issue | Fix | Status |
+|---|---|---|---|
+| R1 | `font-sans` class doesn't resolve to Inter — `apps/web/tailwind.config.ts` missing `fontFamily.sans` extension | Added `fontFamily: { sans: ["var(--font-inter)", "Inter", "system-ui", "sans-serif"] }` to `theme.extend` | FIXED ✓ |
+| R2 | `bg-brand-muted` / `bg-surface` classes undefined — `apps/web/tailwind.config.ts` missing `brand.muted` / `surface` color tokens | Added `brand: { DEFAULT: "hsl(var(--primary))", muted: "hsl(var(--brand-muted))" }` and `surface: "hsl(var(--surface))"` to `theme.extend.colors` | FIXED ✓ |
+| R3 | `signal-glow` CSS missing (prior pass) | `.signal-glow` + `@keyframes` already added to `globals.css` in prior pass ✓ | ALREADY FIXED |
+| R4 | `--brand-muted` / `--surface` CSS vars missing (prior pass) | Both vars already defined in `globals.css` in prior pass ✓ | ALREADY FIXED |
+| R5 | Inter not loaded via `next/font` (prior pass) | `layout.tsx` already imports `Inter` from `next/font/google` with `variable: "--font-inter"` ✓ | ALREADY FIXED |
+
+**Note on R1:** The `packages/ui/tailwind.config.ts` already had `fontFamily: { sans: ["Inter", "system-ui", "sans-serif"] }` — but `apps/web/tailwind.config.ts` was not extending it and takes precedence for the web app build. The fix is specifically in `apps/web/tailwind.config.ts` which is what the Next.js build actually uses.
+
+---
+
+## §I — Color / Theme Diffs Flagged for Owner (Mockup Emerald vs Neutral-Dark)
+
+These are **not bugs** — they document where the mockup's original emerald identity diverges from the owner-approved neutral-dark reskin. Listed so the owner can make informed decisions.
+
+| Element | Mockup (Emerald) | Built (Neutral-Dark) | Owner Decision Needed? |
+|---|---|---|---|
+| Primary accent | `#00d992` Signal Green | Near-white `hsl(0 0% 98%)` | No — reskin approved |
+| Logo badge bg | Signal Green filled | `bg-primary/10` (subtle white tint) | Optional: consider `bg-muted border border-border` for visibility |
+| Active nav border | `2px solid #00d992` | `2px solid hsl(0 0% 98%)` | No — structure retained, color is reskin |
+| Active nav bg | `rgba(0,217,146,0.08)` = visible green wash | `bg-primary/10` ≈ 13.7% gray | Optional: increase to `bg-primary/15` for contrast |
+| signal-glow color | Green (`#00d992`) | Ring gray (`hsl(0 0% 83.1%)`) | Optional: keep gray or introduce a single brand accent |
+| Sidebar bg | Carbon `#101010` | `bg-card` = `hsl(0 0% 3.9%)` (same as background) | Optional: `bg-muted` (`0 0% 14.9%`) would restore sidebar/content contrast |
+
+**Sidebar bg contrast note (highest visual impact):** The mockup specified `C.carbon = #101010` for the sidebar vs `C.abyss = #050507` for the main canvas — a deliberate 6% lightness difference to create visual layering. Current built uses `bg-card = hsl(0 0% 3.9%)` which equals `--background`. The sidebar and main content area are indistinguishable without the border. **Recommended:** Change sidebar from `bg-card` to `bg-muted` (`hsl(0 0% 14.9%)`) — this restores the sidebar/content elevation without re-introducing any brand color.
+
+---
+
+*First pass: 2026-06-18, token-level audit only. Second pass: 2026-06-18, full component-level mockup diff + structural fixes applied. Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>*
