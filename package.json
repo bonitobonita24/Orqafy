@@ -24,7 +24,11 @@
     "tools:check-product-sync": "node tools/check-product-sync.mjs",
     "tools:hydration-lint": "node tools/hydration-lint.mjs",
     "preflight": "node tools/preflight-context.mjs",
-    "preflight:test": "node tools/preflight-context.mjs --self-test"
+    "preflight:test": "node tools/preflight-context.mjs --self-test",
+    "design:validate": "node scripts/design-validate.mjs",
+    "design:build": "node scripts/design-validate.mjs && node scripts/design-build.mjs",
+    "design:check": "node scripts/design-check.mjs",
+    "design:check:update": "node scripts/design-check.mjs -- --update-snapshots"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
