@@ -973,3 +973,63 @@ entity that has an attachment requirement per PRODUCT.md — "all of them."
 1026 tests all passing.
 
 **Phase:** Phase 7 (feature update)
+
+---
+
+## Decision — 2026-06-18 — Canonical theme: shadcn neutral-dark (VoltAgent emerald deprecated)
+
+**Decision:** Declare the shadcn/ui default dark (neutral-gray) palette as the canonical and only
+active visual theme for Orqafy. The VoltAgent emerald identity (`#00d992` Signal Green, `#050507`
+Abyss Black, `#101010` Carbon Surface, `#3d3a39` Warm Charcoal border) is **deprecated and
+archived**. `docs/DESIGN.md` has been rewritten to reflect the actual live palette.
+
+**Supersedes:** "Replace Linear + sunset orange with VoltAgent aesthetic" (2026-04-20) — that
+decision governed the Phase 2.8 mockup and was itself superseded by the shadcn neutral-dark reskin
+applied to the actual codebase during the Phase 3/4 shadcn scaffold.
+
+**Rationale:**
+- The shadcn scaffold generated neutral-dark CSS variables as the base. This was intentionally
+  kept (owner-approved) rather than overriding back to the VoltAgent emerald palette.
+- The neutral-dark theme is production-live and visible to users — making the VoltAgent spec the
+  canonical document while neutral-dark is running in prod creates a dangerous contract inversion
+  (audit tools see "massive drift" when the drift is actually intentional).
+- DESIGN.md must describe the ACTUAL deployed palette, not the aspirational mockup palette. The
+  V32.8 design audit (DESIGN_DRIFT.md) confirmed this inversion was the root cause of the audit
+  appearing to show regressions that were not regressions.
+
+**What changes:**
+- `docs/DESIGN.md` — rewritten to describe neutral-dark palette + HSL CSS variable values;
+  VoltAgent references removed from the active spec; typography compression rules retained
+  (system-ui headings, Inter body, tight letter-spacing utilities — these survived the reskin)
+- `apps/web/src/app/globals.css` — accidental drift bugs fixed (see sibling commit in
+  `chore/v328-design-audit`): `--brand-muted` / `--surface` defined; `.signal-glow` @keyframes
+  added (neutral ring-gray glow); heading compression utilities tokenized; `--font-inter`
+  variable wired into body font-family
+- `apps/web/src/app/(tenant)/[slug]/(app)/projects/page.tsx` and
+  `apps/web/src/app/(tenant)/[slug]/(app)/projects/[id]/expenses/page.tsx` — hardcoded
+  `text-[#050507]` (VoltAgent Abyss Black) replaced with `text-primary-foreground` (semantic token)
+- `packages/ui/tailwind.config.ts` — `font-sans` stack prepended with `var(--font-inter)` so
+  Next.js font optimizer controls the family
+
+**What is NOT changing:**
+- All business logic, tRPC routers, Prisma schema, tests — unaffected
+- Component structure — no component logic changes
+- Status pill colors (blue/yellow/red/green Tailwind utilities) — retained as semantic exceptions
+
+**Archived artifacts:**
+- `docs/archive/DESIGN-linear-sunset.md` — Linear + sunset orange (archived 2026-04-20)
+- The VoltAgent DESIGN.md content is preserved in git history (branch `chore/v328-design-audit`,
+  commit `77ef041` contains the last VoltAgent-era `docs/DESIGN.md`)
+
+**Reversible:** YES — re-running the VoltAgent CSS variable values into `globals.css` would
+restore the emerald palette. Typography compression utilities are theme-agnostic and stay either way.
+
+**Files affected:**
+- `docs/DESIGN.md` — rewritten (this entry)
+- `docs/DECISIONS_LOG.md` — this entry
+- `apps/web/src/app/globals.css` — drift fixes + new tokens (sibling commit)
+- `apps/web/src/app/(tenant)/[slug]/(app)/projects/page.tsx` — drift fix (sibling commit)
+- `apps/web/src/app/(tenant)/[slug]/(app)/projects/[id]/expenses/page.tsx` — drift fix (sibling commit)
+- `packages/ui/tailwind.config.ts` — font-sans variable fix (sibling commit)
+
+**Phase:** Design contract reconciliation (V32.8 design-audit branch)
