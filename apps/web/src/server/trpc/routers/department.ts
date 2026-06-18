@@ -9,7 +9,18 @@ import { logger } from "@/lib/logger";
 const _adminReadProcedure = requireRole("Administrator", "Platform Owner");
 const adminWriteProcedure = writeProcedure.use(({ ctx, next }) => {
   if (!ctx.roles.some((r) => ["Administrator", "Platform Owner"].includes(r))) {
-    throw new TRPCError({ code: "FORBIDDEN" });
+    // UX: surface a human-readable message so the client toast isn't the bare
+    // literal "FORBIDDEN". NOTE (RBAC intent, owner decision pending): this gate
+    // checks role NAMES "Administrator"/"Platform Owner", but the seeded roles
+    // are "Tenant Super Admin", "Admin", "Platform Owner" — there is no role
+    // literally named "Administrator", so the tenant owner ("Tenant Super Admin")
+    // is currently 403'd from creating departments. Whether the owner role SHOULD
+    // be allowed is a product/RBAC decision; the role list is intentionally left
+    // unchanged here.
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You don't have permission to manage departments.",
+    });
   }
   return next({ ctx });
 });
