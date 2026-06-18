@@ -178,7 +178,7 @@ describe("Job Order tenant parity (K-prime closure)", () => {
     });
 
     expect(mockJobOrderCreate).toHaveBeenCalledOnce();
-    const callArg = mockJobOrderCreate.mock.calls[0]![0] as any;
+    const callArg = (mockJobOrderCreate.mock.calls[0] as unknown[])[0] as any;
     expect(callArg.data.tenantId).toBe("tenant-A");
     expect(callArg.data.createdById).toBe("user-1");
   });

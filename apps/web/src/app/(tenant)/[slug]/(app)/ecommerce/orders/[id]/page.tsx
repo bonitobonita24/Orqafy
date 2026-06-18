@@ -105,7 +105,7 @@ export default async function EcommerceOrderDetailPage({ params }: PageProps) {
   });
 
   // tenant-scoped: prevents cross-tenant data leak
-  if (order === null || order.tenantId !== tenant!.id) {
+  if (order === null || order.tenantId !== tenant.id) {
     notFound();
   }
 

@@ -29,7 +29,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // ── Auth guard ────────────────────────────────────────────────────────────
   const secret = process.env["INTERNAL_CRON_SECRET"];
-  if (!secret || secret.length < 16) {
+  if (secret == null || secret.length < 16) {
     // Env not configured — refuse to run to avoid accidental open exposure.
     return NextResponse.json({ error: "INTERNAL_CRON_SECRET not configured" }, { status: 503 });
   }

@@ -176,6 +176,7 @@ beforeEach(() => {
   // Default: pass-through that delegates to the same mockDb models.
   // Individual tests override this via mockDb.$transaction.mockImplementation(...)
   // when they need custom per-call tx sub-mocks (e.g. expense tests with local vi.fn()).
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
   mockDb.$transaction.mockImplementation((fn: (tx: typeof mockDb) => Promise<unknown>) => fn(mockDb));
 });
 

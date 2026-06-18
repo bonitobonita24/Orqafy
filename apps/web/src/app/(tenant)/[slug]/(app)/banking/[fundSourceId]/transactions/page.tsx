@@ -14,7 +14,7 @@ interface PageProps {
   searchParams: Promise<{ page?: string; type?: string }>;
 }
 
-async function getFundSource(fundSourceId: string, tenantId: string) {
+async function getFundSource(fundSourceId: string, _tenantId: string) {
   return prisma.fundSource.findUnique({
     where: { id: fundSourceId },
     select: {

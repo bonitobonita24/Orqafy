@@ -29,7 +29,7 @@ const {
   mockJournalEntryCount,
   mockJournalLineFindMany,
   mockJournalLineCount,
-  mockAuditLogCreate,
+  mockAuditLogCreate: _mockAuditLogCreate,
   mockTransaction,
 } = vi.hoisted(() => {
   const mockAuditLogCreate = vi.fn();
@@ -49,15 +49,15 @@ const {
     mockJournalLineFindMany:    vi.fn(),
     mockJournalLineCount:       vi.fn(),
     mockAuditLogCreate,
-    mockTransaction: vi.fn().mockImplementation(async (fn: any) =>
-      fn({
+    mockTransaction: vi.fn().mockImplementation((fn: any) =>
+      Promise.resolve(fn({
         journalEntry: {
           create:  mockJournalEntryCreate,
           update:  mockJournalEntryUpdate,
         },
         journalLine: { deleteMany: mockJournalLineDeleteMany },
         auditLog:    { create: mockAuditLogCreate },
-      })
+      }))
     ),
   };
 });

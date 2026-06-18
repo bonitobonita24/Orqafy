@@ -82,7 +82,7 @@ function ctxForTenant(
   return {
     req: makeReq(),
     userId: "user-1",
-    roles: (options.roles ?? ["Administrator"]) as string[],
+    roles: options.roles ?? ["Administrator"],
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,

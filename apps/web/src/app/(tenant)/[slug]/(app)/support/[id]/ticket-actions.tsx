@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
-const TICKET_STATUS = ["open", "in_progress", "waiting", "resolved", "closed"] as const;
-type TicketStatus = (typeof TICKET_STATUS)[number];
+type TicketStatus = "open" | "in_progress" | "waiting" | "resolved" | "closed";
 
 const STATUS_LABELS: Record<TicketStatus, string> = {
   open: "Open",

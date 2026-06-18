@@ -66,7 +66,7 @@ export default async function GoodsReceiptDetailPage({
   const gr = await getGoodsReceipt(grId);
 
   // tenant-scoped: prevents cross-tenant data leak
-  if (gr === null || gr.tenantId !== tenant!.id) notFound();
+  if (gr === null || gr.tenantId !== tenant.id) notFound();
 
   const totalExpected = gr.items.reduce((sum, i) => sum + Number(i.quantityExpected), 0);
   const totalReceived = gr.items.reduce((sum, i) => sum + Number(i.quantityReceived), 0);

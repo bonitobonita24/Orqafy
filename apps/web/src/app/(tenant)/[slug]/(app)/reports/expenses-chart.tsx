@@ -177,8 +177,8 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
                   color: "hsl(var(--foreground))",
                 }}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                formatter={(value: any, _name: any, props: any) => [
-                  `${formatCurrencyFull(Number(value ?? 0))} (${(props.payload as ChartRow | undefined)?.count ?? 0} records)`,
+                formatter={(value: any, _name: any, props: { payload?: ChartRow }) => [
+                  `${formatCurrencyFull(Number(value ?? 0))} (${props.payload?.count ?? 0} records)`,
                   "Approved",
                 ]}
                 cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}

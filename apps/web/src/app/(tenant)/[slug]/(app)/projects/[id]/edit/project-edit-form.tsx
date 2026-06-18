@@ -74,7 +74,7 @@ export function ProjectEditForm({
     status: (initial.status as ProjectStatus) ?? "planning",
     startDate: toDateInputValue(initial.startDate),
     targetEndDate: toDateInputValue(initial.targetEndDate),
-    budget: initial.budget !== null ? String(initial.budget) : "",
+    budget: initial.budget !== null ? (initial.budget as { toString(): string }).toString() : "",
   });
   const [error, setError] = useState<string | null>(null);
 

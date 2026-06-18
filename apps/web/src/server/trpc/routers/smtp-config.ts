@@ -7,6 +7,7 @@ import { writeProcedure } from "../trpc";
 import { encrypt, decrypt } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
 import { scheduleDigestsForTenant } from "@/server/notifications/digest-scheduler";
+import type * as Nodemailer from "nodemailer";
 
 // Admin-only: reads and writes require Administrator or Platform Owner.
 const adminReadProcedure = requireRole("Administrator", "Platform Owner");
@@ -113,7 +114,7 @@ export const smtpConfigRouter = createTRPCRouter({
 
     // Lazy import nodemailer so it doesn't bloat the main bundle.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const nodemailer = require("nodemailer") as typeof import("nodemailer");
+    const nodemailer = require("nodemailer") as typeof Nodemailer;
     const transporter = nodemailer.createTransport({
       host: row.host,
       port: row.port,

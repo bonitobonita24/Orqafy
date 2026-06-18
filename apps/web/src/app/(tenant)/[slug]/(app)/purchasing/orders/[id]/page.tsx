@@ -97,7 +97,7 @@ export default async function PurchaseOrderDetailPage({
   const order = await getPurchaseOrder(id);
 
   // tenant-scoped: prevents cross-tenant data leak
-  if (order === null || order.tenantId !== tenant!.id) {
+  if (order === null || order.tenantId !== tenant.id) {
     notFound();
   }
 

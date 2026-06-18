@@ -5,8 +5,8 @@ import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
 import { requireRole } from "../middleware/rbac";
 import { logger } from "@/lib/logger";
 
-// Admin-only: Administrator or Platform Owner
-const adminReadProcedure = requireRole("Administrator", "Platform Owner");
+// Admin-only: Administrator or Platform Owner (read variant reserved for future use)
+const _adminReadProcedure = requireRole("Administrator", "Platform Owner");
 const adminWriteProcedure = writeProcedure.use(({ ctx, next }) => {
   if (!ctx.roles.some((r) => ["Administrator", "Platform Owner"].includes(r))) {
     throw new TRPCError({ code: "FORBIDDEN" });
@@ -59,7 +59,7 @@ export const departmentRouter = createTRPCRouter({
    */
   create: adminWriteProcedure.input(createInput).mutation(async ({ input, ctx }) => {
     // Guard: if code supplied, ensure uniqueness within tenant
-    if (input.code) {
+    if (input.code != null && input.code !== "") {
       const existing = await db.department.findUnique({
         where: { tenantId_code: { tenantId: ctx.tenantId, code: input.code } },
       });
@@ -72,7 +72,7 @@ export const departmentRouter = createTRPCRouter({
     }
 
     // Guard: parentId must belong to same tenant
-    if (input.parentId) {
+    if (input.parentId != null && input.parentId !== "") {
       const parent = await db.department.findUnique({ where: { id: input.parentId } });
       if (!parent || parent.tenantId !== ctx.tenantId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Parent department not found." });
@@ -106,7 +106,7 @@ export const departmentRouter = createTRPCRouter({
     }
 
     // Guard: code uniqueness if changing code
-    if (input.code && input.code !== existing.code) {
+    if (input.code != null && input.code !== "" && input.code !== existing.code) {
       const conflict = await db.department.findUnique({
         where: { tenantId_code: { tenantId: ctx.tenantId, code: input.code } },
       });

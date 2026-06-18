@@ -56,7 +56,7 @@ vi.mock("@orqafy/db", () => {
       create: vi.fn(),
     },
     // Pass-through $transaction so router mutations that wrap in a transaction work in tests.
-    $transaction: vi.fn((fn: any) => fn(mockPrisma)),
+    $transaction: vi.fn((fn: (tx: unknown) => unknown) => Promise.resolve(fn(mockPrisma))),
   };
   return {
     prisma: mockPrisma,

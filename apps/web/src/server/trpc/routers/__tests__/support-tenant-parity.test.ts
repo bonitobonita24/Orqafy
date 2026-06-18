@@ -115,7 +115,7 @@ describe("Support tenant parity (K-prime closure)", () => {
     });
 
     expect(mockTicketCreate).toHaveBeenCalledOnce();
-    const callArg = mockTicketCreate.mock.calls[0]![0] as any;
+    const callArg = (mockTicketCreate.mock.calls[0] as unknown[])[0] as any;
     expect(callArg.data.tenantId).toBe("tenant-A");
   });
 

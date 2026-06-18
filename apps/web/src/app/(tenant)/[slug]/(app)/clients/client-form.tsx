@@ -114,7 +114,7 @@ export function ClientForm(props: Props) {
     };
 
   const createMutation = trpc.clients.create.useMutation({
-    onSuccess: (created) => {
+    onSuccess: (_created) => {
       toast.success("Client created.");
       router.push(`/${props.slug}/clients`);
     },

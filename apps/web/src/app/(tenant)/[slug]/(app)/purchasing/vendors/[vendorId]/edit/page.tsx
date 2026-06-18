@@ -40,7 +40,7 @@ export default async function EditVendorPage({
   const vendor = await getVendor(vendorId);
 
   // tenant-scoped: prevents cross-tenant data leak
-  if (vendor === null || vendor.tenantId !== tenant!.id) {
+  if (vendor === null || vendor.tenantId !== tenant.id) {
     notFound();
   }
 

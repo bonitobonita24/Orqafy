@@ -41,11 +41,11 @@ const {
   mockJournalEntryCount:     vi.fn(),
   mockAccountFindMany:       vi.fn(),
   mockJournalLineFindMany:   vi.fn(),
-  mockTransaction: vi.fn().mockImplementation(async (fn: any) => fn({
+  mockTransaction: vi.fn().mockImplementation((fn: any) => Promise.resolve(fn({
     account: { create: mockAccountCreate, update: mockAccountUpdate },
     journalEntry: { create: mockJournalEntryCreate, update: mockJournalEntryUpdate },
     journalLine: { deleteMany: vi.fn() },
-  })),
+  }))),
 }));
 
 vi.mock("@orqafy/db", () => ({

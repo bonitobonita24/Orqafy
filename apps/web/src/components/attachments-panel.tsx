@@ -6,18 +6,7 @@ import { FileUpload } from "@/components/file-upload";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
-const ENTITY_TYPES = [
-  "customer",
-  "project",
-  "job_order",
-  "task",
-  "expense",
-  "invoice",
-  "employee",
-  "purchase_order",
-  "goods_receipt",
-] as const;
-type EntityType = (typeof ENTITY_TYPES)[number];
+type EntityType = "customer" | "project" | "job_order" | "task" | "expense" | "invoice" | "employee" | "purchase_order" | "goods_receipt";
 
 interface Props {
   entityType: EntityType;

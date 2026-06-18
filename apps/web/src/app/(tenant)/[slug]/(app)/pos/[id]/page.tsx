@@ -67,7 +67,7 @@ export default async function POSSessionDetailPage({
   });
 
   // tenant-scoped: prevents cross-tenant data leak
-  if (session === null || session.tenantId !== tenant!.id) {
+  if (session === null || session.tenantId !== tenant.id) {
     notFound();
   }
 

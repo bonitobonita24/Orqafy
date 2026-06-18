@@ -5,18 +5,7 @@ import { Upload, X, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 
-const ENTITY_TYPES = [
-  "customer",
-  "project",
-  "job_order",
-  "task",
-  "expense",
-  "invoice",
-  "employee",
-  "purchase_order",
-  "goods_receipt",
-] as const;
-type EntityType = (typeof ENTITY_TYPES)[number];
+type EntityType = "customer" | "project" | "job_order" | "task" | "expense" | "invoice" | "employee" | "purchase_order" | "goods_receipt";
 
 interface Props {
   entityType: EntityType;

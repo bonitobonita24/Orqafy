@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
 import { prisma as db, writeAuditLog } from "@orqafy/db";
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import {
   computePayslip,
   resolveRatesFromRows,

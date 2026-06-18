@@ -15,7 +15,7 @@ import {
 
 function getStorageBucket(): string {
   const bucket = process.env["STORAGE_BUCKET"];
-  if (!bucket) throw new Error("STORAGE_BUCKET is not set");
+  if (bucket == null || bucket === "") throw new Error("STORAGE_BUCKET is not set");
   return bucket;
 }
 

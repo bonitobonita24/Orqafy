@@ -84,7 +84,7 @@ export function ClockActions({
 
   async function getCoords(): Promise<{ lat: number; lng: number }> {
     return new Promise((resolve) => {
-      if (!navigator.geolocation) {
+      if (navigator.geolocation === undefined) {
         resolve({ lat: 0, lng: 0 });
         return;
       }
@@ -103,7 +103,7 @@ export function ClockActions({
   }
 
   async function handleClockOut() {
-    if (!attendanceId) return;
+    if (attendanceId === null) return;
     const { lat, lng } = await getCoords();
     clockOut.mutate({ attendanceId, lat, lng });
   }

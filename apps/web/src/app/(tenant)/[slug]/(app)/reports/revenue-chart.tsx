@@ -41,9 +41,8 @@ function formatCurrencyFull(value: number): string {
 }
 
 // Bucket paid invoices by calendar day for the area chart
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function bucketByDay(
-  invoices: Array<{ paidAt: Date | null; totalAmount: any }>
+  invoices: Array<{ paidAt: Date | null; totalAmount: unknown }>
 ): Array<{ date: string; revenue: number }> {
   const map = new Map<string, number>();
   for (const inv of invoices) {

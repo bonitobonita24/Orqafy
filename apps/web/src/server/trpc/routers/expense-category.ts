@@ -101,7 +101,7 @@ export const expenseCategoryRouter = createTRPCRouter({
     }
 
     // Guard: code uniqueness if changing
-    if (input.code && input.code !== existing.code) {
+    if (input.code != null && input.code !== "" && input.code !== existing.code) {
       const conflict = await db.expenseCategory.findFirst({
         where: { tenantId: ctx.tenantId, code: input.code, NOT: { id: input.id } },
       });

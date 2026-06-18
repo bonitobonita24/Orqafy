@@ -48,10 +48,10 @@ export default async function EditPoPage({
   const { slug, id } = await params;
   const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
   if (!tenant) notFound();
-  const [po, vendors] = await Promise.all([getPoForEdit(id), getActiveVendors(tenant!.id)]);
+  const [po, vendors] = await Promise.all([getPoForEdit(id), getActiveVendors(tenant.id)]);
 
   // tenant-scoped: prevents cross-tenant data leak
-  if (po === null || po.tenantId !== tenant!.id) notFound();
+  if (po === null || po.tenantId !== tenant.id) notFound();
 
   // Only draft POs are editable — hold all other transitions for owner approval rules
   if (po.status !== "draft") {

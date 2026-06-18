@@ -43,7 +43,7 @@ function customerLabel(customer: {
   return `${customer.firstName} ${customer.lastName}`;
 }
 
-function userLabel(user: {
+function _userLabel(user: {
   firstName: string;
   lastName: string;
   displayName?: string | null;

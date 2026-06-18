@@ -66,7 +66,7 @@ export function PayrollRunForm({ slug, mode, runId, initial = {} }: PayrollRunFo
 
     if (mode === "create") {
       createMut.mutate({ periodStart, periodEnd, currency, notes: notes || undefined });
-    } else if (runId) {
+    } else if (runId != null && runId !== "") {
       updateMut.mutate({ id: runId, periodStart, periodEnd, currency, notes: notes || undefined });
     }
   }

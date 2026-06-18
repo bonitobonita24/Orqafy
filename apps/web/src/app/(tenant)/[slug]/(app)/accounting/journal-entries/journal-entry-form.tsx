@@ -65,7 +65,7 @@ export function JournalEntryForm({
   const [date, setDate] = useState(initial.date ?? new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState(initial.description ?? "");
   const [lines, setLines] = useState<JournalLine[]>(
-    initial.lines?.length ? initial.lines : [{ ...EMPTY_LINE }, { ...EMPTY_LINE }]
+    (initial.lines?.length ?? 0) > 0 ? initial.lines! : [{ ...EMPTY_LINE }, { ...EMPTY_LINE }]
   );
   const [error, setError] = useState<string | null>(null);
 
