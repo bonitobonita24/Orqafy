@@ -25,26 +25,83 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const NAV_ITEMS = [
-  { label: "Dashboard", href: "dashboard", icon: LayoutDashboard },
-  { label: "CRM", href: "crm/customers", icon: HeartHandshake },
-  { label: "Projects", href: "projects", icon: FolderOpen },
-  { label: "Job Orders", href: "job-orders", icon: ClipboardList },
-  { label: "Tasks", href: "tasks", icon: CheckSquare },
-  { label: "Support", href: "support", icon: LifeBuoy },
-  { label: "Invoices", href: "invoices", icon: FileText },
-  { label: "Expenses", href: "expenses", icon: Receipt },
-  { label: "Accounting", href: "accounting", icon: BookOpen },
-  { label: "Banking", href: "banking", icon: Landmark },
-  { label: "Employees", href: "employees", icon: UserCheck },
-  { label: "DTR", href: "dtr", icon: Clock },
-  { label: "Payroll", href: "payroll", icon: DollarSign },
-  { label: "Inventory", href: "inventory", icon: Package },
-  { label: "Purchasing", href: "purchasing", icon: ShoppingBag },
-  { label: "POS", href: "pos", icon: Calculator },
-  { label: "Ecommerce", href: "ecommerce/orders", icon: ShoppingCart },
-  { label: "Reports", href: "reports", icon: BarChart3 },
-  { label: "Settings", href: "settings", icon: Settings },
+// Grouped nav — matches mockup IA (section labels + grouped items).
+// Colors stay neutral-dark (intentional reskin); structure matches mockup.
+const NAV_GROUPS = [
+  {
+    label: "MAIN",
+    items: [
+      { label: "Dashboard", href: "dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: "CRM / SALES",
+    items: [
+      { label: "CRM", href: "crm/customers", icon: HeartHandshake },
+      { label: "Invoices", href: "invoices", icon: FileText },
+    ],
+  },
+  {
+    label: "PURCHASING",
+    items: [
+      { label: "Purchasing", href: "purchasing", icon: ShoppingBag },
+    ],
+  },
+  {
+    label: "INVENTORY",
+    items: [
+      { label: "Inventory", href: "inventory", icon: Package },
+    ],
+  },
+  {
+    label: "PROJECTS & TASKS",
+    items: [
+      { label: "Projects", href: "projects", icon: FolderOpen },
+      { label: "Tasks", href: "tasks", icon: CheckSquare },
+    ],
+  },
+  {
+    label: "HR & PAYROLL",
+    items: [
+      { label: "Employees", href: "employees", icon: UserCheck },
+      { label: "DTR", href: "dtr", icon: Clock },
+      { label: "Payroll", href: "payroll", icon: DollarSign },
+      { label: "Expenses", href: "expenses", icon: Receipt },
+    ],
+  },
+  {
+    label: "BANKING & FINANCE",
+    items: [
+      { label: "Banking", href: "banking", icon: Landmark },
+    ],
+  },
+  {
+    label: "ACCOUNTING",
+    items: [
+      { label: "Accounting", href: "accounting", icon: BookOpen },
+      { label: "Reports", href: "reports", icon: BarChart3 },
+    ],
+  },
+  {
+    label: "E-COMMERCE & POS",
+    items: [
+      { label: "Ecommerce", href: "ecommerce/orders", icon: ShoppingCart },
+      { label: "POS", href: "pos", icon: Calculator },
+    ],
+  },
+  {
+    label: "SUPPORT",
+    items: [
+      { label: "Support", href: "support", icon: LifeBuoy },
+      { label: "Job Orders", href: "job-orders", icon: ClipboardList },
+    ],
+  },
+  {
+    label: "SETTINGS",
+    items: [
+      { label: "Settings", href: "settings", icon: Settings },
+    ],
+  },
 ] as const;
 
 interface AppSidebarProps {
@@ -54,48 +111,65 @@ interface AppSidebarProps {
 export function AppSidebar({ slug }: AppSidebarProps) {
   const pathname = usePathname();
 
+  // bg-muted/30 restores sidebar vs content elevation: mockup used C.carbon (#101010)
+  // vs C.abyss (#050507) for the same purpose; bg-card collapses that layering.
   return (
-    <aside className="flex h-full w-56 flex-col border-r border-border bg-card">
-      {/* Logo */}
+    <aside className="flex h-full w-56 flex-col border-r border-border bg-muted/30">
+      {/* Logo — matches mockup header block; color neutral (reskin) */}
       <div className="flex h-14 items-center gap-2 border-b border-border px-4">
         <span
-          className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-base font-bold text-primary"
-          style={{ filter: "drop-shadow(0 0 4px hsl(var(--ring)))" }}
+          className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-base font-bold text-primary signal-glow"
         >
           O
         </span>
-        <span className="text-sm font-semibold tracking-tight">Orqafy</span>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold leading-tight tracking-tight">Orqafy</p>
+          <p className="truncate text-[10px] text-muted-foreground">{slug}</p>
+        </div>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-2 py-3">
-        <ul className="space-y-0.5">
-          {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
-            const fullHref = `/${slug}/${href}`;
-            const isActive = pathname === fullHref || pathname.startsWith(`${fullHref}/`);
-            return (
-              <li key={href}>
-                <Link
-                  href={fullHref}
-                  className={cn(
-                    "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors",
-                    isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {label}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+      {/* Grouped nav — section labels + items, matching mockup IA */}
+      <nav className="flex-1 overflow-y-auto py-1.5">
+        {NAV_GROUPS.map(({ label: groupLabel, items }) => (
+          <div key={groupLabel} className="mb-0.5">
+            {/* Section label — uppercase overline, matches mockup style */}
+            <p className="px-4 pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-[0.8px] text-muted-foreground/60">
+              {groupLabel}
+            </p>
+            <ul>
+              {items.map(({ label, href, icon: Icon }) => {
+                const fullHref = `/${slug}/${href}`;
+                const isActive =
+                  pathname === fullHref || pathname.startsWith(`${fullHref}/`);
+                return (
+                  <li key={href}>
+                    <Link
+                      href={fullHref}
+                      className={cn(
+                        // Right-border accent on active — matches mockup structural pattern.
+                        // Color stays neutral-dark (intentional reskin, not emerald).
+                        "flex items-center gap-2.5 border-r-2 py-1.5 pl-4 pr-3 text-[12.5px] transition-colors",
+                        isActive
+                          ? "border-primary bg-primary/10 font-semibold text-primary"
+                          : "border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                      )}
+                    >
+                      <Icon className="h-3.5 w-3.5 shrink-0" />
+                      {label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
       </nav>
 
-      {/* Tenant slug badge */}
-      <div className="border-t border-border px-4 py-3">
-        <p className="truncate text-xs text-muted-foreground">{slug}</p>
+      {/* Footer — "Powered by" attribution matching mockup */}
+      <div className="border-t border-border px-4 py-2">
+        <p className="text-[10px] text-muted-foreground/50">
+          Powered by Powerbyte I.T. Solutions
+        </p>
       </div>
     </aside>
   );

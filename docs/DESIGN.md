@@ -1,79 +1,82 @@
 # Visual Design Reference — Orqafy
 
-Visual design reference for Orqafy — inspired by **VoltAgent** from
-[VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md).
+Visual design reference for Orqafy — canonical neutral-dark theme.
 Implementation uses shadcn/ui.
 
-- **Source:** https://getdesign.md/voltagent/design-md (canonical location as of 2026-04-20)
-- **Original GitHub location:** https://github.com/VoltAgent/awesome-design-md/tree/main/design-md/voltagent (now redirects to getdesign.md)
-- **Date adopted:** 2026-04-20 (supersedes Linear + sunset orange — see DECISIONS_LOG.md)
-- **Scope extracted:** Sections 1, 2, 3, 5 only (Theme, Color, Typography, Layout).
-  Component styling, elevation, do's/don'ts, and responsive behaviour are
-  handled by shadcn/ui and not re-specified here.
-- **Previous aesthetic:** Linear + sunset orange `#F26419` accent — archived at
-  `docs/archive/DESIGN-linear-sunset.md`.
+- **Active theme:** shadcn/ui default dark (neutral-gray palette) — owner-approved reskin 2026-06-18
+- **Previous theme:** VoltAgent emerald (archived — see `docs/archive/DESIGN-voltagent.md` and `docs/DECISIONS_LOG.md`)
+- **Source of canonical CSS values:** `apps/web/src/app/globals.css` (`:root` block) — those values override this doc if there is any discrepancy
+- **Date of this rewrite:** 2026-06-18
+
+> **Note on history:** Orqafy went through three design iterations — Linear + sunset orange →
+> VoltAgent emerald → shadcn neutral-dark. The VoltAgent spec (Signal Green, Abyss Black,
+> Carbon Surface, Warm Charcoal) is archived and NOT the active design. See `docs/DECISIONS_LOG.md`
+> for the full decision trail.
 
 ---
 
 ## 1. Visual Theme & Atmosphere
 
-VoltAgent's interface is a deep-space command terminal for the AI age — a developer-facing darkness built on near-pure-black surfaces (`#050507`) where the only interruption is the electric pulse of emerald green energy. The entire experience evokes the feeling of staring into a high-powered IDE at 2am: dark, focused, and alive with purpose. This is not a friendly SaaS landing page — it's an engineering platform that announces itself through code snippets, architectural diagrams, and raw technical confidence.
-
-The green accent (`#00d992`) is used with surgical precision — it glows from headlines, borders, and interactive elements like a circuit board carrying a signal. Against the carbon-black canvas, this green reads as "power on" — a deliberate visual metaphor for an AI agent engineering platform. The supporting palette is built entirely from warm-neutral grays (`#3d3a39`, `#8b949e`, `#b8b3b0`) that soften the darkness without introducing color noise, creating a cockpit-like warmth that pure blue-grays would lack.
-
-Typography leans on the system font stack for headings — achieving maximum rendering speed and native-feeling authority — while Inter carries the body and UI text with geometric precision. Code blocks use SFMono-Regular, the same font developers see in their terminals, reinforcing the tool's credibility at every scroll.
+Orqafy uses the shadcn/ui default dark theme as its canonical visual base — a clean,
+neutral-gray darkness that prioritises legibility and component consistency over chromatic
+identity. The palette is intentionally achromatic: near-pure-black surfaces, high-contrast
+white primary, and mid-gray accents. This creates a professional, low-distraction workspace
+appropriate for a multi-department ERP used across HR, finance, projects, and field operations.
 
 **Key Characteristics:**
-- Carbon-black canvas (`#050507`) with warm-gray border containment (`#3d3a39`) — not cold or sterile
-- Single-accent identity: Emerald Signal Green (`#00d992`) as the sole chromatic energy source
-- Dual-typography system: system-ui for authoritative headings, Inter for precise UI/body text, SFMono for code credibility
-- Ultra-tight heading line-heights (1.0–1.11) creating dense, compressed power blocks
-- Warm neutral palette (`#3d3a39`, `#8b949e`, `#b8b3b0`) that prevents the dark theme from feeling clinical
-- Developer-terminal aesthetic — unusual choice for an ERP used by accountants/HR/field staff, but adopted deliberately (see DECISIONS_LOG.md)
-- Green glow effects (`drop-shadow`, border accents) that make UI elements feel electrically alive
+- Near-pure-black canvas (`hsl(0 0% 3.9%)`) — neutral, no warm undertone
+- Single primary identity: near-white (`hsl(0 0% 98%)`) with near-black foreground (`hsl(0 0% 9%)`)
+- Achromatic accent system — secondary, muted, and accent all use the same mid-gray (`hsl(0 0% 14.9%)`)
+- No chromatic brand accent in the base token layer — semantic color comes from status pills (blue/yellow/red/green via Tailwind utilities)
+- Dual-typography system: system-ui for authoritative headings (h1/h2/h3), Inter for UI/body text, SFMono for code
+- Tight heading compression (negative letter-spacing, compressed line-heights) — inherited from the VoltAgent typography decision (see §3)
+- shadcn/ui component library is the primary implementation vehicle; all radix primitives use these token values
 
 ---
 
 ## 2. Color Palette & Roles
 
-### Primary Accent (single chromatic identity)
-- **Emerald Signal Green** (`#00d992`): Core brand energy — accent borders, glow effects, active nav link border, in-progress pipeline step borders, pill-brand text, highest-signal interactive moments. The "power-on" indicator of the entire interface.
-- **VoltAgent Mint** (`#2fd6a1`): Button-text variant of the brand green — slightly warmer and more readable than pure Signal Green. Used specifically for CTA text on dark surfaces (Primary CTA pattern: Carbon Surface bg + Mint text + Signal Green border).
-- **Tailwind Emerald** (`#10b981`): Ecosystem-standard green for success pills and completion states — intentionally distinct from Signal Green so success and brand don't visually collide.
-
-### Secondary (used sparingly)
-- **Soft Purple** (`#818cf8`): Cool indigo-violet reserved for Security Lavender contexts (Turnstile verified indicator, SMTP encryption badges) — does NOT participate in primary brand accent system.
-- **Info Teal** (`#4cb3d4`): Cool teal-blue for informational callouts — reserved for tip admonitions.
+### Primary Accent (single identity)
+- **Near-White** (`hsl(0 0% 98%)`): Primary interactive color — filled buttons, active chips,
+  primary CTA background. CSS: `--primary: 0 0% 98%`
+- **Near-Black Foreground** (`hsl(0 0% 9%)`): Text on primary surfaces (buttons, chips).
+  CSS: `--primary-foreground: 0 0% 9%`
 
 ### Surface & Background
-- **Abyss Black** (`#050507`): Page canvas — near-pure black with faintest warm undertone. All public-facing pages, dashboard background, sidebar outer shell.
-- **Carbon Surface** (`#101010`): Primary card, button, and contained-element background — one shade lighter than Abyss. Used across ALL contained surfaces (cards, header, sidebar, inputs, buttons).
-- **Warm Charcoal Border** (`#3d3a39`): Signature containment color — warm, almost brownish dark tone. Applied as 1px standard, 2px emphasized, 3px large-button container.
+- **Near-Black Canvas** (`hsl(0 0% 3.9%)`): Page background, card background, popover background.
+  CSS: `--background: 0 0% 3.9%` / `--card: 0 0% 3.9%` / `--popover: 0 0% 3.9%`
+- **Mid-Gray Elevated** (`hsl(0 0% 14.9%)`): Secondary, muted, accent, input, border surfaces.
+  CSS: `--secondary / --muted / --accent / --input / --border: 0 0% 14.9%`
+- **Brand Muted** (`hsl(0 0% 14.9%)`): Extended alias for muted brand surfaces (`bg-brand-muted`).
+  CSS: `--brand-muted: 0 0% 14.9%`
+- **Surface** (`hsl(0 0% 14.9%)`): Extended alias for elevated surfaces (`bg-surface`).
+  CSS: `--surface: 0 0% 14.9%`
 
 ### Text Hierarchy
-- **Snow White** (`#f2f2f2`): Primary text on dark surfaces — softened off-white, not pure `#ffffff`. Default text color.
-- **Warm Parchment** (`#b8b3b0`): Secondary body text — warm light gray with slight pinkish undertone. Paragraph body, descriptions.
-- **Steel Slate** (`#8b949e`): Tertiary text, metadata, timestamps, de-emphasized content. Nav link default state.
-- **Warm Quaternary** (`#5c5855`): Most subdued text — group labels, disabled states, subtle labels, placeholder text.
+- **Near-White** (`hsl(0 0% 98%)`): Primary text — all foreground, card-foreground, popover-foreground.
+  CSS: `--foreground: 0 0% 98%`
+- **Mid-Gray** (`hsl(0 0% 63.9%)`): Muted / secondary text — descriptions, metadata.
+  CSS: `--muted-foreground: 0 0% 63.9%`
+- **Near-Black** (`hsl(0 0% 9%)`): Text on primary-colored backgrounds (buttons, chips).
+  CSS: `--primary-foreground: 0 0% 9%`
 
-### Status Colors (chromatic exceptions for semantic clarity)
-- **Success** (`#10b981` Tailwind Emerald): Paid invoices, completed tasks, approved records. Intentionally distinct from Signal Green `#00d992`.
-- **Signal Green Success** (`#00d992`): In-progress indicators, active pipeline steps, pulsing glow states — reserved for brand-adjacent "power on" signals rather than static completion.
-- **Warning Amber** (`#ffba00`): Warning alerts, pending states, "awaiting approval" flags.
-- **Warning Pale** (`#ffdd80`): Softened amber for warning backgrounds.
-- **Danger Coral** (`#fb565b`): Error states, destructive actions, Overdue/Suspended pills.
-- **Danger Rose** (`#fd9c9f`): Softened coral for error backgrounds.
+### Status Colors (semantic exceptions — Tailwind utilities, not CSS variables)
+These bypass the token layer by design — semantic clarity requires chromatic specificity:
+- **Blue** (`text-blue-400 bg-blue-400/10 border-blue-400/30`): Info, planning states
+- **Yellow** (`text-yellow-400 bg-yellow-400/10 border-yellow-400/30`): Warning, on-hold states
+- **Red** (`text-red-400 bg-red-400/10 border-red-400/30`): Error, cancelled states
+- **Green** (`text-green-400 bg-green-400/10 border-green-400/30`): Success, completed states
+- **Destructive** (`hsl(0 62.8% 30.6%)`): shadcn destructive variant. CSS: `--destructive: 0 62.8% 30.6%`
 
-### Border System (elevation via border weight, not shadow)
-- **1px solid `#3d3a39`**: Standard card containment, default nav bar, code blocks — Contained (Level 1)
-- **2px solid `#00d992`**: Active/highlighted feature cards, selected pipeline steps, focused nav link — Accent (Level 3)
-- **3px solid `#3d3a39`**: Large interactive buttons, emphasized containers — Emphasized (Level 2)
-- **1px dashed `rgba(79,93,117,0.4)`**: Workflow diagrams, decorative containers — blueprint aesthetic
+### Ring / Focus
+- **Ring** (`hsl(0 0% 83.1%)`): Focus rings, signal-glow animation color. CSS: `--ring: 0 0% 83.1%`
 
-### Gradient / Glow System
-- **Green Signal Glow**: `drop-shadow(0 0 2px #00d992)` animating to `drop-shadow(0 0 8px #00d992)` — pulsing "electric charge" effect on the Orqafy "O" logo mark, active disbursement pipeline step, primary CTA hover states. Animated via `@keyframes signal-glow` with 2.5s ease-in-out infinite.
-- **Warm Ambient Haze**: `rgba(92,88,85,0.2) 0px 0px 15px` — diffused warm-toned shadow for elevated cards.
-- **Deep Dramatic Elevation**: `rgba(0,0,0,0.7) 0px 20px 60px` + `rgba(148,163,184,0.1) 0px 0px 0px 1px inset` — heavy downward shadow for modals/dialogs.
+### Sidebar Tokens
+Sidebar uses the same values as the root — fully consistent neutral-dark:
+`--sidebar-background: 0 0% 3.9%` / `--sidebar-foreground: 0 0% 98%` /
+`--sidebar-primary: 0 0% 98%` / `--sidebar-primary-foreground: 0 0% 9%` /
+`--sidebar-accent: 0 0% 14.9%` / `--sidebar-border: 0 0% 14.9%` /
+`--sidebar-ring: 0 0% 83.1%`
 
 ---
 
@@ -81,36 +84,66 @@ Typography leans on the system font stack for headings — achieving maximum ren
 
 ### Font Family
 
-- **Primary (Headings)**: `system-ui`, with fallbacks: `-apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, sans-serif`
-- **Secondary (Body/UI)**: `Inter`, with fallbacks inheriting from system-ui stack. OpenType features: `"calt", "rlig"` (contextual alternates and required ligatures)
+- **Primary (Headings h1/h2/h3)**: `system-ui`, with fallbacks:
+  `-apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, sans-serif`
+- **Secondary (Body/UI)**: `Inter` loaded via `next/font/google` in `apps/web/src/app/layout.tsx`,
+  exposed as `--font-inter` CSS variable. Tailwind `font-sans` = `var(--font-inter), Inter, system-ui, sans-serif`.
+  OpenType features: `"calt", "rlig"` (contextual alternates and required ligatures)
 - **Monospace (Code)**: `SFMono-Regular`, with fallbacks: `Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace`
 
-Implementation: Apply `.font-heading` class to h1/h2/h3 elements that should render in system-ui. Body text inherits Inter from the html/body font-family declaration.
+**Implementation:**
+- `h1/h2/h3` elements: `font-family: system-ui` declared in `globals.css` base layer
+- `body`: `font-family: var(--font-inter, Inter, system-ui, sans-serif)` + OpenType features
+- Tailwind `font-sans` class maps to `[var(--font-inter), Inter, system-ui, sans-serif]`
+- `.font-heading` CSS class is defined but intentionally redundant — h1/h2/h3 are already
+  declared system-ui in the base layer. Use it for semantic override only.
 
 ### Hierarchy
 
-| Role | Font | Size | Weight | Line Height | Letter Spacing | Notes |
+| Role | Font | Size | Weight | Line Height | Letter Spacing | CSS Utility |
 |---|---|---|---|---|---|---|
-| Display / Hero | system-ui | 60px | 400 | 1.00 | -0.65px | Maximum impact, compressed blocks |
-| Section Heading | system-ui | 36px | 400 | 1.11 | -0.9px | Tightest letter-spacing in system |
-| Sub-heading | system-ui | 24px | 700 | 1.33 | -0.6px | **Bold 700** at this size |
-| Overline | system-ui | 20px | 600 | 1.40 | +0.5px | Uppercase transform |
-| Feature Title | Inter | 20px | 500–600 | 1.40 | normal | Card headings |
-| Body / Button | Inter | 16px | 400–600 | 1.50–1.65 | normal | Standard text, nav, buttons |
-| Nav Link | Inter | 14.45px | 500 | 1.65 | normal | Navigation |
-| Caption / Label | Inter | 14px | 400–600 | 1.43–1.65 | normal | Descriptions, metadata |
-| Tag / Overline Tiny | system-ui | 14px | 600 | 1.43 | +2.52px | Widest letter-spacing |
-| Micro | Inter | 12px | 400–500 | 1.33 | normal | Smallest sans |
-| Code Body | SFMono-Regular | 13–14px | 400 | 1.23–1.43 | normal | Inline code, SKUs, refs |
+| Display / Hero | system-ui | 60px | 400 | 1.00 | -0.65px | `.heading-display` |
+| Section Heading | system-ui | 36px | 400 | 1.11 | -0.9px | `.heading-section` |
+| Sub-heading | system-ui | 24px | 700 | 1.33 | -0.6px | `.heading-sub` |
+| Overline / Tag | system-ui | 14px | 600 | 1.43 | +2.52px | `.heading-overline` (uppercase) |
+| Feature Title | Inter | 20px | 500–600 | 1.40 | normal | Tailwind `text-xl font-medium` |
+| Body / Button | Inter | 16px | 400–600 | 1.50–1.65 | normal | Tailwind `text-base` |
+| Nav Link | Inter | 14.45px | 500 | 1.65 | normal | Navigation (approx `text-[14.45px]`) |
+| Caption / Label | Inter | 14px | 400–600 | 1.43–1.65 | normal | Tailwind `text-sm` |
+| Micro | Inter | 12px | 400–500 | 1.33 | normal | Tailwind `text-xs` |
+| Code Body | SFMono-Regular | 13–14px | 400 | 1.23–1.43 | normal | `.font-code` or `font-mono` |
 
 ### Principles
 
-- **System-native authority**: Display headings use system-ui rather than custom web font — largest text renders instantly and inherits OS native personality. Variability is a feature.
-- **Tight compression creates density**: Hero line-heights extremely compressed (1.0), negative letter-spacing (-0.65px at 60px, -0.9px at 36px). Counterintuitively, 36px uses tighter letter-spacing than 60px — VoltAgent's explicit choice.
-- **Weight gradient, not weight contrast**: Traditional 300→400→500→600→700 progression. Bold (700) reserved for sub-headings.
-- **No signature weight**: Unlike Linear's 510, VoltAgent uses standard 500/600/700. CSS `.w-510` and `.w-590` utility classes are REMAPPED to 500 and 600 respectively to preserve HTML markup while applying VoltAgent's weights.
-- **Uppercase is earned and wide**: When uppercase appears, always paired with generous letter-spacing (+0.45px to +2.52px). Never applied to headings.
-- **OpenType**: `"calt"` and `"rlig"` enabled globally (different from Linear's `"cv01", "ss03"`).
+- **System-native authority**: Display headings use system-ui — renders instantly, inherits OS native personality. Variability is a feature.
+- **Tight compression creates density**: Negative letter-spacing at display sizes (-0.65px at 60px, -0.9px at 36px). Use `.heading-display` / `.heading-section` / `.heading-sub` utilities from `globals.css`.
+- **Weight gradient**: Standard 400→500→600→700 progression. `.w-510` = 500, `.w-590` = 600 (legacy markup compatibility).
+- **Uppercase is earned and wide**: Always paired with generous letter-spacing (+2.52px via `.heading-overline`). Never applied to main headings.
+- **OpenType**: `"calt"` and `"rlig"` enabled globally on body.
+
+---
+
+## 4. Animation
+
+### Signal Glow (`.signal-glow`)
+Pulsing drop-shadow animation applied to identity elements only. In neutral-dark, the glow uses
+`hsl(var(--ring))` — the ring gray (`hsl(0 0% 83.1%)`).
+
+```css
+/* From globals.css */
+@keyframes signal-glow {
+  0%, 100% { filter: drop-shadow(0 0 2px hsl(var(--ring) / 0.6)); }
+  50%       { filter: drop-shadow(0 0 8px hsl(var(--ring) / 0.9)); }
+}
+.signal-glow { animation: signal-glow 2.5s ease-in-out infinite; }
+```
+
+**Applied to (targeted, not decorative):**
+- Header logo ("O" mark — Orqafy brand identity)
+- Login screen logo — high-visibility placement
+- Active disbursement pipeline step — "current action" indicator
+
+**NOT applied to:** general nav links, success pills, or CTA hover states.
 
 ---
 
@@ -118,82 +151,88 @@ Implementation: Apply `.font-heading` class to h1/h2/h3 elements that should ren
 
 ### Spacing System
 - Base unit: 8px
-- Scale: 2px, 4px, 5px, 6px, 6.4px, 8px, 12px, 16px, 20px, 24px, 28px, 32px, 40px, 48px, 64px
-- Button padding: 12px × 16px standard, 20px container-button
-- Card internal padding: 24–32px
-- Section vertical spacing: 64–96px between major sections
-- Component gap: 16–24px between sibling cards
+- Tailwind spacing scale (Tailwind default: 4px = 1 unit)
+- Button padding: `px-4 py-2` standard, `px-4 py-3` for larger CTAs
+- Card internal padding: `p-6` (24px)
+- Component gap: `gap-4` to `gap-6` (16–24px) between sibling cards
 
 ### Grid & Container
-- Max content width: ~1280–1440px, centered
-- Hero: centered single-column with maximum breathing room
-- Card grids: 2–3 column for feature showcases
+- Max content width: `container` class (1400px at 2xl) — centered with `2rem` padding
+- Card grids: responsive `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`
 
-### Whitespace Philosophy
-- **Cinematic breathing room between sections**: massive vertical gaps create a "scroll-through-chapters" experience
-- **Dense within components**: cards internally compact with tight line-heights and controlled padding
-- **Border-defined separation**: Warm Charcoal borders (`#3d3a39`) delineate content zones — the border IS the whitespace signal
-- **Hero-first hierarchy**: top of page commands the most space
-
-### Border Radius Scale
-- Nearly squared (4px): Small inline elements, SVG containers, code spans
-- Subtly rounded (6px): Buttons, links
-- Code-specific (6.4px): Code blocks, `<pre>` elements
-- Comfortably rounded (8px): Content cards — STANDARD containment radius
-- Pill-shaped (9999px): Tags, badges, status indicators
+### Border Radius Scale (from `--radius: 0.5rem`)
+- `rounded-sm`: `calc(0.5rem - 4px)` = 4px — small inline elements
+- `rounded-md`: `calc(0.5rem - 2px)` = 6px — buttons, inputs
+- `rounded-lg`: `0.5rem` = 8px — cards (standard containment)
+- `rounded-full`: pill-shaped — tags, badges, status chips
 
 ---
 
 ## Orqafy Implementation Notes
 
-**CTA Pattern (overrides filled-button pattern):**
-All primary CTAs follow VoltAgent's "Primary Green CTA" convention — Carbon Surface background (`#101010`) + VoltAgent Mint text (`#2fd6a1`) + Signal Green border (`#00d992`) + green glow on hover. NEVER use Signal Green as a filled button background EXCEPT for small tags/ribbons (e.g. "MOST POPULAR" pricing plan ribbon, which uses Abyss Black text on Signal Green for maximum contrast).
+**CTA Pattern (neutral-dark):**
+All primary CTAs: `bg-primary text-primary-foreground` — near-white background with near-black
+text. This is the stock shadcn filled-button pattern. Do NOT use hardcoded `text-[#050507]`
+(that was the VoltAgent Abyss Black value — now replaced with `text-primary-foreground`).
 
-**Signal Glow Application (targeted, not decorative):**
-The `.signal-glow` animation (pulsing drop-shadow, 2px → 8px, 2.5s infinite) is applied to:
-- Header logo ("O" mark — Orqafy brand) — identity reinforcement
-- Login screen logo — high-visibility on the most-loaded page
-- Active disbursement pipeline step — the "current action" indicator
-
-NOT applied to: every active nav link, every success pill, or CTA buttons (hover-only glow). The animation earns its placement.
-
-NOTE: The app logo is the Orqafy "O" mark (Signal Green rounded square with white/dark "O").
-"Powered by Powerbyte I.T. Solutions" appears as text in the footer — NOT as a logo mark.
-The Powerbyte parent brand is text-only in the product UI.
+**Signal Glow Application:**
+The `.signal-glow` class produces a neutral-gray pulsing glow (ring color). Applied to:
+header logo, login screen logo, active disbursement pipeline step. NOT decorative.
 
 **Success vs Brand Pill Disambiguation:**
-- `pill-success` uses Tailwind Emerald `#10b981` (completion state)
-- `pill-brand` uses Signal Green `#00d992` (brand association — Trial, Published, Approved)
+- Success completion states: `text-green-400 bg-green-400/10 border-green-400/30` (Tailwind green)
+- Active/in-progress brand states: `text-primary bg-primary/10 border-primary/30` (near-white)
+- These must remain visually distinguishable.
 
-These must remain visually distinguishable to prevent users from confusing "done" with "brand-marked".
+**Elevation Philosophy:**
+shadcn default: border-based separation using `--border` (`hsl(0 0% 14.9%)`). No custom shadow
+system beyond Tailwind defaults. `ring-offset-background` uses `--background`.
 
-**Elevation Philosophy (no box-shadow for depth):**
-VoltAgent communicates depth primarily through border weight and color. The standard `1px solid #3d3a39` border IS the elevation. Adding `2px solid #00d992` or switching border color communicates importance more than adding box-shadow. Shadows reserved for Level 4 (ambient haze on elevated cards) and Level 5 (dramatic modals) only.
-
-**Destructive Pill Tuning:**
-Kept at `#fb565b` (Danger Coral) with `rgba(251,86,91,0.12)` background + `rgba(251,86,91,0.4)` border. Hue-distinct from Signal Green (~360° vs 152° — far beyond confusion threshold).
+**PDF Viewer Exception:**
+`apps/web/src/app/(tenant)/[slug]/(app)/crm/quotations/[id]/pdf/quotation-pdf-viewer.tsx`
+uses hardcoded Tailwind gray hex values (`#e5e7eb`, `#6b7280`, `#374151`, `#9ca3af`, `#d1d5db`).
+This is a **platform-constrained exception** — `@react-pdf/renderer` does not support CSS
+custom properties in inline styles. Do not attempt to replace these with `hsl(var(--*))`.
 
 ---
 
 ## shadcn/ui Translation Guide
 
-Key CSS variable mappings for Phase 4 `globals.css`:
+Key CSS variable mappings in `apps/web/src/app/globals.css` (HSL format — space-separated
+`H S% L%` inside `hsl()` calls, per shadcn/ui convention):
 
 ```css
 :root {
-  --background: 5 6 8;           /* #050507 Abyss Black */
-  --foreground: 242 242 242;     /* #f2f2f2 Snow White */
-  --card: 16 16 16;              /* #101010 Carbon Surface */
-  --card-foreground: 242 242 242;
-  --border: 61 58 57;            /* #3d3a39 Warm Charcoal */
-  --input: 61 58 57;
-  --primary: 0 217 146;          /* #00d992 Signal Green */
-  --primary-foreground: 5 6 8;   /* Abyss on Signal */
-  --ring: 0 217 146;
-  --muted: 139 148 158;          /* #8b949e Steel Slate */
-  --accent: 47 214 161;          /* #2fd6a1 VoltAgent Mint */
-  --destructive: 251 86 91;      /* #fb565b Danger Coral */
+  --background:           0 0% 3.9%;     /* near-pure-black canvas */
+  --foreground:           0 0% 98%;      /* near-white primary text */
+  --card:                 0 0% 3.9%;     /* same as background */
+  --card-foreground:      0 0% 98%;
+  --popover:              0 0% 3.9%;
+  --popover-foreground:   0 0% 98%;
+  --primary:              0 0% 98%;      /* near-white — filled buttons, active chips */
+  --primary-foreground:   0 0% 9%;       /* near-black text on primary */
+  --secondary:            0 0% 14.9%;    /* mid-gray secondary surfaces */
+  --secondary-foreground: 0 0% 98%;
+  --muted:                0 0% 14.9%;
+  --muted-foreground:     0 0% 63.9%;    /* de-emphasized text */
+  --accent:               0 0% 14.9%;
+  --accent-foreground:    0 0% 98%;
+  --destructive:          0 62.8% 30.6%; /* dark red for destructive variant */
+  --destructive-foreground: 0 0% 98%;
+  --border:               0 0% 14.9%;
+  --input:                0 0% 14.9%;
+  --ring:                 0 0% 83.1%;    /* focus ring + signal-glow color */
+  --radius:               0.5rem;
+  /* Extended: */
+  --brand-muted:          0 0% 14.9%;    /* alias for bg-brand-muted */
+  --surface:              0 0% 14.9%;    /* alias for bg-surface */
 }
 ```
 
-The extracted theme (sections 1–3, 5) is the visual truth; shadcn/ui components are the implementation vehicle.
+**Format note:** shadcn/ui CSS variables use `H S% L%` (space-separated, no `hsl()` wrapper)
+because Tailwind's `hsl(var(--token))` wraps them at the point of use. The old VoltAgent
+spec used raw `R G B` space-separated values — that format is **deprecated** and was the
+source of the F2 format mismatch. All values here are in the correct `H S% L%` HSL format.
+
+The extracted theme (sections 1–4) is the visual truth; shadcn/ui components are the
+implementation vehicle.

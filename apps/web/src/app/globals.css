@@ -5,6 +5,8 @@
 @layer base {
   :root {
     /* ── shadcn/ui default dark theme — neutral base ── */
+    /* Canonical theme: shadcn neutral-dark (owner-approved reskin 2026-06-18).      */
+    /* Previous: VoltAgent emerald (archived in docs/archive/DESIGN-linear-sunset.md) */
 
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
@@ -36,6 +38,12 @@
 
     --radius: 0.5rem;
 
+    /* Extended tokens — used by packages/ui tailwind.config.ts brand/surface aliases */
+    /* brand-muted: a slightly-elevated neutral surface for muted brand contexts       */
+    --brand-muted: 0 0% 14.9%;
+    /* surface: elevated surface one step above --card (used by bg-surface utilities)  */
+    --surface: 0 0% 14.9%;
+
     /* Chart tokens — shadcn dark stock */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
@@ -62,12 +70,13 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-inter, Inter, system-ui, sans-serif);
     font-feature-settings: "calt", "rlig";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Heading elements use system-ui for native authority */
+  /* Heading elements use system-ui for native authority (DESIGN.md §3 Typography) */
   h1, h2, h3 {
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", Helvetica, Arial, sans-serif;
   }
@@ -78,8 +87,54 @@
   .w-510 { font-weight: 500; }
   .w-590 { font-weight: 600; }
 
+  /* Heading compression tokens (DESIGN.md §3 Hierarchy — tight letter-spacing creates density) */
+  /* Display / Hero: 60px, lh 1.00, ls -0.65px */
+  .heading-display {
+    font-size: 3.75rem;        /* 60px */
+    line-height: 1;
+    letter-spacing: -0.65px;
+  }
+  /* Section Heading: 36px, lh 1.11, ls -0.9px */
+  .heading-section {
+    font-size: 2.25rem;        /* 36px */
+    line-height: 1.11;
+    letter-spacing: -0.9px;
+  }
+  /* Sub-heading: 24px, weight 700, lh 1.33, ls -0.6px */
+  .heading-sub {
+    font-size: 1.5rem;         /* 24px */
+    font-weight: 700;
+    line-height: 1.33;
+    letter-spacing: -0.6px;
+  }
+  /* Tag / Overline Tiny: 14px, weight 600, lh 1.43, ls +2.52px — uppercase required */
+  .heading-overline {
+    font-size: 0.875rem;       /* 14px */
+    font-weight: 600;
+    line-height: 1.43;
+    letter-spacing: 2.52px;
+    text-transform: uppercase;
+  }
+
+  /* signal-glow animation — neutral-dark palette: pulsing ring-color drop-shadow     */
+  /* Applied to: header logo, login screen logo, active disbursement pipeline step     */
+  /* Uses --ring (neutral gray in current theme; swap to brand color if theme changes) */
+  .signal-glow {
+    animation: signal-glow 2.5s ease-in-out infinite;
+  }
+
   /* Monospace / code surfaces */
   .font-code {
     font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+}
+
+/* ── @keyframes ── */
+@keyframes signal-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px hsl(var(--ring) / 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px hsl(var(--ring) / 0.9));
   }
 }
