@@ -100,6 +100,12 @@ mockup; reference artifact only, not shipping code).
 
 ## Decision — 2026-04-20 — Replace Linear + sunset orange with VoltAgent aesthetic
 
+> ⛔ SUPERSEDED (2026-06-18): getdesign.md is DROPPED fleet-wide. The VoltAgent/getdesign
+> aesthetic was never shipped to production. The canonical theme is **shadcn/ui neutral-dark**
+> (owner-approved). See "Decision — 2026-06-18 — Canonical theme: shadcn neutral-dark
+> (VoltAgent emerald deprecated)" below. This entry is preserved as historical provenance only —
+> do not treat any getdesign.md instruction here as active.
+
 **Decision:** Supersede the two prior decisions (adopt Linear visual aesthetic; override
 Linear indigo with sunset orange `#F26419`) in favor of a full swap to the VoltAgent
 aesthetic from getdesign.md. This decision:
