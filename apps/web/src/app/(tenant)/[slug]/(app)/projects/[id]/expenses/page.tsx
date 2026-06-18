@@ -207,7 +207,7 @@ export default async function ProjectExpensesPage({
           href={buildPageUrl(1)}
           className={`px-3 py-1 rounded-full text-sm border transition-colors ${
             typeFilter === undefined
-              ? "bg-primary text-[#050507] border-primary"
+              ? "bg-primary text-primary-foreground border-primary"
               : "bg-muted border-border hover:border-primary/50"
           }`}
         >
@@ -219,7 +219,7 @@ export default async function ProjectExpensesPage({
             href={buildPageUrl(1, t)}
             className={`px-3 py-1 rounded-full text-sm border transition-colors ${
               typeFilter === t
-                ? "bg-primary text-[#050507] border-primary"
+                ? "bg-primary text-primary-foreground border-primary"
                 : "bg-muted border-border hover:border-primary/50"
             }`}
           >

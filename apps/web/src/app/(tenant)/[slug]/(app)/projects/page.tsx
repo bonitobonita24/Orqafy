@@ -207,7 +207,7 @@ export default async function ProjectsPage({ params, searchParams }: PageProps) 
         </div>
         <Link
           href={`/${slug}/projects/new`}
-          className="px-4 py-2 rounded-md bg-primary text-[#050507] text-sm font-medium hover:bg-primary/90 transition-colors"
+          className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
         >
           New Project
         </Link>
@@ -219,7 +219,7 @@ export default async function ProjectsPage({ params, searchParams }: PageProps) 
           href="?"
           className={`px-3 py-1 rounded-full text-sm border transition-colors ${
             statusFilter === undefined
-              ? "bg-primary text-[#050507] border-primary"
+              ? "bg-primary text-primary-foreground border-primary"
               : "bg-muted border-border hover:border-primary/50"
           }`}
         >
@@ -232,7 +232,7 @@ export default async function ProjectsPage({ params, searchParams }: PageProps) 
             href={buildPageUrl(1, s)}
             className={`px-3 py-1 rounded-full text-sm border transition-colors ${
               statusFilter === s
-                ? "bg-primary text-[#050507] border-primary"
+                ? "bg-primary text-primary-foreground border-primary"
                 : "bg-muted border-border hover:border-primary/50"
             }`}
           >

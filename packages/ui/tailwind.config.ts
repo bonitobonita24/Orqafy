@@ -59,7 +59,7 @@ const config: Omit<Config, "content"> = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["var(--font-inter)", "Inter", "system-ui", "sans-serif"],
         mono: [
           "SFMono-Regular",
           "Menlo",
