@@ -8,6 +8,11 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        // Wire Inter (loaded via next/font/google in layout.tsx, exposed as --font-inter)
+        // so that Tailwind's `font-sans` utility resolves to Inter on all browsers.
+        sans: ["var(--font-inter)", "Inter", "system-ui", "sans-serif"],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
@@ -64,6 +69,14 @@ const config: Config = {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Extended semantic tokens — CSS vars defined in globals.css
+        // bg-brand-muted → elevated neutral surface for muted brand contexts
+        // bg-surface     → one step above card (use where bg-muted/bg-secondary too flat)
+        brand: {
+          DEFAULT: "hsl(var(--primary))",
+          muted: "hsl(var(--brand-muted))",
+        },
+        surface: "hsl(var(--surface))",
       },
       keyframes: {
         "accordion-down": {
