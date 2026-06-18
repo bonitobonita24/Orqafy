@@ -58,15 +58,16 @@ vi.mock('node:crypto', () => ({
 
 import { processNotificationEmailDigest } from '../processors/notification-email-digest.js';
 import type { NotificationEmailDigestJobData } from '@orqafy/jobs';
+import type { Job } from 'bullmq';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function makeJob(data: NotificationEmailDigestJobData) {
+function makeJob(data: NotificationEmailDigestJobData): Job<NotificationEmailDigestJobData, any, string> {
   return {
     id: 'digest-job-1',
     data,
     attemptsMade: 0,
     processedOn: Date.now(),
-  } as any;
+  } as unknown as Job<NotificationEmailDigestJobData, any, string>;
 }
 
 const BASE_DATA: NotificationEmailDigestJobData = {

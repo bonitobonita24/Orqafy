@@ -40,12 +40,12 @@ import { createDecipheriv } from 'node:crypto';
 
 function decrypt(encryptedHex: string): string {
   const key = process.env['ENCRYPTION_KEY'];
-  if (!key) {
+  if (key == null || key === '') {
     throw new Error('[email-digest] ENCRYPTION_KEY env var is required for SMTP password decryption');
   }
   // Format: <iv-hex>:<authTag-hex>:<ciphertext-hex>
   const [ivHex, authTagHex, ciphertextHex] = encryptedHex.split(':');
-  if (!ivHex || !authTagHex || !ciphertextHex) {
+  if (ivHex == null || ivHex === '' || authTagHex == null || authTagHex === '' || ciphertextHex == null || ciphertextHex === '') {
     throw new Error('[email-digest] Malformed encrypted value — expected iv:authTag:ciphertext');
   }
   const decipher = createDecipheriv(
