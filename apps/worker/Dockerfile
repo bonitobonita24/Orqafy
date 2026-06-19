@@ -25,7 +25,9 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 # Upgrade OS packages to pick up patched openssl (CVE-2026-45447 and any future alpine patches)
+# tzdata ships the zoneinfo DB so TZ (set via compose env, e.g. Asia/Manila) actually resolves.
 RUN apk upgrade --no-cache && \
+    apk add --no-cache tzdata && \
     # Patch npm's bundled picomatch (CVE-2026-33671) — npm ships 4.0.3; 4.0.4 is fixed.
     npm install -g picomatch@4.0.4 --silent && \
     cp -r /usr/local/lib/node_modules/picomatch/. /usr/local/lib/node_modules/npm/node_modules/picomatch/ && \
