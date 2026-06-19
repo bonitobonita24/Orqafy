@@ -16,6 +16,7 @@ services:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${COMPOSE_PROJECT_NAME}_pgbouncer:5432/${DB_NAME}?schema=public&pgbouncer=true
       - REDIS_URL=redis://:${REDIS_PASSWORD}@${COMPOSE_PROJECT_NAME}_valkey:6379
       - WORKER_PORT=${WORKER_PORT}
+      - TZ=Asia/Manila
     ports:
       - "${WORKER_PORT}:${WORKER_PORT}"
     networks: [app_network]

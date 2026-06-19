@@ -19,6 +19,7 @@ services:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Manila
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -47,6 +48,7 @@ services:
       MAX_CLIENT_CONN: "100"
       DEFAULT_POOL_SIZE: "20"
       AUTH_TYPE: scram-sha-256
+      TZ: Asia/Manila
     ports:
       - "${PGBOUNCER_PORT}:5432"
     networks: [app_network]
