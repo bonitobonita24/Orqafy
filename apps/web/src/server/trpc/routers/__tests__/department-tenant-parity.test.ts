@@ -46,11 +46,11 @@ function makeReq(): NextRequest {
   return {} as NextRequest;
 }
 
-function ctxForTenant(tenantId: string) {
+function ctxForTenant(tenantId: string, roles: string[] = ["Tenant Super Admin"]) {
   return {
     req: makeReq(),
     userId: "user-1",
-    roles: ["Administrator"] as string[],
+    roles,
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -118,6 +118,54 @@ describe("Department tenant parity (K-prime closure)", () => {
     expect(mockDeptCreate).toHaveBeenCalledOnce();
     const callArg = mockDeptCreate.mock.calls[0]![0];
     expect(callArg.data.tenantId).toBe("tenant-A");
+  });
+
+  // ── RBAC: tenant owner ("Tenant Super Admin") may manage departments (#9b) ──────
+
+  it("department.create succeeds for the tenant owner role 'Tenant Super Admin'", async () => {
+    // No code supplied → no uniqueness findUnique call.
+    mockDeptCreate.mockResolvedValueOnce({
+      id: "clh3dept0004hxog4d8e5f9e",
+      tenantId: "tenant-A",
+      name: "Marketing",
+      code: null,
+      description: null,
+      parentId: null,
+      isActive: true,
+    });
+
+    const caller = createCaller(ctxForTenant("tenant-A", ["Tenant Super Admin"]));
+    await expect(caller.department.create({ name: "Marketing" })).resolves.toMatchObject({
+      name: "Marketing",
+    });
+    expect(mockDeptCreate).toHaveBeenCalledOnce();
+  });
+
+  it("department.create succeeds for the tenant 'Admin' role", async () => {
+    // No code supplied → no uniqueness findUnique call.
+    mockDeptCreate.mockResolvedValueOnce({
+      id: "clh3dept0005hxog4d8e5f9f",
+      tenantId: "tenant-A",
+      name: "Sales",
+      code: null,
+      description: null,
+      parentId: null,
+      isActive: true,
+    });
+
+    const caller = createCaller(ctxForTenant("tenant-A", ["Admin"]));
+    await expect(caller.department.create({ name: "Sales" })).resolves.toMatchObject({
+      name: "Sales",
+    });
+  });
+
+  it("department.create is FORBIDDEN for an unauthorized role ('Staff')", async () => {
+    const caller = createCaller(ctxForTenant("tenant-A", ["Staff"]));
+    await expect(caller.department.create({ name: "Hacks" })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+      message: "You don't have permission to manage departments.",
+    });
+    expect(mockDeptCreate).not.toHaveBeenCalled();
   });
 
   it("department.delete throws PRECONDITION_FAILED when dept has assigned members", async () => {

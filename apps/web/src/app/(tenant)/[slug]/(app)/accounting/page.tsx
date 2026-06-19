@@ -84,6 +84,15 @@ export default async function AccountingPage({
           </p>
         </Link>
         <Link
+          href={`/${slug}/accounting/fiscal-years`}
+          className="group rounded-lg border border-border bg-card p-6 transition-colors hover:bg-muted/30"
+        >
+          <h2 className="font-semibold group-hover:text-primary">Fiscal Years →</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Define accounting periods. A closed fiscal year blocks new postings dated within its range.
+          </p>
+        </Link>
+        <Link
           href={`/${slug}/accounting/settings`}
           className="group rounded-lg border border-border bg-card p-6 transition-colors hover:bg-muted/30"
         >

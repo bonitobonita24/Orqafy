@@ -600,6 +600,9 @@ operations and financial traceability without the complexity.
   these represent inventory items already expensed at purchase time; including them would
   double-expense the cost. They appear only in Project Dashboard and per-project reports.
 - Tax Rates and Fiscal Years
+  NOTE (#10, DECISIONS_LOG 2026-06-19): Fiscal Years have a management UI at
+  /<slug>/accounting/fiscal-years (list existing + create), wired to
+  accounting.fiscalYear.create. A closed fiscal year blocks new postings dated within its range.
 
 ### Support / Tickets
 - Tickets: priority levels (low/medium/high/critical), linked to Customer and Project
@@ -736,7 +739,7 @@ action as a convenience over `recordPayment`. Every payment writes an L5 AuditLo
 | Role | Can do | Cannot do |
 |------|--------|-----------|
 | platform_owner | Manage all tenants, plans, billing, DLQ replay; full platform admin | Access any tenant's ERP data |
-| tenant_super_admin | Full access all ERP modules; assign any role; manage credit; approve attendance; approve inventory disbursements; manage expense categories | Access other tenants |
+| tenant_super_admin | Full access all ERP modules; assign any role; manage credit; approve attendance; approve inventory disbursements; manage expense categories; manage departments (create/update/delete) | Access other tenants |
 | admin | Full operational ERP; assign any role except tenant_super_admin; manage credit; approve attendance; approve inventory disbursement requests; manage expense categories | Delete core records |
 | accountant | Accounting, Banking, Invoices, Payments, Expenses, Payroll; manage fund accounts and transfers; manage credit | HR management, user creation above staff; approve inventory disbursements |
 | hr_manager | HR, Attendance, Leave, Cash Advances, Payroll, Banking | Create users above staff role; financial modules; approve inventory disbursements |
@@ -748,6 +751,10 @@ action as a convenience over `recordPayment`. Every payment writes an L5 AuditLo
 | cashier | POS Terminal; Task Dashboard; fund source per session | Back-office ERP access |
 | support_agent | Support Tickets full access; read-only Customer and Projects | Financial modules; HR |
 | customer | Portal access: Dashboard, Online Orders, Invoices (with online payment via Xendit), Proposals & Quotations (accept/decline), Repairs & Job Orders (view status, approve/decline repair quotations), Projects (read-only), Subscriptions, Payments & Credit, Support Tickets, Documents, Profile; e-commerce storefront (browse, cart, checkout); view published invoices via public link | Any back-office feature |
+
+NOTE (#9b, DECISIONS_LOG 2026-06-19): Department management (create/update/delete at
+/<slug>/settings/departments) is permitted for tenant_super_admin (owner), admin, and
+platform_owner. Enforced server-side in the department tRPC router via the seeded role names.
 
 NOTE: One role per user — strictly. Role is a single enum on User.role. Role entity is a
 reference table (seeded, read-only at runtime) for admin UI display only. Actual RBAC

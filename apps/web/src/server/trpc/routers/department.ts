@@ -5,18 +5,19 @@ import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
 import { requireRole } from "../middleware/rbac";
 import { logger } from "@/lib/logger";
 
-// Admin-only: Administrator or Platform Owner (read variant reserved for future use)
-const _adminReadProcedure = requireRole("Administrator", "Platform Owner");
+// Roles permitted to manage (create/update/delete) departments.
+// These are the seeded role NAMES (see packages/db/src/seed/roles.ts) — the tenant
+// owner ("Tenant Super Admin"), the tenant operational "Admin", and the cross-tenant
+// "Platform Owner". Owner decision (2026-06-19, DECISIONS_LOG): the tenant owner /
+// super-admin SHALL be permitted to manage departments in their own tenant. The prior
+// list checked a role NAME ("Administrator") that no seeded role carries, which 403'd
+// the owner — that stale gate is now resolved.
+const DEPARTMENT_MANAGE_ROLES = ["Tenant Super Admin", "Admin", "Platform Owner"];
+const _adminReadProcedure = requireRole(...DEPARTMENT_MANAGE_ROLES);
 const adminWriteProcedure = writeProcedure.use(({ ctx, next }) => {
-  if (!ctx.roles.some((r) => ["Administrator", "Platform Owner"].includes(r))) {
+  if (!ctx.roles.some((r) => DEPARTMENT_MANAGE_ROLES.includes(r))) {
     // UX: surface a human-readable message so the client toast isn't the bare
-    // literal "FORBIDDEN". NOTE (RBAC intent, owner decision pending): this gate
-    // checks role NAMES "Administrator"/"Platform Owner", but the seeded roles
-    // are "Tenant Super Admin", "Admin", "Platform Owner" — there is no role
-    // literally named "Administrator", so the tenant owner ("Tenant Super Admin")
-    // is currently 403'd from creating departments. Whether the owner role SHOULD
-    // be allowed is a product/RBAC decision; the role list is intentionally left
-    // unchanged here.
+    // literal "FORBIDDEN".
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "You don't have permission to manage departments.",
