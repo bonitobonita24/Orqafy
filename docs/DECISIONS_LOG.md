@@ -1039,3 +1039,68 @@ restore the emerald palette. Typography compression utilities are theme-agnostic
 - `packages/ui/tailwind.config.ts` — font-sans variable fix (sibling commit)
 
 **Phase:** Design contract reconciliation (V32.8 design-audit branch)
+
+## Decision — 2026-06-19 — #9b: Tenant owner ("Tenant Super Admin") may manage departments
+
+**Decision:** The tenant owner / super-admin role (`Tenant Super Admin`, slug `tenant_super_admin`)
+SHALL be permitted to create AND manage (update/delete) departments within its own tenant. The
+tenant operational `Admin` and cross-tenant `Platform Owner` roles remain permitted as before.
+
+**Context / bug:** `department.create|update|delete` gated on the role NAME `"Administrator"`, but
+NO seeded role carries that name (the seeded set is `Platform Owner`, `Tenant Super Admin`, `Admin`,
+… — see `packages/db/src/seed/roles.ts`). The tenant owner was therefore 403'd
+("You don't have permission to manage departments.") when managing departments in their own tenant.
+An in-code note at `department.ts` flagged this as an owner-decision-pending RBAC gate; that decision
+is now made and the stale note resolved.
+
+**Implementation:** Followed the established RBAC pattern (hardcoded seeded-role-name arrays consumed
+by the `requireRole(...)` middleware in `apps/web/src/server/trpc/middleware/rbac.ts` — there is no
+permission-`can()` helper in this codebase). Replaced the dead `["Administrator", "Platform Owner"]`
+list with a single shared `DEPARTMENT_MANAGE_ROLES = ["Tenant Super Admin", "Admin", "Platform Owner"]`
+constant applied consistently to create/update/delete. Tenant scoping (`where:{tenantId}` guards,
+ctx-injected `tenantId`) unchanged.
+
+**Reversible:** YES — narrow the role list to revert.
+
+**Files affected:**
+- `apps/web/src/server/trpc/routers/department.ts` — role list + stale note resolved
+- `apps/web/src/server/trpc/routers/__tests__/department-tenant-parity.test.ts` — +3 tests
+  (owner `Tenant Super Admin` can create; `Admin` can create; unauthorized `Staff` → 403)
+- `docs/PRODUCT.md` — Roles + Permissions note
+- `docs/DECISIONS_LOG.md` — this entry
+
+**Gate (evidence):** `pnpm typecheck` 11/11 green · `pnpm lint` clean · `pnpm test` **1029 passing**
+(1026 baseline + 3 new) · `pnpm build` compiles.
+
+**Phase:** Phase 7 (Feature Update)
+
+## Decision — 2026-06-19 — #10: Fiscal-year management UI wired
+
+**Decision:** Surface the already-existing, already-tested `accounting.fiscalYear.create` procedure
+in the UI. Added a tenant-scoped Fiscal Years management page (list existing + inline create form)
+under the accounting area, plus a nav entry alongside the other accounting sub-surfaces.
+
+**Context:** The `accounting.fiscalYear.create` proc + its test predate this change; only the UI page
+and nav link were missing. Fiscal years define accounting periods; a closed fiscal year blocks new
+journal postings dated within its range (see Accounting §A in this log).
+
+**Implementation:** Mirrored the sibling accounting create surfaces (account-form / settings-form):
+shadcn/ui only (`Button`, `Input`, `Label`), `trpc.accounting.fiscalYear.list` query +
+`trpc.accounting.fiscalYear.create` mutation with `sonner` toast + `utils.…invalidate()` +
+`router.refresh()`, tenant scoping enforced server-side by the existing proc (ctx `tenantId`). Nav
+entry added as a card on the accounting index page (the established nav pattern for accounting
+sub-surfaces — accounts / journal-entries / trial-balance / settings).
+
+**Reversible:** YES — UI-only addition; remove the route + nav card to revert.
+
+**Files affected:**
+- `apps/web/src/app/(tenant)/[slug]/(app)/accounting/fiscal-years/page.tsx` — NEW server page
+- `apps/web/src/app/(tenant)/[slug]/(app)/accounting/fiscal-years/fiscal-years-client.tsx` — NEW list
+- `apps/web/src/app/(tenant)/[slug]/(app)/accounting/fiscal-years/fiscal-year-form.tsx` — NEW create form
+- `apps/web/src/app/(tenant)/[slug]/(app)/accounting/page.tsx` — nav card
+- `docs/PRODUCT.md` — Modules + Features note
+- `docs/DECISIONS_LOG.md` — this entry
+
+**Gate (evidence):** `pnpm build` emits `ƒ /[slug]/accounting/fiscal-years` (4.6 kB); typecheck/lint/test green.
+
+**Phase:** Phase 7 (Feature Update)
