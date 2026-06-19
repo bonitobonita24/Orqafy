@@ -94,16 +94,17 @@ _Promoted: 2026-06-17_
 
 ---
 
-## conductor.design-contract.reskin-without-design-md-update
+## conductor.ci-verification.turbo-cache-masked-green
 
 | Field | Value |
 |---|---|
-| **fingerprint** | `conductor.design-contract.reskin-without-design-md-update` |
-| **machine_signature** | n/a (process gap) |
+| **fingerprint** | `conductor.ci-verification.turbo-cache-masked-green` |
+| **machine_signature** | A turbo `lint`/`typecheck`/`build` task reports `Cached: N cached` GREEN for a commit whose true result is RED — exposed only when an input (lockfile / `package.json`) changes and busts the cache |
 | **scope** | `conductor` |
-| **failure** | Owner-approved product-level theme reskin (VoltAgent emerald → shadcn neutral-dark, Orqafy 2026-06-18) was merged without updating `docs/DESIGN.md`. DESIGN.md continued to describe the old VoltAgent palette as the authoritative contract, making the entire V32.8 Rule 31 design-token audit appear as "massive drift" when most divergence was intentional. Root cause: no process gate requiring DESIGN.md update when a reskin PR is merged. |
-| **standing_check** | At done-claim for any PR touching `globals.css`, `tailwind.config*`, or `components.json`: verify `docs/DESIGN.md` shadcn Translation Guide values match actual CSS custom property values in `globals.css`. If they diverge, require a DESIGN.md update or a `docs/DESIGN_DEBT.md` stub in the same PR. |
-| **check_location** | `/memory` feedback file (conductor consult); also add to Phase 4 Parts 5-6 done-claim checklist in `phases.md` |
+| **failure** | Orqafy `main` showed CI `Turbo typecheck`/`Turbo build` GREEN while actually carrying ~33 web lint errors + an `ioredis` dual-version typecheck conflict. The pass was a STALE turbo cache result: type-aware `@typescript-eslint` rules (`strict-boolean-expressions`, `no-unsafe-*`, `no-unnecessary-type-assertion`) and `tsc` depend on cross-package type info the lint/typecheck cache key doesn't fully capture, so previously-cached green survives even after sibling changes make the code red. A CVE-override lockfile change busted the cache and surfaced the real red. First observed 2026-06-18. |
+| **standing_check** | When verifying a framework app's `main` CI is "green," do NOT trust a cached pass for `lint`/`typecheck`/`build` gates — confirm true state with a cache-busted run (`pnpm turbo run lint typecheck build test --force`) before declaring green, merging, or promoting an image. |
+| **check_location** | `/memory feedback_ci_verify_cache_busted.md` |
+| **framework follow-up (backlog)** | Harden the framework CI template to run lint/typecheck gates cache-busted (or declare correct turbo `inputs`/`dependsOn` so type-aware results invalidate on cross-package change). Not yet implemented. |
 
 _Promoted: 2026-06-18_
 
