@@ -16,6 +16,7 @@ services:
     hostname: ${COMPOSE_PROJECT_NAME}_postgres
     env_file: ../../../.env.prod
     environment:
+      TZ: Asia/Manila
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -37,6 +38,7 @@ services:
     hostname: ${COMPOSE_PROJECT_NAME}_pgbouncer
     env_file: ../../../.env.prod
     environment:
+      TZ: Asia/Manila
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${COMPOSE_PROJECT_NAME}_postgres:5432/${DB_NAME}
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 100
