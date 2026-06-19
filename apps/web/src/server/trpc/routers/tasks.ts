@@ -125,6 +125,18 @@ export const tasksRouter = createTRPCRouter({
             ...(input.dueDate !== undefined && { dueDate: input.dueDate }),
             ...(input.parentTaskId !== undefined && { parentTaskId: input.parentTaskId }),
           },
+          // Return the same relation shape the board's TaskRow expects, so the
+          // client optimistic insert can render project.name / assignments
+          // without a `Cannot read properties of undefined (reading 'name')`
+          // crash (must mirror the taskList include above).
+          include: {
+            project: { select: { id: true, name: true } },
+            assignments: {
+              select: {
+                user: { select: { id: true, firstName: true, lastName: true, displayName: true } },
+              },
+            },
+          },
         });
         await writeAuditLog(tx, {
           userId: ctx.userId,

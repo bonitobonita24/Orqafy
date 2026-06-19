@@ -186,7 +186,7 @@ export function TaskBoard({ slug, initialTasks, projects, projectId }: TaskBoard
                         className="rounded-md border border-border bg-background p-3 transition-colors hover:border-primary/40"
                       >
                         <div className="text-sm font-medium leading-snug">{t.title}</div>
-                        <div className="mt-1 text-xs text-muted-foreground">{t.project.name}</div>
+                        <div className="mt-1 text-xs text-muted-foreground">{t.project?.name ?? "—"}</div>
 
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">
                           <span
@@ -201,7 +201,7 @@ export function TaskBoard({ slug, initialTasks, projects, projectId }: TaskBoard
                               Due {dueLabel}
                             </span>
                           )}
-                          {t.assignments.length > 0 && (
+                          {(t.assignments?.length ?? 0) > 0 && (
                             <span className="ml-auto text-[10px] text-muted-foreground">
                               {t.assignments.length} assignee
                               {t.assignments.length === 1 ? "" : "s"}
