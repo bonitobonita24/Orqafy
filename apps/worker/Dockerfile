@@ -42,11 +42,19 @@ COPY --from=builder /app/apps/worker/package.json ./apps/worker/
 COPY --from=builder /app/apps/worker/node_modules ./apps/worker/node_modules
 COPY --from=builder /app/apps/worker/dist ./apps/worker/dist
 
-# Remove dev-only packages not needed at runtime (vite/vitest — test tools only).
-# This eliminates CVE-2026-53571 (vite Windows-path bypass) from the runner image.
+# Remove dev-only packages not needed at runtime (test/tooling only — never imported by the worker).
+# - vite/vitest: eliminates CVE-2026-53571 (vite Windows-path bypass).
+# - lefthook: git-hook manager (root devDependency). Its lefthook-linux-x64 Go binary carries
+#   CVE-2026-42504 (Go stdlib MIME-header decode DoS) and has ZERO runtime purpose in the worker.
+#   The full root node_modules is copied above to preserve pnpm symlink targets, which drags these in.
 RUN find /app/node_modules/.pnpm -maxdepth 1 -name "vite@*" -type d -exec rm -rf {} + 2>/dev/null || true && \
     find /app/node_modules/.pnpm -maxdepth 1 -name "vitest@*" -type d -exec rm -rf {} + 2>/dev/null || true && \
-    find /app/node_modules/.pnpm -maxdepth 1 -name "@vitest*" -type d -exec rm -rf {} + 2>/dev/null || true
+    find /app/node_modules/.pnpm -maxdepth 1 -name "@vitest*" -type d -exec rm -rf {} + 2>/dev/null || true && \
+    find /app/node_modules/.pnpm -maxdepth 1 -name "lefthook@*" -type d -exec rm -rf {} + 2>/dev/null || true && \
+    find /app/node_modules/.pnpm -maxdepth 1 -name "lefthook-*" -type d -exec rm -rf {} + 2>/dev/null || true && \
+    find /app/node_modules -name "lefthook" -exec rm -rf {} + 2>/dev/null || true && \
+    find /app/node_modules -name "lefthook-linux-*" -exec rm -rf {} + 2>/dev/null || true && \
+    find /app/node_modules -name "lefthook-*" -path "*.bin*" -exec rm -f {} + 2>/dev/null || true
 
 USER worker
 EXPOSE 42952
