@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@orqafy/db";
+import { ComplianceFooter } from "@/components/compliance-footer";
 
 export const dynamic = "force-dynamic";
 
@@ -19,36 +20,44 @@ export default async function LandingPage() {
       <header className="flex items-center justify-between px-6 py-4 border-b border-border">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded border border-primary bg-card signal-glow">
-            <span className="text-sm font-bold text-primary">O</span>
+            <span className="text-sm font-bold text-primary" aria-hidden="true">O</span>
           </div>
           <span className="font-semibold tracking-tight">Orqafy</span>
         </div>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/demo-login"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Try demo
-          </Link>
-          <Link
-            href="/login"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/register"
-            className="rounded-md border border-primary bg-transparent px-4 py-1.5 text-sm font-medium text-primary transition-all hover:bg-primary/10"
-          >
-            Get started
-          </Link>
-        </div>
+        <nav aria-label="Main navigation">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/demo-login"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Try demo
+            </Link>
+            <Link
+              href="/privacy"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Privacy
+            </Link>
+            <Link
+              href="/login"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/register"
+              className="rounded-md border border-primary bg-transparent px-4 py-1.5 text-sm font-medium text-primary transition-all hover:bg-primary/10"
+            >
+              Get started
+            </Link>
+          </div>
+        </nav>
       </header>
 
       {/* Hero */}
       <section className="mx-auto max-w-4xl px-6 py-24 text-center">
         <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-3 py-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-primary signal-glow" />
+          <span className="h-1.5 w-1.5 rounded-full bg-primary signal-glow" aria-hidden="true" />
           <span className="text-xs text-primary">Multi-tenant operations platform</span>
         </div>
         <h1 className="mb-6 text-5xl font-bold leading-tight tracking-tight">
@@ -99,10 +108,10 @@ export default async function LandingPage() {
       </section>
 
       {/* Pricing */}
-      <section className="border-t border-border py-20">
+      <section aria-labelledby="pricing-heading" className="border-t border-border py-20">
         <div className="mx-auto max-w-5xl px-6">
           <div className="mb-12 text-center">
-            <h2 className="mb-3 text-3xl font-bold">Simple, transparent pricing</h2>
+            <h2 id="pricing-heading" className="mb-3 text-3xl font-bold">Simple, transparent pricing</h2>
             <p className="text-muted-foreground">No setup fees. Cancel any time.</p>
           </div>
           {plans.length === 0 ? (
@@ -138,16 +147,16 @@ export default async function LandingPage() {
                     </div>
                     <ul className="mb-6 flex-1 space-y-2">
                       <li className="flex items-center gap-2 text-sm">
-                        <span className="text-primary">✓</span>
+                        <span className="text-primary" aria-hidden="true">✓</span>
                         <span>Up to {plan.maxUsers} users</span>
                       </li>
                       <li className="flex items-center gap-2 text-sm">
-                        <span className="text-primary">✓</span>
+                        <span className="text-primary" aria-hidden="true">✓</span>
                         <span>{Math.round(plan.maxStorageMb / 1024)} GB storage</span>
                       </li>
                       {features.slice(0, 3).map((f, i) => (
                         <li key={i} className="flex items-center gap-2 text-sm">
-                          <span className="text-primary">✓</span>
+                          <span className="text-primary" aria-hidden="true">✓</span>
                           <span>{f}</span>
                         </li>
                       ))}
@@ -167,9 +176,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border px-6 py-8 text-center text-sm text-muted-foreground">
-        <p>© {new Date().getFullYear()} Orqafy. All rights reserved.</p>
-      </footer>
+      <ComplianceFooter />
     </div>
   );
 }
