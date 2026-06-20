@@ -1104,3 +1104,46 @@ sub-surfaces — accounts / journal-entries / trial-balance / settings).
 **Gate (evidence):** `pnpm build` emits `ƒ /[slug]/accounting/fiscal-years` (4.6 kB); typecheck/lint/test green.
 
 **Phase:** Phase 7 (Feature Update)
+
+---
+
+## V32.9 Compliance & Data Privacy Layer — Rule-1 Assumptions (2026-06-20, AI architect, autonomous)
+
+**Decision class:** Compliance / Data Privacy (PH Data Privacy Act RA 10173, NPC IRR, WCAG 2.2 AA).
+Implemented `feat/v329-compliance-features`. The following are PRODUCT-level (Rule 1, human-owned)
+decisions made with sensible defaults by the AI architect and FLAGGED for owner ratification. They are
+recorded here (NOT written into the human-only docs/PRODUCT.md §11 Compliance).
+
+**Assumptions chosen (owner: please confirm or amend):**
+1. **Personal Information Controller** = *Powerbyte IT Solutions* (the platform operator). Surfaced in
+   the public privacy notice and `dsr.inform`.
+2. **Data Protection Officer (DPO) contact** = *bonitobonita24@gmail.com* (placeholder until a DPO is
+   formally appointed per NPC requirement). Surfaced in the privacy notice.
+3. **Lawful basis for HR/employee PII** = *contract* + *legitimate interest* (employment relationship +
+   ERP operations). For customer/financial data: contract + legitimate interest.
+4. **Right to erasure** for ERP/payroll/banking records = **request-and-review**, NOT immediate
+   hard-delete. Rationale: PH tax/labor law mandates multi-year retention of payroll, accounting, and
+   transaction records; `dsr.requestErasure` creates a `DataSubjectRequest(type=erase, status=received)`
+   for admin review against legal-retention exceptions, rather than deleting data.
+
+**What was implemented (this branch):**
+- Prisma models `DataSubjectRequest`, `BreachRecord` (public schema, migration
+  `20260620000000_add_compliance_privacy`).
+- tRPC `dsr.*` (subject self-service: inform/access/port/rectify/requestErasure/object/myRequests +
+  admin list/updateStatus) and `compliance.breach.*` (admin-only breach register with NPC 72h +
+  5-business-day full-report deadline tracking). All tenant-scoped (ctx.tenantId), subject ops scoped
+  to ctx.userId, all audited to L5 AuditLog.
+- Public `/privacy` page; in-app `/[slug]/privacy` (Privacy & My Data) self-service; admin
+  `/[slug]/settings/breach` register.
+- Honest `ComplianceFooter` (design-claims ON: security-by-default, PH-DPA-aligned, WCAG-target;
+  certification badges OFF — none held).
+- WCAG 2.2 AA quick wins on new pages + landing (labels, landmarks, aria, heading order); remainder
+  tracked in `docs/V329_WCAG_REMAINING.md`.
+
+**Reversible:** YES — additive feature branch; revert the branch to remove. Migration is create-only
+(two new tables, no alters to existing tables).
+
+**Owner product input still needed:** ratify items 1-4; decide actual DPO appointment; confirm whether
+NPC registration / a formal PIA artifact is required for Orqafy's processing scale.
+
+**Phase:** Phase 7 (Feature Update — V32.9 framework feature applied to app).

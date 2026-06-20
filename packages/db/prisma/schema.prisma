@@ -134,6 +134,8 @@ model Tenant {
   roles                        Role[]                        @relation("TenantRoles")
   departments                  Department[]                  @relation("TenantDepartments")
   notifications                Notification[]                @relation("TenantNotifications")
+  dsrRequests                  DataSubjectRequest[]          @relation("TenantDsr")
+  breachRecords                BreachRecord[]                @relation("TenantBreach")
 
   @@map("tenants")
   @@schema("public")
@@ -352,6 +354,7 @@ model User {
   contactLogs                     ContactLog[]            @relation("ContactLogCreatedBy")
   notifications                   Notification[]          @relation("UserNotifications")
   attachmentsUploaded             Attachment[]            @relation("AttachmentUploadedBy")
+  dataSubjectRequests             DataSubjectRequest[]    @relation("UserDsr")
 
   @@index([tenantId])
   @@map("users")
@@ -2577,5 +2580,57 @@ model Notification {
   @@index([tenantId, recipientUserId, createdAt])
   @@index([tenantId, emailDigestSentAt])
   @@map("notifications")
+  @@schema("public")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// V32.9 COMPLIANCE & DATA PRIVACY (RA 10173 / NPC)
+// ═══════════════════════════════════════════════════════════════
+
+// Data Subject Request — covers all 6 RA 10173 rights:
+// access | rectify | erase | port | object | inform
+model DataSubjectRequest {
+  id           String    @id @default(cuid())
+  tenantId     String    @map("tenant_id")
+  tenant       Tenant    @relation("TenantDsr", fields: [tenantId], references: [id])
+  userId       String    @map("user_id")
+  user         User      @relation("UserDsr", fields: [userId], references: [id])
+  type         String    // access | rectify | erase | port | object | inform
+  status       String    @default("received") // received | in_progress | completed | rejected
+  details      Json?
+  resolution   String?
+  handledById  String?   @map("handled_by_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  resolvedAt   DateTime? @map("resolved_at")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([tenantId, status])
+  @@map("data_subject_requests")
+  @@schema("public")
+}
+
+// Breach Record — NPC 72-hour initial notification + 5-business-day full report
+model BreachRecord {
+  id                   String    @id @default(cuid())
+  tenantId             String    @map("tenant_id")
+  tenant               Tenant    @relation("TenantBreach", fields: [tenantId], references: [id])
+  title                String
+  description          String
+  discoveredAt         DateTime  @map("discovered_at")
+  severity             String    // low | medium | high | critical
+  affectedSubjects     Int?      @map("affected_subjects")
+  npcNotifiedAt        DateTime? @map("npc_notified_at")
+  subjectsNotifiedAt   DateTime? @map("subjects_notified_at")
+  fullReportDueAt      DateTime? @map("full_report_due_at")
+  fullReportFiledAt    DateTime? @map("full_report_filed_at")
+  status               String    @default("open") // open | notified | reported | closed
+  reportedById         String    @map("reported_by_id")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("breach_records")
   @@schema("public")
 }
