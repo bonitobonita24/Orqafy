@@ -1727,15 +1727,21 @@ Local DB:       WatermelonDB (offline storage and sync queue)
 ## Non-functional Requirements
 Performance:    <200ms tRPC API response at 100 concurrent users per tenant
 Uptime:         99.5% SLA for prod; staging downtime acceptable
-Accessibility:  WCAG AA — color contrast ratios enforced on all text (already validated
+Accessibility:  WCAG 2.2 AA — color contrast ratios enforced on all text (already validated
                 in DESIGN.md: Signal Green 12:1, Snow White 17:1, Parchment 10.5:1,
                 Steel Slate 6.2:1 against Abyss Black); touch targets ≥44×44px on
                 Mobile First pages; keyboard navigation on all interactive elements;
                 aria-labels on icon-only buttons; focus-visible ring using Signal Green
-Data retention: Financial + credit records: 7 years minimum; Attendance/DTR: 5 years;
-                Support tickets: 3 years; Project notes: retained as long as project exists;
-                Tenant schema on deletion: retained until retention period expires, then
-                manually dropped by platform_owner
+Data retention: (owner-ratified 2026-06-21) Payroll/financial records: 7 years;
+                audit logs: 5 years; general operational data: 3 years; Project notes:
+                retained as long as project exists; Tenant schema on deletion: retained
+                until retention period expires, then manually dropped by platform_owner
+Data privacy:   (owner-ratified 2026-06-21) PH Data Privacy Act (RA 10173). Data Subject
+                Requests (access/rectify/erase/port/object/inform) answered within a 15-day
+                statutory response window. Right to erasure of ERP/payroll/banking records =
+                request-and-review (not immediate hard-delete), gated on statutory retention.
+                Lawful bases: contract · legal obligation · legitimate interest (RA 10173 §12).
+                DPO appointment + NPC registration/PIA: PENDING owner action.
 Compliance:     GDPR-aware (customer data exportable and deletable per tenant request);
                 no HIPAA; no PCI-DSS scope (no card number storage)
 Realtime:       In-app notification bell: SSE via Next.js route handler (`/api/sse`);

@@ -1148,6 +1148,38 @@ NPC registration / a formal PIA artifact is required for Orqafy's processing sca
 
 **Phase:** Phase 7 (Feature Update — V32.9 framework feature applied to app).
 
+### ✅ OWNER-RATIFIED 2026-06-21 (supersedes the flagged-assumption status above)
+
+The owner has ratified the V32.9 compliance product/legal values. Status of the four flagged items:
+
+1. **Personal Information Controller = Powerbyte IT Solutions** — **RATIFIED.** No change (already coded).
+2. **Lawful bases** — **RATIFIED.** The coded set in `dsr.inform` is the three standard
+   RA 10173 §12 statutory lawful bases (fulfillment of a contract · compliance with a legal obligation ·
+   legitimate interests of the PIC). These are generic statutory bases, not per-processing-activity
+   business judgments, so they are confirmed as-is. NOTE: if the owner later wants a per-processing-activity
+   lawful-basis register (e.g. mapping each specific processing activity to one declared basis for an NPC
+   PIA), that finer-grained mapping remains a future business-judgment exercise — out of scope here.
+3. **Retention periods** — **RATIFIED:** payroll/financial **7 years** · audit logs **5 years** ·
+   general operational data **3 years**. Matches the values already coded in `dsr.inform` +
+   `app/privacy/page.tsx` — confirmed, caveats dropped.
+4. **DSR statutory response window = 15 days** — **RATIFIED.** Matches the "within 15 business days"
+   already coded in the public + tenant privacy pages — confirmed.
+5. **Right to erasure = request-and-review (not immediate hard-delete)** — **RATIFIED** as correct for
+   PH payroll/tax statutory retention. No change.
+
+**STILL PENDING (not ratified — physical/business gates only):**
+- **DPO APPOINTMENT** — `dsr.inform` keeps `bonitobonita24@gmail.com` as an explicit placeholder until a
+  DPO is formally appointed per NPC requirement. Pending.
+- **NPC registration / formal PIA artifact** — whether required at Orqafy's processing scale is still an
+  owner decision. Pending.
+
+These ratified values are back-ported to `docs/PRODUCT.md` §Non-functional (Data retention + DSR window +
+WCAG 2.2 AA) under the standing "decisions back-port to PRODUCT.md" authorization. No code change was
+required — the 15-day window, 7/5/3 retention, and standard lawful bases were already coded as
+authoritative values with no "needs confirmation" caveats.
+
+**Phase:** Phase 7 (owner ratification of V32.9 compliance product values).
+
 ---
 
 ## Scout — 2026-06-20 — Epics 3-5 are fully implemented (PHANTOM); proposal doc is stale
@@ -1185,11 +1217,12 @@ these. Per-surface verification:
 **Autonomously-buildable remaining in Epics 3-5: NONE.** No new code was written this session for M2;
 writing speculative features would violate the no-gold-plating + Rule-1 (don't invent product) posture.
 
-**Product-gated items left for owner (carried from M1, unchanged — these are the only open items):**
-1. Ratify the four V32.9 compliance Rule-1 assumptions (DPO contact, lawful bases, retention periods,
-   request-and-review erasure policy) recorded in the entry above.
-2. Decide actual DPO appointment (currently `bonitobonita24@gmail.com` placeholder in `dsr.inform`).
-3. Confirm whether NPC registration / a formal PIA artifact is required at Orqafy's processing scale.
+**Product-gated items left for owner (carried from M1):**
+1. ~~Ratify the four V32.9 compliance Rule-1 assumptions~~ — ✅ **RATIFIED 2026-06-21** (retention 7/5/3,
+   DSR window 15 days, lawful bases, request-and-review erasure). See the OWNER-RATIFIED block in the
+   entry above. Only the two items below remain open.
+2. Decide actual DPO appointment (currently `bonitobonita24@gmail.com` placeholder in `dsr.inform`). PENDING.
+3. Confirm whether NPC registration / a formal PIA artifact is required at Orqafy's processing scale. PENDING.
 
 **Reversible:** N/A (a finding, not a change).
 
