@@ -1147,3 +1147,50 @@ recorded here (NOT written into the human-only docs/PRODUCT.md §11 Compliance).
 NPC registration / a formal PIA artifact is required for Orqafy's processing scale.
 
 **Phase:** Phase 7 (Feature Update — V32.9 framework feature applied to app).
+
+---
+
+## Scout — 2026-06-20 — Epics 3-5 are fully implemented (PHANTOM); proposal doc is stale
+
+**Decision class:** Build-state finding (not an architectural decision). Recorded so future
+sessions stop re-scouting `docs/PRODUCT_PHASE7_PROPOSAL.md` Epics 3-5 as if open.
+
+**Finding:** A code-verified scout of every Epic 3-5 surface named in
+`docs/PRODUCT_PHASE7_PROPOSAL.md` (against `main` @ `700e972`) found **all of them already built**.
+The proposal predates the W0-W13 wiring program + the Phase-8 tenant-scoping sweeps, which closed
+these. Per-surface verification:
+
+- **Epic 3 — Invoicing:** `invoice.create/update/markSent/recordPayment/markPaid/void` all present;
+  UI `invoices/new` (form) + `invoices/[id]/invoice-actions.tsx`. DONE.
+- **Epic 4.1 — Banking money-movement:** all 9 procedures present
+  (`recordIncome/recordExpense/transfer/recordCreditCardCharge/payCreditCard/loanMoneyOutTo/
+  loanMoneyIn/recordRefund/recordAdjustment`) + `banking/transactions/transaction-form.tsx` +
+  `fund-sources/`. DONE.
+- **Epic 4.2 — POS session lifecycle:** `open-session-dialog.tsx`, `close-session-dialog.tsx`,
+  `[id]/void-sale-action.tsx`. **D4 resolved = (a) modal.** DONE.
+- **Epic 5.1 — Service/Job Orders:** `jobOrder.create` + `service/job-orders/new` intake page +
+  both detail routes. **D5 resolved = both routes coexist.** DONE.
+- **Epic 5.2 — Storefront checkout:** `placeOrder` (writeProcedure, staff-on-behalf) AND
+  `placeOrderAsCustomer` (publicProcedure, logged-in customer) + `listAllOrders`. **D6 resolved =
+  (c) both.** DONE.
+- **Epic 5.3 — Notifications:** `notificationRouter` is a REAL Prisma backend (`db.notification.*`,
+  not the old stub) + `components/layout/notification-bell.tsx` wired into `app-header.tsx`.
+  **D7 resolved = (b) durable Prisma Notification.** DONE.
+- **Epic 5.4 — Settings sub-pages:** all 5 (`users`, `departments`, `expense-categories`, `smtp`,
+  `account`) exist (+ `xendit`, + new `breach`). DONE.
+- **Epic 5.5 — Platform-admin:** `platform.listTenants/getTenant/suspendTenant/reactivateTenant`
+  (platformProcedure) + `powerbyte-admin/[tenantId]/tenant-status-actions.tsx`. **D8 resolved.** DONE.
+- **Tasks (D2):** `task-board.tsx` + `create-task-dialog.tsx` interactive (useMutation). DONE.
+
+**Autonomously-buildable remaining in Epics 3-5: NONE.** No new code was written this session for M2;
+writing speculative features would violate the no-gold-plating + Rule-1 (don't invent product) posture.
+
+**Product-gated items left for owner (carried from M1, unchanged — these are the only open items):**
+1. Ratify the four V32.9 compliance Rule-1 assumptions (DPO contact, lawful bases, retention periods,
+   request-and-review erasure policy) recorded in the entry above.
+2. Decide actual DPO appointment (currently `bonitobonita24@gmail.com` placeholder in `dsr.inform`).
+3. Confirm whether NPC registration / a formal PIA artifact is required at Orqafy's processing scale.
+
+**Reversible:** N/A (a finding, not a change).
+
+**Phase:** Phase 8 scout (Epic 3-5 completeness re-verification).
