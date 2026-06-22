@@ -8,6 +8,9 @@ services:
     # NO build: key — image pulled from Docker Hub only
     image: ${DOCKERHUB_USERNAME}/${WORKER_IMAGE_NAME}:${APP_IMAGE_TAG:-staging-latest}
     container_name: ${COMPOSE_PROJECT_NAME}_worker
+    mem_limit: 512m
+    mem_reservation: 128m
+    cpus: 1.0
     hostname: ${COMPOSE_PROJECT_NAME}_worker
     env_file: ../../../.env.staging
     environment:
