@@ -12,7 +12,12 @@
 
 import { useState } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
-import { TrendingUp } from "lucide-react";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  ChartColumnIncreasing,
+  TrendingUp,
+} from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import {
   ChartContainer,
@@ -22,6 +27,8 @@ import {
 } from "@/components/ui/chart";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { cn } from "@/lib/utils";
 
 // ─── chart colour config — Pro pattern: var(--chart-N) not hsl(var(--chart-N))
 // shadcn ChartStyle injects --color-revenue automatically from this config
@@ -119,9 +126,33 @@ export function RevenueChart({ slug: _slug }: RevenueChartProps) {
     { enabled: isValid },
   );
 
+  // ── Prior comparison window: the equal-length span immediately before the
+  // current one, so the header can show a trend delta (Pro charts-component
+  // pattern: metric + ↑/↓ vs previous period).
+  const periodMs = endDate.getTime() - startDate.getTime();
+  const prevEnd = new Date(startDate.getTime() - 1);
+  const prevStart = new Date(prevEnd.getTime() - periodMs);
+  const { data: prevData } = trpc.report.revenueByPeriod.useQuery(
+    { startDate: prevStart, endDate: prevEnd },
+    { enabled: isValid },
+  );
+
   const chartData = bucketByDay(data ?? []);
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
   const invoiceCount = data?.length ?? 0;
+
+  // Delta vs prior period. null = no comparable baseline (don't show a badge).
+  const prevTotal = (prevData ?? []).reduce(
+    (s, inv) => s + Number(inv.totalAmount ?? 0),
+    0,
+  );
+  const deltaPct =
+    prevTotal > 0
+      ? ((totalRevenue - prevTotal) / prevTotal) * 100
+      : totalRevenue > 0
+        ? 100
+        : null;
+  const deltaUp = (deltaPct ?? 0) >= 0;
 
   const inputClass =
     "h-7 rounded-md border border-border bg-background px-2.5 text-xs outline-none focus:border-primary/50";
@@ -143,6 +174,25 @@ export function RevenueChart({ slug: _slug }: RevenueChartProps) {
                 <Badge className="flex items-center gap-1 bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
                   <TrendingUp className="h-2.5 w-2.5" />
                   {invoiceCount} invoice{invoiceCount !== 1 ? "s" : ""}
+                </Badge>
+              )}
+              {deltaPct !== null && (
+                /* Pro trend delta: ↑/↓ % vs the prior equal-length period. */
+                <Badge
+                  className={cn(
+                    "flex items-center gap-0.5 px-1.5 py-0.5 text-[10px]",
+                    deltaUp
+                      ? "bg-emerald-500/10 text-emerald-400"
+                      : "bg-red-500/10 text-red-400",
+                  )}
+                  title="vs. previous period"
+                >
+                  {deltaUp ? (
+                    <ArrowUpRight className="h-2.5 w-2.5" />
+                  ) : (
+                    <ArrowDownRight className="h-2.5 w-2.5" />
+                  )}
+                  {Math.abs(deltaPct).toFixed(0)}%
                 </Badge>
               )}
             </div>
@@ -218,8 +268,13 @@ export function RevenueChart({ slug: _slug }: RevenueChartProps) {
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary" />
           </div>
         ) : chartData.length === 0 ? (
-          <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
-            No paid invoices in this date range.
+          <div className="flex h-52 items-center justify-center">
+            <EmptyState
+              icon={ChartColumnIncreasing}
+              title="No paid invoices yet"
+              description="Once invoices are marked paid in this date range, revenue will chart here."
+              className="border-0"
+            />
           </div>
         ) : (
           <ChartContainer config={chartConfig} className="min-h-[220px] w-full">
