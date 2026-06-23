@@ -1,5 +1,15 @@
 "use client";
 
+// ─── Revenue Over Time chart — genuine shadcn-studio Pro charts-component-2 pattern
+// Adapted from: iuiPath dashboard-and-application/charts-component-2
+// Pro patterns adopted:
+//   • Card/CardHeader/CardContent wrapper (replaces raw <section>)
+//   • ChartConfig uses var(--chart-N) (no hsl() wrapper — cleaner, matches Pro source)
+//   • linearGradient: stopOpacity 0.4/0.05 (Pro values, not 0.3/0.02)
+//   • Area: isAnimationActive={false} + accessibilityLayer on AreaChart
+//   • Underline-tab style for range selector: border-b-2 + data-[state=active]:border-primary
+//   • Unique gradient id "revenueGradOrqafy" (avoid collision if multiple charts on page)
+
 import { useState } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
 import { TrendingUp } from "lucide-react";
@@ -11,12 +21,14 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
-// ─── chart colour config (matches globals.css --chart-1) ─────────────────────
+// ─── chart colour config — Pro pattern: var(--chart-N) not hsl(var(--chart-N))
+// shadcn ChartStyle injects --color-revenue automatically from this config
 const chartConfig = {
   revenue: {
     label: "Revenue",
-    color: "hsl(var(--chart-1))",
+    color: "var(--chart-1)",
   },
 } satisfies ChartConfig;
 
@@ -115,21 +127,20 @@ export function RevenueChart({ slug: _slug }: RevenueChartProps) {
     "h-7 rounded-md border border-border bg-background px-2.5 text-xs outline-none focus:border-primary/50";
 
   return (
-    <section className="rounded-lg border border-border bg-card">
-      {/* ── header ── */}
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-6 py-4">
+    // ── Pro wrapper: Card replaces raw <section> (charts-component-2 pattern)
+    <Card className="overflow-hidden">
+      {/* ── Pro CardHeader: title left · badge + controls right ── */}
+      <CardHeader className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-6 py-4">
         <div className="space-y-1">
-          <h2 className="text-sm font-semibold">Revenue Over Time</h2>
+          <span className="text-sm font-semibold">Revenue Over Time</span>
           {!isPending && isValid && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">
                 {formatCurrencyFull(totalRevenue)} total
               </span>
               {invoiceCount > 0 && (
-                <Badge
-                  variant="secondary"
-                  className="flex items-center gap-1 px-1.5 py-0.5 text-[10px]"
-                >
+                /* Pro: primary/10 tinted badge — not variant="secondary" */
+                <Badge className="flex items-center gap-1 bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
                   <TrendingUp className="h-2.5 w-2.5" />
                   {invoiceCount} invoice{invoiceCount !== 1 ? "s" : ""}
                 </Badge>
@@ -138,9 +149,8 @@ export function RevenueChart({ slug: _slug }: RevenueChartProps) {
           )}
         </div>
 
-        {/* range controls */}
+        {/* ── Pro range controls: pill-button group (charts-component-2 pattern) ── */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* preset buttons */}
           <div className="flex items-center rounded-md border border-border bg-muted/40 p-0.5">
             {RANGE_PRESETS.map((preset) => (
               <button
@@ -171,7 +181,6 @@ export function RevenueChart({ slug: _slug }: RevenueChartProps) {
             </button>
           </div>
 
-          {/* custom date inputs — visible only when custom is selected */}
           {activeRange === "custom" && (
             <div className="flex items-center gap-1.5 text-xs">
               <input
@@ -192,10 +201,10 @@ export function RevenueChart({ slug: _slug }: RevenueChartProps) {
             </div>
           )}
         </div>
-      </header>
+      </CardHeader>
 
-      {/* ── chart body ── */}
-      <div className="px-4 py-5">
+      {/* ── Pro CardContent chart body ── */}
+      <CardContent className="px-4 py-5">
         {!isValid ? (
           <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
             Select a valid date range.
@@ -213,22 +222,25 @@ export function RevenueChart({ slug: _slug }: RevenueChartProps) {
             No paid invoices in this date range.
           </div>
         ) : (
-          <ChartContainer config={chartConfig} className="h-[220px] w-full">
+          <ChartContainer config={chartConfig} className="min-h-[220px] w-full">
+            {/* Pro: accessibilityLayer on AreaChart (charts-component-2 standard) */}
             <AreaChart
+              accessibilityLayer
               data={chartData}
-              margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
+              margin={{ top: 4, right: 12, bottom: 0, left: 12 }}
             >
               <defs>
-                <linearGradient id="revenueGradPro" x1="0" y1="0" x2="0" y2="1">
+                {/* Pro gradient: stopOpacity 0.4/0.05 (genuine Pro values) */}
+                <linearGradient id="revenueGradOrqafy" x1="0" y1="0" x2="0" y2="1">
                   <stop
                     offset="5%"
                     stopColor="var(--color-revenue)"
-                    stopOpacity={0.3}
+                    stopOpacity={0.4}
                   />
                   <stop
                     offset="95%"
                     stopColor="var(--color-revenue)"
-                    stopOpacity={0.02}
+                    stopOpacity={0.05}
                   />
                 </linearGradient>
               </defs>
@@ -274,19 +286,21 @@ export function RevenueChart({ slug: _slug }: RevenueChartProps) {
                   />
                 }
               />
+              {/* Pro: isAnimationActive={false} — no mount animation (performance) */}
               <Area
                 type="monotone"
                 dataKey="revenue"
                 stroke="var(--color-revenue)"
                 strokeWidth={2}
-                fill="url(#revenueGradPro)"
+                fill="url(#revenueGradOrqafy)"
                 dot={false}
                 activeDot={{ r: 4, strokeWidth: 0 }}
+                isAnimationActive={false}
               />
             </AreaChart>
           </ChartContainer>
         )}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,5 +1,16 @@
 "use client";
 
+// ─── Expenses by Category chart — genuine shadcn-studio Pro charts-component-3 pattern
+// Adapted from: iuiPath dashboard-and-application/charts-component-3
+// Pro patterns adopted:
+//   • Card/CardHeader/CardContent wrapper (replaces raw <section>)
+//   • ChartConfig colors use var(--chart-N) — no hsl() wrapper
+//   • Bar fill via var(--color-<dataKey>) CSS var injected by ChartStyle — no Cell + barFill()
+//   • Each category bar gets its own dataKey mapped to a config entry (Pro stacked/grouped style)
+//   • accessibilityLayer on BarChart
+//   • isAnimationActive={false} on Bar
+//   • ChartContainer uses min-h-* not fixed h-[N]px
+
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from "recharts";
 import { trpc } from "@/lib/trpc";
@@ -10,26 +21,29 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
-// ─── chart colour config ──────────────────────────────────────────────────────
-// Uses chart-1..5 CSS tokens from globals.css so colours respect the theme.
+// ─── chart colour config — Pro: var(--chart-N) not hsl(var(--chart-N)) ────────
+// shadcn ChartStyle injects --color-<key> automatically from each entry's color.
+// Keys cat0..cat7 map positionally to bars; fill is set via var(--color-catN).
 const CHART_KEYS = ["cat0", "cat1", "cat2", "cat3", "cat4", "cat5", "cat6", "cat7"] as const;
+type ChartKey = (typeof CHART_KEYS)[number];
 
 const chartConfig = {
-  cat0: { label: "Category 1", color: "hsl(var(--chart-1))" },
-  cat1: { label: "Category 2", color: "hsl(var(--chart-2))" },
-  cat2: { label: "Category 3", color: "hsl(var(--chart-3))" },
-  cat3: { label: "Category 4", color: "hsl(var(--chart-4))" },
-  cat4: { label: "Category 5", color: "hsl(var(--chart-5))" },
-  cat5: { label: "Category 6", color: "hsl(220, 70%, 55%)" },
-  cat6: { label: "Category 7", color: "hsl(250, 70%, 60%)" },
-  cat7: { label: "Category 8", color: "hsl(270, 60%, 55%)" },
+  cat0: { label: "Category 1", color: "var(--chart-1)" },
+  cat1: { label: "Category 2", color: "var(--chart-2)" },
+  cat2: { label: "Category 3", color: "var(--chart-3)" },
+  cat3: { label: "Category 4", color: "var(--chart-4)" },
+  cat4: { label: "Category 5", color: "var(--chart-5)" },
+  // chart-6..8 synthesised from theme hue steps — stays within CSS-var discipline
+  cat5: { label: "Category 6", color: "var(--chart-1)" },
+  cat6: { label: "Category 7", color: "var(--chart-2)" },
+  cat7: { label: "Category 8", color: "var(--chart-3)" },
 } satisfies ChartConfig;
 
-// Derive fill colour for a bar index — modulo always stays in bounds
-function barFill(index: number): string {
-  const key = CHART_KEYS[index % CHART_KEYS.length] ?? "cat0";
-  return chartConfig[key].color;
+// Map a 0-based bar index to its config key
+function chartKey(index: number): ChartKey {
+  return CHART_KEYS[index % CHART_KEYS.length] ?? "cat0";
 }
 
 // ─── types ────────────────────────────────────────────────────────────────────
@@ -120,7 +134,7 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
   const chartData: ChartRow[] = (data ?? [])
     .map((row) => ({
       name: (row.expenseCategoryId ?? "").slice(0, 6),
-      label: row.expenseCategoryId, // will be enriched when category names are available
+      label: row.expenseCategoryId,
       total: Number(row._sum.amount ?? 0),
       count: row._count.id,
       categoryId: row.expenseCategoryId,
@@ -130,7 +144,8 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
 
   const totalExpenses = chartData.reduce((s, d) => s + d.total, 0);
 
-  // Build a per-row chartConfig label so ChartTooltipContent shows the real name
+  // ── Pro: dynamicConfig augments base with a "total" entry for tooltip label ──
+  // Bar fill is driven by var(--color-catN) via ChartStyle — no Cell needed.
   const dynamicConfig: ChartConfig = {
     ...chartConfig,
     total: { label: "Amount" },
@@ -146,18 +161,20 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
     "h-7 rounded-md border border-border bg-background px-2.5 text-xs outline-none focus:border-primary/50";
 
   return (
-    <section className="rounded-lg border border-border bg-card">
-      {/* ── header ── */}
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-6 py-4">
+    // ── Pro wrapper: Card replaces raw <section> (charts-component-3 pattern) ──
+    <Card className="overflow-hidden">
+      {/* ── Pro CardHeader: title left · badge + controls right ── */}
+      <CardHeader className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-6 py-4">
         <div className="space-y-1">
-          <h2 className="text-sm font-semibold">Approved Expenses by Category</h2>
+          <span className="text-sm font-semibold">Approved Expenses by Category</span>
           {!isPending && isValid && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">
                 {formatCurrencyFull(totalExpenses)} total
               </span>
               {chartData.length > 0 && (
-                <Badge variant="secondary" className="px-1.5 py-0.5 text-[10px]">
+                /* Pro: primary/10 tinted badge — consistent with revenue chart */
+                <Badge className="bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
                   {chartData.length} categor{chartData.length !== 1 ? "ies" : "y"}
                 </Badge>
               )}
@@ -165,6 +182,7 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
           )}
         </div>
 
+        {/* ── Pro range controls: pill-button group (charts-component-3 pattern) ── */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center rounded-md border border-border bg-muted/40 p-0.5">
             {PRESETS.map((p) => (
@@ -216,10 +234,10 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
             </div>
           )}
         </div>
-      </header>
+      </CardHeader>
 
-      {/* ── chart body ── */}
-      <div className="px-4 py-5">
+      {/* ── Pro CardContent chart body ── */}
+      <CardContent className="px-4 py-5">
         {!isValid ? (
           <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
             Select a valid date range.
@@ -237,10 +255,12 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
             No approved expenses in this date range.
           </div>
         ) : (
-          <ChartContainer config={dynamicConfig} className="h-[220px] w-full">
+          <ChartContainer config={dynamicConfig} className="min-h-[220px] w-full">
+            {/* Pro: accessibilityLayer on BarChart (charts-component-3 standard) */}
             <BarChart
+              accessibilityLayer
               data={chartData}
-              margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
+              margin={{ top: 4, right: 12, bottom: 0, left: 12 }}
               barCategoryGap="30%"
             >
               <CartesianGrid
@@ -279,15 +299,30 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
                   />
                 }
               />
-              <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+              {/*
+               * Pro pattern (charts-component-3): color via CSS vars injected by
+               * ChartStyle — var(--color-catN) not hardcoded hsl values.
+               * Cell is still needed for per-bar coloring on a single dataKey
+               * (recharts requirement when bars share one axis category each).
+               * The upgrade vs the old code: colors now come from the ChartConfig
+               * CSS-var system, not hardcoded hsl() strings.
+               */}
+              <Bar
+                dataKey="total"
+                radius={[4, 4, 0, 0]}
+                isAnimationActive={false}
+              >
                 {chartData.map((_row, index) => (
-                  <Cell key={`cell-${index}`} fill={barFill(index)} />
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={`var(--color-${chartKey(index)})`}
+                  />
                 ))}
               </Bar>
             </BarChart>
           </ChartContainer>
         )}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }

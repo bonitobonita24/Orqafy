@@ -4,6 +4,7 @@ import { prisma } from "@orqafy/db";
 import { auth } from "@/server/auth";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { RevenueChart } from "./revenue-chart";
 import { ExpensesChart } from "./expenses-chart";
@@ -423,8 +424,14 @@ export default async function ReportsPage({
   );
 }
 
-// ─── Pro-style KPI stat card ──────────────────────────────────────────────────
-// Pattern: shadcn-studio statistics-component-07/12 — label · value · trend badge
+// ─── Pro KPI stat card — genuine shadcn-studio statistics-component-2 pattern ──
+// Key Pro characteristics adopted:
+//   • Card/CardContent wrapper (no CardHeader — Pro puts label inside CardContent)
+//   • Value: text-3xl font-semibold (not text-2xl font-bold)
+//   • Trend badge: bg-primary/10 text-primary rounded-sm (primary-tinted, sign in text)
+//   • TrendingUp/Down icon inline with percentage in the badge
+//   • Separator between value and sub-label (kept from prior implementation)
+//   • danger variant: text-red-500 value + destructive-tinted badge
 function KpiCard({
   label,
   value,
@@ -454,42 +461,40 @@ function KpiCard({
         ? TrendingUp
         : TrendingDown;
 
-  const trendColor =
+  // Pro: primary-tinted for positive/neutral, red-tinted for negative — not
+  // variant="secondary"/"destructive" (those are too heavy for stat cards)
+  const trendBadgeClass =
     trend === undefined || trend === 0
-      ? "text-muted-foreground"
+      ? "bg-muted/60 text-muted-foreground"
       : trend > 0
-        ? "text-emerald-400"
-        : "text-red-400";
-
-  const trendBadgeVariant =
-    trend === undefined || trend === 0
-      ? ("secondary" as const)
-      : trend > 0
-        ? ("secondary" as const)
-        : ("destructive" as const);
+        ? "bg-primary/10 text-primary"
+        : "bg-red-500/10 text-red-500";
 
   return (
-    <div className="rounded-lg border border-border bg-card px-5 py-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {label}
-        </p>
-        {trend !== undefined && (
-          <Badge
-            variant={trendBadgeVariant}
-            className={`flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium ${trendColor}`}
-          >
-            <TrendIcon className="h-2.5 w-2.5" />
-            {Math.abs(trend).toFixed(1)}%
-          </Badge>
-        )}
-      </div>
-      <div className={`mt-2 text-2xl font-bold tracking-tight ${valueClass}`}>
-        {value}
-      </div>
-      <Separator className="my-2" />
-      <p className="text-xs text-muted-foreground">{sub}</p>
-    </div>
+    <Card>
+      <CardContent className="px-5 py-4">
+        {/* Pro layout: label row · trend badge top-right */}
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {label}
+          </p>
+          {trend !== undefined && (
+            <Badge
+              className={`flex items-center gap-0.5 rounded-sm px-1.5 py-0.5 text-[10px] font-medium ${trendBadgeClass}`}
+            >
+              <TrendIcon className="h-2.5 w-2.5" />
+              {trend > 0 ? "+" : ""}{Math.abs(trend).toFixed(1)}%
+            </Badge>
+          )}
+        </div>
+        {/* Pro: text-3xl font-semibold (statistics-component-2 value size) */}
+        <div className={`mt-2 text-3xl font-semibold tracking-tight ${valueClass}`}>
+          {value}
+        </div>
+        <Separator className="my-2" />
+        <p className="text-xs text-muted-foreground">{sub}</p>
+      </CardContent>
+    </Card>
   );
 }
 

@@ -9,6 +9,7 @@ import {
   Briefcase,
   ArrowRight,
 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { DashboardNotifications } from "./dashboard-notifications";
 
@@ -206,30 +207,33 @@ export default async function DashboardPage({
         </p>
       </div>
 
-      {/* Pro-style KPI cards — shadcn-studio statistics-component-02 pattern:
-          icon top-right · value · separator · sub-label · hover lift */}
+      {/* Pro KPI cards — genuine shadcn-studio statistics-component-2 pattern:
+          Card/CardContent · label top-left · icon top-right in muted rounded box ·
+          text-3xl font-semibold value · Separator · sub-label · hover lift on card */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
-            <Link
-              key={kpi.label}
-              href={kpi.href}
-              className="group rounded-lg border border-border bg-card p-5 transition-all hover:border-primary/30 hover:bg-card/80 hover:shadow-sm"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {kpi.label}
-                </p>
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 transition-colors group-hover:border-primary/20 group-hover:bg-primary/5">
-                  <Icon className="h-3.5 w-3.5 text-muted-foreground transition-colors group-hover:text-primary" />
-                </div>
-              </div>
-              <p className={`mt-2 text-2xl font-bold tracking-tight ${kpi.accent}`}>
-                {kpi.value}
-              </p>
-              <Separator className="my-2" />
-              <p className="text-xs text-muted-foreground">{kpi.sub}</p>
+            <Link key={kpi.label} href={kpi.href} className="group">
+              <Card className="transition-all group-hover:border-primary/30 group-hover:shadow-sm">
+                <CardContent className="px-5 py-4">
+                  {/* Pro: label left · icon-in-rounded-box right */}
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {kpi.label}
+                    </p>
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 transition-colors group-hover:border-primary/20 group-hover:bg-primary/5">
+                      <Icon className="h-3.5 w-3.5 text-muted-foreground transition-colors group-hover:text-primary" />
+                    </div>
+                  </div>
+                  {/* Pro: text-3xl font-semibold (statistics-component-2 value size) */}
+                  <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground">
+                    {kpi.value}
+                  </p>
+                  <Separator className="my-2" />
+                  <p className="text-xs text-muted-foreground">{kpi.sub}</p>
+                </CardContent>
+              </Card>
             </Link>
           );
         })}
