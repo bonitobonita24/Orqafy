@@ -132,23 +132,28 @@ export function AppSidebar({ slug }: AppSidebarProps) {
       <nav className="flex-1 overflow-y-auto py-1.5">
         {NAV_GROUPS.map(({ label: groupLabel, items }) => (
           <div key={groupLabel} className="mb-0.5">
-            {/* Section label — uppercase overline, matches mockup style */}
-            <p className="px-4 pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-[0.8px] text-muted-foreground/60">
+            {/* Section label — uppercase overline; stays flush at px-4 so the
+                indented items below read clearly as its children. */}
+            <p className="px-4 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-[0.8px] text-muted-foreground/60">
               {groupLabel}
             </p>
-            <ul>
+            {/* Indented item list with a subtle left connector guide — the Pro
+                shadcn-sidebar submenu pattern: children inset from their group
+                label + a vertical rule so the hierarchy is unmistakable. */}
+            <ul className="ml-[1.375rem] border-l border-border/50">
               {items.map(({ label, href, icon: Icon }) => {
                 const fullHref = `/${slug}/${href}`;
                 const isActive =
                   pathname === fullHref || pathname.startsWith(`${fullHref}/`);
                 return (
-                  <li key={href}>
+                  <li key={href} className="-ml-px">
                     <Link
                       href={fullHref}
                       className={cn(
-                        // Right-border accent on active — matches mockup structural pattern.
+                        // Left-border accent on active sits ON the connector guide,
+                        // so the active child lights up its branch of the tree.
                         // Color stays neutral-dark (intentional reskin, not emerald).
-                        "flex items-center gap-2.5 border-r-2 py-1.5 pl-4 pr-3 text-[12.5px] transition-colors",
+                        "flex items-center gap-2.5 border-l-2 py-1.5 pl-3 pr-3 text-[12.5px] transition-colors",
                         isActive
                           ? "border-primary bg-primary/10 font-semibold text-primary"
                           : "border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground",
