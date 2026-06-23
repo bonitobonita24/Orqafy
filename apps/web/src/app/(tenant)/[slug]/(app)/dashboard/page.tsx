@@ -9,6 +9,7 @@ import {
   Briefcase,
   ArrowRight,
 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import { DashboardNotifications } from "./dashboard-notifications";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -205,6 +206,8 @@ export default async function DashboardPage({
         </p>
       </div>
 
+      {/* Pro-style KPI cards — shadcn-studio statistics-component-02 pattern:
+          icon top-right · value · separator · sub-label · hover lift */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
@@ -212,20 +215,21 @@ export default async function DashboardPage({
             <Link
               key={kpi.label}
               href={kpi.href}
-              className="group rounded-lg border border-border bg-card p-5 transition-colors hover:border-primary/30 hover:bg-card/80"
+              className="group rounded-lg border border-border bg-card p-5 transition-all hover:border-primary/30 hover:bg-card/80 hover:shadow-sm"
             >
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {kpi.label}
-                  </p>
-                  <p className={`text-2xl font-bold tracking-tight ${kpi.accent}`}>
-                    {kpi.value}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{kpi.sub}</p>
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {kpi.label}
+                </p>
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 transition-colors group-hover:border-primary/20 group-hover:bg-primary/5">
+                  <Icon className="h-3.5 w-3.5 text-muted-foreground transition-colors group-hover:text-primary" />
                 </div>
-                <Icon className={`h-5 w-5 ${kpi.accent} opacity-60 transition-opacity group-hover:opacity-100`} />
               </div>
+              <p className={`mt-2 text-2xl font-bold tracking-tight ${kpi.accent}`}>
+                {kpi.value}
+              </p>
+              <Separator className="my-2" />
+              <p className="text-xs text-muted-foreground">{kpi.sub}</p>
             </Link>
           );
         })}

@@ -1,23 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
+import { TrendingUp } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
+import { Badge } from "@/components/ui/badge";
 
-// Default range: last 30 days
-function defaultRange(): { start: Date; end: Date } {
+// ─── chart colour config (matches globals.css --chart-1) ─────────────────────
+const chartConfig = {
+  revenue: {
+    label: "Revenue",
+    color: "hsl(var(--chart-1))",
+  },
+} satisfies ChartConfig;
+
+// ─── preset ranges ────────────────────────────────────────────────────────────
+type RangeKey = "7d" | "30d" | "90d" | "custom";
+
+const RANGE_PRESETS: { key: RangeKey; label: string; days: number }[] = [
+  { key: "7d", label: "7d", days: 7 },
+  { key: "30d", label: "30d", days: 30 },
+  { key: "90d", label: "90d", days: 90 },
+];
+
+function rangeFromDays(days: number): { start: Date; end: Date } {
   const end = new Date();
   end.setHours(23, 59, 59, 999);
   const start = new Date(end);
-  start.setDate(start.getDate() - 29);
+  start.setDate(start.getDate() - (days - 1));
   start.setHours(0, 0, 0, 0);
   return { start, end };
 }
@@ -26,6 +42,7 @@ function toDateInput(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+// ─── formatters ───────────────────────────────────────────────────────────────
 function formatCurrencyShort(value: number): string {
   if (value >= 1_000_000) return `₱${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `₱${(value / 1_000).toFixed(0)}K`;
@@ -40,9 +57,9 @@ function formatCurrencyFull(value: number): string {
   }).format(value);
 }
 
-// Bucket paid invoices by calendar day for the area chart
+// ─── bucket paid invoices into daily data points ──────────────────────────────
 function bucketByDay(
-  invoices: Array<{ paidAt: Date | null; totalAmount: unknown }>
+  invoices: Array<{ paidAt: Date | null; totalAmount: unknown }>,
 ): Array<{ date: string; revenue: number }> {
   const map = new Map<string, number>();
   for (const inv of invoices) {
@@ -55,62 +72,129 @@ function bucketByDay(
     .map(([date, revenue]) => ({ date, revenue }));
 }
 
+// ─── component ────────────────────────────────────────────────────────────────
 interface RevenueChartProps {
   slug: string;
 }
 
 export function RevenueChart({ slug: _slug }: RevenueChartProps) {
-  const defaults = defaultRange();
-  const [startStr, setStartStr] = useState(toDateInput(defaults.start));
-  const [endStr, setEndStr] = useState(toDateInput(defaults.end));
+  const [activeRange, setActiveRange] = useState<RangeKey>("30d");
+  const [customStart, setCustomStart] = useState(
+    toDateInput(rangeFromDays(30).start),
+  );
+  const [customEnd, setCustomEnd] = useState(toDateInput(new Date()));
 
-  const startDate = new Date(`${startStr}T00:00:00`);
-  const endDate = new Date(`${endStr}T23:59:59`);
-  const isValid = !isNaN(startDate.getTime()) && !isNaN(endDate.getTime()) && startDate <= endDate;
+  // Derive dates from either a preset or custom range
+  const { startDate, endDate } = (() => {
+    if (activeRange === "custom") {
+      return {
+        startDate: new Date(`${customStart}T00:00:00`),
+        endDate: new Date(`${customEnd}T23:59:59`),
+      };
+    }
+    const preset = RANGE_PRESETS.find((p) => p.key === activeRange)!;
+    const r = rangeFromDays(preset.days);
+    return { startDate: r.start, endDate: r.end };
+  })();
+
+  const isValid =
+    !isNaN(startDate.getTime()) &&
+    !isNaN(endDate.getTime()) &&
+    startDate <= endDate;
 
   const { data, isPending, isError } = trpc.report.revenueByPeriod.useQuery(
     { startDate, endDate },
-    { enabled: isValid }
+    { enabled: isValid },
   );
 
   const chartData = bucketByDay(data ?? []);
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
+  const invoiceCount = data?.length ?? 0;
 
   const inputClass =
-    "h-8 rounded-md border border-border bg-background px-2.5 text-xs outline-none focus:border-primary/50";
+    "h-7 rounded-md border border-border bg-background px-2.5 text-xs outline-none focus:border-primary/50";
 
   return (
     <section className="rounded-lg border border-border bg-card">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
-        <div>
+      {/* ── header ── */}
+      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-6 py-4">
+        <div className="space-y-1">
           <h2 className="text-sm font-semibold">Revenue Over Time</h2>
           {!isPending && isValid && (
-            <p className="text-xs text-muted-foreground">
-              {formatCurrencyFull(totalRevenue)} total · {data?.length ?? 0} paid invoice
-              {data?.length !== 1 ? "s" : ""}
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">
+                {formatCurrencyFull(totalRevenue)} total
+              </span>
+              {invoiceCount > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="flex items-center gap-1 px-1.5 py-0.5 text-[10px]"
+                >
+                  <TrendingUp className="h-2.5 w-2.5" />
+                  {invoiceCount} invoice{invoiceCount !== 1 ? "s" : ""}
+                </Badge>
+              )}
+            </div>
           )}
         </div>
-        <div className="flex items-center gap-2 text-xs">
-          <label className="text-muted-foreground">From</label>
-          <input
-            type="date"
-            value={startStr}
-            onChange={(e) => setStartStr(e.target.value)}
-            className={inputClass}
-            aria-label="Revenue chart start date"
-          />
-          <label className="text-muted-foreground">To</label>
-          <input
-            type="date"
-            value={endStr}
-            onChange={(e) => setEndStr(e.target.value)}
-            className={inputClass}
-            aria-label="Revenue chart end date"
-          />
+
+        {/* range controls */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* preset buttons */}
+          <div className="flex items-center rounded-md border border-border bg-muted/40 p-0.5">
+            {RANGE_PRESETS.map((preset) => (
+              <button
+                key={preset.key}
+                onClick={() => setActiveRange(preset.key)}
+                className={[
+                  "rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                  activeRange === preset.key
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                ].join(" ")}
+                aria-pressed={activeRange === preset.key}
+              >
+                {preset.label}
+              </button>
+            ))}
+            <button
+              onClick={() => setActiveRange("custom")}
+              className={[
+                "rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                activeRange === "custom"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              ].join(" ")}
+              aria-pressed={activeRange === "custom"}
+            >
+              Custom
+            </button>
+          </div>
+
+          {/* custom date inputs — visible only when custom is selected */}
+          {activeRange === "custom" && (
+            <div className="flex items-center gap-1.5 text-xs">
+              <input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className={inputClass}
+                aria-label="Revenue chart start date"
+              />
+              <span className="text-muted-foreground">–</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className={inputClass}
+                aria-label="Revenue chart end date"
+              />
+            </div>
+          )}
         </div>
       </header>
 
+      {/* ── chart body ── */}
       <div className="px-4 py-5">
         {!isValid ? (
           <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
@@ -129,62 +213,78 @@ export function RevenueChart({ slug: _slug }: RevenueChartProps) {
             No paid invoices in this date range.
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={210}>
-            <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+          <ChartContainer config={chartConfig} className="h-[220px] w-full">
+            <AreaChart
+              data={chartData}
+              margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
+            >
               <defs>
-                <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                <linearGradient id="revenueGradPro" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="5%"
+                    stopColor="var(--color-revenue)"
+                    stopOpacity={0.3}
+                  />
+                  <stop
+                    offset="95%"
+                    stopColor="var(--color-revenue)"
+                    stopOpacity={0.02}
+                  />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="hsl(var(--border))"
+                vertical={false}
+              />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(v: string) => {
-                  const d = new Date(v);
-                  return d.toLocaleDateString("en-PH", { month: "short", day: "numeric" });
-                }}
-              />
-              <YAxis
-                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(v: number) => formatCurrencyShort(v)}
-                width={52}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "6px",
-                  fontSize: "12px",
-                  color: "hsl(var(--foreground))",
-                }}
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                formatter={(value: any) => [formatCurrencyFull(Number(value ?? 0)), "Revenue"]}
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                labelFormatter={(label: any) =>
-                  new Date(String(label)).toLocaleDateString("en-PH", {
-                    year: "numeric",
-                    month: "long",
+                tickMargin={8}
+                tickFormatter={(v: string) =>
+                  new Date(v).toLocaleDateString("en-PH", {
+                    month: "short",
                     day: "numeric",
                   })
+                }
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                width={56}
+                tickFormatter={(v: number) => formatCurrencyShort(v)}
+              />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    formatter={(value) =>
+                      formatCurrencyFull(Number(value ?? 0))
+                    }
+                    labelFormatter={(label) =>
+                      new Date(String(label)).toLocaleDateString("en-PH", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })
+                    }
+                    indicator="line"
+                  />
                 }
               />
               <Area
                 type="monotone"
                 dataKey="revenue"
-                stroke="hsl(var(--primary))"
+                stroke="var(--color-revenue)"
                 strokeWidth={2}
-                fill="url(#revenueGrad)"
+                fill="url(#revenueGradPro)"
                 dot={false}
                 activeDot={{ r: 4, strokeWidth: 0 }}
               />
             </AreaChart>
-          </ResponsiveContainer>
+          </ChartContainer>
         )}
       </div>
     </section>

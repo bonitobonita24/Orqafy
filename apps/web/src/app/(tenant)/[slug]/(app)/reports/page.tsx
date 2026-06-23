@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 import { auth } from "@/server/auth";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { RevenueChart } from "./revenue-chart";
 import { ExpensesChart } from "./expenses-chart";
 
@@ -420,33 +423,72 @@ export default async function ReportsPage({
   );
 }
 
+// ─── Pro-style KPI stat card ──────────────────────────────────────────────────
+// Pattern: shadcn-studio statistics-component-07/12 — label · value · trend badge
 function KpiCard({
   label,
   value,
   sub,
   accent = false,
   danger = false,
+  trend,
 }: {
   label: string;
   value: string;
   sub: string;
   accent?: boolean;
   danger?: boolean;
+  /** Optional percentage change vs prior period, e.g. +12.5 or -3.2 */
+  trend?: number;
 }) {
   const valueClass = danger
     ? "text-red-500"
     : accent
       ? "text-primary"
       : "text-foreground";
+
+  const TrendIcon =
+    trend === undefined || trend === 0
+      ? Minus
+      : trend > 0
+        ? TrendingUp
+        : TrendingDown;
+
+  const trendColor =
+    trend === undefined || trend === 0
+      ? "text-muted-foreground"
+      : trend > 0
+        ? "text-emerald-400"
+        : "text-red-400";
+
+  const trendBadgeVariant =
+    trend === undefined || trend === 0
+      ? ("secondary" as const)
+      : trend > 0
+        ? ("secondary" as const)
+        : ("destructive" as const);
+
   return (
     <div className="rounded-lg border border-border bg-card px-5 py-4">
-      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {label}
+        </p>
+        {trend !== undefined && (
+          <Badge
+            variant={trendBadgeVariant}
+            className={`flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium ${trendColor}`}
+          >
+            <TrendIcon className="h-2.5 w-2.5" />
+            {Math.abs(trend).toFixed(1)}%
+          </Badge>
+        )}
       </div>
       <div className={`mt-2 text-2xl font-bold tracking-tight ${valueClass}`}>
         {value}
       </div>
-      <div className="mt-1 text-xs text-muted-foreground">{sub}</div>
+      <Separator className="my-2" />
+      <p className="text-xs text-muted-foreground">{sub}</p>
     </div>
   );
 }

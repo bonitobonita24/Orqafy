@@ -35,6 +35,8 @@ module.exports = {
     '.turbo/',
     'coverage/',
     '*.mjs',
+    // shadcn/ui installed components — auto-generated, not project-authored
+    'apps/web/src/components/ui/',
   ],
   settings: {},
 };
