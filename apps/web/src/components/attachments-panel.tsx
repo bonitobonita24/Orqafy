@@ -20,9 +20,32 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/**
+ * Mirrors the Zod v1 `.cuid()` predicate used by `storage.list` on the server.
+ * CUID v1: starts with 'c', followed by ≥8 non-whitespace, non-hyphen chars.
+ * Demo-seed IDs (e.g. "b1iwa3dc…") don't start with 'c' and correctly fail here,
+ * so we skip the query rather than fire a guaranteed-BAD_REQUEST that retries 4×.
+ */
+const CUID_V1_RE = /^c[^\s-]{8,}$/i;
+function isValidCuid(id: string): boolean {
+  return CUID_V1_RE.test(id);
+}
+
 export function AttachmentsPanel({ entityType, entityId, readOnly = false }: Props) {
   const utils = trpc.useUtils();
-  const { data: attachments, isLoading } = trpc.storage.list.useQuery({ entityType, entityId });
+  const isCuid = isValidCuid(entityId);
+  const { data: attachments, isLoading } = trpc.storage.list.useQuery(
+    { entityType, entityId },
+    {
+      enabled: isCuid,
+      // Do not retry on 4xx — an invalid entityId will always fail with BAD_REQUEST.
+      retry: (failureCount, error) => {
+        const code = (error as { data?: { httpStatus?: number } }).data?.httpStatus;
+        if (code !== undefined && code >= 400 && code < 500) return false;
+        return failureCount < 3;
+      },
+    },
+  );
   const deleteAttachment = trpc.storage.delete.useMutation({
     onSuccess: async () => {
       await utils.storage.list.invalidate({ entityType, entityId });
