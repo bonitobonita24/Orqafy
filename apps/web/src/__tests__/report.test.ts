@@ -15,6 +15,9 @@ vi.mock("@orqafy/db", () => ({
       aggregate: vi.fn(),
       groupBy: vi.fn(),
     },
+    expenseCategory: {
+      findMany: vi.fn(),
+    },
     jobOrder: {
       groupBy: vi.fn(),
     },
@@ -77,6 +80,7 @@ import { prisma as db } from "@orqafy/db";
 const mockDb = db as unknown as {
   invoice: { aggregate: any; findMany: any; groupBy: any };
   expense: { aggregate: any; groupBy: any };
+  expenseCategory: { findMany: any };
   jobOrder: { groupBy: any };
   customer: { count: any };
   project: { count: any };
@@ -299,11 +303,18 @@ describe("report.expensesByCategory", () => {
       },
     ];
     mockDb.expense.groupBy.mockResolvedValue(grouped);
+    mockDb.expenseCategory.findMany.mockResolvedValue([
+      { id: "cat-rent", name: "Rent" },
+      { id: "cat-utilities", name: "Utilities" },
+    ]);
 
     const caller = createCaller(authenticatedCtx());
     const result = await caller.report.expensesByCategory({});
 
-    expect(result).toEqual(grouped);
+    expect(result).toEqual([
+      { expenseCategoryId: "cat-rent", _sum: { amount: 24_000 }, _count: { id: 4 }, categoryName: "Rent" },
+      { expenseCategoryId: "cat-utilities", _sum: { amount: 8_500 }, _count: { id: 6 }, categoryName: "Utilities" },
+    ]);
     expect(mockDb.expense.groupBy).toHaveBeenCalledWith({
       by: ["expenseCategoryId"],
       where: { tenantId: "acme-tenant-id", status: "approved" },
@@ -314,6 +325,7 @@ describe("report.expensesByCategory", () => {
 
   it("applies date filter on Expense.date field (not createdAt) when provided", async () => {
     mockDb.expense.groupBy.mockResolvedValue([]);
+    mockDb.expenseCategory.findMany.mockResolvedValue([]);
 
     const start = new Date("2026-01-01");
     const end = new Date("2026-03-31");
@@ -336,6 +348,7 @@ describe("report.expensesByCategory", () => {
     mockDb.expense.groupBy.mockResolvedValue([
       { expenseCategoryId: "cat-rent", _sum: { amount: 24_000 }, _count: { id: 4 } },
     ]);
+    mockDb.expenseCategory.findMany.mockResolvedValue([]);
 
     const caller = createCaller(authenticatedCtx());
     await caller.report.expensesByCategory({});
