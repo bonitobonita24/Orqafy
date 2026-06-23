@@ -114,7 +114,7 @@ export const reportRouter = createTRPCRouter({
             }
           : {};
 
-      return db.expense.groupBy({
+      const grouped = await db.expense.groupBy({
         by: ["expenseCategoryId"],
         where: {
           tenantId: ctx.tenantId,
@@ -124,6 +124,22 @@ export const reportRouter = createTRPCRouter({
         _sum: { amount: true },
         _count: { id: true },
       });
+
+      // Resolve category names so consumers (e.g. the chart) can label by name
+      // instead of the raw id. groupBy can't join, so map ids → names here.
+      const categories = await db.expenseCategory.findMany({
+        where: {
+          tenantId: ctx.tenantId,
+          id: { in: grouped.map((g) => g.expenseCategoryId) },
+        },
+        select: { id: true, name: true },
+      });
+      const nameById = new Map(categories.map((c) => [c.id, c.name]));
+
+      return grouped.map((g) => ({
+        ...g,
+        categoryName: nameById.get(g.expenseCategoryId) ?? "Uncategorized",
+      }));
     }),
 
   topClients: protectedProcedure

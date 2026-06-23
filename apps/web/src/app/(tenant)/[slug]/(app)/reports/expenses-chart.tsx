@@ -147,8 +147,12 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
   // Shape & sort: top 8 by total
   const chartData: ChartRow[] = (data ?? [])
     .map((row) => ({
-      name: (row.expenseCategoryId ?? "").slice(0, 6),
-      label: row.expenseCategoryId,
+      // x-axis: short category name; tooltip: full name (resolved server-side)
+      name:
+        row.categoryName.length > 12
+          ? `${row.categoryName.slice(0, 11)}…`
+          : row.categoryName,
+      label: row.categoryName,
       total: Number(row._sum.amount ?? 0),
       count: row._count.id,
       categoryId: row.expenseCategoryId,
