@@ -4,7 +4,7 @@
 // Adapted from: iuiPath dashboard-and-application/charts-component-3
 // Pro patterns adopted:
 //   • Card/CardHeader/CardContent wrapper (replaces raw <section>)
-//   • ChartConfig colors use var(--chart-N) — no hsl() wrapper
+//   • ChartConfig colors: hsl(var(--chart-N)) — theme stores bare HSL triplets, wrapper required
 //   • Bar fill via var(--color-<dataKey>) CSS var injected by ChartStyle — no Cell + barFill()
 //   • Each category bar gets its own dataKey mapped to a config entry (Pro stacked/grouped style)
 //   • accessibilityLayer on BarChart
@@ -13,32 +13,37 @@
 
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from "recharts";
+import { ArrowDownRight, ArrowUpRight, Receipt } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { cn } from "@/lib/utils";
 
-// ─── chart colour config — Pro: var(--chart-N) not hsl(var(--chart-N)) ────────
+// ─── chart colour config — hsl(var(--chart-N)) (theme stores bare HSL triplets) ─
 // shadcn ChartStyle injects --color-<key> automatically from each entry's color.
 // Keys cat0..cat7 map positionally to bars; fill is set via var(--color-catN).
 const CHART_KEYS = ["cat0", "cat1", "cat2", "cat3", "cat4", "cat5", "cat6", "cat7"] as const;
 type ChartKey = (typeof CHART_KEYS)[number];
 
 const chartConfig = {
-  cat0: { label: "Category 1", color: "var(--chart-1)" },
-  cat1: { label: "Category 2", color: "var(--chart-2)" },
-  cat2: { label: "Category 3", color: "var(--chart-3)" },
-  cat3: { label: "Category 4", color: "var(--chart-4)" },
-  cat4: { label: "Category 5", color: "var(--chart-5)" },
+  cat0: { label: "Category 1", color: "hsl(var(--chart-1))" },
+  cat1: { label: "Category 2", color: "hsl(var(--chart-2))" },
+  cat2: { label: "Category 3", color: "hsl(var(--chart-3))" },
+  cat3: { label: "Category 4", color: "hsl(var(--chart-4))" },
+  cat4: { label: "Category 5", color: "hsl(var(--chart-5))" },
   // chart-6..8 synthesised from theme hue steps — stays within CSS-var discipline
-  cat5: { label: "Category 6", color: "var(--chart-1)" },
-  cat6: { label: "Category 7", color: "var(--chart-2)" },
-  cat7: { label: "Category 8", color: "var(--chart-3)" },
+  cat5: { label: "Category 6", color: "hsl(var(--chart-1))" },
+  cat6: { label: "Category 7", color: "hsl(var(--chart-2))" },
+  cat7: { label: "Category 8", color: "hsl(var(--chart-3))" },
 } satisfies ChartConfig;
 
 // Map a 0-based bar index to its config key
@@ -130,6 +135,15 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
     { enabled: isValid },
   );
 
+  // ── Prior comparison window: equal-length span immediately before current ──
+  const periodMs = endDate.getTime() - startDate.getTime();
+  const prevEnd = new Date(startDate.getTime() - 1);
+  const prevStart = new Date(prevEnd.getTime() - periodMs);
+  const { data: prevData } = trpc.report.expensesByCategory.useQuery(
+    { startDate: prevStart, endDate: prevEnd },
+    { enabled: isValid },
+  );
+
   // Shape & sort: top 8 by total
   const chartData: ChartRow[] = (data ?? [])
     .map((row) => ({
@@ -143,6 +157,19 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
     .slice(0, 8);
 
   const totalExpenses = chartData.reduce((s, d) => s + d.total, 0);
+
+  // ── Delta vs prior period ──────────────────────────────────────────────────
+  const prevTotal = (prevData ?? []).reduce(
+    (s, row) => s + Number(row._sum.amount ?? 0),
+    0,
+  );
+  const deltaPct =
+    prevTotal > 0
+      ? ((totalExpenses - prevTotal) / prevTotal) * 100
+      : totalExpenses > 0
+        ? 100
+        : null;
+  const deltaUp = (deltaPct ?? 0) >= 0;
 
   // ── Pro: dynamicConfig augments base with a "total" entry for tooltip label ──
   // Bar fill is driven by var(--color-catN) via ChartStyle — no Cell needed.
@@ -176,6 +203,25 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
                 /* Pro: primary/10 tinted badge — consistent with revenue chart */
                 <Badge className="bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
                   {chartData.length} categor{chartData.length !== 1 ? "ies" : "y"}
+                </Badge>
+              )}
+              {deltaPct !== null && (
+                /* Pro trend delta: ↑/↓ % vs prior equal-length period. */
+                <Badge
+                  className={cn(
+                    "flex items-center gap-0.5 px-1.5 py-0.5 text-[10px]",
+                    deltaUp
+                      ? "bg-emerald-500/10 text-emerald-400"
+                      : "bg-red-500/10 text-red-400",
+                  )}
+                  title="vs. previous period"
+                >
+                  {deltaUp ? (
+                    <ArrowUpRight className="h-2.5 w-2.5" />
+                  ) : (
+                    <ArrowDownRight className="h-2.5 w-2.5" />
+                  )}
+                  {Math.abs(deltaPct).toFixed(0)}%
                 </Badge>
               )}
             </div>
@@ -251,8 +297,13 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary" />
           </div>
         ) : chartData.length === 0 ? (
-          <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
-            No approved expenses in this date range.
+          <div className="flex h-52 items-center justify-center">
+            <EmptyState
+              icon={Receipt}
+              title="No approved expenses"
+              description="Once expenses are approved in this date range, they will chart here by category."
+              className="border-0"
+            />
           </div>
         ) : (
           <ChartContainer config={dynamicConfig} className="min-h-[220px] w-full">
@@ -319,6 +370,8 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
                   />
                 ))}
               </Bar>
+              {/* Compact legend: shows category labels mapped via dynamicConfig */}
+              <ChartLegend content={<ChartLegendContent />} />
             </BarChart>
           </ChartContainer>
         )}

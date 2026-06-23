@@ -4,7 +4,9 @@
 // Adapted from: iuiPath dashboard-and-application/charts-component-2
 // Pro patterns adopted:
 //   • Card/CardHeader/CardContent wrapper (replaces raw <section>)
-//   • ChartConfig uses var(--chart-N) (no hsl() wrapper — cleaner, matches Pro source)
+//   • ChartConfig colors: hsl(var(--chart-N)) — THIS app's theme stores --chart-N
+//     as bare HSL triplets (globals.css), so the hsl() wrapper is REQUIRED. (The
+//     shadcn-studio Pro source omits it only because its theme stores full colors.)
 //   • linearGradient: stopOpacity 0.4/0.05 (Pro values, not 0.3/0.02)
 //   • Area: isAnimationActive={false} + accessibilityLayer on AreaChart
 //   • Underline-tab style for range selector: border-b-2 + data-[state=active]:border-primary
@@ -30,12 +32,12 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 
-// ─── chart colour config — Pro pattern: var(--chart-N) not hsl(var(--chart-N))
+// ─── chart colour config — hsl(var(--chart-N)) (theme stores bare HSL triplets)
 // shadcn ChartStyle injects --color-revenue automatically from this config
 const chartConfig = {
   revenue: {
     label: "Revenue",
-    color: "var(--chart-1)",
+    color: "hsl(var(--chart-1))",
   },
 } satisfies ChartConfig;
 
