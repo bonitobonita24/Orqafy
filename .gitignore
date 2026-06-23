@@ -1,3 +1,6 @@
+# Autonomous-loop decision inbox (local only)
+PENDING_DECISIONS.md
+
 # Dependencies
 node_modules/
 .pnpm-store/
