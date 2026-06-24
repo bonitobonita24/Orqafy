@@ -2352,3 +2352,36 @@
 - Note:                Wave program W0–W13 complete on swarm/wire-dead-controls; awaiting
                        human review + merge to main. Main-branch staging-deploy handoff
                        state unchanged.
+
+---
+
+## Framework Sync — V32.9 → V32.11
+
+- Date:                2026-06-24
+- Author:              Claude AIEF conductor dispatch
+- Action:              Framework sync — Spec-Driven V32.9 → V32.11
+- Scope:               Framework deliverable files only (CLAUDE.md, .ai_prompt/*, AI/Master_Prompt_v31.md,
+                       deploy-v31.sh, .gitignore); no app source touched.
+- What changed:
+  - V32.10 Mandatory Compose Resource Limits: top-level `mem_limit`/`mem_reservation`/`cpus`
+    on all stage/prod services; per-role default table in templates.md; dev exempt; zero count change.
+  - V32.11 shadcn/studio Pro Default Design Generator: owner's licensed shadcn/studio Pro MCP
+    (user-global) becomes framework's DEFAULT design generator, phase-routed:
+    Phase 3.3 `/cui`→`/iui`→`/rui`; Phase 4 Parts 5-6 `/cui`+`/rui` (design frozen);
+    Phase 7 `/cui`+`/iui` new-sections-only+`/rui`; `/ftc` Figma-conditional;
+    INHERIT-not-REPLACE over docs/DESIGN.md per Rule 12; fallback = plain shadcn/ui MCP + Blocks.
+    MCP servers 4→5; all other counts unchanged.
+  - .gitignore: added `*.bak` pattern to prevent framework backup files from appearing as
+    untracked/staged in git.
+- Files modified:      CLAUDE.md, .ai_prompt/CLAUDE_v31_compact.md, .ai_prompt/phases.md,
+                       .ai_prompt/templates.md, .ai_prompt/ui-rules.md,
+                       .ai_prompt/AI_Tools_Skills_MCPs_Reference_v31.md,
+                       .ai_prompt/ChatGPT_V31_Cross_Audit_Prompt.md,
+                       .ai_prompt/Framework_Feature_Index_v31.md,
+                       .ai_prompt/LESSONS_REGISTRY.md, .ai_prompt/Master_Prompt_v31.md,
+                       AI/Master_Prompt_v31.md, deploy-v31.sh, .gitignore
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  none
+- Validation:          Safety gate passed — only framework deliverable files in git diff;
+                       NEVER-TOUCH paths confirmed untouched by deploy script post-flight.
