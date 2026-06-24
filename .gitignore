@@ -71,6 +71,7 @@ openclaw-handoff.md
 !.vscode/tasks.json
 !.vscode/mcp.json
 CREDENTIALS.md_bak
+*.bak
 
 # ─── Build + TypeScript cache (Spec-Driven V31) ───
 
