@@ -1227,3 +1227,64 @@ writing speculative features would violate the no-gold-plating + Rule-1 (don't i
 **Reversible:** N/A (a finding, not a change).
 
 **Phase:** Phase 8 scout (Epic 3-5 completeness re-verification).
+
+---
+
+## Decision — 2026-06-25 — Finance RULES D-2 (owner-approved R1–R7)
+
+**Decision:** Settle the seven open finance business-rules from `docs/FINANCE_RULES_PROPOSAL.md`.
+All of R1–R7 are **owner-approved** with the confirmed choices below. This entry is the locked
+contract; the implementation surfaces the already-built finance backends and adds the few
+genuinely-new pieces (provisioning seed, PO VAT fields, over-receipt tolerance, Input-VAT account,
+audited vendor reactivate).
+
+**R1 — PO tax (VAT).** PH VAT **12%, EXCLUSIVE, auto-computed** at the PO level and shown as a
+separate "VAT (12%)" total line. A per-PO **VAT-exempt / zero-rated toggle** (`isVatExempt`)
+suppresses the VAT line (taxAmount → 0). Input VAT posts to a default **Input VAT** asset account
+(`AccountingSettings.defaultInputVatAccountId`, new). Tax is header-level (no per-line tax rates).
+
+**R2 — PO line allocation routing.** Expose the existing allocation picker
+(`stock` / `project_expense` / `company_expense`) on the PO form. Default **`company_expense`**;
+default **`stock`** when the line references an inventory product; `project_expense` requires a
+project. Backend allocation create + GR→JE consumption already exist — UI only.
+
+**R3 — Over-receipt.** **Allowed + non-blocking warning** within a **10% tolerance**. Beyond 10%
+requires explicit confirm + an audited reason (`GoodsReceipt.overReceiptReason`). Enforced in
+`goodsReceipt.create` with a clear error past tolerance unless reason supplied; GR form warns
+(≤10%) / blocks-until-confirm-and-reason (>10%).
+
+**R4 — GL default-account mapping (turns GR→JE auto-post ON out-of-the-box).** **Seed a standard
+PH SME Chart of Accounts on tenant provisioning** (Assets/Liabilities/Equity/Income/Expense incl.
+Inventory, Accounts Payable, **Input VAT**, Purchases/COGS, Salaries Expense, Statutory Payables,
+Withholding Payable), seed the current open FiscalYear + default VAT TaxRate + cited 2025 PH
+StatutoryRates, and **auto-set** the four `AccountingSettings` defaults
+(`defaultInventoryAccountId`, `defaultApAccountId`, `defaultExpenseAccountId`, `defaultFiscalYearId`)
++ `defaultInputVatAccountId` to the seeded accounts. Shared seed logic is extracted to `@orqafy/db`
+and called from both the demo seed and `tenant-provisioning`. Accounting → Settings UI exposes
+review/remap of all five default accounts.
+
+**R5 — PO editing & approval.** Block header/line edits once a PO is **beyond DRAFT**
+(`status !== "draft"` — already enforced server-side in `purchaseOrder.update`/`submit`). To change
+an approved PO: cancel + clone. Keep the single `poApprovalThreshold` auto-approve (≤ ₱10,000) —
+**NO multi-tier.** PO detail gets a status-aware action island (submit/approve/markOrdered/
+cancel/close) surfacing the existing procedures.
+
+**R6 — Vendor reactivation.** A deactivated vendor may be reactivated by **Administrator or
+Purchasing Manager** (audited via L5 `writeAuditLog`). No PO may be raised against a deactivated
+vendor (existing guard). New `vendor.reactivate` procedure + reactivate button.
+
+**R7 — Payroll statutory rates.** Keep the seeded 2025 PH `StatutoryRate` values as the formula
+(SSS 15% MSC, PhilHealth 5%, Pag-IBIG 2%/2%, BIR TRAIN withholding) — **no rate changes**. Surface
+the StatutoryRate config UI (list/upsert) + confirm the payroll process/approve/markPaid workflow UI
+(fund-source picker on markPaid, statutory deduction breakdown display). Owner edits rates annually.
+
+**Already-built (verified at code level, surfaced not rebuilt):** GR→JE auto-post
+(`goodsReceipt.create`), PO lifecycle procedures + R5 edit-lock, allocation backend, payroll
+process/approve/markPaid + `statutoryRate.{list,resolved,upsert,seedDefaults}`, Accounting Settings
+4-default mapping form, Trial Balance / GL / fiscal-years / chart-of-accounts pages.
+
+**Reversible:** Tolerance %, VAT rate, and allocation defaults are config-level and reversible.
+The chart-on-provisioning seed is idempotent (ON CONFLICT DO NOTHING) and reversible by remapping
+in Settings.
+
+**Phase:** Phase 7 Feature Update (Finance D-2 ruleset) — deploy HELD (commit+push to `main` only).

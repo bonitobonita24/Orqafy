@@ -267,6 +267,25 @@ operations and financial traceability without the complexity.
 
 ### Purchasing
 > **Build status (2026-06-15, see DECISIONS_LOG §B):** **BUILT** — Vendor CRUD; PO full lifecycle (DRAFT→SUBMITTED→APPROVED→ORDERED→PARTIALLY_RECEIVED→RECEIVED→CLOSED; CANCELLED from any pre-RECEIVED state); per-tenant configurable `poApprovalThreshold` (default ₱10,000, stored in `AccountingSettings`): POs at-or-below auto-approve on submit, above requires Administrator/Purchasing Manager; Goods Receipt increments Inventory StockMovement for stock allocations + partial-receipt tracking. **BUILT (2026-06-16, DECISIONS_LOG §B unblocked)** — JE auto-post on goods receipt (DR Inventory for stock allocations + DR Expense for company/project-expense allocations, CR Accounts Payable for the total received value), resolving accounts from the new `AccountingSettings` default mapping (`defaultInventoryAccountId` / `defaultApAccountId` / `defaultExpenseAccountId` / `defaultFiscalYearId`). Auto-post is skipped when mapping is unconfigured (GR/inventory still succeed); a partially-configured mapping raises a clear error directing the user to Accounting → Settings. **Out of scope this phase:** tax auto-calc, 3-way match, budget checks.
+>
+> **Finance RULES D-2 (2026-06-25, owner-approved — see DECISIONS_LOG "Finance RULES D-2"):**
+> - **R1 PO VAT:** PH VAT **12% exclusive, auto-computed** at PO level, shown as a separate
+>   "VAT (12%)" total line; per-PO **VAT-exempt/zero-rated toggle** (`isVatExempt`) suppresses it;
+>   Input VAT posts to a default **Input VAT** asset account (`AccountingSettings.defaultInputVatAccountId`).
+> - **R2 PO line allocation:** picker (`stock`/`project_expense`/`company_expense`) on the PO form;
+>   default `company_expense`, default `stock` for inventory-product lines; `project_expense` needs a project.
+> - **R3 Over-receipt:** allowed + non-blocking warning within **10% tolerance**; beyond 10% requires
+>   explicit confirm + audited reason (`GoodsReceipt.overReceiptReason`).
+> - **R4 GL defaults:** seed a standard PH SME Chart of Accounts (incl. Input VAT, Purchases/COGS,
+>   Salaries Expense, Statutory/Withholding Payable) + open FiscalYear + 2025 statutory rates **on
+>   tenant provisioning**, and auto-set the five `AccountingSettings` default accounts so GR→JE
+>   auto-post works out-of-the-box. Accounting → Settings UI reviews/remaps them.
+> - **R5 PO edit lock:** header/line edits blocked once a PO is beyond `draft` (cancel + clone to
+>   change); single `poApprovalThreshold` auto-approve (≤ ₱10k) — no multi-tier.
+> - **R6 Vendor reactivation:** reactivatable by **Administrator or Purchasing Manager** (audited);
+>   no PO against a deactivated vendor.
+> - **R7 Payroll statutory:** keep the seeded 2025 PH `StatutoryRate` values as the formula (no rate
+>   changes this cycle); surface the StatutoryRate config UI; owner edits annually.
 - Vendors: two types — ECommerceSeller (Shopee/Lazada/TikTok Shop/Zalora/FB Marketplace/
   other) and DirectSupplier (local or remote physical vendors)
 - Purchase Orders (Direct Supplier flow): user fills PO form → adds line items with
