@@ -10,6 +10,12 @@ export { tenantGuardExtension } from './middleware/tenant-guard';
 export { provisionTenantRolesAndOwner } from './helpers/tenant-owner';
 export type { ProvisionTenantOwnerInput } from './helpers/tenant-owner';
 export {
+  provisionTenantFinancials,
+  PH_SME_CHART_OF_ACCOUNTS,
+  PH_STATUTORY_RATES_2025,
+} from './helpers/tenant-financials';
+export type { ProvisionTenantFinancialsInput } from './helpers/tenant-financials';
+export {
   STANDARD_ROLES,
   TENANT_SUPER_ADMIN_SLUG,
   PASSWORD_BCRYPT_COST,

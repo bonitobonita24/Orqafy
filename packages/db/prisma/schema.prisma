@@ -922,6 +922,8 @@ model PurchaseOrder {
   status           String    @default("draft") // draft | pending_approval | approved | ordered | partially_received | received | cancelled
   subtotal         Decimal   @default(0) @db.Decimal(12, 2)
   taxAmount        Decimal   @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  // R1 (D-2): when true, the 12% PH VAT line is suppressed (VAT-exempt / zero-rated PO).
+  isVatExempt      Boolean   @default(false) @map("is_vat_exempt")
   totalAmount      Decimal   @default(0) @map("total_amount") @db.Decimal(12, 2)
   currency         String    @default("PHP")
   expectedDelivery DateTime? @map("expected_delivery")
@@ -1050,6 +1052,8 @@ model GoodsReceipt {
   status          String        @default("pending") // pending | inspecting | accepted | rejected | partial
   receivedAt      DateTime      @default(now()) @map("received_at")
   notes           String?
+  // R3 (D-2): required justification when any line is received >10% over the ordered quantity.
+  overReceiptReason String?     @map("over_receipt_reason")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
@@ -2156,6 +2160,7 @@ model AccountingSettings {
   defaultInventoryAccountId String? @map("default_inventory_account_id")
   defaultApAccountId        String? @map("default_ap_account_id")
   defaultExpenseAccountId   String? @map("default_expense_account_id")
+  defaultInputVatAccountId  String? @map("default_input_vat_account_id")
   defaultFiscalYearId       String? @map("default_fiscal_year_id")
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")

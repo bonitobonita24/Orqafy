@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { createId } from '@paralleldrive/cuid2';
 import { STANDARD_ROLES } from './roles';
+import { provisionTenantFinancials } from '../helpers/tenant-financials';
 
 const prisma = new PrismaClient();
 
@@ -233,14 +234,6 @@ async function main() {
   }
   console.log(`  ✅ ${expenseCats.length} expense categories seeded`);
 
-  // ── TaxRate (VAT 12%) ──
-  await prisma.$executeRawUnsafe(`
-    INSERT INTO "${schemaName}".tax_rates (id, tenant_id, name, code, rate, is_default, is_active, created_at, updated_at)
-    VALUES ('${createId()}', '${demoTenant.id}', 'VAT', 'vat-12', 12.00, true, true, NOW(), NOW())
-    ON CONFLICT (tenant_id, code) DO NOTHING
-  `);
-  console.log('  ✅ Default tax rate (VAT 12%) seeded');
-
   // ── Default warehouse ──
   await prisma.$executeRawUnsafe(`
     INSERT INTO "${schemaName}".warehouses (id, tenant_id, name, code, is_default, is_active, created_at, updated_at)
@@ -249,117 +242,16 @@ async function main() {
   `);
   console.log('  ✅ Default warehouse seeded');
 
-  // ── FiscalYear (current year) ──
-  const year = new Date().getFullYear();
-  await prisma.$executeRawUnsafe(`
-    INSERT INTO "${schemaName}".fiscal_years (id, tenant_id, name, start_date, end_date, is_closed, created_at, updated_at)
-    VALUES ('${createId()}', '${demoTenant.id}', 'FY ${year}', '${year}-01-01', '${year}-12-31', false, NOW(), NOW())
-    ON CONFLICT DO NOTHING
-  `);
-  console.log(`  ✅ Fiscal year FY ${year} seeded`);
-
-  // ── Chart of Accounts (basic structure) ──
-  const accounts = [
-    { code: '1000', name: 'Assets', type: 'asset', isGroup: true },
-    { code: '1100', name: 'Cash and Cash Equivalents', type: 'asset', isGroup: false, parentCode: '1000' },
-    { code: '1200', name: 'Accounts Receivable', type: 'asset', isGroup: false, parentCode: '1000' },
-    { code: '1300', name: 'Inventory', type: 'asset', isGroup: false, parentCode: '1000' },
-    { code: '1400', name: 'Prepaid Expenses', type: 'asset', isGroup: false, parentCode: '1000' },
-    { code: '1500', name: 'Fixed Assets', type: 'asset', isGroup: false, parentCode: '1000' },
-    { code: '2000', name: 'Liabilities', type: 'liability', isGroup: true },
-    { code: '2100', name: 'Accounts Payable', type: 'liability', isGroup: false, parentCode: '2000' },
-    { code: '2200', name: 'Credit Card Payable', type: 'liability', isGroup: false, parentCode: '2000' },
-    { code: '2300', name: 'Loans Payable', type: 'liability', isGroup: false, parentCode: '2000' },
-    { code: '2400', name: 'Taxes Payable', type: 'liability', isGroup: false, parentCode: '2000' },
-    { code: '3000', name: 'Equity', type: 'equity', isGroup: true },
-    { code: '3100', name: "Owner's Capital", type: 'equity', isGroup: false, parentCode: '3000' },
-    { code: '3200', name: 'Retained Earnings', type: 'equity', isGroup: false, parentCode: '3000' },
-    { code: '4000', name: 'Revenue', type: 'revenue', isGroup: true },
-    { code: '4100', name: 'Sales Revenue', type: 'revenue', isGroup: false, parentCode: '4000' },
-    { code: '4200', name: 'Service Revenue', type: 'revenue', isGroup: false, parentCode: '4000' },
-    { code: '4300', name: 'Other Income', type: 'revenue', isGroup: false, parentCode: '4000' },
-    { code: '5000', name: 'Cost of Goods Sold', type: 'expense', isGroup: true },
-    { code: '5100', name: 'Materials Cost', type: 'expense', isGroup: false, parentCode: '5000' },
-    { code: '5200', name: 'Shipping Cost', type: 'expense', isGroup: false, parentCode: '5000' },
-    { code: '6000', name: 'Operating Expenses', type: 'expense', isGroup: true },
-    { code: '6100', name: 'Salaries and Wages', type: 'expense', isGroup: false, parentCode: '6000' },
-    { code: '6200', name: 'Rent Expense', type: 'expense', isGroup: false, parentCode: '6000' },
-    { code: '6300', name: 'Utilities Expense', type: 'expense', isGroup: false, parentCode: '6000' },
-    { code: '6400', name: 'Office Supplies Expense', type: 'expense', isGroup: false, parentCode: '6000' },
-    { code: '6500', name: 'Depreciation Expense', type: 'expense', isGroup: false, parentCode: '6000' },
-    { code: '6600', name: 'Marketing Expense', type: 'expense', isGroup: false, parentCode: '6000' },
-    { code: '6700', name: 'Professional Fees', type: 'expense', isGroup: false, parentCode: '6000' },
-    { code: '6800', name: 'Insurance Expense', type: 'expense', isGroup: false, parentCode: '6000' },
-    { code: '6900', name: 'Miscellaneous Expense', type: 'expense', isGroup: false, parentCode: '6000' },
-  ];
-
-  const accountIds: Record<string, string> = {};
-  for (const acct of accounts) {
-    const id = createId();
-    accountIds[acct.code] = id;
-    const parentId = acct.parentCode !== undefined ? accountIds[acct.parentCode] ?? null : null;
-    const safeName = acct.name.replace(/'/g, "''");
-    await prisma.$executeRawUnsafe(`
-      INSERT INTO "${schemaName}".accounts (id, tenant_id, code, name, type, is_system, parent_id, is_active, created_at, updated_at)
-      VALUES ('${id}', '${demoTenant.id}', '${acct.code}', '${safeName}', '${acct.type}', ${acct.isGroup}, ${parentId !== null ? `'${parentId}'` : 'NULL'}, true, NOW(), NOW())
-      ON CONFLICT (tenant_id, code) DO NOTHING
-    `);
-  }
-  console.log(`  ✅ ${accounts.length} chart of accounts entries seeded`);
-
-  // ── Statutory rates (PH 2025, cited) — owner-editable per tenant (DECISIONS_LOG §C) ──
-  const statutoryRates: Array<{ type: string; config: unknown; source: string }> = [
-    {
-      type: 'sss',
-      config: { totalRate: 0.15, employeeRate: 0.05, employerRate: 0.1, mscFloor: 5000, mscCeiling: 35000 },
-      source:
-        'SSS Circular 2024-006 — 15% contribution rate eff. Jan 2025; MSC PHP 5,000–35,000 (incl. WISP/MPF above 20,000)',
-    },
-    {
-      type: 'philhealth',
-      config: { premiumRate: 0.05, employeeRate: 0.025, floor: 10000, ceiling: 100000 },
-      source:
-        'PhilHealth (Universal Health Care Act) — 5% premium, salary floor PHP 10,000 / ceiling 100,000 (2024/2025 schedule)',
-    },
-    {
-      type: 'pagibig',
-      config: { employeeRate: 0.02, employerRate: 0.02, compensationCap: 10000 },
-      source: 'HDMF (Pag-IBIG) Circular — EE 2% / ER 2%, compensation cap PHP 10,000 (max EE PHP 200)',
-    },
-    {
-      type: 'withholding',
-      config: {
-        frequency: 'monthly',
-        brackets: [
-          { lower: 0, baseTax: 0, rate: 0 },
-          { lower: 20833, baseTax: 0, rate: 0.15 },
-          { lower: 33333, baseTax: 1875, rate: 0.2 },
-          { lower: 66667, baseTax: 8541.8, rate: 0.25 },
-          { lower: 166667, baseTax: 33541.8, rate: 0.3 },
-          { lower: 666667, baseTax: 183541.8, rate: 0.35 },
-        ],
-      },
-      source: 'BIR Revised Withholding Tax Table under RA 10963 (TRAIN), eff. Jan 2023 onward — monthly brackets',
-    },
-  ];
-  for (const r of statutoryRates) {
-    const existing = await prisma.statutoryRate.findFirst({
-      where: { tenantId: demoTenant.id, type: r.type },
-    });
-    if (existing === null) {
-      await prisma.statutoryRate.create({
-        data: {
-          tenantId: demoTenant.id,
-          type: r.type,
-          config: r.config as object,
-          source: r.source,
-          effectiveFrom: new Date('2025-01-01'),
-          isActive: true,
-        },
-      });
-    }
-  }
-  console.log(`  ✅ ${statutoryRates.length} statutory rates seeded (PH 2025, cited)`);
+  // ── Finance baseline (D-2 R4): VAT tax rate + open fiscal year + PH SME Chart of
+  //   Accounts + cited 2025 statutory rates, with the 5 AccountingSettings default
+  //   accounts auto-mapped. Shared with tenant provisioning so demo == real tenants. ──
+  const fin = await provisionTenantFinancials(prisma, {
+    tenantId: demoTenant.id,
+    schemaName,
+  });
+  console.log(
+    `  ✅ Finance baseline seeded (${fin.accountsSeeded} accounts, ${fin.statutorySeeded} statutory rates, defaults auto-mapped)`,
+  );
 
   // Reset search_path
   await prisma.$executeRawUnsafe('SET search_path TO public');

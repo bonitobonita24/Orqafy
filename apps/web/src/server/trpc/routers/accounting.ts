@@ -697,6 +697,7 @@ const settingsRouter = createTRPCRouter({
       defaultInventoryAccountId: null,
       defaultApAccountId: null,
       defaultExpenseAccountId: null,
+      defaultInputVatAccountId: null,
       defaultFiscalYearId: null,
     };
   }),
@@ -708,6 +709,7 @@ const settingsRouter = createTRPCRouter({
         defaultInventoryAccountId: z.string().nullable().optional(),
         defaultApAccountId: z.string().nullable().optional(),
         defaultExpenseAccountId: z.string().nullable().optional(),
+        defaultInputVatAccountId: z.string().nullable().optional(),
         defaultFiscalYearId: z.string().nullable().optional(),
       }),
     )
@@ -720,6 +722,7 @@ const settingsRouter = createTRPCRouter({
       await checkAccount(input.defaultInventoryAccountId);
       await checkAccount(input.defaultApAccountId);
       await checkAccount(input.defaultExpenseAccountId);
+      await checkAccount(input.defaultInputVatAccountId);
       if (input.defaultFiscalYearId != null && input.defaultFiscalYearId !== "") {
         await loadFiscalYearForTenant(input.defaultFiscalYearId, ctx);
       }
@@ -734,6 +737,9 @@ const settingsRouter = createTRPCRouter({
         ...(input.defaultApAccountId !== undefined ? { defaultApAccountId: emptyToNull(input.defaultApAccountId) } : {}),
         ...(input.defaultExpenseAccountId !== undefined
           ? { defaultExpenseAccountId: emptyToNull(input.defaultExpenseAccountId) }
+          : {}),
+        ...(input.defaultInputVatAccountId !== undefined
+          ? { defaultInputVatAccountId: emptyToNull(input.defaultInputVatAccountId) }
           : {}),
         ...(input.defaultFiscalYearId !== undefined
           ? { defaultFiscalYearId: emptyToNull(input.defaultFiscalYearId) }
@@ -757,6 +763,7 @@ const settingsRouter = createTRPCRouter({
                 defaultInventoryAccountId: before.defaultInventoryAccountId,
                 defaultApAccountId: before.defaultApAccountId,
                 defaultExpenseAccountId: before.defaultExpenseAccountId,
+                defaultInputVatAccountId: before.defaultInputVatAccountId,
                 defaultFiscalYearId: before.defaultFiscalYearId,
               }
             : null,
@@ -764,6 +771,7 @@ const settingsRouter = createTRPCRouter({
             defaultInventoryAccountId: updated.defaultInventoryAccountId,
             defaultApAccountId: updated.defaultApAccountId,
             defaultExpenseAccountId: updated.defaultExpenseAccountId,
+            defaultInputVatAccountId: updated.defaultInputVatAccountId,
             defaultFiscalYearId: updated.defaultFiscalYearId,
           },
         });

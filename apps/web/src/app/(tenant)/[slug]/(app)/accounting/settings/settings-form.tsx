@@ -31,6 +31,7 @@ export function AccountingSettingsForm() {
   const [inventory, setInventory] = useState(NONE);
   const [ap, setAp] = useState(NONE);
   const [expense, setExpense] = useState(NONE);
+  const [inputVat, setInputVat] = useState(NONE);
   const [fiscalYear, setFiscalYear] = useState(NONE);
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export function AccountingSettingsForm() {
     setInventory(settings.defaultInventoryAccountId ?? NONE);
     setAp(settings.defaultApAccountId ?? NONE);
     setExpense(settings.defaultExpenseAccountId ?? NONE);
+    setInputVat(settings.defaultInputVatAccountId ?? NONE);
     setFiscalYear(settings.defaultFiscalYearId ?? NONE);
   }, [settings]);
 
@@ -82,6 +84,7 @@ export function AccountingSettingsForm() {
       {accountSelect("Default Inventory Account (asset)", "Debited when stock is received via goods receipt.", inventory, setInventory, assetAccounts)}
       {accountSelect("Default Accounts Payable Account (liability)", "Credited on goods receipt and payroll.", ap, setAp, liabilityAccounts)}
       {accountSelect("Default Expense Account (expense)", "Debited for company/project expense receipts and payroll cost.", expense, setExpense, expenseAccounts)}
+      {accountSelect("Default Input VAT Account (asset)", "Debited for the 12% input VAT on VAT-able purchase orders (D-2 R1).", inputVat, setInputVat, assetAccounts)}
 
       <div className="space-y-1.5">
         <Label>Default Fiscal Year</Label>
@@ -110,6 +113,7 @@ export function AccountingSettingsForm() {
             defaultInventoryAccountId: toNull(inventory),
             defaultApAccountId: toNull(ap),
             defaultExpenseAccountId: toNull(expense),
+            defaultInputVatAccountId: toNull(inputVat),
             defaultFiscalYearId: toNull(fiscalYear),
           })
         }
