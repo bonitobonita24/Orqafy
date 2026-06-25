@@ -12,20 +12,30 @@ import { createId } from '@paralleldrive/cuid2';
  * identical, ready-to-post accounting baseline.
  *
  * Idempotent:
- *  - accounts / tax_rates / fiscal_years insert with ON CONFLICT DO NOTHING (tenant-schema tables)
- *  - statutory_rates created only for types not already present (public table)
+ *  - accounts / tax_rates de-duped on the (tenant_id, code) unique key; fiscal_years
+ *    de-duped on (tenant_id, name) via a pre-check (no DB unique key exists).
+ *  - statutory_rates created only for types not already present.
  *  - accounting_settings upserted; default-account ids only filled when currently null
  *    (never clobbers an owner's manual remap on re-run).
  *
- * Chart/tax/fiscal-year tables live in the per-tenant Postgres schema (cloned via
- * createTenantSchema's `LIKE public.<t> INCLUDING ALL`), so they are seeded with raw
- * SQL into "${schemaName}".*. AccountingSettings + StatutoryRate are public, tenant-scoped
- * by tenantId, so they use the Prisma client directly.
+ * ── WHY public schema, not the per-tenant schema ───────────────────────────────
+ * Account / TaxRate / FiscalYear / AccountingSettings / StatutoryRate / JournalEntry
+ * are all `@@schema("public")` models, isolated by `tenant_id`. The app's tRPC routers
+ * and server components read them via the GLOBAL unscoped Prisma client (search_path =
+ * public); createTenantPrisma()/SET search_path is referenced only in tests, never at
+ * runtime. So every row MUST land in the `public` tables with an explicit tenant_id —
+ * rows written into the vestigial t_<slug> schema are invisible to the app. (See the
+ * matching rationale in packages/db/src/seed/demo-financials.ts.) We therefore seed via
+ * the Prisma ORM directly — type-safe, and the right schema by construction.
  */
 
 export interface ProvisionTenantFinancialsInput {
   tenantId: string;
-  /** Tenant Postgres schema name, e.g. `t_demo` (from toSchemaName). */
+  /**
+   * Tenant Postgres schema name, e.g. `t_demo` (from toSchemaName). Retained for
+   * call-site compatibility / future per-schema needs; the finance baseline itself
+   * is seeded into the `public` schema tenant-scoped by tenantId (see file header).
+   */
   schemaName: string;
 }
 
@@ -120,58 +130,79 @@ export const PH_STATUTORY_RATES_2025: ReadonlyArray<{ type: string; config: unkn
   },
 ];
 
-const q = (s: string): string => s.replace(/'/g, "''");
-
 export async function provisionTenantFinancials(
   prisma: PrismaClient,
   input: ProvisionTenantFinancialsInput,
 ): Promise<{ accountsSeeded: number; statutorySeeded: number }> {
-  const { tenantId, schemaName } = input;
+  const { tenantId } = input;
 
-  // ── Default VAT tax rate (12%) — tenant-schema table ──
-  await prisma.$executeRawUnsafe(`
-    INSERT INTO "${schemaName}".tax_rates (id, tenant_id, name, code, rate, is_default, is_active, created_at, updated_at)
-    VALUES ('${createId()}', '${tenantId}', 'VAT', 'vat-12', 12.00, true, true, NOW(), NOW())
-    ON CONFLICT (tenant_id, code) DO NOTHING
-  `);
+  // ── Default VAT tax rate (12%) — public table, tenant-scoped, de-duped on (tenant_id, code) ──
+  await prisma.taxRate.upsert({
+    where: { tenantId_code: { tenantId, code: 'vat-12' } },
+    update: {},
+    create: {
+      id: createId(),
+      tenantId,
+      name: 'VAT',
+      code: 'vat-12',
+      rate: 12.0,
+      type: 'percentage',
+      isDefault: true,
+      isActive: true,
+    },
+  });
 
-  // ── Current-year fiscal year (open) — tenant-schema table ──
+  // ── Current-year fiscal year (open) — public table; no DB unique key, so guard on (tenant_id, name) ──
   const year = new Date().getFullYear();
-  const fyId = createId();
-  await prisma.$executeRawUnsafe(`
-    INSERT INTO "${schemaName}".fiscal_years (id, tenant_id, name, start_date, end_date, is_closed, created_at, updated_at)
-    VALUES ('${fyId}', '${tenantId}', 'FY ${year}', '${year}-01-01', '${year}-12-31', false, NOW(), NOW())
-    ON CONFLICT DO NOTHING
-  `);
-  // Resolve the open FY id (may already exist from a prior run / ON CONFLICT no-op).
-  const fyRows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(`
-    SELECT id FROM "${schemaName}".fiscal_years
-    WHERE tenant_id = '${tenantId}' AND is_closed = false
-    ORDER BY start_date DESC LIMIT 1
-  `);
-  const resolvedFiscalYearId = fyRows[0]?.id ?? null;
+  const fyName = `FY ${year}`;
+  const existingFy = await prisma.fiscalYear.findFirst({
+    where: { tenantId, name: fyName },
+    select: { id: true },
+  });
+  const resolvedFiscalYearId =
+    existingFy?.id ??
+    (
+      await prisma.fiscalYear.create({
+        data: {
+          id: createId(),
+          tenantId,
+          name: fyName,
+          startDate: new Date(`${year}-01-01`),
+          endDate: new Date(`${year}-12-31`),
+          isClosed: false,
+        },
+        select: { id: true },
+      })
+    ).id;
 
-  // ── Chart of Accounts — tenant-schema table ──
+  // ── Chart of Accounts — public table, tenant-scoped, de-duped on (tenant_id, code) ──
+  // Two passes so parent_id can reference the parent's resolved id within this tenant.
   const accountIds: Record<string, string> = {};
   const mapAccountIds: Partial<Record<'inventory' | 'ap' | 'expense' | 'inputVat', string>> = {};
   for (const acct of PH_SME_CHART_OF_ACCOUNTS) {
     const id = createId();
-    accountIds[acct.code] = id;
     const parentId = acct.parentCode !== undefined ? accountIds[acct.parentCode] ?? null : null;
-    await prisma.$executeRawUnsafe(`
-      INSERT INTO "${schemaName}".accounts (id, tenant_id, code, name, type, is_system, parent_id, is_active, created_at, updated_at)
-      VALUES ('${id}', '${tenantId}', '${acct.code}', '${q(acct.name)}', '${acct.type}', ${acct.isGroup}, ${parentId !== null ? `'${parentId}'` : 'NULL'}, true, NOW(), NOW())
-      ON CONFLICT (tenant_id, code) DO NOTHING
-    `);
+    const row = await prisma.account.upsert({
+      where: { tenantId_code: { tenantId, code: acct.code } },
+      update: {},
+      create: {
+        id,
+        tenantId,
+        code: acct.code,
+        name: acct.name,
+        type: acct.type,
+        isSystem: acct.isGroup,
+        parentId,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+    // Use the resolved id (covers the pre-existing-row case) so children reference the real parent.
+    accountIds[acct.code] = row.id;
   }
-  // Resolve actual account ids by code (covers the case where rows pre-existed via ON CONFLICT).
-  const acctRows = await prisma.$queryRawUnsafe<Array<{ id: string; code: string }>>(`
-    SELECT id, code FROM "${schemaName}".accounts WHERE tenant_id = '${tenantId}'
-  `);
-  const idByCode = new Map(acctRows.map((r) => [r.code, r.id]));
   for (const acct of PH_SME_CHART_OF_ACCOUNTS) {
     if (acct.mapKey !== undefined) {
-      const resolved = idByCode.get(acct.code);
+      const resolved = accountIds[acct.code];
       if (resolved !== undefined) mapAccountIds[acct.mapKey] = resolved;
     }
   }

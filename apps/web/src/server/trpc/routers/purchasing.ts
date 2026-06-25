@@ -286,16 +286,22 @@ export const vendorRouter = createTRPCRouter({
       });
     }),
 
-  // R6 (D-2): reactivate a deactivated vendor. Restricted to Administrator or
-  // Purchasing Manager (mirrors the PO-approve role gate); audited via L5.
+  // R6 (D-2): reactivate a deactivated vendor; audited via L5. The allow-list must use
+  // real seeded role NAMES (packages/db/src/seed/roles.ts). The prior list
+  // ["Administrator", "Purchasing Manager", "admin"] matched NO seeded role, so
+  // reactivate 403'd for EVERY user — including the tenant owner ("Tenant Super Admin").
+  // Same stale-role-name class of bug resolved earlier for departments (department.ts /
+  // DECISIONS_LOG 2026-06-19). Seeded admins are "Tenant Super Admin" (the registered
+  // owner) + "Admin"; "Platform Owner" is cross-tenant; the purchasing role is
+  // "Purchasing Staff".
   reactivate: writeProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
-      const allowedRoles = ["Administrator", "Purchasing Manager", "admin"];
+      const allowedRoles = ["Tenant Super Admin", "Admin", "Platform Owner", "Purchasing Staff"];
       if (!ctx.roles.some((r) => allowedRoles.includes(r))) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Only an Administrator or Purchasing Manager can reactivate a vendor.",
+          message: "Only a tenant administrator or purchasing staff can reactivate a vendor.",
         });
       }
       const existing = await loadVendorForTenant(input.id, ctx);

@@ -82,7 +82,10 @@ function ctx(tenantId: string) {
   return {
     req: makeReq(),
     userId: "user-1",
-    roles: ["Administrator"] as string[],
+    // Real seeded admin role name (packages/db/src/seed/roles.ts). Was "Administrator",
+    // which is NOT a seeded role — the D-2 R6 reactivate gate now checks real role names
+    // (see purchasing.ts), so the actor must carry one a registered tenant actually has.
+    roles: ["Tenant Super Admin"] as string[],
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -364,7 +367,7 @@ describe("goodsReceipt.create — cross-tenant PO guard", () => {
 describe("vendor.reactivate — D-2 R6", () => {
   beforeEach(() => { vi.resetAllMocks(); rewireDefaultTransaction(); });
 
-  it("reactivates a deactivated vendor for an Administrator", async () => {
+  it("reactivates a deactivated vendor for a tenant admin", async () => {
     mockVendorFindUnique.mockResolvedValueOnce({ ...fakeVendorA, isActive: false });
     mockVendorUpdate.mockResolvedValueOnce({ ...fakeVendorA, isActive: true });
 

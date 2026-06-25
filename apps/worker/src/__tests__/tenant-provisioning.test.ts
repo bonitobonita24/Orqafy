@@ -61,10 +61,25 @@ function makeJob(data: TenantProvisioningJobData) {
   };
 }
 
-/** Remove all public-schema artifacts (roles, owner user) + tenant row for a tenantId. */
+/**
+ * Remove all public-schema artifacts for a tenantId, in FK-safe order, then the tenant row.
+ * Provisioning now seeds the finance baseline (chart of accounts + tax rate + fiscal year +
+ * accounting settings + statutory rates) into PUBLIC tenant-scoped tables (see
+ * packages/db/src/helpers/tenant-financials.ts), whose tenant FKs are restrict — so these
+ * must be deleted before the tenant row or the final delete violates the constraint.
+ * Order matters: accounts self-reference via parent_id, so clear child→parent by nulling
+ * parents first is avoided by deleting all of a tenant's accounts in one statement.
+ */
 async function cleanupTenant(tenantId: string): Promise<void> {
   await prisma.user.deleteMany({ where: { tenantId } });
   await prisma.role.deleteMany({ where: { tenantId } });
+  await prisma.accountingSettings.deleteMany({ where: { tenantId } });
+  await prisma.statutoryRate.deleteMany({ where: { tenantId } });
+  await prisma.taxRate.deleteMany({ where: { tenantId } });
+  await prisma.fiscalYear.deleteMany({ where: { tenantId } });
+  // Accounts self-reference (parent_id, restrict): break the hierarchy before deleting rows.
+  await prisma.account.updateMany({ where: { tenantId }, data: { parentId: null } });
+  await prisma.account.deleteMany({ where: { tenantId } });
   await prisma.tenant.deleteMany({ where: { id: tenantId } });
 }
 
