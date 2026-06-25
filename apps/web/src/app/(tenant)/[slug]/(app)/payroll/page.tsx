@@ -78,12 +78,20 @@ export default async function PayrollPage({
             {activeStatus !== "all" ? ` — ${STATUS_LABELS[activeStatus] ?? activeStatus}` : ""}
           </p>
         </div>
-        <Link
-          href={`/${slug}/payroll/new`}
-          className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
-          + New Payroll Run
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/${slug}/payroll/statutory-rates`}
+            className="rounded-md border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+          >
+            Statutory Rates
+          </Link>
+          <Link
+            href={`/${slug}/payroll/new`}
+            className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            + New Payroll Run
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-1 rounded-md border border-border bg-card p-1">
