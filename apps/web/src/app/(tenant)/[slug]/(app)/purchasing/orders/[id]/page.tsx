@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 import { PurchaseOrderAttachments } from "./po-attachments";
+import { PoActions } from "./po-actions";
 
 export const metadata: Metadata = { title: "Purchase Order" };
 export const dynamic = "force-dynamic";
@@ -37,7 +38,10 @@ async function getPurchaseOrder(id: string) {
       tenantId: true,
       orderedAt: true,
       expectedDelivery: true,
+      subtotal: true,
+      taxAmount: true,
       totalAmount: true,
+      isVatExempt: true,
       notes: true,
       createdAt: true,
       vendor: {
@@ -131,7 +135,7 @@ export default async function PurchaseOrderDetailPage({
             Created {order.createdAt.toLocaleDateString()}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {order.status === "draft" && (
             <Link
               href={`/${slug}/purchasing/orders/${id}/edit`}
@@ -140,9 +144,7 @@ export default async function PurchaseOrderDetailPage({
               Edit Draft
             </Link>
           )}
-          {/* HOLD(owner-rule): submit/approve/order/cancel action buttons.
-              Owner must define approval authority, thresholds, and status-transition rules
-              before these actions can be wired. */}
+          <PoActions slug={slug} poId={order.id} status={order.status} />
           <Link
             href={`/${slug}/purchasing`}
             className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
@@ -202,6 +204,29 @@ export default async function PurchaseOrderDetailPage({
                 {order.expectedDelivery !== null
                   ? order.expectedDelivery.toLocaleDateString()
                   : "—"}
+              </dd>
+            </div>
+            {order.subtotal !== null && (
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Subtotal</dt>
+                <dd className="font-medium">
+                  ₱{Number(order.subtotal).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                </dd>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <dt className="flex items-center gap-1.5 text-muted-foreground">
+                VAT (12%)
+                {order.isVatExempt && (
+                  <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-xs font-medium text-amber-400">
+                    VAT-exempt
+                  </span>
+                )}
+              </dt>
+              <dd className="font-medium">
+                {order.taxAmount !== null
+                  ? `₱${Number(order.taxAmount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`
+                  : "₱0.00"}
               </dd>
             </div>
             <div className="flex justify-between">

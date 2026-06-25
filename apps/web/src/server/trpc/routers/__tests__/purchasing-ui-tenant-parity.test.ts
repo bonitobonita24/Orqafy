@@ -359,3 +359,169 @@ describe("goodsReceipt.create — cross-tenant PO guard", () => {
     expect(jeArgs.data.referenceType).toBe("goods_receipt");
   });
 });
+
+// ── D-2 R6 — vendor.reactivate (role gate + tenant guard + audit) ──────────────
+describe("vendor.reactivate — D-2 R6", () => {
+  beforeEach(() => { vi.resetAllMocks(); rewireDefaultTransaction(); });
+
+  it("reactivates a deactivated vendor for an Administrator", async () => {
+    mockVendorFindUnique.mockResolvedValueOnce({ ...fakeVendorA, isActive: false });
+    mockVendorUpdate.mockResolvedValueOnce({ ...fakeVendorA, isActive: true });
+
+    const result = await createCaller(ctx("tenant-A")).purchasing.vendor.reactivate({ id: "vendor-A" });
+
+    expect(result.isActive).toBe(true);
+    expect(mockVendorUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { isActive: true } }),
+    );
+  });
+
+  it("forbids reactivation for a non-privileged role", async () => {
+    const lowCtx = { ...ctx("tenant-A"), roles: ["Sales"] as string[] };
+    await expect(
+      createCaller(lowCtx).purchasing.vendor.reactivate({ id: "vendor-A" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mockVendorUpdate).not.toHaveBeenCalled();
+  });
+
+  it("throws NOT_FOUND when vendor belongs to a different tenant", async () => {
+    mockVendorFindUnique.mockResolvedValueOnce({ ...fakeVendorB, isActive: false });
+    await expect(
+      createCaller(ctx("tenant-A")).purchasing.vendor.reactivate({ id: "vendor-B" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockVendorUpdate).not.toHaveBeenCalled();
+  });
+});
+
+// ── D-2 R1 — PO VAT compute + R6 deactivated-vendor block ──────────────────────
+describe("po.create — D-2 R1 VAT compute + R6 vendor guard", () => {
+  beforeEach(() => { vi.resetAllMocks(); rewireDefaultTransaction(); });
+
+  function wirePoCreateTx() {
+    mockTransaction.mockImplementation((fn: any) =>
+      fn({
+        purchaseOrder: {
+          create: mockPoCreate.mockResolvedValueOnce({ id: "po-new", poNumber: "PO-2401-0009", vendorId: "vendor-A", status: "draft", totalAmount: 0 }),
+          findUnique: vi.fn().mockResolvedValue({ id: "po-new", items: [] }),
+        },
+        purchaseOrderItem: { create: mockPoItemCreate.mockResolvedValue({ id: "poi-new" }) },
+        purchaseOrderItemAllocation: { create: vi.fn() },
+        auditLog: { create: vi.fn().mockResolvedValue({}) },
+      }),
+    );
+  }
+
+  it("auto-computes 12% exclusive VAT on a non-exempt PO", async () => {
+    mockVendorFindUnique.mockResolvedValueOnce(fakeVendorA); // isActive true, tenant-A
+    wirePoCreateTx();
+
+    await createCaller(ctx("tenant-A")).purchasing.po.create({
+      vendorId: "vendor-A",
+      currency: "PHP",
+      isVatExempt: false,
+      items: [{ description: "Widget", quantity: 2, unitPrice: 500 }],
+    });
+
+    // subtotal 1000 → VAT 120 → total 1120.
+    const data = mockPoCreate.mock.calls[0]?.[0]?.data as { subtotal: number; taxAmount: number; totalAmount: number; isVatExempt: boolean };
+    expect(data.subtotal).toBe(1000);
+    expect(data.taxAmount).toBe(120);
+    expect(data.totalAmount).toBe(1120);
+    expect(data.isVatExempt).toBe(false);
+  });
+
+  it("suppresses VAT on a VAT-exempt PO", async () => {
+    mockVendorFindUnique.mockResolvedValueOnce(fakeVendorA);
+    wirePoCreateTx();
+
+    await createCaller(ctx("tenant-A")).purchasing.po.create({
+      vendorId: "vendor-A",
+      currency: "PHP",
+      isVatExempt: true,
+      items: [{ description: "Widget", quantity: 2, unitPrice: 500 }],
+    });
+
+    const data = mockPoCreate.mock.calls[0]?.[0]?.data as { taxAmount: number; totalAmount: number; isVatExempt: boolean };
+    expect(data.taxAmount).toBe(0);
+    expect(data.totalAmount).toBe(1000);
+    expect(data.isVatExempt).toBe(true);
+  });
+
+  it("blocks creating a PO against a deactivated vendor (R6)", async () => {
+    mockVendorFindUnique.mockResolvedValueOnce({ ...fakeVendorA, isActive: false });
+    await expect(
+      createCaller(ctx("tenant-A")).purchasing.po.create({
+        vendorId: "vendor-A",
+        currency: "PHP",
+        items: [{ description: "Widget", quantity: 1, unitPrice: 100 }],
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockPoCreate).not.toHaveBeenCalled();
+  });
+});
+
+// ── D-2 R3 — goodsReceipt over-receipt tolerance ──────────────────────────────
+describe("goodsReceipt.create — D-2 R3 over-receipt tolerance", () => {
+  beforeEach(() => { vi.resetAllMocks(); rewireDefaultTransaction(); });
+
+  function wirePoForReceipt(quantityReceived = 0) {
+    mockPoFindUnique
+      .mockResolvedValueOnce({ ...fakePoA, status: "approved" }) // loadPoForTenant
+      .mockResolvedValueOnce({
+        ...fakePoA,
+        status: "approved",
+        currency: "PHP",
+        isVatExempt: false,
+        items: [{ id: "poi-1", tenantId: "tenant-A", description: "Widget A", quantity: 10, quantityReceived, unitPrice: 100, totalPrice: 1000, productId: null, allocations: [] }],
+      });
+    mockGrFindFirst.mockResolvedValueOnce(null);
+    const fakeGr = { id: "gr-9", tenantId: "tenant-A", grNumber: "GR-2401-0009", purchaseOrderId: "po-A", status: "accepted" };
+    mockTransaction.mockImplementation((fn: any) =>
+      fn({
+        goodsReceipt: { create: mockGrCreate.mockResolvedValueOnce(fakeGr), findUnique: vi.fn().mockResolvedValue({ ...fakeGr, items: [] }) },
+        goodsReceiptItem: { create: mockGrItemCreate.mockResolvedValue({}) },
+        stockMovement: { create: vi.fn() },
+        projectExpense: { create: vi.fn() },
+        purchaseOrderItemAllocation: { update: vi.fn() },
+        purchaseOrderItem: { findMany: mockPoItemFindMany.mockResolvedValueOnce([{ quantityReceived: 0, quantity: 10 }]), update: vi.fn() },
+        purchaseOrder: { update: mockPoUpdate.mockResolvedValueOnce({}) },
+        accountingSettings: { findUnique: vi.fn().mockResolvedValue(null) },
+        auditLog: { create: vi.fn().mockResolvedValue({}) },
+      }),
+    );
+  }
+
+  it("rejects >10% over-receipt without a reason", async () => {
+    wirePoForReceipt(0);
+    await expect(
+      createCaller(ctx("tenant-A")).purchasing.goodsReceipt.create({
+        purchaseOrderId: "po-A",
+        items: [{ description: "Widget A", quantityExpected: 10, quantityReceived: 12 }], // 12 > 10*1.1
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockGrCreate).not.toHaveBeenCalled();
+  });
+
+  it("allows >10% over-receipt when a reason is supplied", async () => {
+    wirePoForReceipt(0);
+    await createCaller(ctx("tenant-A")).purchasing.goodsReceipt.create({
+      purchaseOrderId: "po-A",
+      items: [{ description: "Widget A", quantityExpected: 10, quantityReceived: 12 }],
+      overReceiptReason: "Vendor shipped a full carton.",
+    });
+    expect(mockGrCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ overReceiptReason: "Vendor shipped a full carton." }),
+      }),
+    );
+  });
+
+  it("allows within-tolerance over-receipt (≤10%) without a reason", async () => {
+    wirePoForReceipt(0);
+    await createCaller(ctx("tenant-A")).purchasing.goodsReceipt.create({
+      purchaseOrderId: "po-A",
+      items: [{ description: "Widget A", quantityExpected: 10, quantityReceived: 11 }], // exactly 10% over
+    });
+    expect(mockGrCreate).toHaveBeenCalled();
+  });
+});

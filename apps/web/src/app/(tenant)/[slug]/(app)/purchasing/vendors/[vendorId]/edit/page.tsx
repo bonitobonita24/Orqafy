@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 import { VendorForm } from "../../vendor-form";
 import { VendorDeactivateButton } from "./vendor-deactivate-button";
+import { VendorReactivateButton } from "./vendor-reactivate-button";
 
 export const metadata: Metadata = { title: "Edit Vendor" };
 export const dynamic = "force-dynamic";
@@ -59,14 +60,11 @@ export default async function EditVendorPage({
           <h1 className="text-2xl font-bold tracking-tight">Edit Vendor</h1>
           <p className="text-sm text-muted-foreground">{vendor.companyName}</p>
         </div>
-        {/* HOLD(owner-rule): reactivation flow — when/who can reactivate a deactivated vendor? */}
         {vendor.isActive && (
           <VendorDeactivateButton slug={slug} vendorId={vendorId} companyName={vendor.companyName} />
         )}
         {!vendor.isActive && (
-          <span className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-            Inactive
-          </span>
+          <VendorReactivateButton slug={slug} vendorId={vendorId} companyName={vendor.companyName} />
         )}
       </div>
       <div className="rounded-lg border border-border bg-card p-6">

@@ -52,6 +52,7 @@ export function GrForm({ slug, receivablePos }: GrFormProps) {
   const [selectedPoId, setSelectedPoId] = useState<string>("");
   const [grNotes, setGrNotes] = useState("");
   const [grLines, setGrLines] = useState<GrLineItem[]>([]);
+  const [overReceiptReason, setOverReceiptReason] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const selectedPo = receivablePos.find((po) => po.id === selectedPoId);
@@ -99,6 +100,16 @@ export function GrForm({ slug, receivablePos }: GrFormProps) {
     },
   });
 
+  // Compute per-line over-receipt flags
+  const lineOverFlags = grLines.map((line) => {
+    const received = parseFloat(line.quantityReceived) || 0;
+    const expected = parseFloat(line.quantityExpected) || 0;
+    const overAny = received > expected;
+    const overTolerance = received > expected * 1.1;
+    return { overAny, overTolerance };
+  });
+  const anyBeyondTolerance = lineOverFlags.some((f) => f.overTolerance);
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -113,7 +124,6 @@ export function GrForm({ slug, receivablePos }: GrFormProps) {
     }
     for (const line of grLines) {
       const received = parseFloat(line.quantityReceived);
-      const expected = parseFloat(line.quantityExpected);
       const rejected = parseFloat(line.quantityRejected);
       if (Number.isNaN(received) || received < 0) {
         setError(`"${line.description}": quantity received must be 0 or greater.`);
@@ -123,16 +133,18 @@ export function GrForm({ slug, receivablePos }: GrFormProps) {
         setError(`"${line.description}": quantity rejected must be 0 or greater.`);
         return;
       }
-      if (received + rejected > expected * 2) {
-        // Loose guard — owner may allow over-receipt; exact rules HOLD for owner decision
-        setError(`"${line.description}": combined received + rejected seems unusually high.`);
-        return;
-      }
+    }
+    if (anyBeyondTolerance && overReceiptReason.trim() === "") {
+      setError("Please provide a reason for over-receipt (>10% above ordered quantity).");
+      return;
     }
 
     createMut.mutate({
       purchaseOrderId: selectedPoId,
       ...(grNotes.trim() !== "" ? { notes: grNotes.trim() } : {}),
+      ...(anyBeyondTolerance && overReceiptReason.trim() !== ""
+        ? { overReceiptReason: overReceiptReason.trim() }
+        : {}),
       items: grLines.map((line) => ({
         ...(line.productId !== null ? { productId: line.productId } : {}),
         description: line.description,
@@ -187,59 +199,85 @@ export function GrForm({ slug, receivablePos }: GrFormProps) {
                 </tr>
               </thead>
               <tbody>
-                {grLines.map((line, idx) => (
-                  <tr key={idx} className="border-b border-border last:border-0">
-                    <td className="px-3 py-2">
-                      <p className="font-medium">{line.description}</p>
-                      {line.productId !== null && (
-                        <p className="text-xs text-muted-foreground">
-                          {selectedPo?.items.find((i) => i.id === line.poItemId)?.product?.sku ?? ""}
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-right text-muted-foreground">
-                      {line.quantityExpected}
-                    </td>
-                    <td className="px-3 py-2">
-                      <Input
-                        type="number"
-                        min="0"
-                        step="any"
-                        value={line.quantityReceived}
-                        onChange={(e) => updateLine(idx, "quantityReceived", e.target.value)}
-                        className="h-8 text-right text-sm"
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <Input
-                        type="number"
-                        min="0"
-                        step="any"
-                        value={line.quantityRejected}
-                        onChange={(e) => updateLine(idx, "quantityRejected", e.target.value)}
-                        className="h-8 text-right text-sm"
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <Input
-                        value={line.notes}
-                        onChange={(e) => updateLine(idx, "notes", e.target.value)}
-                        placeholder="Optional note…"
-                        className="h-8 text-sm"
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {grLines.map((line, idx) => {
+                  const { overAny, overTolerance } = lineOverFlags[idx] ?? { overAny: false, overTolerance: false };
+                  const received = parseFloat(line.quantityReceived) || 0;
+                  const expected = parseFloat(line.quantityExpected) || 0;
+                  return (
+                    <tr key={idx} className="border-b border-border last:border-0">
+                      <td className="px-3 py-2">
+                        <p className="font-medium">{line.description}</p>
+                        {line.productId !== null && (
+                          <p className="text-xs text-muted-foreground">
+                            {selectedPo?.items.find((i) => i.id === line.poItemId)?.product?.sku ?? ""}
+                          </p>
+                        )}
+                        {overAny && !overTolerance && (
+                          <p className="mt-0.5 text-xs text-amber-400">
+                            Over-receipt: receiving {received} over ordered {expected}
+                          </p>
+                        )}
+                        {overTolerance && (
+                          <p className="mt-0.5 text-xs font-medium text-amber-400">
+                            ⚠ Over-receipt: receiving {received} over ordered {expected} (beyond 10% tolerance)
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right text-muted-foreground">
+                        {line.quantityExpected}
+                      </td>
+                      <td className="px-3 py-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={line.quantityReceived}
+                          onChange={(e) => updateLine(idx, "quantityReceived", e.target.value)}
+                          className="h-8 text-right text-sm"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={line.quantityRejected}
+                          onChange={(e) => updateLine(idx, "quantityRejected", e.target.value)}
+                          className="h-8 text-right text-sm"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <Input
+                          value={line.notes}
+                          onChange={(e) => updateLine(idx, "notes", e.target.value)}
+                          placeholder="Optional note…"
+                          className="h-8 text-sm"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+          {anyBeyondTolerance && (
+            <div className="space-y-1.5">
+              <Label htmlFor="overReceiptReason" className="text-amber-400">
+                Reason for over-receipt (&gt;10%) <span className="text-red-400">*</span>
+              </Label>
+              <Textarea
+                id="overReceiptReason"
+                value={overReceiptReason}
+                onChange={(e) => setOverReceiptReason(e.target.value)}
+                placeholder="Explain why quantities exceed ordered amounts by more than 10%…"
+                rows={2}
+                className="border-amber-500/30 focus-visible:ring-amber-500/30"
+              />
+            </div>
+          )}
           <p className="text-xs text-muted-foreground">
-            {/* HOLD(owner-rule): over-receipt — should receiving more than ordered be allowed?
-                Currently blocked at router level (status guard). Owner must decide. */}
-            {/* HOLD(owner-rule): auto-posting to inventory stock — router does create StockMovements
-                for stock-allocated items, but allocation rules need owner confirmation before enabling. */}
-            Receiving items here records the quantities only. Inventory stock updates follow
-            the allocation rules defined on the Purchase Order.
+            Accepted receipts auto-post a journal entry (DR Inventory/Expense, CR Accounts Payable)
+            when default accounts are configured in Accounting → Settings.
           </p>
         </div>
       )}
@@ -257,7 +295,14 @@ export function GrForm({ slug, receivablePos }: GrFormProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <Button type="submit" disabled={createMut.isPending || selectedPoId === ""}>
+        <Button
+          type="submit"
+          disabled={
+            createMut.isPending ||
+            selectedPoId === "" ||
+            (anyBeyondTolerance && overReceiptReason.trim() === "")
+          }
+        >
           {createMut.isPending ? "Saving…" : "Record Goods Receipt"}
         </Button>
         <Button

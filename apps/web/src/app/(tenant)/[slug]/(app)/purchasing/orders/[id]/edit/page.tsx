@@ -105,6 +105,9 @@ export default async function EditPoPage({
               description: item.description,
               quantity: String(Number(item.quantity)),
               unitPrice: String(Number(item.unitPrice)),
+              allocationType: "company_expense" as const,
+              warehouseId: "",
+              projectId: "",
             })),
           }}
         />

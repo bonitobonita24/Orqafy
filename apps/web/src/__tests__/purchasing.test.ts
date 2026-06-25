@@ -348,7 +348,10 @@ describe("purchasing.po.create", () => {
           createdById: "user-admin",
           status: "draft",
           subtotal: 250,
-          totalAmount: 250,
+          // D-2 R1: 12% exclusive VAT auto-computed (250 → 30 → 280).
+          taxAmount: 30,
+          totalAmount: 280,
+          isVatExempt: false,
           poNumber: expect.stringMatching(/^PO-\d{4}-\d{4}$/),
         }),
       }),
@@ -755,7 +758,7 @@ describe("purchasing.po — Direction I tenantId scoping (RED)", () => {
   });
 
   it("passes ctx.tenantId on purchaseOrder.create", async () => {
-    mockDb.vendor.findUnique.mockResolvedValue({ id: "vendor-1", isActive: true });
+    mockDb.vendor.findUnique.mockResolvedValue({ id: "vendor-1", tenantId: "tenant-acme", isActive: true });
     mockDb.purchaseOrder.findFirst.mockResolvedValue(null);
     mockDb.purchaseOrder.create.mockResolvedValue({ ...fakePoBase });
     mockDb.purchaseOrderItem.create.mockResolvedValue({ id: "poi-1" });
@@ -799,7 +802,7 @@ describe("purchasing.po — Direction I tenantId scoping (RED)", () => {
 
 describe("purchasing.po — Direction I-2 PurchaseOrderItem tenantId scoping (RED)", () => {
   it("passes ctx.tenantId on purchaseOrderItem.create inside po.create transaction", async () => {
-    mockDb.vendor.findUnique.mockResolvedValue({ id: "vendor-1", isActive: true });
+    mockDb.vendor.findUnique.mockResolvedValue({ id: "vendor-1", tenantId: "tenant-acme", isActive: true });
     mockDb.purchaseOrder.findFirst.mockResolvedValue(null);
     mockDb.purchaseOrder.create.mockResolvedValue({ ...fakePoBase });
     mockDb.purchaseOrderItem.create.mockResolvedValue({ id: "poi-1" });
@@ -832,7 +835,7 @@ describe("purchasing.po — Direction I-2 PurchaseOrderItem tenantId scoping (RE
 
 describe("purchasing.po — Direction I-3 PurchaseOrderItemAllocation tenantId scoping (RED)", () => {
   it("passes ctx.tenantId on purchaseOrderItemAllocation.create inside po.create transaction", async () => {
-    mockDb.vendor.findUnique.mockResolvedValue({ id: "vendor-1", isActive: true });
+    mockDb.vendor.findUnique.mockResolvedValue({ id: "vendor-1", tenantId: "tenant-acme", isActive: true });
     mockDb.purchaseOrder.findFirst.mockResolvedValue(null);
     mockDb.purchaseOrder.create.mockResolvedValue({ ...fakePoBase });
     mockDb.purchaseOrderItem.create.mockResolvedValue({ id: "poi-1" });

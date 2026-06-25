@@ -8,6 +8,15 @@ import {
   type JournalPostLine,
 } from "@/server/lib/journal-posting";
 
+// ── Finance constants (D-2) ───────────────────────────────────────────────────
+
+/** PH VAT rate (R1, D-2): 12% exclusive, auto-computed on non-exempt POs. */
+const PH_VAT_RATE = 0.12;
+/** R3 (D-2): over-receipt tolerance — beyond this fraction requires an audited reason. */
+const OVER_RECEIPT_TOLERANCE = 0.1;
+
+const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
+
 // ── Sequence helpers ──────────────────────────────────────────────────────────
 
 async function generatePoNumber(): Promise<string> {
@@ -276,6 +285,33 @@ export const vendorRouter = createTRPCRouter({
         return updated;
       });
     }),
+
+  // R6 (D-2): reactivate a deactivated vendor. Restricted to Administrator or
+  // Purchasing Manager (mirrors the PO-approve role gate); audited via L5.
+  reactivate: writeProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ input, ctx }) => {
+      const allowedRoles = ["Administrator", "Purchasing Manager", "admin"];
+      if (!ctx.roles.some((r) => allowedRoles.includes(r))) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only an Administrator or Purchasing Manager can reactivate a vendor.",
+        });
+      }
+      const existing = await loadVendorForTenant(input.id, ctx);
+      return db.$transaction(async (tx) => {
+        const updated = await tx.vendor.update({ where: { id: input.id }, data: { isActive: true } });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "UPDATE",
+          entity: "Vendor",
+          entityId: input.id,
+          before: { isActive: existing.isActive },
+          after: { isActive: true },
+        });
+        return updated;
+      });
+    }),
 });
 
 // ── Purchase Order sub-router ─────────────────────────────────────────────────
@@ -354,6 +390,8 @@ export const poRouter = createTRPCRouter({
         vendorId: z.string().min(1),
         expectedDelivery: z.string().datetime().optional(),
         currency: z.string().max(3).default("PHP"),
+        // R1 (D-2): VAT-exempt / zero-rated PO suppresses the 12% PH VAT line.
+        isVatExempt: z.boolean().default(false),
         notes: z.string().max(2000).optional(),
         items: z.array(poItemSchema).min(1),
       })
@@ -361,6 +399,14 @@ export const poRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const vendor = await db.vendor.findUnique({ where: { id: input.vendorId } });
       if (vendor === null) throw new TRPCError({ code: "NOT_FOUND", message: "Vendor not found" });
+      // R6 (D-2): no PO may be raised against a deactivated vendor.
+      if (vendor.tenantId !== ctx.tenantId) throw new TRPCError({ code: "NOT_FOUND", message: "Vendor not found" });
+      if (!vendor.isActive) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot create a purchase order for a deactivated vendor. Reactivate the vendor first.",
+        });
+      }
 
       // Validate allocations: sum per item, type-specific ID requirements
       for (const item of input.items) {
@@ -391,12 +437,14 @@ export const poRouter = createTRPCRouter({
 
       const poNumber = await generatePoNumber();
 
-      // Calculate totals
+      // Calculate totals — R1 (D-2): 12% exclusive VAT auto-computed unless exempt.
       let subtotal = 0;
       for (const item of input.items) {
         subtotal += item.quantity * item.unitPrice;
       }
-      const totalAmount = subtotal;
+      subtotal = round2(subtotal);
+      const taxAmount = input.isVatExempt ? 0 : round2(subtotal * PH_VAT_RATE);
+      const totalAmount = round2(subtotal + taxAmount);
 
       return db.$transaction(async (tx) => {
         const po = await tx.purchaseOrder.create({
@@ -407,7 +455,8 @@ export const poRouter = createTRPCRouter({
             createdById: ctx.userId,
             status: "draft",
             subtotal,
-            taxAmount: 0,
+            taxAmount,
+            isVatExempt: input.isVatExempt,
             totalAmount,
             currency: input.currency,
             ...(input.expectedDelivery !== undefined
@@ -471,6 +520,8 @@ export const poRouter = createTRPCRouter({
         vendorId: z.string().min(1).optional(),
         expectedDelivery: z.string().datetime().optional(),
         currency: z.string().max(3).optional(),
+        // R1 (D-2): toggling VAT-exempt recomputes taxAmount/totalAmount from the subtotal.
+        isVatExempt: z.boolean().optional(),
         notes: z.string().max(2000).optional(),
       })
     )
@@ -479,6 +530,15 @@ export const poRouter = createTRPCRouter({
       if (po.status !== "draft") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft POs can be edited" });
       }
+      // Recompute VAT totals from the persisted subtotal when the exempt flag flips.
+      const vatRecompute =
+        input.isVatExempt !== undefined && input.isVatExempt !== po.isVatExempt
+          ? (() => {
+              const subtotal = Number(po.subtotal);
+              const taxAmount = input.isVatExempt ? 0 : round2(subtotal * PH_VAT_RATE);
+              return { isVatExempt: input.isVatExempt, taxAmount, totalAmount: round2(subtotal + taxAmount) };
+            })()
+          : {};
       return db.$transaction(async (tx) => {
         const updated = await tx.purchaseOrder.update({
           where: { id: input.id },
@@ -489,6 +549,7 @@ export const poRouter = createTRPCRouter({
               : {}),
             ...(input.currency !== undefined ? { currency: input.currency } : {}),
             ...(input.notes !== undefined ? { notes: input.notes } : {}),
+            ...vatRecompute,
           },
         });
         await writeAuditLog(tx, {
@@ -496,8 +557,13 @@ export const poRouter = createTRPCRouter({
           action: "UPDATE",
           entity: "PurchaseOrder",
           entityId: input.id,
-          before: { vendorId: po.vendorId, currency: po.currency, notes: po.notes },
-          after: { vendorId: updated.vendorId, currency: updated.currency, notes: updated.notes },
+          before: { vendorId: po.vendorId, currency: po.currency, notes: po.notes, isVatExempt: po.isVatExempt },
+          after: {
+            vendorId: updated.vendorId,
+            currency: updated.currency,
+            notes: updated.notes,
+            isVatExempt: updated.isVatExempt,
+          },
         });
         return updated;
       });
@@ -700,6 +766,8 @@ export const goodsReceiptRouter = createTRPCRouter({
       z.object({
         purchaseOrderId: z.string().min(1),
         notes: z.string().max(2000).optional(),
+        // R3 (D-2): justification required when any line is received >10% over ordered qty.
+        overReceiptReason: z.string().max(1000).optional(),
         items: z
           .array(
             z.object({
@@ -733,6 +801,34 @@ export const goodsReceiptRouter = createTRPCRouter({
         });
       }
 
+      // ── R3 (D-2): over-receipt tolerance guard ──────────────────────────────
+      // Allowed + non-blocking within 10% of the remaining ordered quantity; beyond
+      // 10% requires an explicit audited reason. The cumulative received (already
+      // received + this GR) is compared against the ordered quantity per matched line.
+      const matchPoItem = (grItem: { productId?: string | undefined; description: string }) =>
+        po.items.find((poi) =>
+          grItem.productId !== undefined && poi.productId !== null
+            ? poi.productId === grItem.productId
+            : poi.description === grItem.description,
+        );
+      let beyondTolerance = false;
+      for (const grItem of input.items) {
+        if (grItem.quantityReceived <= 0) continue;
+        const poItem = matchPoItem(grItem);
+        if (poItem === undefined) continue;
+        const ordered = Number(poItem.quantity);
+        if (ordered <= 0) continue;
+        const cumulative = Number(poItem.quantityReceived) + grItem.quantityReceived;
+        if (cumulative > ordered * (1 + OVER_RECEIPT_TOLERANCE)) beyondTolerance = true;
+      }
+      if (beyondTolerance && (input.overReceiptReason ?? "").trim() === "") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Received quantity exceeds the ordered quantity by more than 10%. Provide a reason to confirm this over-receipt.",
+        });
+      }
+
       const grNumber = await generateGrNumber();
 
       return db.$transaction(async (tx) => {
@@ -749,6 +845,9 @@ export const goodsReceiptRouter = createTRPCRouter({
             status: "accepted",
             receivedAt: new Date(),
             ...(input.notes !== undefined ? { notes: input.notes } : {}),
+            ...(beyondTolerance && input.overReceiptReason !== undefined
+              ? { overReceiptReason: input.overReceiptReason }
+              : {}),
           },
         });
 
@@ -878,14 +977,21 @@ export const goodsReceiptRouter = createTRPCRouter({
           data: { status: newPoStatus },
         });
 
-        // ── JE auto-post (§B): DR Inventory + DR Expense, CR Accounts Payable ──
+        // ── JE auto-post (§B): DR Inventory + DR Expense (+ DR Input VAT, R1), CR Accounts Payable ──
         // Only attempt when the tenant has configured default-account mapping.
         // If mapping is partially configured, resolveAccountingDefaults throws a
         // clear BAD_REQUEST directing the user to Accounting → Settings.
-        const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
         const inv = round2(inventoryDebit);
         const exp = round2(expenseDebit);
         const settings = await tx.accountingSettings.findUnique({ where: { tenantId: ctx.tenantId } });
+        // R1 (D-2): on a VAT-able PO, the 12% input VAT is debited to the Input VAT asset
+        // account proportional to the net value received and added to the AP credit. Only
+        // when an Input VAT account is mapped — otherwise the net-only posting stands.
+        const netDebit = round2(inv + exp);
+        const inputVat =
+          !po.isVatExempt && settings?.defaultInputVatAccountId != null && netDebit > 0
+            ? round2(netDebit * PH_VAT_RATE)
+            : 0;
         const mappingConfigured =
           settings != null &&
           settings.defaultApAccountId != null &&
@@ -906,7 +1012,8 @@ export const goodsReceiptRouter = createTRPCRouter({
           const lines: JournalPostLine[] = [];
           if (inv > 0) lines.push({ accountId: defaults.inventoryAccountId!, debit: inv, description: "Inventory received" });
           if (exp > 0) lines.push({ accountId: defaults.expenseAccountId!, debit: exp, description: "Purchase expense" });
-          lines.push({ accountId: defaults.apAccountId!, credit: round2(inv + exp), description: "Accounts payable" });
+          if (inputVat > 0) lines.push({ accountId: settings.defaultInputVatAccountId!, debit: inputVat, description: "Input VAT (12%)" });
+          lines.push({ accountId: defaults.apAccountId!, credit: round2(netDebit + inputVat), description: "Accounts payable" });
           await postJournalEntryTx(tx, {
             tenantId: ctx.tenantId,
             userId: ctx.userId,

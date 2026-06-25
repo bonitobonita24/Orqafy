@@ -22,14 +22,27 @@ interface VendorOption {
   companyName: string;
 }
 
+type AllocationType = "stock" | "project_expense" | "company_expense";
+
 interface LineItem {
   description: string;
   quantity: string;
   unitPrice: string;
+  productId?: string;
+  allocationType: AllocationType;
+  warehouseId: string;
+  projectId: string;
 }
 
 function newLineItem(): LineItem {
-  return { description: "", quantity: "1", unitPrice: "0" };
+  return {
+    description: "",
+    quantity: "1",
+    unitPrice: "0",
+    allocationType: "company_expense",
+    warehouseId: "",
+    projectId: "",
+  };
 }
 
 function lineTotal(item: LineItem): number {
@@ -61,10 +74,16 @@ export function PoForm({ slug, vendors, poId, initial = {} }: PoFormProps) {
   const [currency, setCurrency] = useState(initial.currency ?? "PHP");
   const [notes, setNotes] = useState(initial.notes ?? "");
   const [expectedDelivery, setExpectedDelivery] = useState(initial.expectedDelivery ?? "");
+  const [isVatExempt, setIsVatExempt] = useState(false);
   const [items, setItems] = useState<LineItem[]>(
     initial.items !== undefined && initial.items.length > 0 ? initial.items : [newLineItem()],
   );
   const [error, setError] = useState<string | null>(null);
+
+  const { data: warehouseData } = trpc.inventory.warehouseList.useQuery(undefined);
+  const { data: projectData } = trpc.project.list.useQuery({ limit: 200 });
+  const warehouses = warehouseData ?? [];
+  const projects = projectData?.items ?? [];
 
   const createMut = trpc.purchasing.po.create.useMutation({
     onSuccess: (data) => {
@@ -96,6 +115,15 @@ export function PoForm({ slug, vendors, poId, initial = {} }: PoFormProps) {
     setItems((prev) => prev.map((item, i) => (i === idx ? { ...item, [field]: value } : item)));
   }
 
+  function updateAllocationType(idx: number, type: AllocationType) {
+    setItems((prev) =>
+      prev.map((item, i) => {
+        if (i !== idx) return item;
+        return { ...item, allocationType: type, warehouseId: "", projectId: "" };
+      }),
+    );
+  }
+
   function addItem() {
     setItems((prev) => [...prev, newLineItem()]);
   }
@@ -105,6 +133,8 @@ export function PoForm({ slug, vendors, poId, initial = {} }: PoFormProps) {
   }
 
   const subtotal = items.reduce((sum, item) => sum + lineTotal(item), 0);
+  const vat = isVatExempt ? 0 : Math.round(subtotal * 0.12 * 100) / 100;
+  const total = subtotal + vat;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -135,9 +165,22 @@ export function PoForm({ slug, vendors, poId, initial = {} }: PoFormProps) {
       }
     }
 
+    // Validate per-line allocation dependencies
+    for (const item of items) {
+      if (item.allocationType === "stock" && item.warehouseId === "") {
+        setError(`"${item.description.trim() || "Item"}": please select a warehouse for stock allocation.`);
+        return;
+      }
+      if (item.allocationType === "project_expense" && item.projectId === "") {
+        setError(`"${item.description.trim() || "Item"}": please select a project for project expense allocation.`);
+        return;
+      }
+    }
+
     const payload = {
       vendorId,
       currency,
+      isVatExempt,
       ...(notes.trim() !== "" ? { notes: notes.trim() } : {}),
       ...(expectedDelivery.trim() !== ""
         ? { expectedDelivery: new Date(expectedDelivery).toISOString() }
@@ -146,13 +189,12 @@ export function PoForm({ slug, vendors, poId, initial = {} }: PoFormProps) {
         description: item.description.trim(),
         quantity: parseFloat(item.quantity),
         unitPrice: parseFloat(item.unitPrice),
-        // HOLD(owner-rule): allocation routing (stock/project_expense/company_expense) —
-        // owner must decide default allocation type and per-line overrides.
-        // For now, default to company_expense so PO can be saved as a valid draft.
         allocations: [
           {
-            type: "company_expense" as const,
+            type: item.allocationType,
             quantity: parseFloat(item.quantity),
+            ...(item.allocationType === "stock" ? { warehouseId: item.warehouseId } : {}),
+            ...(item.allocationType === "project_expense" ? { projectId: item.projectId } : {}),
           },
         ],
       })),
@@ -223,6 +265,19 @@ export function PoForm({ slug, vendors, poId, initial = {} }: PoFormProps) {
             onChange={(e) => setExpectedDelivery(e.target.value)}
           />
         </div>
+
+        <div className="flex items-center gap-3 sm:col-span-2">
+          <input
+            id="isVatExempt"
+            type="checkbox"
+            checked={isVatExempt}
+            onChange={(e) => setIsVatExempt(e.target.checked)}
+            className="h-4 w-4 rounded border-border accent-primary"
+          />
+          <Label htmlFor="isVatExempt" className="cursor-pointer font-normal">
+            VAT-exempt / zero-rated (suppress 12% VAT)
+          </Label>
+        </div>
       </div>
 
       {/* Line items */}
@@ -243,6 +298,7 @@ export function PoForm({ slug, vendors, poId, initial = {} }: PoFormProps) {
                 <th className="w-24 px-3 py-2 font-medium text-right">Qty</th>
                 <th className="w-32 px-3 py-2 font-medium text-right">Unit Price</th>
                 <th className="w-32 px-3 py-2 font-medium text-right">Total</th>
+                <th className="px-3 py-2 font-medium">Allocation</th>
                 <th className="w-10 px-3 py-2"></th>
               </tr>
             </thead>
@@ -280,6 +336,57 @@ export function PoForm({ slug, vendors, poId, initial = {} }: PoFormProps) {
                   <td className="px-3 py-2 text-right font-medium">
                     {lineTotal(item).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
                   </td>
+                  <td className="px-3 py-2">
+                    <div className="flex flex-col gap-1.5">
+                      <Select
+                        value={item.allocationType}
+                        onValueChange={(val) => updateAllocationType(idx, val as AllocationType)}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="company_expense">Company Expense</SelectItem>
+                          <SelectItem value="stock">Stock</SelectItem>
+                          <SelectItem value="project_expense">Project Expense</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {item.allocationType === "stock" && (
+                        <Select
+                          value={item.warehouseId}
+                          onValueChange={(val) => updateItem(idx, "warehouseId", val)}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Select warehouse…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {warehouses.map((w) => (
+                              <SelectItem key={w.id} value={w.id}>
+                                {w.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {item.allocationType === "project_expense" && (
+                        <Select
+                          value={item.projectId}
+                          onValueChange={(val) => updateItem(idx, "projectId", val)}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Select project…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {projects.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-3 py-2 text-center">
                     {items.length > 1 && (
                       <button
@@ -297,7 +404,7 @@ export function PoForm({ slug, vendors, poId, initial = {} }: PoFormProps) {
             </tbody>
             <tfoot>
               <tr className="border-t border-border">
-                <td colSpan={3} className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground">
+                <td colSpan={4} className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground">
                   Subtotal
                 </td>
                 <td className="px-3 py-2 text-right font-semibold">
@@ -305,16 +412,30 @@ export function PoForm({ slug, vendors, poId, initial = {} }: PoFormProps) {
                 </td>
                 <td />
               </tr>
-              {/* HOLD(owner-rule): tax calculation — owner must decide tax type (VAT inclusive/exclusive),
-                  rate per item category, and whether to apply automatically or enter manually. */}
+              <tr>
+                <td colSpan={4} className="px-3 py-1 text-right text-xs text-muted-foreground">
+                  {isVatExempt ? "VAT (0% — exempt)" : "VAT (12%)"}
+                </td>
+                <td className="px-3 py-1 text-right text-xs text-muted-foreground">
+                  {vat.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                </td>
+                <td />
+              </tr>
+              <tr className="border-t border-border">
+                <td colSpan={4} className="px-3 py-2 text-right text-sm font-bold">
+                  Total
+                </td>
+                <td className="px-3 py-2 text-right text-sm font-bold text-primary">
+                  {total.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                </td>
+                <td />
+              </tr>
             </tfoot>
           </table>
         </div>
         <p className="text-xs text-muted-foreground">
-          {/* HOLD(owner-rule): allocation — items default to company_expense until owner defines
-              stock/project allocation rules. */}
-          Note: line items will be recorded as company expenses by default. Allocation rules (stock, project)
-          will be configurable once the owner defines them.
+          Each line defaults to <strong>Company Expense</strong>. Switch to <strong>Stock</strong> to receive into a warehouse,
+          or <strong>Project Expense</strong> to charge a project.
         </p>
       </div>
 
@@ -346,9 +467,6 @@ export function PoForm({ slug, vendors, poId, initial = {} }: PoFormProps) {
         >
           Cancel
         </Button>
-        {/* HOLD(owner-rule): submit / approve / mark-ordered actions.
-            These transitions need owner sign-off on approval flow, authority levels,
-            and whether a submitted PO can still be edited. */}
       </div>
     </form>
   );
