@@ -3,6 +3,21 @@
 # Append-only — newest entries at the bottom.
 # ---
 
+## 2026-06-30 — Spec-Driven framework upgrade V32.14 -> V32.18 (governance layer only)
+- Agent:               CLAUDE_CODE
+- Why:                 Bring Orqafy's Spec-Driven governance layer current from framework V32.14 to V32.18. GOVERNANCE-ONLY sync — no application code touched. Synced from Powerbyte-AIEF via sync-to-project.sh + deploy.sh.
+- Files added:         scripts/lint-design.sh (deliverable #26, V32.17 design anti-slop gate), .ai_prompt/lint-design.sh, AI/Master_Prompt.md (filename version-strip rename from AI/Master_Prompt_v31.md), .ai_prompt/{AI_Tools_Reference.md, CLAUDE_compact.md, ChatGPT_Cross_Audit.md, Framework_Feature_Index.md, Planning_Assistant.md, Security_Checklist.md} (re-tracked under .ai_prompt/ per V32.7 relocation)
+- Files modified:      .ai_prompt/{security.md, Prompt_References.md, Prompt_References.html, LESSONS_REGISTRY.md, design-principles.md, design-stop-hook.sh, memory-governance.md, phases.md, scenarios.md, templates.md, ui-rules.md}, CLAUDE.md, deploy.sh, scripts/design-stop-hook.sh
+- Files deleted:       AI/Master_Prompt_v31.md (version-stripped → AI/Master_Prompt.md)
+- Schema/migrations:   none
+- What it adds:        V32.17 Design Anti-Slop Gate — scripts/lint-design.sh (D1–D7 cardinal sins + P1a, advisory --report-only at design phases, never blocks). V32.18 App-Hardening Harvest — security.md gains AI/LLM/MCP Security + API-Authorization-Depth (BOLA/BFLA/BOPLA) + Injection-Family blocks; Security_Checklist.md gains §15 (AI/LLM/MCP) + §16 (API-Authz/Injection) → now 114 items / 16 sections. CLAUDE_compact.md version marker now V32.18.
+- Scope:               Governance layer only (.ai_prompt/, AI/, CLAUDE.md, deploy.sh, scripts/). No src/, apps/, prisma/, package.json, lockfile, or any app code changed — verified before commit.
+- Commits:             1e23561 (chore(framework): sync Spec-Driven framework V32.14 -> V32.18 (governance only)) — committed on chore/framework-sync-v32.18, fast-forward merged to main
+- Errors encountered:  none
+- Errors resolved:     none
+- NEXT SESSION:        Restart Claude Code in this project so the updated hooks (Stop hook / settings.json) load — hooks load at session start only.
+- HOLD:                No staging/prod deploy without explicit owner signal (default LOCAL DEV).
+
 ## 2026-06-02 — Security + lint + build clearance (dep-audit, eslint, turbo build)
 - Agent:               CLAUDE_CODE
 - Why:                 Pre-existing CI failures: 36 CVEs (1 critical — vitest-ui), 48 eslint errors, turbo build failing on demo-login page (NEXT_PUBLIC env validation at build time). All three blocked CI red. Cleared in sequence.
