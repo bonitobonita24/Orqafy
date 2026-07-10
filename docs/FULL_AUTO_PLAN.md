@@ -100,13 +100,27 @@
       `20260711010000_drop_stale_single_col_code_uniques` (correct DROP INDEX), applied to dev. Verified:
       fresh seed puts demo data in public, worker 15/15, web 1063/1063, typecheck/eslint/lint-design green.
       Logged 2 global footgun lessons. ⚠ Applying BOTH dev migrations to staging/prod = owner-gated.
-- [ ] **S-P1a** rate-limiting (M6.3): gate `authorize()` behind `rateLimiters.auth` (low-risk) + decide
-      the `protectedProcedure` api-limit WITH a live lock-out integration test (120/min/user vs
-      parallel-query pages). Circular-import note: inline `rateLimiters` in trpc.ts, don't import the
-      middleware. Scouted — see STATE.md NEXT.
-- [ ] Visual QA (Rule 16): M2 RBAC flows + **D-P1a** Entry-1 max-width container (apply w/ QA across
-      ~89 pages) + **D-P1b** mobile off-canvas sidebar.
-- [ ] Then back-port to PRODUCT.md/DECISIONS_LOG; owner-gated staging/prod remains HARD HOLD.
+- [x] **S-P1a** rate-limiting (M6.3, commit 0e1e45f): authorize() 10/min/IP gate + protectedProcedure
+      120/min/user on MUTATIONS only (reads unthrottled by design — sidesteps read-fanout lock-out, so
+      no live lock-out test needed; env-guarded off under test). Inlined `rateLimiters` in trpc.ts (no
+      circular import). +3 lib tests, web 1066/1066, live /login 200.
+- [x] **D-P1a** Entry-1 container (M6.4, commit 89f0fa2) + **D-P1b** mobile off-canvas sidebar (M6.5,
+      commit d2e59e6). Live Visual QA 1920/1440/375px — capped centering, /pos/new-sale opt-out,
+      off-canvas hamburger nav all confirmed.
+- [x] **M6.6** RBAC Visual QA (Rule 16 PASS — Users page renders post-migration, 0 console errors) +
+      back-port M5/M6 [HOW] decisions to DECISIONS_LOG + CHANGELOG (commit 7381088); PRODUCT.md
+      candidates → PENDING_DECISIONS (human-owned). Owner-gated staging/prod remains HARD HOLD.
+
+### M7 — P2 security + a11y hardening (un-gated [HOW], LOCAL; from AIEF_AUDIT_TODO §S-P2b/§D-P2)
+- [ ] **M7.1** Zod bypass tighten: `payroll.ts:594` `config: z.record(z.string(), z.unknown())` → typed;
+      grep siblings (z.unknown()/z.any() on mutation inputs).
+- [ ] **M7.2** nested-`include` tenant re-check on user-settable FKs (security.md DB-rule-7) — audit +
+      harden where a FK is user-editable (e.g. invoice → customer/project). Low risk; verify.
+- [ ] **M7.3** storage upload validation audit (packages/storage): MIME whitelist + size cap + magic-byte
+      sniff (security.md §6); confirm no user-URL outbound fetch (SSRF §).
+- [ ] **M7.4** loading states: install shadcn `skeleton`; replace ad-hoc `animate-spin` in the 11
+      loading.tsx on content >300px per ui-rules Rule 11 (no skeleton twins).
+- DEFER (owner-gated): Valkey shared rate-limiter store (only matters for multi-instance prod).
 
 ## Log
 - 2026-07-10 — Plan authored. Running under claude-loop slot-4. Starting M1.
@@ -115,3 +129,4 @@
 - 2026-07-11 — M3 + M4 DONE (commit 2a0e9ca). 3 parallel audits → docs/AIEF_AUDIT_TODO.md. Applied P0 fix (demo.reset cross-tenant deleteMany wipe → tenant-scoped, +3 tests), P2 cron timingSafeEqual, a11y (aria-labels + prefers-reduced-motion + footer contrast). web 1063/1063 · typecheck · lint · lint-design green. D-PRIV-1 surfaced to PENDING_DECISIONS. Un-gated [HOW] remains (M5 headless hardening / M6 dev-up) → reboot to advance M5, NOT --stop/--hold.
 - 2026-07-11 — M6 PARTIAL (dev-up). Brought up local dev stack (deliberate rebuild off branch) + fresh DB. M6.1: applied migration 20260710160000 to dev, worker succession 4/4 green. M6.2 (S-P2a remainder, commit 5422479): removed physical per-tenant schema path; this UNCOVERED + FIXED two latent multi-tenant prod bugs the hack masked — (a) demo seed data landing in an invisible t_demo schema (rewrote to Prisma→public), (b) stale single-column UNIQUE(code) indexes on 4 finance/inventory tables (DROP CONSTRAINT no-op bug) → new migration 20260711010000 (DROP INDEX), applied to dev. Verified green end-to-end (worker 15/15, web 1063/1063). 2 global lessons logged. Applying both dev migrations to staging/prod = owner-gated (surfaced in PENDING_DECISIONS as D-MIG-APPLY). Remainder M6.3 (rate-limiting) + M6.4/5/6 (Visual QA) → milestone-barrier reboot (dev stack left UP for fast resume). NOT --stop (un-gated work queued).
 - 2026-07-11 — M5 DONE (all headless, LOCAL, verified green each step). D-P2 (4fcd10b): lint-design P1a all-caps tracking. S-P2a (3dd3fe0): deleted dormant schema-per-tenant runtime path incl. the `SET search_path` injection landmine (tenant-guard.ts) + createTenantPrisma + barrel/mocks; documented single-public-schema+tenantId contract; zero-runtime-caller (scout-confirmed). S-P1b (bb09e3f): Zod .strict() sweep on ~130 mutation inputs / 29 routers (9 parallel spec-executors; base-const propagation; kept storefront passthrough). Verify each: web typecheck + eslint + lint-design + suite 1063/1063 green. Remainder→M6: vestigial physical t_<slug> schema creation (live worker caller). Next milestone M6 (dev-up) NEEDS local dev stack + browser Visual QA → milestone-barrier reboot (no --stop) so fresh session runs M6.
+- 2026-07-11 — M6 COMPLETE (M6.3–M6.6, all LOCAL, verified live each step; dev stack left UP). M6.3 rate-limiting (0e1e45f): authorize 10/min IP + protectedProcedure mutation 120/min user (reads unthrottled by design → no live lock-out test needed), +3 tests, web 1066/1066, /login 200. M6.4 Entry-1 container (89f0fa2) + M6.5 mobile off-canvas sidebar (d2e59e6): browser Visual QA at 1920/1440/375px confirmed capped-centering, POS-register full-width opt-out, and off-canvas hamburger nav. M6.6 (7381088): RBAC Users-page Visual QA Rule-16 PASS (renders post-migration, 0 console errors; two Super-Admin ROLE holders correct vs single is_tenant_owner FLAG) + back-ported M5/M6 decisions to DECISIONS_LOG/CHANGELOG + PRODUCT.md candidates to PENDING_DECISIONS. Un-gated [HOW] work still queued (M7 P2 hardening from AIEF_AUDIT_TODO §S-P2b/§D-P2) → milestone-barrier reboot (no --stop) so a fresh lean session runs M7. NOT --hold (real un-gated work, not idle-on-decision).
