@@ -89,11 +89,23 @@
       `tracking-widest`; `globals.css` `.heading-overline` co-located `letter-spacing`+`uppercase` on one
       line (linter is single-line). lint-design PASS, 0 P1a hits. (Uncommitted — bundle with M5 commits.)
 
-### M6 — Dev-up session (needs LOCAL dev stack — owner word or deliberate rebuild)
-- [ ] Bring dev stack up + rebuild off branch; apply migration `20260710160000` (D-RBAC-B-APPLY);
-      run `apps/worker` succession integration test.
+### M6 — Dev-up session (IN PROGRESS — dev stack UP via deliberate rebuild off branch)
+- [x] Bring dev stack up + fresh DB (wiped stale postgres volume → removed accumulated QA cruft);
+      applied migration `20260710160000` (D-RBAC-B-APPLY) to dev; worker succession test 4/4 green.
+- [x] **S-P2a REMAINDER** (commit 5422479): removed physical per-tenant schema machinery. EXPOSED +
+      FIXED two latent multi-tenant prod bugs the hack masked: (a) demo seed data written to invisible
+      `t_demo` schema → now Prisma-into-public; (b) stale single-column `UNIQUE(code)` on
+      warehouses/accounts/tax_rates/expense_categories (the 20260616120000 migration's DROP CONSTRAINT
+      was a no-op on Prisma single-col @unique indexes) → new migration
+      `20260711010000_drop_stale_single_col_code_uniques` (correct DROP INDEX), applied to dev. Verified:
+      fresh seed puts demo data in public, worker 15/15, web 1063/1063, typecheck/eslint/lint-design green.
+      Logged 2 global footgun lessons. ⚠ Applying BOTH dev migrations to staging/prod = owner-gated.
+- [ ] **S-P1a** rate-limiting (M6.3): gate `authorize()` behind `rateLimiters.auth` (low-risk) + decide
+      the `protectedProcedure` api-limit WITH a live lock-out integration test (120/min/user vs
+      parallel-query pages). Circular-import note: inline `rateLimiters` in trpc.ts, don't import the
+      middleware. Scouted — see STATE.md NEXT.
 - [ ] Visual QA (Rule 16): M2 RBAC flows + **D-P1a** Entry-1 max-width container (apply w/ QA across
-      89 pages) + **D-P1b** mobile off-canvas sidebar + **S-P1a** login/protected rate-limiting.
+      ~89 pages) + **D-P1b** mobile off-canvas sidebar.
 - [ ] Then back-port to PRODUCT.md/DECISIONS_LOG; owner-gated staging/prod remains HARD HOLD.
 
 ## Log
@@ -101,4 +113,5 @@
 - 2026-07-10 — M2a DONE: docs/RBAC_ALIGNMENT.md written (Wave A/B/C split). Wave A1 bug fix committed 9fdf95f (green). A2 deferred (cosmetic). Wave C → PENDING_DECISIONS.md. Next: M2b Wave B (one-owner + succession).
 - 2026-07-11 — M2b/M2c DONE (Wave B): one-owner-per-tenant integrity (is_tenant_owner + partial unique index, migration 20260710160000 authored/not-applied) + two-way succession (succession.ts + platform/user tRPC wiring + 5 web unit tests + worker integration test). Web 1060/1060 green. M2d + platform-NULL remain owner-gated Wave C. M2 [HOW]-scope complete → next M3 (AIEF audit).
 - 2026-07-11 — M3 + M4 DONE (commit 2a0e9ca). 3 parallel audits → docs/AIEF_AUDIT_TODO.md. Applied P0 fix (demo.reset cross-tenant deleteMany wipe → tenant-scoped, +3 tests), P2 cron timingSafeEqual, a11y (aria-labels + prefers-reduced-motion + footer contrast). web 1063/1063 · typecheck · lint · lint-design green. D-PRIV-1 surfaced to PENDING_DECISIONS. Un-gated [HOW] remains (M5 headless hardening / M6 dev-up) → reboot to advance M5, NOT --stop/--hold.
+- 2026-07-11 — M6 PARTIAL (dev-up). Brought up local dev stack (deliberate rebuild off branch) + fresh DB. M6.1: applied migration 20260710160000 to dev, worker succession 4/4 green. M6.2 (S-P2a remainder, commit 5422479): removed physical per-tenant schema path; this UNCOVERED + FIXED two latent multi-tenant prod bugs the hack masked — (a) demo seed data landing in an invisible t_demo schema (rewrote to Prisma→public), (b) stale single-column UNIQUE(code) indexes on 4 finance/inventory tables (DROP CONSTRAINT no-op bug) → new migration 20260711010000 (DROP INDEX), applied to dev. Verified green end-to-end (worker 15/15, web 1063/1063). 2 global lessons logged. Applying both dev migrations to staging/prod = owner-gated (surfaced in PENDING_DECISIONS as D-MIG-APPLY). Remainder M6.3 (rate-limiting) + M6.4/5/6 (Visual QA) → milestone-barrier reboot (dev stack left UP for fast resume). NOT --stop (un-gated work queued).
 - 2026-07-11 — M5 DONE (all headless, LOCAL, verified green each step). D-P2 (4fcd10b): lint-design P1a all-caps tracking. S-P2a (3dd3fe0): deleted dormant schema-per-tenant runtime path incl. the `SET search_path` injection landmine (tenant-guard.ts) + createTenantPrisma + barrel/mocks; documented single-public-schema+tenantId contract; zero-runtime-caller (scout-confirmed). S-P1b (bb09e3f): Zod .strict() sweep on ~130 mutation inputs / 29 routers (9 parallel spec-executors; base-const propagation; kept storefront passthrough). Verify each: web typecheck + eslint + lint-design + suite 1063/1063 green. Remainder→M6: vestigial physical t_<slug> schema creation (live worker caller). Next milestone M6 (dev-up) NEEDS local dev stack + browser Visual QA → milestone-barrier reboot (no --stop) so fresh session runs M6.
