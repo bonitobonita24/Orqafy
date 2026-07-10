@@ -68,6 +68,9 @@ vi.mock("@orqafy/db", () => {
     invoice: {
       create: vi.fn(),
     },
+    product: {
+      count: vi.fn(),
+    },
     auditLog: { create: vi.fn() },
   };
   return {
@@ -162,6 +165,9 @@ const mockDb = db as unknown as {
   };
   invoice: {
     create: ReturnType<typeof vi.fn>;
+  };
+  product: {
+    count: ReturnType<typeof vi.fn>;
   };
   auditLog: {
     create: ReturnType<typeof vi.fn>;
@@ -868,6 +874,68 @@ describe("crm.quotationCreate", () => {
       }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
+
+  it("rejects when a line item references a product from another tenant (M7.2)", async () => {
+    setupHappyPath();
+    // Product exists but count query (id IN [...] AND tenantId = ctx.tenantId) finds 0 matches
+    // because the product belongs to a different tenant.
+    mockDb.product.count.mockResolvedValue(0);
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.quotationCreate({
+        customerId: CUSTOMER_ID,
+        title: "Q",
+        taxAmount: 0,
+        markupColumns: [],
+        sections: [
+          {
+            name: "S",
+            sortOrder: 0,
+            lineItems: [
+              {
+                productId: "product-from-other-tenant",
+                description: "X",
+                unit: "pcs",
+                quantity: 1,
+                baseCost: 100,
+                sortOrder: 0,
+                markups: [],
+              },
+            ],
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockDb.product.count).toHaveBeenCalledWith({
+      where: { id: { in: ["product-from-other-tenant"] }, tenantId: "acme-tenant-id" },
+    });
+    expect(mockDb.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("allows a line item with no productId (no product FK check triggered)", async () => {
+    setupHappyPath();
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.crm.quotationCreate({
+      customerId: CUSTOMER_ID,
+      title: "Q",
+      taxAmount: 0,
+      markupColumns: [],
+      sections: [
+        {
+          name: "S",
+          sortOrder: 0,
+          lineItems: [
+            { description: "X", unit: "pcs", quantity: 1, baseCost: 100, sortOrder: 0, markups: [] },
+          ],
+        },
+      ],
+    });
+
+    expect(mockDb.product.count).not.toHaveBeenCalled();
+    expect(mockDb.$transaction).toHaveBeenCalledTimes(1);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -993,6 +1061,43 @@ describe("crm.quotationUpdate", () => {
         ],
       }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockDb.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects full-payload edit when a line item references a product from another tenant (M7.2)", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, tenantId: "acme-tenant-id", status: "draft" });
+    mockDb.product.count.mockResolvedValue(0);
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.quotationUpdate({
+        id: QUOTATION_ID,
+        taxAmount: 0,
+        markupColumns: [],
+        sections: [
+          {
+            name: "S1",
+            sortOrder: 0,
+            lineItems: [
+              {
+                productId: "product-from-other-tenant",
+                description: "Widget",
+                unit: "pcs",
+                quantity: 1,
+                baseCost: 50,
+                sortOrder: 0,
+                markups: [],
+              },
+            ],
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockDb.product.count).toHaveBeenCalledWith({
+      where: { id: { in: ["product-from-other-tenant"] }, tenantId: "acme-tenant-id" },
+    });
+    // Destructive deleteMany calls must never run before the FK check passes.
+    expect(mockDb.quotationSection.deleteMany).not.toHaveBeenCalled();
     expect(mockDb.$transaction).not.toHaveBeenCalled();
   });
 });

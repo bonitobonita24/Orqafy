@@ -70,6 +70,24 @@ async function loadContactLogForTenant(
   return cl;
 }
 
+async function validateProductIdsForTenant(
+  productIds: string[],
+  ctx: { tenantId: string },
+): Promise<void> {
+  const uniqueIds = Array.from(new Set(productIds));
+  if (uniqueIds.length === 0) return;
+  const count = await db.product.count({
+    where: { id: { in: uniqueIds }, tenantId: ctx.tenantId },
+  });
+  if (count !== uniqueIds.length) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "One or more line items reference a product that does not belong to this tenant.",
+    });
+  }
+}
+
 async function generateQuotationNumber(): Promise<string> {
   const now = new Date();
   const yy = String(now.getFullYear()).slice(-2);
@@ -590,6 +608,14 @@ export const crmRouter = createTRPCRouter({
       await loadCustomerForTenant(input.customerId, {
         tenantId: ctx.tenantId,
       });
+      await validateProductIdsForTenant(
+        input.sections.flatMap((section) =>
+          section.lineItems
+            .map((item) => item.productId)
+            .filter((id): id is string => id !== undefined),
+        ),
+        { tenantId: ctx.tenantId },
+      );
 
       // Compute totals — subtotal locks at create time.
       const subtotal = input.sections.reduce((acc, section) => {
@@ -822,6 +848,14 @@ export const crmRouter = createTRPCRouter({
       }
       const sectionsInput = input.sections;
       const markupColumnsInput = input.markupColumns;
+      await validateProductIdsForTenant(
+        sectionsInput.flatMap((section) =>
+          section.lineItems
+            .map((item) => item.productId)
+            .filter((id): id is string => id !== undefined),
+        ),
+        { tenantId: ctx.tenantId },
+      );
       const taxAmount = input.taxAmount ?? 0;
       const subtotal = sectionsInput.reduce((acc, section) => {
         return (
