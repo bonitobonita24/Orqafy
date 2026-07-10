@@ -68,17 +68,45 @@ dead schema-per-tenant path (or activate it deliberately) so there is ONE docume
 `tenantGuardExtension` also interpolates `SET search_path TO "${schemaName}"` with **no regex guard** (latent
 injection landmine, currently unreachable). High-value cleanup; prevents the next P0 of this class.
 
-### S-P2b — misc security hardening
-- Nested Prisma `include` (e.g. `invoice.loadInvoiceForTenant` → `customer`/`project`) not re-checked for
-  tenant on user-settable FKs (security.md DB-rule-7; low risk given within-tenant FK integrity).
-- `payroll.ts:594` `config: z.record(z.string(), z.unknown())` bypasses validation for that field.
+### S-P2b — misc security hardening — ✅ ADDRESSED (M7, 2026-07-11, 12 commits 75bc162..418a3c8)
+- ~~Nested Prisma `include`... not re-checked for tenant on user-settable FKs (low risk)~~ — **THIS CALL
+  WAS WRONG.** M7.2 ESCALATED after PM ground-truth verification + 3 read-only scouts (read-IDOR /
+  list-leak / raw-FK-write angles) found **REAL cross-tenant IDOR across 9 routers**, including a SEVERE
+  record-IDOR (`inventory.productUpdate` used `findUnique` with no tenant check) and a full list-leak
+  (`inventory.productList` + `purchasing.goodsReceipt.list` — both missing `tenantId` in `where`, leaking
+  ALL tenants' rows). Root cause: M5 (S-P2a) removed the L6 auto-tenant-guard Prisma extension, which
+  silently converted every existing query into an unscoped one — this had NOT been re-audited before this
+  session flagged it "low risk." Fixed across inventory, project, job-order, purchasing, pos, crm,
+  tasks+support, employee, invoice/expense/department + storefront (10 commits, ~35 new regression
+  tests). 11 routers scout-cleared as already-protected (banking/accounting/dtr/payroll/compliance/dsr/
+  report/user/admin-xendit/smtp/notification).
+- `payroll.ts:594` `config: z.record(z.string(), z.unknown())` bypasses validation — **FIXED (M7.1,
+  75bc162):** replaced with a typed `z.discriminatedUnion("type",[...])` (4 branches, each `.strict()`).
+  0 remaining z.unknown()/z.any() on server mutation inputs (grep-confirmed).
 - In-memory LRU rate limiter is per-instance — needs a shared Valkey store for multi-instance prod.
-- **Not deeply audited this pass** (focused follow-up): `storage.ts` upload MIME/size/magic-byte validation
-  (§6) and SSRF on outbound fetch (§SSRF) — no user-URL outbound fetch surfaced in scans, but confirm.
+  **STILL DEFERRED** (owner-gated — only matters once Orqafy runs >1 app instance).
+- `storage.ts` upload MIME/size/magic-byte validation (§6) + SSRF on outbound fetch — **AUDITED (M7.3,
+  no code change).** Posture is STRONG: 6/7 controls present (server-side MIME whitelist, SVG/HTML
+  blocked, forced `Content-Disposition: attachment`, tenant-slug key prefix, randomized UUID filenames,
+  tenant-verified download endpoint). SSRF = none found (only outbound fetch is fixed-host Turnstile
+  siteverify). Gap: magic-byte sniff missing, but this is an architectural consequence of presigned
+  direct-to-S3 uploads (the server never receives the bytes to sniff) and the XSS vector is already
+  closed by the SVG/HTML block + forced download. **Decision: document-and-accept**, not fixed — a bounded
+  download-and-sniff on `confirmUpload` is a possible future enhancement, judged disproportionate now.
 
-### D-P2 — design/a11y housekeeping
-- Loading states: 11 `loading.tsx` use ad-hoc `animate-spin` divs; no shadcn `Skeleton` installed. Install
-  `skeleton` and use it on content areas >300px (ui-rules Rule 11 dual-path). *(no hard-rule violation — no twins.)*
+**M7 net result:** 1 escalated P1→real-security-bug fix (9-router IDOR sweep) + 1 Zod bypass closed +
+1 audit confirming strong posture with an accepted architectural gap. 2 minor residuals surfaced (not
+fixed, logged to `PENDING_DECISIONS.md`): **D-NUM-1** — PO/GR/quotation numbering sequences are currently
+global, not per-tenant (`generatePoNumber`/`generateGrNumber`/`generateQuotationNumber` use unscoped
+`findFirst`), leaking cross-tenant volume signal (no data exposure) — fixing is a numbering-scheme
+product decision; and the storage magic-byte accept above.
+
+### D-P2 — design/a11y housekeeping — ✅ loading states DONE (M7.4, 7d5ac4a)
+- ~~Loading states: 11 `loading.tsx` use ad-hoc `animate-spin` divs; no shadcn `Skeleton` installed~~ —
+  **FIXED.** Installed shadcn `Skeleton`; replaced ad-hoc spinners in 10 app-shell `loading.tsx` with
+  layout-matched placeholders (dashboard = stat-card grid + chart skeleton; 9 table pages = uniform
+  title+toolbar+rows skeleton). `login/loading.tsx` left as a minimal spinner (small auth card, no benefit
+  from a skeleton). ui-rules Rule 11 PATH A — no `*Skeleton.tsx` twin files created.
 - `lint-design.sh` P1a: all-caps without tracking at `settings/account/account-form.tsx:105` +
   `globals.css:116` — add `letter-spacing: 0.06–0.1em` (design-principles Pillar 4).
 - Sidebar footer contrast at 10px — spot-check measured ratio post-fix; drop size floor if still <4.5:1.

@@ -1358,3 +1358,65 @@ fixed `w-56` aside squeezed content to ~150px.
 (dev, 1920/1440/375px) of dashboard/invoices/settings/pos-new-sale/users — capped-centering + immersive
 opt-out + off-canvas nav all confirmed; RBAC Users page renders post-migration with 0 console errors.
 All LOCAL on `feat/tenant-rbac-3tier`; HARD HOLD — no push/deploy.
+
+## 2026-07-11 — M7: Zod StatutoryRate typing + STANDING tenant-guard contract + storage accept + numbering deferred
+
+**StatutoryRate config typing (LOCKED, M7.1, commit 75bc162):** `payroll.ts` `StatutoryRate.upsert`'s
+`config` field was `z.record(z.string(), z.unknown())` — a full validation bypass for that input.
+Replaced with a typed `z.discriminatedUnion("type", [...])` covering the four real config shapes
+(`sss` / `philhealth` / `pagibig` / `withholding`), each `.strict()` with `z.number().nonnegative()`
+fields matching the existing `SssConfig`/`PhilhealthConfig`/`PagibigConfig`/`WithholdingConfig`
+interfaces. Grep confirms 0 remaining `z.unknown()`/`z.any()` on server mutation inputs anywhere in the
+codebase.
+
+**⚠ STANDING CONTRACT (LOCKED, M7.2) — explicit tenant validation is now MANDATORY on every tenant-scoped
+query/mutation, with no ORM-level safety net:** M5 (S-P2a, 2026-07-11 earlier this day) deleted the
+dormant L6 auto-tenant-guard Prisma extension (the `$allOperations` interceptor that used to inject
+`tenantId` automatically). That removal was correct — the extension was dead code with a live SQL-
+injection landmine — but it also meant every query written against the assumption of an implicit guard
+became silently unscoped. M7.2 found this had already caused real damage: a SEVERE record-IDOR
+(`inventory.productUpdate` via `findUnique` with no tenant check) and two full list-leaks
+(`inventory.productList`, `purchasing.goodsReceipt.list` — `where` clauses missing `tenantId` entirely,
+returning ALL tenants' rows), plus numerous unguarded user-supplied foreign-key writes across 8 more
+routers. **Going forward: every `findUnique`/`findFirst`/`findMany`/`update`/`delete`/`count` on a
+tenant-scoped model MUST explicitly filter or verify `tenantId` — no exceptions, no assumption that
+"it was probably guarded upstream."** The four accepted idioms (use whichever fits): (a)
+`findFirst({ where: { id, tenantId } })` in place of `findUnique({ where: { id } })`; (b) a
+`loadXForTenant(id, tenantId)` helper for record-existence + ownership checks before a write; (c) for
+batch operations, `count({ where: { id: { in: ids }, tenantId } }) === ids.length` before proceeding;
+(d) for user-membership checks (e.g. assigning another user to a record), `user.tenantId ===
+ctx.tenantId`. Any future removal of an ORM-level tenant guard (or any other cross-cutting Prisma
+extension) MUST be followed by a full grep-the-surface re-audit of every affected query type — this is
+now a mandatory follow-up step, not optional cleanup.
+
+**Storage magic-byte sniff — accepted, not fixed (LOCKED, M7.3):** file-upload validation is
+presigned-direct-to-S3, so the app server never receives the uploaded bytes and cannot sniff magic
+numbers before storage. The XSS vector this would otherwise guard against is already closed by two
+independent controls: SVG/HTML MIME types are blocked outright, and every download is served with a
+forced `Content-Disposition: attachment` (never inline-rendered). **Decision: accept the gap as an
+architectural tradeoff of the presigned-upload design**, not a defect to fix now. A bounded
+download-and-sniff check inside `confirmUpload` (post-upload, before the DB record is finalized) is a
+possible future enhancement if the risk profile changes (e.g. inline preview features are added later)
+— judged disproportionate to build today.
+
+**Document numbering — deferred as a product decision, not a security fix (`D-NUM-1`, M7.2 residual):**
+`generatePoNumber`, `generateGrNumber` (purchasing), and `generateQuotationNumber` (crm) all resolve the
+next sequence number via an unscoped `findFirst`, so PO/GR/quotation numbers currently form ONE global
+sequence across all tenants rather than a per-tenant sequence. This is an information-leak (a tenant can
+infer relative order-volume of other tenants from gaps in its own numbering) but exposes NO actual data
+— unlike the M7.2 IDOR fixes, this is a numbering-SCHEME choice (global vs per-tenant sequences, and
+whether per-tenant numbering should reset or continue on tenant creation), which is a product/business
+call, not a pure security bug. Logged to `PENDING_DECISIONS.md` as `D-NUM-1` for owner input rather than
+auto-fixed.
+
+**Loading states (LOCKED, M7.4, commit 7d5ac4a):** installed shadcn `Skeleton`
+(`apps/web/src/components/ui/skeleton.tsx`) and replaced the ad-hoc `animate-spin` divs in 10 of the 11
+app-shell `loading.tsx` files with layout-matched placeholders (dashboard = stat-card grid + chart
+skeleton; the 9 table-page loaders = a uniform title+toolbar+rows skeleton). `login/loading.tsx` was left
+as a minimal spinner — the auth card is small enough that a skeleton adds no perceptible value. Follows
+ui-rules Rule 11 PATH A (shadcn-composed loading states use `<Skeleton>` inline); zero
+`*Skeleton.tsx` twin files were created, per the hard constraint.
+
+**Validation:** web typecheck 0 errors · web suite 1101/1101 (≈+35 new regression tests from the M7.2
+IDOR remediation) · lint-design PASS · worker typecheck 0 errors · live app smoke PASS. 12 LOCAL commits
+on `feat/tenant-rbac-3tier` (75bc162..418a3c8); HARD HOLD — no push/deploy.
