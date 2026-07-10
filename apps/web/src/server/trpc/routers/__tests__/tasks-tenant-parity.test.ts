@@ -23,6 +23,9 @@ const {
   mockTaskDelete,
   mockProjectFindUnique,
   mockAuditLogCreate,
+  mockUserFindUnique,
+  mockTaskAssignmentFindFirst,
+  mockTaskAssignmentCreate,
 } = vi.hoisted(() => ({
   mockTaskFindUnique: vi.fn(),
   mockTaskFindMany: vi.fn(),
@@ -31,6 +34,9 @@ const {
   mockTaskDelete: vi.fn(),
   mockProjectFindUnique: vi.fn(),
   mockAuditLogCreate: vi.fn(),
+  mockUserFindUnique: vi.fn(),
+  mockTaskAssignmentFindFirst: vi.fn(),
+  mockTaskAssignmentCreate: vi.fn(),
 }));
 
 vi.mock("@orqafy/db", () => {
@@ -46,6 +52,13 @@ vi.mock("@orqafy/db", () => {
     },
     project: {
       findUnique: mockProjectFindUnique,
+    },
+    user: {
+      findUnique: mockUserFindUnique,
+    },
+    taskAssignment: {
+      findFirst: mockTaskAssignmentFindFirst,
+      create: mockTaskAssignmentCreate,
     },
     auditLog: { create: mockAuditLogCreate },
   };
@@ -224,6 +237,23 @@ describe("Tasks tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)",
     ).rejects.toMatchObject({ code: "NOT_FOUND", message: "Project not found" });
   });
 
+  it("taskCreate throws NOT_FOUND when parentTaskId belongs to a different tenant", async () => {
+    mockProjectFindUnique.mockResolvedValueOnce(PROJECT_A);
+    mockTaskFindUnique.mockResolvedValueOnce({ ...TASK_A, tenantId: "tenant-B" }); // loadTaskForTenant(parentTaskId)
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+
+    await expect(
+      caller.tasks.taskCreate({
+        projectId: PROJECT_A.id,
+        title: "Nested task",
+        parentTaskId: TASK_A.id,
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND", message: "Task not found" });
+
+    expect(mockTaskCreate).not.toHaveBeenCalled();
+  });
+
   // ── 4. taskUpdateStatus state-machine guard ─────────────────────────────────
   it("taskUpdateStatus throws BAD_REQUEST on illegal status transition", async () => {
     mockTaskFindUnique.mockResolvedValueOnce(TASK_A); // status: "todo"
@@ -289,6 +319,20 @@ describe("Tasks tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)",
         data: expect.objectContaining({ action: "DELETE", entity: "Task" }),
       }),
     );
+  });
+
+  // ── taskAssign cross-tenant assignee guard ──────────────────────────────────
+  it("taskAssign throws BAD_REQUEST when userId belongs to a different tenant", async () => {
+    mockTaskFindUnique.mockResolvedValueOnce(TASK_A); // loadTaskForTenant
+    mockUserFindUnique.mockResolvedValueOnce({ id: "user-b", tenantId: "tenant-B" });
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+
+    await expect(
+      caller.tasks.taskAssign({ taskId: TASK_A.id, userId: "user-b" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST", message: "User not found." });
+
+    expect(mockTaskAssignmentCreate).not.toHaveBeenCalled();
   });
 
   // ── 7. Demo tenant guard ────────────────────────────────────────────────────

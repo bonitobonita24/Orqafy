@@ -55,6 +55,9 @@ vi.mock("@orqafy/db", () => {
     auditLog: {
       create: vi.fn(),
     },
+    user: {
+      findUnique: vi.fn(),
+    },
     // Pass-through $transaction so router mutations that wrap in a transaction work in tests.
     $transaction: vi.fn((fn: (tx: unknown) => unknown) => Promise.resolve(fn(mockPrisma))),
   };
@@ -132,6 +135,9 @@ const mockDb = db as unknown as {
   };
   plan: {
     findFirst: ReturnType<typeof vi.fn>;
+  };
+  user: {
+    findUnique: ReturnType<typeof vi.fn>;
   };
 };
 
@@ -265,6 +271,7 @@ describe("tasks.taskCreate", () => {
 
   it("forwards optional priority, description, and parentTaskId to Prisma", async () => {
     mockDb.project.findUnique.mockResolvedValueOnce({ id: "proj-1", tenantId: "acme-tenant-id" });
+    mockDb.task.findUnique.mockResolvedValueOnce({ id: "task-parent", tenantId: "acme-tenant-id" }); // loadTaskForTenant(parentTaskId)
     mockDb.task.create.mockResolvedValueOnce({ id: "task-new" });
 
     const caller = createCaller(authenticatedCtx());
@@ -417,6 +424,7 @@ describe("tasks.taskAssign", () => {
     const existing = { id: "task-1", status: "todo", tenantId: "acme-tenant-id" };
     const assignment = { id: "assign-1", taskId: "task-1", userId: "user-2" };
     mockDb.task.findUnique.mockResolvedValueOnce(existing);
+    mockDb.user.findUnique.mockResolvedValueOnce({ id: "user-2", tenantId: "acme-tenant-id" });
     mockDb.taskAssignment.findFirst.mockResolvedValueOnce(null);
     mockDb.taskAssignment.create.mockResolvedValueOnce(assignment);
 
@@ -430,6 +438,7 @@ describe("tasks.taskAssign", () => {
   it("throws CONFLICT when user is already assigned", async () => {
     const existing = { id: "task-1", status: "todo", tenantId: "acme-tenant-id" };
     mockDb.task.findUnique.mockResolvedValueOnce(existing);
+    mockDb.user.findUnique.mockResolvedValueOnce({ id: "user-2", tenantId: "acme-tenant-id" });
     mockDb.taskAssignment.findFirst.mockResolvedValueOnce({ id: "assign-existing" });
 
     const caller = createCaller(authenticatedCtx());

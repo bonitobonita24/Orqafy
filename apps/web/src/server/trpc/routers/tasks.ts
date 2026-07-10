@@ -114,6 +114,11 @@ export const tasksRouter = createTRPCRouter({
     }).strict())
     .mutation(async ({ input, ctx }) => {
       await loadProjectForTenant(input.projectId, ctx);
+      // Tenant-isolation: a parent task (if any) must belong to the caller's
+      // tenant — otherwise a cross-tenant task could be nested under it.
+      if (input.parentTaskId !== undefined) {
+        await loadTaskForTenant(input.parentTaskId, ctx);
+      }
       return db.$transaction(async (tx) => {
         const created = await tx.task.create({
           data: {
@@ -254,6 +259,13 @@ export const tasksRouter = createTRPCRouter({
     .input(z.object({ taskId: z.string().min(1), userId: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       const task = await loadTaskForTenant(input.taskId, ctx);
+      // Tenant-isolation: the assignee must belong to the caller's tenant —
+      // both for the assignment itself and so the notification below can
+      // never be published to a cross-tenant user.
+      const assignee = await db.user.findUnique({ where: { id: input.userId } });
+      if (!assignee || assignee.tenantId !== ctx.tenantId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "User not found." });
+      }
       const existing = await db.taskAssignment.findFirst({
         where: { taskId: input.taskId, userId: input.userId },
       });

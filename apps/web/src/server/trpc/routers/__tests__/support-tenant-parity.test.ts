@@ -19,12 +19,14 @@ const {
   mockTicketCreate,
   mockTicketUpdate,
   mockCommentCreate,
+  mockUserFindUnique,
 } = vi.hoisted(() => ({
   mockTicketFindUnique: vi.fn(),
   mockTicketFindFirst: vi.fn(),
   mockTicketCreate: vi.fn(),
   mockTicketUpdate: vi.fn(),
   mockCommentCreate: vi.fn(),
+  mockUserFindUnique: vi.fn(),
 }));
 
 vi.mock("@orqafy/db", () => ({
@@ -43,6 +45,9 @@ vi.mock("@orqafy/db", () => ({
     },
     ticketAttachment: {
       findMany: vi.fn().mockResolvedValue([]),
+    },
+    user: {
+      findUnique: mockUserFindUnique,
     },
   },
 }));
@@ -151,6 +156,20 @@ describe("Support tenant parity (K-prime closure)", () => {
         content: "Injected comment",
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("support.ticket.assign throws BAD_REQUEST when assignedToId belongs to a different tenant", async () => {
+    const ticketOnTenantA = { ...ticketOnTenantB, id: "ticket-a1", tenantId: "tenant-A" };
+    mockTicketFindUnique.mockResolvedValueOnce(ticketOnTenantA); // loadTicketForTenant
+    mockUserFindUnique.mockResolvedValueOnce({ id: "user-b", tenantId: "tenant-B" });
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+
+    await expect(
+      caller.support.ticket.assign({ id: "ticket-a1", assignedToId: "user-b" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST", message: "Assignee not found." });
+
+    expect(mockTicketUpdate).not.toHaveBeenCalled();
   });
 
   it("support.ticket.close throws NOT_FOUND when ticket belongs to different tenant", async () => {

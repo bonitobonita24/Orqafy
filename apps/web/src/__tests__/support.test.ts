@@ -36,6 +36,9 @@ vi.mock("@orqafy/db", () => ({
     ticketAttachment: {
       findMany: vi.fn(),
     },
+    user: {
+      findUnique: vi.fn(),
+    },
   },
 }));
 
@@ -55,6 +58,7 @@ const mockDb = db as unknown as {
   };
   ticketComment: { findMany: MockFn; create: MockFn };
   ticketAttachment: { findMany: MockFn };
+  user: { findUnique: MockFn };
 };
 
 // ── Context factories ─────────────────────────────────────────────────────────
@@ -392,6 +396,7 @@ describe("support.ticket.assign", () => {
       tenantId: "tenant-acme",
       status: "open",
     });
+    mockDb.user.findUnique.mockResolvedValueOnce({ id: "user-mgr", tenantId: "tenant-acme" });
     mockDb.supportTicket.update.mockResolvedValueOnce({
       ...fakeTicket,
       status: "in_progress",
@@ -417,6 +422,7 @@ describe("support.ticket.assign", () => {
       tenantId: "tenant-acme",
       status: "waiting",
     });
+    mockDb.user.findUnique.mockResolvedValueOnce({ id: "user-mgr", tenantId: "tenant-acme" });
     mockDb.supportTicket.update.mockResolvedValueOnce(fakeTicket);
 
     const caller = createCaller(adminCtx());

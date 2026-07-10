@@ -226,6 +226,16 @@ const ticketRouter = createTRPCRouter({
 
       const existing = await loadTicketForTenant(input.id, ctx);
 
+      // Tenant-isolation: the assignee (when not unassigning) must belong to
+      // the caller's tenant — otherwise a ticket could be handed to a
+      // cross-tenant user, leaking that user's identity/reference.
+      if (input.assignedToId !== null) {
+        const assignee = await db.user.findUnique({ where: { id: input.assignedToId } });
+        if (!assignee || assignee.tenantId !== ctx.tenantId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Assignee not found." });
+        }
+      }
+
       const newStatus =
         input.assignedToId !== null && existing.status === "open"
           ? "in_progress"
