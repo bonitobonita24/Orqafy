@@ -88,17 +88,72 @@ describe("category tenant parity", () => {
   });
 });
 
+// ── Product IDOR closure (M7.2) ─────────────────────────────────────────────
+
+describe("product tenant parity (M7.2 IDOR guards)", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("productUpdate rejects cross-tenant id (IDOR closure)", async () => {
+    mockDb.product.findFirst.mockResolvedValue(null);
+    const caller = createCaller(tenantBCtx());
+    await expect(caller.inventory.productUpdate({ id: "prod-owned-by-alpha", name: "Hacked" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    const call = mockDb.product.findFirst.mock.calls[0] as [{ where: { id: string; tenantId: string } }];
+    expect(call[0].where).toMatchObject({ id: "prod-owned-by-alpha", tenantId: "tid-bravo" });
+  });
+
+  it("productUpdate rejects a cross-tenant categoryId even when the product itself is owned", async () => {
+    mockDb.product.findFirst.mockResolvedValue({ id: "prod-owned-by-bravo", tenantId: "tid-bravo" });
+    mockDb.category.findFirst.mockResolvedValue(null); // categoryId belongs to another tenant
+    const caller = createCaller(tenantBCtx());
+    await expect(
+      caller.inventory.productUpdate({ id: "prod-owned-by-bravo", categoryId: "cat-owned-by-alpha" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    const call = mockDb.category.findFirst.mock.calls[0] as [{ where: { id: string; tenantId: string } }];
+    expect(call[0].where).toMatchObject({ id: "cat-owned-by-alpha", tenantId: "tid-bravo" });
+  });
+
+  it("productCreate rejects a cross-tenant categoryId", async () => {
+    mockDb.category.findFirst.mockResolvedValue(null); // categoryId belongs to another tenant
+    const caller = createCaller(tenantBCtx());
+    await expect(
+      caller.inventory.productCreate({ name: "New Widget", categoryId: "cat-owned-by-alpha" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockDb.product.create).not.toHaveBeenCalled();
+  });
+});
+
 // ── StockMovement IDOR closure ──────────────────────────────────────────────
 
 describe("stockMovement tenant parity", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it("stockMovementCreate injects ctx.tenantId into data", async () => {
+    mockDb.product.findFirst.mockResolvedValue({ id: "p1", tenantId: "tid-alpha" });
+    mockDb.warehouse.findFirst.mockResolvedValue({ id: "wh1", tenantId: "tid-alpha" });
     mockDb.stockMovement.create.mockResolvedValue({ id: "sm-new", tenantId: "tid-alpha" });
     const caller = createCaller(tenantACtx());
     await caller.inventory.stockMovementCreate({ type: "in", productId: "p1", quantity: 5, toWarehouseId: "wh1" });
     const call = mockDb.stockMovement.create.mock.calls[0] as [{ data: { tenantId: string } }];
     expect(call[0].data.tenantId).toBe("tid-alpha");
+  });
+
+  it("stockMovementCreate rejects a cross-tenant productId (IDOR closure)", async () => {
+    mockDb.product.findFirst.mockResolvedValue(null); // productId belongs to another tenant
+    const caller = createCaller(tenantBCtx());
+    await expect(
+      caller.inventory.stockMovementCreate({ type: "in", productId: "p1-owned-by-alpha", quantity: 5, toWarehouseId: "wh1" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockDb.stockMovement.create).not.toHaveBeenCalled();
+  });
+
+  it("stockMovementCreate rejects a cross-tenant toWarehouseId (IDOR closure)", async () => {
+    mockDb.product.findFirst.mockResolvedValue({ id: "p1", tenantId: "tid-bravo" });
+    mockDb.warehouse.findFirst.mockResolvedValue(null); // warehouseId belongs to another tenant
+    const caller = createCaller(tenantBCtx());
+    await expect(
+      caller.inventory.stockMovementCreate({ type: "in", productId: "p1", quantity: 5, toWarehouseId: "wh-owned-by-alpha" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockDb.stockMovement.create).not.toHaveBeenCalled();
   });
 
   it("stockMovementById rejects cross-tenant read (IDOR closure)", async () => {
@@ -119,6 +174,8 @@ describe("stockMovement tenant parity", () => {
   });
 
   it("stockTransfer injects ctx.tenantId into data", async () => {
+    mockDb.product.findFirst.mockResolvedValue({ id: "p1", tenantId: "tid-alpha" });
+    mockDb.warehouse.findFirst.mockResolvedValue({ id: "wh", tenantId: "tid-alpha" });
     mockDb.stockMovement.create.mockResolvedValue({ id: "sm-xfer", tenantId: "tid-alpha" });
     const caller = createCaller(tenantACtx());
     await caller.inventory.stockTransfer({ productId: "p1", quantity: 3, fromWarehouseId: "wh1", toWarehouseId: "wh2" });
@@ -127,6 +184,8 @@ describe("stockMovement tenant parity", () => {
   });
 
   it("stockAdjustment injects ctx.tenantId into data", async () => {
+    mockDb.product.findFirst.mockResolvedValue({ id: "p1", tenantId: "tid-alpha" });
+    mockDb.warehouse.findFirst.mockResolvedValue({ id: "wh1", tenantId: "tid-alpha" });
     mockDb.stockMovement.create.mockResolvedValue({ id: "sm-adj", tenantId: "tid-alpha" });
     const caller = createCaller(tenantACtx());
     await caller.inventory.stockAdjustment({ productId: "p1", quantity: -2, warehouseId: "wh1", notes: "damaged" });
@@ -152,6 +211,8 @@ describe("audit log written for inventory mutations", () => {
   });
 
   it("stockMovementCreate writes an audit row with action CREATE entity StockMovement", async () => {
+    mockDb.product.findFirst.mockResolvedValue({ id: "p1", tenantId: "tid-alpha" });
+    mockDb.warehouse.findFirst.mockResolvedValue({ id: "wh1", tenantId: "tid-alpha" });
     mockDb.stockMovement.create.mockResolvedValue({ id: "sm-audit", tenantId: "tid-alpha", type: "in", productId: "p1", quantity: 5, fromWarehouseId: null, toWarehouseId: "wh1" });
     const caller = createCaller(tenantACtx());
     await caller.inventory.stockMovementCreate({ type: "in", productId: "p1", quantity: 5, toWarehouseId: "wh1" });

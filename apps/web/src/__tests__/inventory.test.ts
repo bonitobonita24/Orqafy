@@ -28,6 +28,7 @@ const { mockPrisma } = vi.hoisted(() => {
     product: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       count: vi.fn(),
@@ -114,6 +115,7 @@ const mockDb = db as unknown as {
   product: {
     findMany: ReturnType<typeof vi.fn>;
     findUnique: ReturnType<typeof vi.fn>;
+    findFirst: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
     count: ReturnType<typeof vi.fn>;
@@ -330,7 +332,7 @@ describe("inventory.productUpdate", () => {
 
   it("updates product name", async () => {
     const updated = { ...sampleProduct, name: "Updated Product" };
-    mockDb.product.findUnique.mockResolvedValue(sampleProduct);
+    mockDb.product.findFirst.mockResolvedValue(sampleProduct);
     mockDb.product.update.mockResolvedValue(updated);
 
     const caller = createCaller(authenticatedCtx());
@@ -341,7 +343,7 @@ describe("inventory.productUpdate", () => {
   });
 
   it("throws NOT_FOUND for nonexistent product", async () => {
-    mockDb.product.findUnique.mockResolvedValue(null);
+    mockDb.product.findFirst.mockResolvedValue(null);
 
     const caller = createCaller(authenticatedCtx());
     await expect(
@@ -744,6 +746,8 @@ describe("inventory.stockMovementCreate", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it("creates an inbound movement (type=in) with toWarehouseId", async () => {
+    mockDb.product.findFirst.mockResolvedValue(sampleProduct);
+    mockDb.warehouse.findFirst.mockResolvedValue(sampleWarehouse);
     mockDb.stockMovement.create.mockResolvedValue(sampleStockMovement);
 
     const caller = createCaller(authenticatedCtx());
@@ -811,6 +815,8 @@ describe("inventory.stockTransfer", () => {
 
   it("creates a transfer movement between two different warehouses", async () => {
     const transferMovement = { ...sampleStockMovement, type: "transfer", fromWarehouseId: "wh-2", toWarehouseId: "wh-1" };
+    mockDb.product.findFirst.mockResolvedValue(sampleProduct);
+    mockDb.warehouse.findFirst.mockResolvedValue(sampleWarehouse);
     mockDb.stockMovement.create.mockResolvedValue(transferMovement);
 
     const caller = createCaller(authenticatedCtx());
@@ -868,6 +874,8 @@ describe("inventory.stockAdjustment", () => {
 
   it("creates an adjustment movement with notes", async () => {
     const adjustmentMovement = { ...sampleStockMovement, type: "adjustment", toWarehouseId: "wh-1", notes: "Cycle count correction" };
+    mockDb.product.findFirst.mockResolvedValue(sampleProduct);
+    mockDb.warehouse.findFirst.mockResolvedValue(sampleWarehouse);
     mockDb.stockMovement.create.mockResolvedValue(adjustmentMovement);
 
     const caller = createCaller(authenticatedCtx());
@@ -944,6 +952,8 @@ describe("inventory L5 AuditLog", () => {
   });
 
   it("stockMovementCreate writes a CREATE/StockMovement audit row", async () => {
+    mockDb.product.findFirst.mockResolvedValue(sampleProduct);
+    mockDb.warehouse.findFirst.mockResolvedValue(sampleWarehouse);
     mockDb.stockMovement.create.mockResolvedValue(sampleStockMovement);
 
     const caller = createCaller(authenticatedCtx());

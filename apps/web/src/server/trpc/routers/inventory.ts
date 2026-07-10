@@ -3,6 +3,22 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
 import { prisma as db, writeAuditLog } from "@orqafy/db";
 
+// ── Tenant-ownership guards (close cross-tenant IDOR on FK/record writes) ───
+async function assertProductInTenant(id: string, tenantId: string): Promise<void> {
+  const found = await db.product.findFirst({ where: { id, tenantId } });
+  if (found === null) throw new TRPCError({ code: "NOT_FOUND" });
+}
+
+async function assertWarehouseInTenant(id: string, tenantId: string): Promise<void> {
+  const found = await db.warehouse.findFirst({ where: { id, tenantId } });
+  if (found === null) throw new TRPCError({ code: "NOT_FOUND" });
+}
+
+async function assertCategoryInTenant(id: string, tenantId: string): Promise<void> {
+  const found = await db.category.findFirst({ where: { id, tenantId } });
+  if (found === null) throw new TRPCError({ code: "NOT_FOUND" });
+}
+
 export const inventoryRouter = createTRPCRouter({
   // ── Products ──────────────────────────────────────────────────────────────
   productList: protectedProcedure
@@ -65,6 +81,9 @@ export const inventoryRouter = createTRPCRouter({
       }).strict()
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.categoryId !== undefined) {
+        await assertCategoryInTenant(input.categoryId, ctx.tenantId);
+      }
       return db.$transaction(async (tx) => {
         const created = await tx.product.create({
           data: {
@@ -110,8 +129,11 @@ export const inventoryRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
-      const existing = await db.product.findUnique({ where: { id } });
+      const existing = await db.product.findFirst({ where: { id, tenantId: ctx.tenantId } });
       if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
+      if (rest.categoryId !== undefined) {
+        await assertCategoryInTenant(rest.categoryId, ctx.tenantId);
+      }
       return db.$transaction(async (tx) => {
         const updated = await tx.product.update({
           where: { id },
@@ -185,6 +207,9 @@ export const inventoryRouter = createTRPCRouter({
       }).strict()
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.parentId !== undefined) {
+        await assertCategoryInTenant(input.parentId, ctx.tenantId);
+      }
       return db.$transaction(async (tx) => {
         const created = await tx.category.create({
           data: {
@@ -224,6 +249,9 @@ export const inventoryRouter = createTRPCRouter({
       const { id, ...rest } = input;
       const existing = await db.category.findFirst({ where: { id, tenantId: ctx.tenantId } });
       if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
+      if (rest.parentId !== undefined) {
+        await assertCategoryInTenant(rest.parentId, ctx.tenantId);
+      }
       return db.$transaction(async (tx) => {
         const updated = await tx.category.update({
           where: { id },
@@ -473,6 +501,13 @@ export const inventoryRouter = createTRPCRouter({
       if (input.type === "adjustment" && input.fromWarehouseId === undefined && input.toWarehouseId === undefined) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "At least one warehouse required for type 'adjustment'" });
       }
+      await assertProductInTenant(input.productId, ctx.tenantId);
+      if (input.fromWarehouseId !== undefined) {
+        await assertWarehouseInTenant(input.fromWarehouseId, ctx.tenantId);
+      }
+      if (input.toWarehouseId !== undefined) {
+        await assertWarehouseInTenant(input.toWarehouseId, ctx.tenantId);
+      }
       return db.$transaction(async (tx) => {
         const created = await tx.stockMovement.create({
           data: {
@@ -514,6 +549,9 @@ export const inventoryRouter = createTRPCRouter({
       if (input.fromWarehouseId === input.toWarehouseId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Source and destination warehouses must differ" });
       }
+      await assertProductInTenant(input.productId, ctx.tenantId);
+      await assertWarehouseInTenant(input.fromWarehouseId, ctx.tenantId);
+      await assertWarehouseInTenant(input.toWarehouseId, ctx.tenantId);
       return db.$transaction(async (tx) => {
         const created = await tx.stockMovement.create({
           data: {
@@ -551,6 +589,8 @@ export const inventoryRouter = createTRPCRouter({
       }).strict()
     )
     .mutation(async ({ input, ctx }) => {
+      await assertProductInTenant(input.productId, ctx.tenantId);
+      await assertWarehouseInTenant(input.warehouseId, ctx.tenantId);
       return db.$transaction(async (tx) => {
         const created = await tx.stockMovement.create({
           data: {
