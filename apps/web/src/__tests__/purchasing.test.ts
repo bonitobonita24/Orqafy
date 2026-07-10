@@ -69,6 +69,19 @@ vi.mock("@orqafy/db", () => {
     accountingSettings: {
       findUnique: vi.fn(),
     },
+    // M7.2 — nested-FK tenant validation in po.create / goodsReceipt.create.
+    // Every fixture in this file references productId "prod-1", warehouseId "wh-1",
+    // and projectId "proj-1", so a fixed default resolution keeps every existing
+    // scenario passing through the new tenant-ownership check unaffected.
+    product: {
+      findMany: vi.fn().mockResolvedValue([{ id: "prod-1" }]),
+    },
+    project: {
+      findMany: vi.fn().mockResolvedValue([{ id: "proj-1" }]),
+    },
+    warehouse: {
+      findMany: vi.fn().mockResolvedValue([{ id: "wh-1" }]),
+    },
   };
   return {
     prisma: {
@@ -97,6 +110,9 @@ const mockDb = db as unknown as {
   projectExpense: { create: MockFn };
   auditLog: { create: MockFn };
   accountingSettings: { findUnique: MockFn };
+  product: { findMany: MockFn };
+  project: { findMany: MockFn };
+  warehouse: { findMany: MockFn };
   $transaction: MockFn;
 };
 

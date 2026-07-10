@@ -32,9 +32,14 @@ const {
   mockGoodsReceiptFindFirst,
   mockGoodsReceiptCreate,
   mockGoodsReceiptFindUnique,
+  mockGoodsReceiptFindMany,
+  mockGoodsReceiptCount,
   mockGoodsReceiptItemCreate,
   mockAuditLogCreate,
   mockAccountingSettingsFindUnique,
+  mockProductFindMany,
+  mockProjectFindMany,
+  mockWarehouseFindMany,
 } = vi.hoisted(() => ({
   mockVendorFindUnique: vi.fn(),
   mockVendorCreate: vi.fn(),
@@ -49,9 +54,14 @@ const {
   mockGoodsReceiptFindFirst: vi.fn(),
   mockGoodsReceiptCreate: vi.fn(),
   mockGoodsReceiptFindUnique: vi.fn(),
+  mockGoodsReceiptFindMany: vi.fn(),
+  mockGoodsReceiptCount: vi.fn(),
   mockGoodsReceiptItemCreate: vi.fn(),
   mockAuditLogCreate: vi.fn(),
   mockAccountingSettingsFindUnique: vi.fn(),
+  mockProductFindMany: vi.fn(),
+  mockProjectFindMany: vi.fn(),
+  mockWarehouseFindMany: vi.fn(),
 }));
 
 vi.mock("@orqafy/db", () => {
@@ -79,10 +89,15 @@ vi.mock("@orqafy/db", () => {
       findFirst: mockGoodsReceiptFindFirst,
       create: mockGoodsReceiptCreate,
       findUnique: mockGoodsReceiptFindUnique,
+      findMany: mockGoodsReceiptFindMany,
+      count: mockGoodsReceiptCount,
     },
     goodsReceiptItem: {
       create: mockGoodsReceiptItemCreate,
     },
+    product: { findMany: mockProductFindMany },
+    project: { findMany: mockProjectFindMany },
+    warehouse: { findMany: mockWarehouseFindMany },
     auditLog: { create: mockAuditLogCreate },
     accountingSettings: { findUnique: mockAccountingSettingsFindUnique },
   };
@@ -631,6 +646,141 @@ describe("Purchasing tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolati
           items: [{ description: "Widget", quantityExpected: 1, quantityReceived: 1 }],
         }),
       ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+
+    it("throws BAD_REQUEST when an item.productId does not belong to this tenant (M7.2)", async () => {
+      mockPurchaseOrderFindUnique
+        .mockResolvedValueOnce(PO_APPROVED) // loadPoForTenant
+        .mockResolvedValueOnce({ ...PO_APPROVED, items: [] }); // full include fetch
+      mockProductFindMany.mockResolvedValueOnce([]); // cross-tenant productId — no match
+
+      const caller = createCaller(ctxForTenant("tenant-A"));
+      await expect(
+        caller.goodsReceipt.create({
+          purchaseOrderId: PO_APPROVED.id,
+          items: [
+            {
+              productId: "product-belongs-to-tenant-B",
+              description: "Widget",
+              quantityExpected: 1,
+              quantityReceived: 1,
+            },
+          ],
+        }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+      expect(mockGoodsReceiptCreate).not.toHaveBeenCalled();
+      const queryArg = mockProductFindMany.mock.calls[0]![0];
+      expect(queryArg.where.tenantId).toBe("tenant-A");
+    });
+  });
+
+  // ── goodsReceipt.list ────────────────────────────────────────────────────────
+  describe("goodsReceipt.list", () => {
+    it("scopes the where clause by ctx.tenantId (M7.2 — was an unscoped list-leak)", async () => {
+      mockGoodsReceiptFindMany.mockResolvedValueOnce([]);
+      mockGoodsReceiptCount.mockResolvedValueOnce(0);
+
+      const caller = createCaller(ctxForTenant("tenant-A"));
+      await caller.goodsReceipt.list({});
+
+      expect(mockGoodsReceiptFindMany).toHaveBeenCalledOnce();
+      const findManyArg = mockGoodsReceiptFindMany.mock.calls[0]![0];
+      expect(findManyArg.where.tenantId).toBe("tenant-A");
+
+      expect(mockGoodsReceiptCount).toHaveBeenCalledOnce();
+      const countArg = mockGoodsReceiptCount.mock.calls[0]![0];
+      expect(countArg.where.tenantId).toBe("tenant-A");
+    });
+  });
+
+  // ── po.create — nested FK injection guard (M7.2) ────────────────────────────
+  describe("po.create — nested FK tenant validation (M7.2)", () => {
+    it("throws BAD_REQUEST when an item.productId does not belong to this tenant", async () => {
+      mockVendorFindUnique.mockResolvedValueOnce(VENDOR_A);
+      mockProductFindMany.mockResolvedValueOnce([]); // cross-tenant productId — no match
+
+      const caller = createCaller(ctxForTenant("tenant-A"));
+      await expect(
+        caller.po.create({
+          vendorId: VENDOR_A.id,
+          items: [
+            {
+              productId: "product-belongs-to-tenant-B",
+              description: "Widget",
+              quantity: 1,
+              unitPrice: 100,
+            },
+          ],
+        }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+      expect(mockPurchaseOrderCreate).not.toHaveBeenCalled();
+      const queryArg = mockProductFindMany.mock.calls[0]![0];
+      expect(queryArg.where.tenantId).toBe("tenant-A");
+    });
+
+    it("throws BAD_REQUEST when an allocation.projectId does not belong to this tenant", async () => {
+      mockVendorFindUnique.mockResolvedValueOnce(VENDOR_A);
+      mockProjectFindMany.mockResolvedValueOnce([]); // cross-tenant projectId — no match
+
+      const caller = createCaller(ctxForTenant("tenant-A"));
+      await expect(
+        caller.po.create({
+          vendorId: VENDOR_A.id,
+          items: [
+            {
+              description: "Widget",
+              quantity: 1,
+              unitPrice: 100,
+              allocations: [
+                { type: "project_expense", quantity: 1, projectId: "project-belongs-to-tenant-B" },
+              ],
+            },
+          ],
+        }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+      expect(mockPurchaseOrderCreate).not.toHaveBeenCalled();
+    });
+
+    it("throws BAD_REQUEST when an allocation.warehouseId does not belong to this tenant", async () => {
+      mockVendorFindUnique.mockResolvedValueOnce(VENDOR_A);
+      mockWarehouseFindMany.mockResolvedValueOnce([]); // cross-tenant warehouseId — no match
+
+      const caller = createCaller(ctxForTenant("tenant-A"));
+      await expect(
+        caller.po.create({
+          vendorId: VENDOR_A.id,
+          items: [
+            {
+              description: "Widget",
+              quantity: 1,
+              unitPrice: 100,
+              allocations: [
+                { type: "stock", quantity: 1, warehouseId: "warehouse-belongs-to-tenant-B" },
+              ],
+            },
+          ],
+        }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+      expect(mockPurchaseOrderCreate).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── po.update — vendor reassignment tenant validation (M7.2) ───────────────
+  describe("po.update — vendorId tenant validation (M7.2)", () => {
+    it("throws NOT_FOUND when reassigning to a vendorId from another tenant", async () => {
+      mockPurchaseOrderFindUnique.mockResolvedValueOnce(PO_DRAFT); // loadPoForTenant
+      mockVendorFindUnique.mockResolvedValueOnce({ ...VENDOR_A, tenantId: "tenant-B" }); // loadVendorForTenant
+
+      const caller = createCaller(ctxForTenant("tenant-A"));
+      await expect(
+        caller.po.update({ id: PO_DRAFT.id, vendorId: "vendor-belongs-to-tenant-B" }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+
+      expect(mockPurchaseOrderUpdate).not.toHaveBeenCalled();
     });
   });
 });

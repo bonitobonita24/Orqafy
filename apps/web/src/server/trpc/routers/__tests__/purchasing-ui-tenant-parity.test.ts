@@ -30,6 +30,7 @@ const {
   mockPoItemFindMany,
   mockPoUpdate,
   mockTransaction,
+  mockProductFindMany,
 } = vi.hoisted(() => ({
   mockVendorFindUnique: vi.fn(),
   mockVendorUpdate: vi.fn(),
@@ -44,6 +45,7 @@ const {
   mockPoItemFindMany: vi.fn(),
   mockPoUpdate: vi.fn(),
   mockTransaction: vi.fn(),
+  mockProductFindMany: vi.fn(),
 }));
 
 vi.mock("@orqafy/db", () => ({
@@ -56,6 +58,10 @@ vi.mock("@orqafy/db", () => ({
     goodsReceiptItem: { create: mockGrItemCreate },
     stockMovement: { create: vi.fn() },
     projectExpense: { create: vi.fn() },
+    // M7.2 — nested-FK tenant validation in po.create / goodsReceipt.create.
+    product: { findMany: mockProductFindMany },
+    project: { findMany: vi.fn() },
+    warehouse: { findMany: vi.fn() },
     auditLog: { create: vi.fn() },
     $transaction: mockTransaction,
   },
@@ -317,6 +323,7 @@ describe("goodsReceipt.create — cross-tenant PO guard", () => {
         ],
       });
     mockGrFindFirst.mockResolvedValueOnce(null);
+    mockProductFindMany.mockResolvedValueOnce([{ id: "prod-1" }]); // M7.2 — tenant-owned productId
     const fakeGr = { id: "gr-2", tenantId: "tenant-A", grNumber: "GR-2401-0002", purchaseOrderId: "po-A", status: "accepted" };
     const jeCreate = vi.fn().mockResolvedValue({ id: "je-1", entryNumber: "JE-0001" });
     mockTransaction.mockImplementation((fn: any) =>

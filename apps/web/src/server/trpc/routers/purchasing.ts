@@ -414,6 +414,63 @@ export const poRouter = createTRPCRouter({
         });
       }
 
+      // M7.2 — validate user-supplied nested FKs belong to this tenant before writing
+      // them into PurchaseOrderItem / PurchaseOrderItemAllocation. Without this, a
+      // client could inject another tenant's productId/projectId/warehouseId into a
+      // PO's line items or allocations (cross-tenant FK injection).
+      const productIds = Array.from(
+        new Set(
+          input.items
+            .map((item) => item.productId)
+            .filter((id): id is string => id !== undefined),
+        ),
+      );
+      if (productIds.length > 0) {
+        const products = await db.product.findMany({
+          where: { id: { in: productIds }, tenantId: ctx.tenantId },
+          select: { id: true },
+        });
+        if (products.length !== productIds.length) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "One or more products do not exist." });
+        }
+      }
+
+      const allAllocations = input.items.flatMap((item) => item.allocations ?? []);
+
+      const projectIds = Array.from(
+        new Set(
+          allAllocations
+            .map((alloc) => alloc.projectId)
+            .filter((id): id is string => id !== undefined),
+        ),
+      );
+      if (projectIds.length > 0) {
+        const projects = await db.project.findMany({
+          where: { id: { in: projectIds }, tenantId: ctx.tenantId },
+          select: { id: true },
+        });
+        if (projects.length !== projectIds.length) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "One or more projects do not exist." });
+        }
+      }
+
+      const warehouseIds = Array.from(
+        new Set(
+          allAllocations
+            .map((alloc) => alloc.warehouseId)
+            .filter((id): id is string => id !== undefined),
+        ),
+      );
+      if (warehouseIds.length > 0) {
+        const warehouses = await db.warehouse.findMany({
+          where: { id: { in: warehouseIds }, tenantId: ctx.tenantId },
+          select: { id: true },
+        });
+        if (warehouses.length !== warehouseIds.length) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "One or more warehouses do not exist." });
+        }
+      }
+
       // Validate allocations: sum per item, type-specific ID requirements
       for (const item of input.items) {
         if (item.allocations !== undefined && item.allocations.length > 0) {
@@ -535,6 +592,10 @@ export const poRouter = createTRPCRouter({
       const po = await loadPoForTenant(input.id, ctx);
       if (po.status !== "draft") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft POs can be edited" });
+      }
+      // M7.2 — reassigning a PO to a different vendor must stay within this tenant.
+      if (input.vendorId !== undefined) {
+        await loadVendorForTenant(input.vendorId, ctx);
       }
       // Recompute VAT totals from the persisted subtotal when the exempt flag flips.
       const vatRecompute =
@@ -726,8 +787,9 @@ export const goodsReceiptRouter = createTRPCRouter({
         status: z.string().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.purchaseOrderId !== undefined ? { purchaseOrderId: input.purchaseOrderId } : {}),
         ...(input.status !== undefined ? { status: input.status } : {}),
       };
@@ -805,6 +867,25 @@ export const goodsReceiptRouter = createTRPCRouter({
           code: "BAD_REQUEST",
           message: "Purchase order is not in a receivable state",
         });
+      }
+
+      // M7.2 — validate user-supplied productIds belong to this tenant before writing
+      // them into GoodsReceiptItem / StockMovement (cross-tenant FK injection guard).
+      const grProductIds = Array.from(
+        new Set(
+          input.items
+            .map((item) => item.productId)
+            .filter((id): id is string => id !== undefined),
+        ),
+      );
+      if (grProductIds.length > 0) {
+        const grProducts = await db.product.findMany({
+          where: { id: { in: grProductIds }, tenantId: ctx.tenantId },
+          select: { id: true },
+        });
+        if (grProducts.length !== grProductIds.length) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "One or more products do not exist." });
+        }
       }
 
       // ── R3 (D-2): over-receipt tolerance guard ──────────────────────────────
