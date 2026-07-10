@@ -1,4 +1,4 @@
-export { prisma, createTenantPrisma } from './client';
+export { prisma } from './client';
 export { writeAuditLog } from './helpers/audit';
 export {
   createTenantSchema,
@@ -6,7 +6,6 @@ export {
   tenantSchemaExists,
   toSchemaName,
 } from './helpers/tenant-schema';
-export { tenantGuardExtension } from './middleware/tenant-guard';
 export { provisionTenantRolesAndOwner } from './helpers/tenant-owner';
 export type { ProvisionTenantOwnerInput } from './helpers/tenant-owner';
 export {

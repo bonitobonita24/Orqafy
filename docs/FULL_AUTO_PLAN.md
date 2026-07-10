@@ -73,12 +73,20 @@
 ## FORWARD QUEUE (un-gated [HOW] — keeps the loop alive; from AIEF_AUDIT_TODO.md)
 
 ### M5 — Headless security hardening (no running stack needed; verify via typecheck + 1063 suite)
-- [ ] **S-P2a** tenant-model reconciliation: remove/neutralize the dormant schema-per-tenant machinery
-      (`createTenantPrisma`, `tenantGuardExtension` `SET search_path` path — zero runtime callers; root
-      cause of the M3 P0) OR guard `schemaName` interpolation; document the single `public`-schema +
-      explicit-`tenantId` isolation contract. Clean up any test-only references. Full suite must stay green.
-- [ ] **S-P1b** Zod `.strict()` sweep across ~32 routers (spec-executor dispatch; typecheck + suite).
-- [ ] **D-P2** lint-design P1a: add letter-spacing tracking to the 2 all-caps sites.
+- [x] **S-P2a** tenant-model reconciliation: DELETED dormant schema-per-tenant runtime path
+      (`createTenantPrisma` + `tenantGuardExtension` file w/ the `SET search_path` injection landmine —
+      zero runtime callers, confirmed by scout) + 2 barrel exports + 1 test mock; added canonical
+      single-`public`-schema+explicit-`tenantId` contract doc-comment. DONE 2026-07-11: @orqafy/db +
+      web typecheck clean, web suite 1063/1063 green, grep = 0 non-comment refs. REMAINDER→M6: vestigial
+      physical `t_<slug>` schema creation still has a live worker caller
+      (`apps/worker/.../tenant-provisioning.ts`) → remove in the M6 worker-live session.
+- [ ] **S-P1b** Zod `.strict()` sweep — scoped: 9 batches / ~35 routers / ~130 mutation inputs. Rule:
+      strict top-level mutation inputs + reused base-const inputs; KEEP `.passthrough()` (storefront
+      addressSchema); skip the 3 already-strict (smtp-config/admin-xendit/dsr.rectify). Dispatch AFTER
+      S-P2a commits (both touch apps/web — sequence to keep suite runs clean). Verify typecheck + suite.
+- [x] **D-P2** lint-design P1a — DONE 2026-07-11: `account-form.tsx` uppercase currency input +
+      `tracking-widest`; `globals.css` `.heading-overline` co-located `letter-spacing`+`uppercase` on one
+      line (linter is single-line). lint-design PASS, 0 P1a hits. (Uncommitted — bundle with M5 commits.)
 
 ### M6 — Dev-up session (needs LOCAL dev stack — owner word or deliberate rebuild)
 - [ ] Bring dev stack up + rebuild off branch; apply migration `20260710160000` (D-RBAC-B-APPLY);

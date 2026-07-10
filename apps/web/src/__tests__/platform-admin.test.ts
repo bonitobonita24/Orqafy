@@ -40,10 +40,6 @@ vi.mock("@orqafy/db", () => ({
       create: vi.fn(),
     },
   },
-  createTenantPrisma: vi.fn(() => ({
-    user: { findFirst: vi.fn() },
-    $disconnect: vi.fn(),
-  })),
 }));
 
 vi.mock("@orqafy/jobs", () => ({
