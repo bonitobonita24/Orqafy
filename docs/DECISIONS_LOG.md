@@ -1301,3 +1301,60 @@ in Settings.
 **Seed/provisioning:** `provisionTenantRolesAndOwner` + demo seed set `isTenantOwner: true` on the owner; dev `admin@mail.com` stays non-owner (default false).
 **NOT applied yet:** migration authored but NOT run (dev Docker stack down during Full-Auto). Apply via `prisma migrate deploy` on next dev up; staging/prod application owner-gated. Worker integration test `apps/worker/src/__tests__/succession.test.ts` verifies the index + succession against a live DB then.
 **Validation:** web suite 1060/1060 green (+5 mocked succession unit tests); typecheck + lint clean (web + worker + db). LOCAL commits on `feat/tenant-rbac-3tier`; HARD HOLD — no push/deploy.
+
+## 2026-07-11 — Tenant-model canonicalization + rate-limiting + UI defaults (M5 remainder + M6.2–M6.5)
+
+**Tenant data model (LOCKED — single canonical form):** Orqafy stores ALL tenant-scoped data in the
+single `public` schema, isolated by an explicit `tenantId` column (+ the L1/L3/L5/L6 guards). The dormant
+"physical schema-per-tenant" path is REMOVED, not just unused:
+- M5 S-P2a (commit 3dd3fe0): deleted `createTenantPrisma` + the `tenantGuardExtension` file that ran
+  `SET search_path` (a SQL-injection landmine) — zero runtime callers (scout-confirmed).
+- M6.2 (commit 5422479): removed the remaining physical `t_<slug>` machinery
+  (`createTenantSchema`/`tenantSchemaExists`/`dropTenantSchema`) from the helper, barrel, worker
+  provisioning, and tests (kept only `toSchemaName`). Removing the hack UNCOVERED + FIXED two latent
+  multi-tenant PROD bugs it was masking:
+  - (a) the seed wrote demo departments/expense-categories/warehouse via raw SQL into the invisible
+    `t_demo` schema (so `public` had 0 demo rows) → rewritten to Prisma upserts into `public`; last
+    `SET search_path` in the codebase removed.
+  - (b) STALE single-column `UNIQUE(code)` indexes on `warehouses`/`accounts`/`tax_rates`/
+    `expense_categories` blocked two tenants ever sharing a code (e.g. both provisioning `vat-12`). Root
+    cause: migration `20260616120000` used `DROP CONSTRAINT`, a no-op on a Prisma single-col `@unique`
+    (which is a UNIQUE INDEX, not a constraint). Fix = new migration
+    `20260711010000_drop_stale_single_col_code_uniques` (correct `DROP INDEX`).
+- Both dev migrations (`20260710160000_add_tenant_owner_flag` + `20260711010000`) are applied to the DEV
+  DB. **Applying them to staging/prod is owner-gated (HARD HOLD)** → PENDING_DECISIONS D-MIG-APPLY.
+- Verified: fresh seed → demo data in `public`, zero `t_*` schemas, 1 owner; worker 15/15; web 1063/1063.
+- Two global footgun lessons logged (`~/.claude/LESSONS_GLOBAL.md`).
+
+**Rate-limiting posture (LOCKED — M6.3 / S-P1a, commit 0e1e45f):** two authenticated-abuse surfaces are
+gated via the existing pure `rateLimiters` lib (no tRPC dependency → no circular import):
+- `authorize()` (NextAuth Credentials): `rateLimiters.auth` = **10/min per client IP**, checked before
+  any DB lookup; opaque deny (returns `null`) on limit — no enumeration signal. Blunts login
+  brute-force / credential stuffing.
+- `protectedProcedure`: `rateLimiters.api` = **120/min per userId on MUTATIONS only**.
+  **Authenticated READS are intentionally NOT tRPC-throttled** — a data-dense ERP page fires 10–15
+  parallel reads, so a per-request read limit is prone to false lock-outs; the abuse surface is writes,
+  and 120 mutations/min sits far above any human rate. This mutation-scoping also removed the need for a
+  live read-lock-out test (the design eliminates the risk). The mutation check is guarded off under
+  `NODE_ENV=test` so the shared module-singleton limiter cache can't pollute the vitest suite. Behavior
+  covered by 3 deterministic lib tests. (Tradeoff: a compromised authenticated account could still scrape
+  via reads at machine speed; acceptable given tenant-scoping + the lock-out risk — revisit if a
+  dual-ceiling read limiter is ever warranted.)
+
+**Content max-width container (LOCKED — M6.4 / D-P1a, commit 89f0fa2):** design-defaults Entry 1 —
+readable/dense content sits in a centered `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8` container instead of
+bleeding edge-to-edge on wide monitors. Applied ONCE at `(app)/layout.tsx` via a client
+`ContentContainer` (covers all 89 app pages); immersive point-of-work routes opt OUT via a pathname
+allowlist (currently `/pos/new-sale`, the two-pane register). `<main>` keeps vertical `py-6`; the
+responsive horizontal gutter lives in the container.
+
+**Mobile off-canvas sidebar (LOCKED — M6.5 / D-P1b, commit d2e59e6):** the shared logo/nav/footer is
+extracted into `<SidebarNav>`; `app-sidebar.tsx` is a `hidden ... md:flex` DESKTOP wrapper (unchanged
+above `md`); mobile uses a `md:hidden` header hamburger opening a shadcn `<Sheet side="left">` that renders
+the same `SidebarNav` (sr-only `SheetTitle` for a11y; closes on nav). Fixes the phone layout where the
+fixed `w-56` aside squeezed content to ~150px.
+
+**Validation (M6.2–M6.5):** each step web typecheck 0 + eslint clean; M6.3 web 1066/1066; live Visual QA
+(dev, 1920/1440/375px) of dashboard/invoices/settings/pos-new-sale/users — capped-centering + immersive
+opt-out + off-canvas nav all confirmed; RBAC Users page renders post-migration with 0 console errors.
+All LOCAL on `feat/tenant-rbac-3tier`; HARD HOLD — no push/deploy.
