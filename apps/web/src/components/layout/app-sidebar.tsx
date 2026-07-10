@@ -54,6 +54,8 @@ interface AppSidebarProps {
   slug: string;
 }
 
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.9.0";
+
 export function AppSidebar({ slug }: AppSidebarProps) {
   const pathname = usePathname();
 
@@ -102,11 +104,17 @@ export function AppSidebar({ slug }: AppSidebarProps) {
         </ul>
       </nav>
 
-      {/* Footer — "Powered by" attribution matching mockup */}
-      <div className="border-t border-border px-4 py-2">
-        <p className="text-[10px] text-muted-foreground/50">
-          Powered by Powerbyte I.T. Solutions
-        </p>
+      {/* Footer — version + white-label credit (design-defaults Entry 3) */}
+      <div className="space-y-0.5 border-t border-border px-4 py-2">
+        <p className="text-[10px] text-muted-foreground/50">v{APP_VERSION}</p>
+        <a
+          href="https://www.powerbyteitsolutions.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-[10px] text-muted-foreground/50 transition-colors hover:text-foreground hover:underline"
+        >
+          Developed by Powerbyte IT Solutions
+        </a>
       </div>
     </aside>
   );

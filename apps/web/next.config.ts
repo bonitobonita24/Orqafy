@@ -69,6 +69,9 @@ const nextConfig: NextConfig = {
   // CORS handled in middleware.ts and tRPC context
   env: {
     ALLOWED_ORIGINS: allowedOrigins.join(","),
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    NEXT_PUBLIC_APP_VERSION: (require("./package.json") as { version: string })
+      .version,
   },
 };
 
