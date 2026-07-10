@@ -42,7 +42,7 @@ const createBreachInput = z.object({
   discoveredAt: z.string().datetime(), // ISO 8601
   severity: z.enum(["low", "medium", "high", "critical"]),
   affectedSubjects: z.number().int().min(0).optional(),
-});
+}).strict();
 
 const updateBreachInput = z.object({
   id: z.string(),
@@ -50,7 +50,7 @@ const updateBreachInput = z.object({
   description: z.string().min(1).optional(),
   severity: z.enum(["low", "medium", "high", "critical"]).optional(),
   affectedSubjects: z.number().int().min(0).nullable().optional(),
-});
+}).strict();
 
 const breachRouter = createTRPCRouter({
   list: adminProcedure
@@ -164,7 +164,7 @@ const breachRouter = createTRPCRouter({
     }),
 
   markNpcNotified: adminWriteProcedure
-    .input(z.object({ id: z.string() }))
+    .input(z.object({ id: z.string() }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.breachRecord.findUnique({ where: { id: input.id } });
       if (!existing || existing.tenantId !== ctx.tenantId) {
@@ -191,7 +191,7 @@ const breachRouter = createTRPCRouter({
     }),
 
   markSubjectsNotified: adminWriteProcedure
-    .input(z.object({ id: z.string() }))
+    .input(z.object({ id: z.string() }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.breachRecord.findUnique({ where: { id: input.id } });
       if (!existing || existing.tenantId !== ctx.tenantId) {
@@ -218,7 +218,7 @@ const breachRouter = createTRPCRouter({
     }),
 
   fileReport: adminWriteProcedure
-    .input(z.object({ id: z.string() }))
+    .input(z.object({ id: z.string() }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.breachRecord.findUnique({ where: { id: input.id } });
       if (!existing || existing.tenantId !== ctx.tenantId) {
@@ -245,7 +245,7 @@ const breachRouter = createTRPCRouter({
     }),
 
   close: adminWriteProcedure
-    .input(z.object({ id: z.string() }))
+    .input(z.object({ id: z.string() }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.breachRecord.findUnique({ where: { id: input.id } });
       if (!existing || existing.tenantId !== ctx.tenantId) {

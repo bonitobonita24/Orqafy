@@ -62,7 +62,7 @@ export const inventoryRouter = createTRPCRouter({
         reorderLevel: z.number().int().min(0).optional(),
         reorderQuantity: z.number().int().min(0).optional(),
         isSerialTracked: z.boolean().default(false),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       return db.$transaction(async (tx) => {
@@ -106,7 +106,7 @@ export const inventoryRouter = createTRPCRouter({
         baseCost: z.number().min(0).optional(),
         reorderLevel: z.number().int().min(0).optional(),
         isActive: z.boolean().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
@@ -140,7 +140,7 @@ export const inventoryRouter = createTRPCRouter({
     }),
 
   productToggleActive: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.product.findUnique({ where: { id: input.id } });
       if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
@@ -182,7 +182,7 @@ export const inventoryRouter = createTRPCRouter({
         description: z.string().max(1000).optional(),
         parentId: z.string().min(1).optional(),
         sortOrder: z.number().int().min(0).default(0),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       return db.$transaction(async (tx) => {
@@ -218,7 +218,7 @@ export const inventoryRouter = createTRPCRouter({
         parentId: z.string().min(1).optional(),
         sortOrder: z.number().int().min(0).optional(),
         isActive: z.boolean().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
@@ -249,7 +249,7 @@ export const inventoryRouter = createTRPCRouter({
     }),
 
   categoryToggleActive: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.category.findFirst({ where: { id: input.id, tenantId: ctx.tenantId } });
       if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
@@ -290,7 +290,7 @@ export const inventoryRouter = createTRPCRouter({
         code: z.string().min(1).max(50),
         address: z.string().max(500).optional(),
         isDefault: z.boolean().default(false),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       return db.$transaction(async (tx) => {
@@ -324,7 +324,7 @@ export const inventoryRouter = createTRPCRouter({
         address: z.string().max(500).optional(),
         isDefault: z.boolean().optional(),
         isActive: z.boolean().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
@@ -354,7 +354,7 @@ export const inventoryRouter = createTRPCRouter({
     }),
 
   warehouseToggleActive: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.warehouse.findFirst({ where: { id: input.id, tenantId: ctx.tenantId } });
       if (existing === null) throw new TRPCError({ code: "NOT_FOUND" });
@@ -458,7 +458,7 @@ export const inventoryRouter = createTRPCRouter({
         notes: z.string().optional(),
         referenceType: z.string().optional(),
         referenceId: z.string().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       if (input.type === "in" && input.toWarehouseId === undefined) {
@@ -508,7 +508,7 @@ export const inventoryRouter = createTRPCRouter({
         fromWarehouseId: z.string().min(1),
         toWarehouseId: z.string().min(1),
         notes: z.string().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       if (input.fromWarehouseId === input.toWarehouseId) {
@@ -548,7 +548,7 @@ export const inventoryRouter = createTRPCRouter({
         quantity: z.number(),
         warehouseId: z.string().min(1),
         notes: z.string().min(1),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       return db.$transaction(async (tx) => {

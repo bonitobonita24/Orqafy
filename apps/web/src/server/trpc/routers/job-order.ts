@@ -58,7 +58,7 @@ const jobOrderInput = z.object({
   priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
   estimatedCost: z.number().min(0).optional(),
   warranty: z.string().max(200).optional(),
-});
+}).strict();
 
 async function loadJobOrderForTenant(id: string, ctx: { tenantId: string }) {
   const jo = await db.jobOrder.findUnique({ where: { id } });
@@ -195,7 +195,7 @@ export const jobOrderRouter = createTRPCRouter({
         diagnosis: z.string().max(2000).optional(),
         actualCost: z.number().min(0).optional(),
         laborCost: z.number().min(0).optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const existing = await loadJobOrderForTenant(input.id, ctx);
@@ -243,7 +243,7 @@ export const jobOrderRouter = createTRPCRouter({
     }),
 
   assignTechnician: writeProcedure
-    .input(z.object({ id: z.string().cuid(), technicianId: z.string().cuid() }))
+    .input(z.object({ id: z.string().cuid(), technicianId: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const jobOrder = await loadJobOrderForTenant(input.id, ctx);
       const technician = await db.user.findUnique({ where: { id: input.technicianId } });
@@ -282,7 +282,7 @@ export const jobOrderRouter = createTRPCRouter({
         quantity: z.number().positive(),
         unitPrice: z.number().min(0),
         isFromInventory: z.boolean().default(false),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const jobOrder = await loadJobOrderForTenant(input.jobOrderId, ctx);
@@ -312,7 +312,7 @@ export const jobOrderRouter = createTRPCRouter({
     }),
 
   removePart: writeProcedure
-    .input(z.object({ id: z.string().cuid() }))
+    .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const part = await db.jobOrderPart.findUnique({
         where: { id: input.id },
@@ -338,7 +338,7 @@ export const jobOrderRouter = createTRPCRouter({
         rate: z.number().min(0).optional(),
         amount: z.number().min(0),
         sortOrder: z.number().int().min(0).default(0),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const jobOrder = await loadJobOrderForTenant(input.jobOrderId, ctx);
@@ -362,7 +362,7 @@ export const jobOrderRouter = createTRPCRouter({
     }),
 
   removeServiceLine: writeProcedure
-    .input(z.object({ id: z.string().cuid() }))
+    .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const line = await db.jobOrderServiceLine.findUnique({
         where: { id: input.id },
@@ -385,7 +385,7 @@ export const jobOrderRouter = createTRPCRouter({
         id: z.string().cuid(),
         role: z.enum(["customer", "technician"]),
         dataUrl: z.string().min(1).max(MAX_SIGNATURE_DATA_URL_LENGTH),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       if (!input.dataUrl.startsWith(SIGNATURE_DATA_URL_PREFIX)) {

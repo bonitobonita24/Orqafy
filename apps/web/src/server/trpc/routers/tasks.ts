@@ -111,7 +111,7 @@ export const tasksRouter = createTRPCRouter({
       priority: TASK_PRIORITY.optional(),
       dueDate: z.coerce.date().optional(),
       parentTaskId: z.string().min(1).optional(),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       await loadProjectForTenant(input.projectId, ctx);
       return db.$transaction(async (tx) => {
@@ -157,7 +157,7 @@ export const tasksRouter = createTRPCRouter({
       description: z.string().min(1).optional(),
       priority: TASK_PRIORITY.optional(),
       dueDate: z.coerce.date().nullable().optional(),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       const before = await loadTaskForTenant(input.id, ctx);
       return db.$transaction(async (tx) => {
@@ -186,7 +186,7 @@ export const tasksRouter = createTRPCRouter({
     .input(z.object({
       id: z.string().min(1),
       status: TASK_STATUS,
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       const task = await loadTaskForTenant(input.id, ctx);
       const current = (task as { status: string }).status;
@@ -212,7 +212,7 @@ export const tasksRouter = createTRPCRouter({
     }),
 
   taskDelete: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       const task = await loadTaskForTenant(input.id, ctx);
       return db.$transaction(async (tx) => {
@@ -233,7 +233,7 @@ export const tasksRouter = createTRPCRouter({
     .input(z.object({
       id: z.string().min(1),
       dueDate: z.coerce.date().nullable(),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       const before = await loadTaskForTenant(input.id, ctx);
       return db.$transaction(async (tx) => {
@@ -251,7 +251,7 @@ export const tasksRouter = createTRPCRouter({
     }),
 
   taskAssign: writeProcedure
-    .input(z.object({ taskId: z.string().min(1), userId: z.string().min(1) }))
+    .input(z.object({ taskId: z.string().min(1), userId: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       const task = await loadTaskForTenant(input.taskId, ctx);
       const existing = await db.taskAssignment.findFirst({
@@ -282,7 +282,7 @@ export const tasksRouter = createTRPCRouter({
     }),
 
   taskUnassign: writeProcedure
-    .input(z.object({ taskId: z.string().min(1), userId: z.string().min(1) }))
+    .input(z.object({ taskId: z.string().min(1), userId: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       await loadTaskForTenant(input.taskId, ctx);
       const assignment = await db.taskAssignment.findFirst({
@@ -298,7 +298,7 @@ export const tasksRouter = createTRPCRouter({
       taskId: z.string().min(1),
       status: z.string().min(1),
       note: z.string().optional(),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       const task = await loadTaskForTenant(input.taskId, ctx);
       return db.taskStatusReport.create({
@@ -322,7 +322,7 @@ export const tasksRouter = createTRPCRouter({
       title: z.string().min(1),
       description: z.string().min(1).optional(),
       priority: TODO_PRIORITY.optional(),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       return db.toDo.create({
         data: {
@@ -341,7 +341,7 @@ export const tasksRouter = createTRPCRouter({
       title: z.string().min(1).optional(),
       description: z.string().min(1).optional(),
       priority: TODO_PRIORITY.optional(),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       await loadToDoForUser(input.id, ctx);
       return db.toDo.update({
@@ -355,7 +355,7 @@ export const tasksRouter = createTRPCRouter({
     }),
 
   todoDelete: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       await loadToDoForUser(input.id, ctx);
       await db.toDo.delete({ where: { id: input.id } });
@@ -363,7 +363,7 @@ export const tasksRouter = createTRPCRouter({
     }),
 
   todoComplete: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       await loadToDoForUser(input.id, ctx);
       return db.toDo.update({ where: { id: input.id }, data: { isCompleted: true } });
@@ -376,7 +376,7 @@ export const tasksRouter = createTRPCRouter({
       fileUrl: z.string().min(1),
       fileSizeBytes: z.number().int().positive(),
       mimeType: z.string().min(1),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       const todo = await loadToDoForUser(input.toDoId, ctx);
       const tenant = await db.tenant.findFirst({ where: { id: ctx.tenantId } });

@@ -94,18 +94,20 @@ const addressSchema = z
   .passthrough()
   .optional();
 
-const placeOrderInputSchema = z.object({
-  customerId: cuid,
-  warehouseId: cuid,
-  items: z.array(orderItemInputSchema).min(1),
-  shippingAddress: addressSchema,
-  billingAddress: addressSchema,
-  paymentMethod: z.string().optional(),
-  notes: z.string().optional(),
-  taxAmount: z.number().nonnegative().default(0),
-  shippingAmount: z.number().nonnegative().default(0),
-  discountAmount: z.number().nonnegative().default(0),
-});
+const placeOrderInputSchema = z
+  .object({
+    customerId: cuid,
+    warehouseId: cuid,
+    items: z.array(orderItemInputSchema).min(1),
+    shippingAddress: addressSchema,
+    billingAddress: addressSchema,
+    paymentMethod: z.string().optional(),
+    notes: z.string().optional(),
+    taxAmount: z.number().nonnegative().default(0),
+    shippingAmount: z.number().nonnegative().default(0),
+    discountAmount: z.number().nonnegative().default(0),
+  })
+  .strict();
 
 const guestCustomerSchema = z.object({
   firstName: z.string().trim().min(1).max(100),
@@ -114,16 +116,18 @@ const guestCustomerSchema = z.object({
   phone: z.string().trim().max(50).optional(),
 });
 
-const placeOrderAsCustomerInputSchema = z.object({
-  tenantSlug: z.string().trim().min(1).max(100),
-  items: z.array(orderItemInputSchema).min(1),
-  customer: guestCustomerSchema,
-  shippingAddress: addressSchema,
-  billingAddress: addressSchema,
-  paymentMethod: z.enum(["cod", "bank_transfer", "xendit"]),
-  notes: z.string().max(2000).optional(),
-  cfTurnstileToken: z.string().min(1),
-});
+const placeOrderAsCustomerInputSchema = z
+  .object({
+    tenantSlug: z.string().trim().min(1).max(100),
+    items: z.array(orderItemInputSchema).min(1),
+    customer: guestCustomerSchema,
+    shippingAddress: addressSchema,
+    billingAddress: addressSchema,
+    paymentMethod: z.enum(["cod", "bank_transfer", "xendit"]),
+    notes: z.string().max(2000).optional(),
+    cfTurnstileToken: z.string().min(1),
+  })
+  .strict();
 
 function requireAdmin(roles: readonly string[]): void {
   if (!roles.some((r) => ADMIN_ROLES.has(r))) {
@@ -666,7 +670,7 @@ export const storefrontRouter = createTRPCRouter({
     }),
 
   createXenditInvoice: writeProcedure
-    .input(z.object({ orderId: cuid }))
+    .input(z.object({ orderId: cuid }).strict())
     .mutation(async ({ ctx, input }) => {
       // Batch 21c: scope by ctx.tenantId so an admin cannot create an invoice
       // against another tenant's order even if they guess the cuid.
@@ -709,11 +713,13 @@ export const storefrontRouter = createTRPCRouter({
 
   updateFulfillment: writeProcedure
     .input(
-      z.object({
-        id: cuid,
-        trackingNumber: z.string().trim().min(1).max(200).optional(),
-        paymentMethod: z.string().trim().min(1).max(100).optional(),
-      }),
+      z
+        .object({
+          id: cuid,
+          trackingNumber: z.string().trim().min(1).max(200).optional(),
+          paymentMethod: z.string().trim().min(1).max(100).optional(),
+        })
+        .strict(),
     )
     .mutation(async ({ ctx, input }) => {
       requireAdmin(ctx.roles);
@@ -733,11 +739,13 @@ export const storefrontRouter = createTRPCRouter({
 
   updateOrderStatus: writeProcedure
     .input(
-      z.object({
-        id: cuid,
-        status: z.enum(STATUS_VALUES),
-        notes: z.string().optional(),
-      }),
+      z
+        .object({
+          id: cuid,
+          status: z.enum(STATUS_VALUES),
+          notes: z.string().optional(),
+        })
+        .strict(),
     )
     .mutation(async ({ ctx, input }) => {
       requireAdmin(ctx.roles);

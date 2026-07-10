@@ -173,7 +173,7 @@ export const vendorRouter = createTRPCRouter({
         platformName: z.string().max(200).optional(),
         paymentTerms: z.string().max(200).optional(),
         notes: z.string().max(2000).optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       return db.$transaction(async (tx) => {
@@ -229,7 +229,7 @@ export const vendorRouter = createTRPCRouter({
         paymentTerms: z.string().max(200).optional(),
         notes: z.string().max(2000).optional(),
         isActive: z.boolean().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const { id, ...rest } = input;
@@ -269,7 +269,7 @@ export const vendorRouter = createTRPCRouter({
     }),
 
   deactivate: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadVendorForTenant(input.id, ctx);
       return db.$transaction(async (tx) => {
@@ -295,7 +295,7 @@ export const vendorRouter = createTRPCRouter({
   // owner) + "Admin"; "Platform Owner" is cross-tenant; the purchasing role is
   // "Purchasing Staff".
   reactivate: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       const allowedRoles = ["Tenant Super Admin", "Admin", "Platform Owner", "Purchasing Staff"];
       if (!ctx.roles.some((r) => allowedRoles.includes(r))) {
@@ -400,7 +400,7 @@ export const poRouter = createTRPCRouter({
         isVatExempt: z.boolean().default(false),
         notes: z.string().max(2000).optional(),
         items: z.array(poItemSchema).min(1),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       const vendor = await db.vendor.findUnique({ where: { id: input.vendorId } });
@@ -529,7 +529,7 @@ export const poRouter = createTRPCRouter({
         // R1 (D-2): toggling VAT-exempt recomputes taxAmount/totalAmount from the subtotal.
         isVatExempt: z.boolean().optional(),
         notes: z.string().max(2000).optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       const po = await loadPoForTenant(input.id, ctx);
@@ -576,7 +576,7 @@ export const poRouter = createTRPCRouter({
     }),
 
   submit: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const po = await loadPoForTenant(input.id, ctx);
       if (po.status !== "draft") {
@@ -608,7 +608,7 @@ export const poRouter = createTRPCRouter({
     }),
 
   approve: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const allowedRoles = ["Administrator", "Purchasing Manager", "admin"];
       if (!ctx.roles.some((r) => allowedRoles.includes(r))) {
@@ -640,7 +640,7 @@ export const poRouter = createTRPCRouter({
     }),
 
   markOrdered: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const po = await loadPoForTenant(input.id, ctx);
       if (po.status !== "approved") {
@@ -664,7 +664,7 @@ export const poRouter = createTRPCRouter({
     }),
 
   cancel: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const po = await loadPoForTenant(input.id, ctx);
       // CANCELLED is allowed from any pre-RECEIVED state (spec §B)
@@ -690,7 +690,7 @@ export const poRouter = createTRPCRouter({
     }),
 
   close: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const po = await loadPoForTenant(input.id, ctx);
       if (po.status !== "received") {
@@ -786,7 +786,7 @@ export const goodsReceiptRouter = createTRPCRouter({
             })
           )
           .min(1),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       await loadPoForTenant(input.purchaseOrderId, ctx);

@@ -62,7 +62,7 @@ export const platformRouter = createTRPCRouter({
       z.object({
         tenantId: z.string(),
         reason: z.string().min(1),
-      }),
+      }).strict(),
     )
     .mutation(async ({ ctx, input }) => {
       const tenant = await prisma.tenant.findFirst({
@@ -96,7 +96,7 @@ export const platformRouter = createTRPCRouter({
       z.object({
         tenantId: z.string(),
         reason: z.string().min(1),
-      }),
+      }).strict(),
     )
     .mutation(async ({ ctx, input }) => {
       const tenant = await prisma.tenant.findFirst({
@@ -130,7 +130,7 @@ export const platformRouter = createTRPCRouter({
       z.object({
         tenantId: z.string(),
         newOwnerUserId: z.string(),
-      }),
+      }).strict(),
     )
     .mutation(async ({ ctx, input }) => {
       try {

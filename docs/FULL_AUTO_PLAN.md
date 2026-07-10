@@ -80,10 +80,11 @@
       web typecheck clean, web suite 1063/1063 green, grep = 0 non-comment refs. REMAINDER→M6: vestigial
       physical `t_<slug>` schema creation still has a live worker caller
       (`apps/worker/.../tenant-provisioning.ts`) → remove in the M6 worker-live session.
-- [ ] **S-P1b** Zod `.strict()` sweep — scoped: 9 batches / ~35 routers / ~130 mutation inputs. Rule:
-      strict top-level mutation inputs + reused base-const inputs; KEEP `.passthrough()` (storefront
-      addressSchema); skip the 3 already-strict (smtp-config/admin-xendit/dsr.rectify). Dispatch AFTER
-      S-P2a commits (both touch apps/web — sequence to keep suite runs clean). Verify typecheck + suite.
+- [x] **S-P1b** Zod `.strict()` sweep — DONE 2026-07-11: 9 parallel spec-executor batches, 29 router
+      files, ~130 mutation inputs now `.strict()` (base consts strict-ed once → propagate through
+      create + `.partial().extend()` update). Kept `.passthrough()` (storefront addressSchema); skipped
+      the 3 already-strict (smtp-config/admin-xendit/dsr.rectify) + all query/nested-child inputs.
+      Verified: web typecheck clean · eslint clean · suite 1063/1063 green.
 - [x] **D-P2** lint-design P1a — DONE 2026-07-11: `account-form.tsx` uppercase currency input +
       `tracking-widest`; `globals.css` `.heading-overline` co-located `letter-spacing`+`uppercase` on one
       line (linter is single-line). lint-design PASS, 0 P1a hits. (Uncommitted — bundle with M5 commits.)

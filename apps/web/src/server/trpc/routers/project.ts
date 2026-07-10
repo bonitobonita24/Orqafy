@@ -33,7 +33,7 @@ const projectInput = z.object({
   startDate: z.date().optional(),
   targetEndDate: z.date().optional(),
   budget: z.number().positive().optional(),
-});
+}).strict();
 
 const expenseRouter = createTRPCRouter({
   listByProject: protectedProcedure
@@ -75,7 +75,7 @@ const expenseRouter = createTRPCRouter({
         description: z.string().min(1).max(500),
         fundSourceId: z.string().min(1),
         expenseDate: z.string().optional(),
-      }),
+      }).strict(),
     )
     .mutation(async ({ input, ctx }) => {
       await loadProjectForTenant(input.projectId, ctx);
@@ -171,7 +171,7 @@ const milestoneRouter = createTRPCRouter({
         dueDate: z.date().optional(),
         description: z.string().max(1000).optional(),
         sortOrder: z.number().int().min(0).optional(),
-      }),
+      }).strict(),
     )
     .mutation(async ({ ctx, input }) => {
       await loadProjectForTenant(input.projectId, ctx);
@@ -210,7 +210,7 @@ const milestoneRouter = createTRPCRouter({
         description: z.string().max(1000).optional(),
         progress: z.number().int().min(0).max(100).optional(),
         sortOrder: z.number().int().min(0).optional(),
-      }),
+      }).strict(),
     )
     .mutation(async ({ ctx, input }) => {
       const { milestoneId, ...rest } = input;
@@ -242,7 +242,7 @@ const milestoneRouter = createTRPCRouter({
     }),
 
   complete: writeProcedure
-    .input(z.object({ milestoneId: z.string().min(1) }))
+    .input(z.object({ milestoneId: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.milestone.findUnique({ where: { id: input.milestoneId } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
@@ -269,7 +269,7 @@ const milestoneRouter = createTRPCRouter({
     }),
 
   delete: writeProcedure
-    .input(z.object({ milestoneId: z.string().min(1) }))
+    .input(z.object({ milestoneId: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.milestone.findUnique({ where: { id: input.milestoneId } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
@@ -410,7 +410,7 @@ export const projectRouter = createTRPCRouter({
     }),
 
   archive: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await loadProjectForTenant(input.id, ctx);
 

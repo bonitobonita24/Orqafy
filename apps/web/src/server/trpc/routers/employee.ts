@@ -43,7 +43,7 @@ const employeeInput = z.object({
   bankAccountNumber: z.string().max(50).optional(),
   emergencyContactName: z.string().max(200).optional(),
   emergencyContactPhone: z.string().max(30).optional(),
-});
+}).strict();
 
 export const employeeRouter = createTRPCRouter({
   list: protectedProcedure
@@ -204,7 +204,7 @@ export const employeeRouter = createTRPCRouter({
     }),
 
   terminate: writeProcedure
-    .input(z.object({ id: z.string().cuid(), dateTerminated: z.date() }))
+    .input(z.object({ id: z.string().cuid(), dateTerminated: z.date() }).strict())
     .mutation(async ({ input, ctx }) => {
       requireTerminateAuthority(ctx.roles);
       const existing = await loadEmployeeForTenant(input.id, ctx);

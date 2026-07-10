@@ -170,7 +170,7 @@ const transactionRouter = createTRPCRouter({
         referenceType: z.string().optional(),
         referenceId: z.string().optional(),
         transactionDate: z.string().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const source = await loadFundSourceForTenant(input.fundSourceId, ctx);
@@ -211,7 +211,7 @@ const transactionRouter = createTRPCRouter({
         referenceType: z.string().optional(),
         referenceId: z.string().optional(),
         transactionDate: z.string().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const source = await loadFundSourceForTenant(input.fundSourceId, ctx);
@@ -260,7 +260,7 @@ const transactionRouter = createTRPCRouter({
         amount: z.number().positive(),
         description: z.string().optional(),
         transactionDate: z.string().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       if (input.fromFundSourceId === input.toFundSourceId) {
@@ -350,7 +350,7 @@ const transactionRouter = createTRPCRouter({
         description: z.string().optional(),
         category: z.string().optional(),
         transactionDate: z.string().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const source = await loadFundSourceForTenant(input.fundSourceId, ctx);
@@ -399,7 +399,7 @@ const transactionRouter = createTRPCRouter({
         amount: z.number().positive(),
         description: z.string().optional(),
         transactionDate: z.string().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const [payer, creditCard] = await Promise.all([
@@ -482,7 +482,7 @@ const transactionRouter = createTRPCRouter({
         amount: z.number().positive(),
         description: z.string().optional(),
         transactionDate: z.string().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const [loanSource, receiverSource] = await Promise.all([
@@ -551,7 +551,7 @@ const transactionRouter = createTRPCRouter({
         amount: z.number().positive(),
         description: z.string().optional(),
         transactionDate: z.string().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const [payer, loanSource] = await Promise.all([
@@ -637,7 +637,7 @@ const transactionRouter = createTRPCRouter({
         originalTransactionId: z.string().min(1).optional(),
         description: z.string().optional(),
         transactionDate: z.string().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const source = await loadFundSourceForTenant(input.fundSourceId, ctx);
@@ -681,7 +681,7 @@ const transactionRouter = createTRPCRouter({
         }),
         reason: z.string().trim().min(1),
         transactionDate: z.string().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const source = await loadFundSourceForTenant(input.fundSourceId, ctx);
@@ -777,7 +777,7 @@ export const bankingRouter = createTRPCRouter({
         loanProvider: z.string().max(255).optional(),
         loanPrincipal: z.number().positive().optional(),
         loanInterestRate: z.number().min(0).max(100).optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       return db.fundSource.create({
@@ -809,7 +809,7 @@ export const bankingRouter = createTRPCRouter({
         loanProvider: z.string().max(255).optional(),
         loanPrincipal: z.number().positive().optional(),
         loanInterestRate: z.number().min(0).max(100).optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const { id, ...data } = input;
@@ -829,7 +829,7 @@ export const bankingRouter = createTRPCRouter({
     }),
 
   toggleActive: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadFundSourceForTenant(input.id, ctx);
       return db.fundSource.update({

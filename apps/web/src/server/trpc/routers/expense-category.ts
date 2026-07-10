@@ -23,7 +23,7 @@ const createInput = z.object({
   description: z.string().max(1000).optional(),
   isDefault: z.boolean().default(false),
   sortOrder: z.number().int().min(0).default(0),
-});
+}).strict();
 
 const updateInput = z.object({
   id: z.string().cuid(),
@@ -33,7 +33,7 @@ const updateInput = z.object({
   isDefault: z.boolean().optional(),
   isActive: z.boolean().optional(),
   sortOrder: z.number().int().min(0).optional(),
-});
+}).strict();
 
 export const expenseCategoryRouter = createTRPCRouter({
   /**
@@ -146,7 +146,7 @@ export const expenseCategoryRouter = createTRPCRouter({
    * Delete an expense category. Blocked when expenses still reference it.
    */
   delete: adminWriteProcedure
-    .input(z.object({ id: z.string().cuid() }))
+    .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await db.expenseCategory.findUnique({
         where: { id: input.id },

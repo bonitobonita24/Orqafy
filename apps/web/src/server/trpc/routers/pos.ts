@@ -108,7 +108,7 @@ const sessionRouter = createTRPCRouter({
   }),
 
   open: writeProcedure
-    .input(z.object({ openingBalance: z.number().nonnegative(), notes: z.string().optional() }))
+    .input(z.object({ openingBalance: z.number().nonnegative(), notes: z.string().optional() }).strict())
     .mutation(async ({ ctx, input }) => {
       if (ctx.userId === null) {
         throw new TRPCError({ code: "UNAUTHORIZED" });
@@ -142,7 +142,7 @@ const sessionRouter = createTRPCRouter({
         id: cuid,
         closingBalance: z.number().nonnegative(),
         notes: z.string().optional(),
-      }),
+      }).strict(),
     )
     .mutation(async ({ ctx, input }) => {
       const session = await db.pOSSession.findFirst({
@@ -243,7 +243,7 @@ const saleRouter = createTRPCRouter({
         amountPaid: z.number().nonnegative(),
         paymentMethod: paymentMethodSchema,
         notes: z.string().optional(),
-      }),
+      }).strict(),
     )
     .mutation(async ({ ctx, input }) => {
       if (ctx.userId === null) {
@@ -362,7 +362,7 @@ const saleRouter = createTRPCRouter({
     }),
 
   void: writeProcedure
-    .input(z.object({ id: cuid, reason: z.string().trim().min(1) }))
+    .input(z.object({ id: cuid, reason: z.string().trim().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       if (ctx.userId === null) {
         throw new TRPCError({ code: "UNAUTHORIZED" });

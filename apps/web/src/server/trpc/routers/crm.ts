@@ -144,7 +144,7 @@ export const crmRouter = createTRPCRouter({
         taxId: z.string().max(50).optional(),
         tier: z.enum(CUSTOMER_TIERS).default("regular"),
         notes: z.string().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       return db.$transaction(async (tx) => {
@@ -196,7 +196,7 @@ export const crmRouter = createTRPCRouter({
         taxId: z.string().max(50).optional(),
         tier: z.enum(CUSTOMER_TIERS).optional(),
         notes: z.string().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
@@ -232,7 +232,7 @@ export const crmRouter = createTRPCRouter({
     }),
 
   customerToggleActive: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await loadCustomerForTenant(input.id, {
         tenantId: ctx.tenantId,
@@ -275,7 +275,7 @@ export const crmRouter = createTRPCRouter({
         phone: z.string().max(50).optional(),
         position: z.string().max(100).optional(),
         isPrimary: z.boolean().default(false),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       await loadCustomerForTenant(input.customerId, ctx);
@@ -312,7 +312,7 @@ export const crmRouter = createTRPCRouter({
         phone: z.string().max(50).optional(),
         position: z.string().max(100).optional(),
         isPrimary: z.boolean().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
@@ -343,7 +343,7 @@ export const crmRouter = createTRPCRouter({
     }),
 
   contactDelete: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.customerContact.findUnique({ where: { id: input.id } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
@@ -384,7 +384,7 @@ export const crmRouter = createTRPCRouter({
         customerId: z.string().min(1),
         creditLimit: z.number().min(0),
         isActive: z.boolean().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       await loadCustomerForTenant(input.customerId, {
@@ -419,7 +419,7 @@ export const crmRouter = createTRPCRouter({
     }),
 
   creditToggleActive: writeProcedure
-    .input(z.object({ customerId: z.string().min(1) }))
+    .input(z.object({ customerId: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await loadCustomerCreditAccountForTenant(
         input.customerId,
@@ -581,7 +581,7 @@ export const crmRouter = createTRPCRouter({
             }),
           )
           .min(1),
-      }),
+      }).strict(),
     )
     .mutation(async ({ ctx, input }) => {
       if (ctx.userId === null) {
@@ -771,7 +771,7 @@ export const crmRouter = createTRPCRouter({
             }),
           )
           .optional(),
-      }),
+      }).strict(),
     )
     .mutation(async ({ ctx, input }) => {
       const existing = await loadQuotationForTenant(input.id, {
@@ -929,7 +929,7 @@ export const crmRouter = createTRPCRouter({
     }),
 
   quotationSend: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await loadQuotationForTenant(input.id, {
         tenantId: ctx.tenantId,
@@ -958,7 +958,7 @@ export const crmRouter = createTRPCRouter({
     }),
 
   quotationAccept: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await loadQuotationForTenant(input.id, {
         tenantId: ctx.tenantId,
@@ -987,7 +987,7 @@ export const crmRouter = createTRPCRouter({
     }),
 
   quotationReject: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await loadQuotationForTenant(input.id, {
         tenantId: ctx.tenantId,
@@ -1016,7 +1016,7 @@ export const crmRouter = createTRPCRouter({
     }),
 
   quotationCreateRevision: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.quotation.findFirst({
         where: { id: input.id, tenantId: ctx.tenantId },
@@ -1105,7 +1105,7 @@ export const crmRouter = createTRPCRouter({
         markupColumnId: z.string().min(1).optional(),
         dueDate: z.date().optional(),
         notes: z.string().max(1000).optional(),
-      }),
+      }).strict(),
     )
     .mutation(async ({ ctx, input }) => {
       if (ctx.userId === null) {
@@ -1342,7 +1342,7 @@ export const crmRouter = createTRPCRouter({
         subject: z.string().min(1).max(255),
         body: z.string().max(5000).optional(),
         occurredAt: z.date().optional(),
-      }),
+      }).strict(),
     )
     .mutation(async ({ ctx, input }) => {
       if (ctx.userId === null) {
@@ -1384,7 +1384,7 @@ export const crmRouter = createTRPCRouter({
         subject: z.string().min(1).max(255).optional(),
         body: z.string().max(5000).nullable().optional(),
         occurredAt: z.date().optional(),
-      }),
+      }).strict(),
     )
     .mutation(async ({ ctx, input }) => {
       const prev = await loadContactLogForTenant(input.id, { tenantId: ctx.tenantId });
@@ -1411,7 +1411,7 @@ export const crmRouter = createTRPCRouter({
     }),
 
   contactLogDelete: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const prev = await loadContactLogForTenant(input.id, { tenantId: ctx.tenantId });
       return db.$transaction(async (tx) => {

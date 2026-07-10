@@ -20,7 +20,7 @@ const expenseInput = z.object({
   date: z.date(),
   receiptUrl: z.string().url().optional(),
   notes: z.string().max(2000).optional(),
-});
+}).strict();
 
 export const expenseRouter = createTRPCRouter({
   list: protectedProcedure
@@ -102,7 +102,7 @@ export const expenseRouter = createTRPCRouter({
     }),
 
   approve: writeProcedure
-    .input(z.object({ id: z.string().cuid() }))
+    .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadExpenseForTenant(input.id, ctx);
       if (existing.status !== "pending") {
@@ -115,7 +115,7 @@ export const expenseRouter = createTRPCRouter({
     }),
 
   reject: writeProcedure
-    .input(z.object({ id: z.string().cuid(), notes: z.string().max(500).optional() }))
+    .input(z.object({ id: z.string().cuid(), notes: z.string().max(500).optional() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadExpenseForTenant(input.id, ctx);
       if (existing.status !== "pending") {

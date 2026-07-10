@@ -176,7 +176,7 @@ const invoiceInput = z.object({
   dueDate: z.date(),
   notes: z.string().max(1000).optional(),
   lineItems: z.array(lineItemInput).min(1).max(50),
-});
+}).strict();
 
 export const invoiceRouter = createTRPCRouter({
   list: protectedProcedure
@@ -289,7 +289,7 @@ export const invoiceRouter = createTRPCRouter({
     }),
 
   update: writeProcedure
-    .input(invoiceInput.partial().extend({ id: z.string().cuid() }))
+    .input(invoiceInput.partial().extend({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const { id, ...rest } = input;
       const existing = await loadInvoiceForTenant(id, ctx);
@@ -319,7 +319,7 @@ export const invoiceRouter = createTRPCRouter({
     }),
 
   markSent: writeProcedure
-    .input(z.object({ id: z.string().cuid() }))
+    .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadInvoiceForTenant(input.id, ctx);
       if (existing.status !== "draft") {
@@ -344,7 +344,7 @@ export const invoiceRouter = createTRPCRouter({
         paidAt: z.date().optional(),
         referenceNumber: z.string().max(255).optional(),
         notes: z.string().max(1000).optional(),
-      }),
+      }).strict(),
     )
     .mutation(async ({ input, ctx }) => {
       return recordInvoicePayment({
@@ -368,7 +368,7 @@ export const invoiceRouter = createTRPCRouter({
         paidAt: z.date().optional(),
         method: z.enum(PAYMENT_METHODS).default("cash"),
         fundSourceId: z.string().cuid().optional(),
-      }),
+      }).strict(),
     )
     .mutation(async ({ input, ctx }) => {
       const existing = await loadInvoiceForTenant(input.id, ctx);
@@ -393,7 +393,7 @@ export const invoiceRouter = createTRPCRouter({
     }),
 
   void: writeProcedure
-    .input(z.object({ id: z.string().cuid() }))
+    .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadInvoiceForTenant(input.id, ctx);
       if (existing.status === "paid") {

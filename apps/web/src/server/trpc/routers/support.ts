@@ -150,7 +150,7 @@ const ticketRouter = createTRPCRouter({
         description: z.string().min(1),
         category: z.string().optional(),
         priority: ticketPrioritySchema.optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       const ticketNumber = await generateTicketNumber();
@@ -176,7 +176,7 @@ const ticketRouter = createTRPCRouter({
         description: z.string().min(1).optional(),
         category: z.string().nullable().optional(),
         priority: ticketPrioritySchema.optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       const existing = await loadTicketForTenant(input.id, ctx);
@@ -210,7 +210,7 @@ const ticketRouter = createTRPCRouter({
       z.object({
         id: z.string(),
         assignedToId: z.string().nullable(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       const isAdmin =
@@ -245,7 +245,7 @@ const ticketRouter = createTRPCRouter({
       z.object({
         id: z.string(),
         status: ticketStatusSchema,
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       const existing = await loadTicketForTenant(input.id, ctx);
@@ -274,7 +274,7 @@ const ticketRouter = createTRPCRouter({
     }),
 
   close: writeProcedure
-    .input(z.object({ id: z.string() }))
+    .input(z.object({ id: z.string() }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await loadTicketForTenant(input.id, ctx);
 
@@ -330,7 +330,7 @@ const commentRouter = createTRPCRouter({
         ticketId: z.string(),
         content: z.string().min(1),
         isInternal: z.boolean().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       await loadTicketForTenant(input.ticketId, ctx);

@@ -52,7 +52,7 @@ export const userRouter = createTRPCRouter({
     }),
 
   deactivate: writeProcedure
-    .input(z.object({ id: z.string().cuid() }))
+    .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ ctx, input }) => {
       const user = await db.user.findUnique({ where: { id: input.id }, select: { id: true, tenantId: true } });
       if (!user || user.tenantId !== ctx.tenantId) throw new TRPCError({ code: "NOT_FOUND" });
@@ -64,7 +64,7 @@ export const userRouter = createTRPCRouter({
     }),
 
   transferOwnership: protectedProcedure
-    .input(z.object({ toUserId: z.string() }))
+    .input(z.object({ toUserId: z.string() }).strict())
     .mutation(async ({ ctx, input }) => {
       if (!ctx.userId || !ctx.tenantId) {
         throw new TRPCError({ code: "UNAUTHORIZED" });

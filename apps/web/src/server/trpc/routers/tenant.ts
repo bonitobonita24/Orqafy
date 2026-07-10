@@ -19,7 +19,7 @@ export const tenantRouter = createTRPCRouter({
         name: z.string().min(1).max(100).optional(),
         timezone: z.string().optional(),
         currency: z.string().length(3).optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       return db.tenant.update({

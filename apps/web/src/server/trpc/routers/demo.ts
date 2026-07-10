@@ -52,7 +52,7 @@ export const demoRouter = createTRPCRouter({
 
   // Seed demo data for the current demo tenant
   seed: protectedProcedure
-    .input(z.object({ scenario: z.enum(["default", "full"]).default("default") }))
+    .input(z.object({ scenario: z.enum(["default", "full"]).default("default") }).strict())
     .mutation(({ ctx }) => {
       if (ctx.isDemoTenant !== true) {
         throw new TRPCError({

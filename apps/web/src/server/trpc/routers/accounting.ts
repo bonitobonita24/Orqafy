@@ -104,7 +104,7 @@ const accountRouter = createTRPCRouter({
         parentId: z.string().min(1).optional(),
         description: z.string().max(1000).optional(),
         isSystem: z.boolean().default(false),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       if (input.parentId != null && input.parentId !== '') {
@@ -144,7 +144,7 @@ const accountRouter = createTRPCRouter({
         subtype: z.string().max(100).optional(),
         parentId: z.string().min(1).nullable().optional(),
         description: z.string().max(1000).optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const { id, parentId, ...data } = input;
@@ -175,7 +175,7 @@ const accountRouter = createTRPCRouter({
     }),
 
   toggleActive: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadAccountForTenant(input.id, ctx);
       return db.$transaction(async (tx) => {
@@ -252,7 +252,7 @@ const journalEntryRouter = createTRPCRouter({
         referenceType: z.string().max(100).optional(),
         referenceId: z.string().min(1).optional(),
         lines: z.array(journalEntryLineSchema).min(2),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       await loadFiscalYearForTenant(input.fiscalYearId, ctx);
@@ -308,7 +308,7 @@ const journalEntryRouter = createTRPCRouter({
         date: z.string().min(1).optional(),
         description: z.string().min(1).max(1000).optional(),
         lines: z.array(journalEntryLineSchema).min(2).optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const existing = await loadJournalEntryForTenant(input.id, ctx, true) as Awaited<ReturnType<typeof loadJournalEntryForTenant>> & { lines: Array<{ accountId: string; debit: unknown; credit: unknown }> };
@@ -363,7 +363,7 @@ const journalEntryRouter = createTRPCRouter({
     }),
 
   post: accountantWriteProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       // Load entry with lines (tenant-scoped)
       const existing = await loadJournalEntryForTenant(input.id, ctx, true) as Awaited<ReturnType<typeof loadJournalEntryForTenant>> & {
@@ -436,7 +436,7 @@ const journalEntryRouter = createTRPCRouter({
     }),
 
   reverse: accountantWriteProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadJournalEntryForTenant(input.id, ctx, true) as Awaited<ReturnType<typeof loadJournalEntryForTenant>> & {
         lines: Array<{ accountId: string; debit: unknown; credit: unknown; description: string | null }>;
@@ -613,7 +613,7 @@ const fiscalYearRouter = createTRPCRouter({
         name: z.string().min(1).max(100),
         startDate: z.string().min(1),
         endDate: z.string().min(1),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       return db.fiscalYear.create({
@@ -668,7 +668,7 @@ const taxRateRouter = createTRPCRouter({
         rate: z.number().min(0).max(100),
         type: z.enum(TAX_RATE_TYPES),
         isDefault: z.boolean().default(false),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       return db.taxRate.create({
@@ -711,7 +711,7 @@ const settingsRouter = createTRPCRouter({
         defaultExpenseAccountId: z.string().nullable().optional(),
         defaultInputVatAccountId: z.string().nullable().optional(),
         defaultFiscalYearId: z.string().nullable().optional(),
-      }),
+      }).strict(),
     )
     .mutation(async ({ input, ctx }) => {
       // Validate referenced accounts/fiscal year belong to this tenant.

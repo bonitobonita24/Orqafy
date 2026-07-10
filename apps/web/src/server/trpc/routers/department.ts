@@ -31,7 +31,7 @@ const createInput = z.object({
   code: z.string().min(1).max(50).optional(),
   description: z.string().max(1000).optional(),
   parentId: z.string().cuid().optional(),
-});
+}).strict();
 
 const updateInput = z.object({
   id: z.string().cuid(),
@@ -40,7 +40,7 @@ const updateInput = z.object({
   description: z.string().max(1000).optional(),
   parentId: z.string().cuid().nullable().optional(),
   isActive: z.boolean().optional(),
-});
+}).strict();
 
 export const departmentRouter = createTRPCRouter({
   /**
@@ -152,7 +152,7 @@ export const departmentRouter = createTRPCRouter({
    * Delete a department. Blocked if any users or employees still reference it.
    */
   delete: adminWriteProcedure
-    .input(z.object({ id: z.string().cuid() }))
+    .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await db.department.findUnique({
         where: { id: input.id },

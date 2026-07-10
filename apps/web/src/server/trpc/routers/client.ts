@@ -16,7 +16,7 @@ const customerInput = z.object({
   postalCode: z.string().max(20).optional(),
   taxId: z.string().max(50).optional(),
   notes: z.string().max(1000).optional(),
-});
+}).strict();
 
 export const clientRouter = createTRPCRouter({
   list: protectedProcedure
@@ -138,7 +138,7 @@ export const clientRouter = createTRPCRouter({
     }),
 
   delete: writeProcedure
-    .input(z.object({ id: z.string().cuid() }))
+    .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
       const existing = await db.customer.findFirst({ where: { id: input.id, tenantId: ctx.tenantId } });

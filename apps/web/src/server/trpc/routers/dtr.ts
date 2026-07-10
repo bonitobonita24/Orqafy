@@ -105,7 +105,7 @@ export const dtrRouter = createTRPCRouter({
       employeeId: z.string().min(1),
       lat: z.number(),
       lng: z.number(),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       await loadEmployeeForTenant(input.employeeId, ctx);
       const today = startOfTodayUtc();
@@ -152,7 +152,7 @@ export const dtrRouter = createTRPCRouter({
       attendanceId: z.string().min(1),
       lat: z.number(),
       lng: z.number(),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       const before = await loadAttendanceForTenant(input.attendanceId, ctx);
       if (before.clockOut != null) {
@@ -191,7 +191,7 @@ export const dtrRouter = createTRPCRouter({
     }),
 
   attendanceApprove: writeProcedure
-    .input(z.object({ attendanceId: z.string().min(1) }))
+    .input(z.object({ attendanceId: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       requireApproverRole(ctx.roles);
       const before = await loadAttendanceForTenant(input.attendanceId, ctx);
@@ -217,7 +217,7 @@ export const dtrRouter = createTRPCRouter({
     .input(z.object({
       attendanceId: z.string().min(1),
       reason: z.string().min(1).optional(),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       requireApproverRole(ctx.roles);
       const before = await loadAttendanceForTenant(input.attendanceId, ctx);
@@ -266,7 +266,7 @@ export const dtrRouter = createTRPCRouter({
       startDate: z.string().min(1),
       endDate: z.string().min(1),
       reason: z.string().min(1).optional(),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       await loadEmployeeForTenant(input.employeeId, ctx);
       return db.$transaction(async (tx) => {
@@ -302,7 +302,7 @@ export const dtrRouter = createTRPCRouter({
     }),
 
   leaveRequestApprove: writeProcedure
-    .input(z.object({ leaveRequestId: z.string().min(1) }))
+    .input(z.object({ leaveRequestId: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       requireApproverRole(ctx.roles);
       const before = await loadLeaveRequestForTenant(input.leaveRequestId, ctx);
@@ -336,7 +336,7 @@ export const dtrRouter = createTRPCRouter({
     .input(z.object({
       leaveRequestId: z.string().min(1),
       reason: z.string().min(1).optional(),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       requireApproverRole(ctx.roles);
       const existing = await loadLeaveRequestForTenant(input.leaveRequestId, ctx);
@@ -369,7 +369,7 @@ export const dtrRouter = createTRPCRouter({
   // compares its userId to the caller's; tenant scoping is enforced by
   // loadLeaveRequestForTenant + loadEmployeeForTenant.
   leaveRequestCancel: writeProcedure
-    .input(z.object({ leaveRequestId: z.string().min(1) }))
+    .input(z.object({ leaveRequestId: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadLeaveRequestForTenant(input.leaveRequestId, ctx);
       const employee = await loadEmployeeForTenant(existing.employeeId, ctx);

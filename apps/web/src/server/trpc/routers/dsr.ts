@@ -171,7 +171,7 @@ export const dsrRouter = createTRPCRouter({
    * Does NOT delete data — ERP/payroll legal retention applies.
    */
   requestErasure: writeProcedure
-    .input(z.object({ reason: z.string().max(1000).optional() }))
+    .input(z.object({ reason: z.string().max(1000).optional() }).strict())
     .mutation(async ({ ctx, input }) => {
       const request = await db.dataSubjectRequest.create({
         data: {
@@ -204,7 +204,7 @@ export const dsrRouter = createTRPCRouter({
       z.object({
         reason: z.string().max(1000).optional(),
         scope: z.string().max(200).optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       const request = await db.dataSubjectRequest.create({
@@ -279,7 +279,7 @@ export const dsrRouter = createTRPCRouter({
         id: z.string(),
         status: z.enum(["in_progress", "completed", "rejected"]),
         resolution: z.string().max(2000).optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       // Verify ownership

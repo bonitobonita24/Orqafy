@@ -57,7 +57,7 @@ const payslipInputSchema = z.object({
   taxDeduction: z.number().min(0).default(0),
   cashAdvanceDeduction: z.number().min(0).default(0),
   otherDeductions: z.number().min(0).default(0),
-});
+}).strict();
 
 // ── Payslip sub-router ────────────────────────────────────────────────────────
 
@@ -216,7 +216,7 @@ const payslipRouter = createTRPCRouter({
     }),
 
   remove: writeProcedure
-    .input(z.object({ id: z.string().cuid() }))
+    .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadPayslipForTenant(input.id, ctx);
       const payroll = await loadPayrollForTenant(existing.payrollId, ctx);
@@ -304,7 +304,7 @@ export const payrollRouter = createTRPCRouter({
         label: z.string().max(200).optional(),
         currency: z.string().length(3).default("PHP"),
         notes: z.string().max(1000).optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const count = await db.payroll.count({ where: { tenantId: ctx.tenantId } });
@@ -346,7 +346,7 @@ export const payrollRouter = createTRPCRouter({
         periodEnd: z.string().min(1).optional(),
         currency: z.string().length(3).optional(),
         notes: z.string().max(1000).optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const existing = await loadPayrollForTenant(input.id, ctx);
@@ -392,7 +392,7 @@ export const payrollRouter = createTRPCRouter({
   //   the tenant's configurable StatutoryRate table (cited 2025 defaults as fallback),
   //   then transition draft→processing. Re-runnable while in draft.
   process: writeProcedure
-    .input(z.object({ id: z.string().cuid() }))
+    .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadPayrollForTenant(input.id, ctx);
       if (existing.status !== "draft") {
@@ -465,7 +465,7 @@ export const payrollRouter = createTRPCRouter({
   // HOLD(owner-rule): approve — transitions run from processing→approved.
   //   Full approval workflow with approver identity + notifications deferred.
   approve: writeProcedure
-    .input(z.object({ id: z.string().cuid() }))
+    .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadPayrollForTenant(input.id, ctx);
       if (existing.status !== "processing") {
@@ -482,7 +482,7 @@ export const payrollRouter = createTRPCRouter({
   //   (DR salaries + employer-statutory expense, CR Accounts Payable for the full credit).
   //   Account mapping is resolved from AccountingSettings; unset → clear configuration error.
   markPaid: writeProcedure
-    .input(z.object({ id: z.string().cuid(), fundSourceId: z.string().cuid(), paidAt: z.date().optional() }))
+    .input(z.object({ id: z.string().cuid(), fundSourceId: z.string().cuid(), paidAt: z.date().optional() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadPayrollForTenant(input.id, ctx);
       if (existing.status !== "approved") {
@@ -595,7 +595,7 @@ export const payrollRouter = createTRPCRouter({
           source: z.string().min(1).max(500),
           effectiveFrom: z.string().min(1),
           isActive: z.boolean().default(true),
-        }),
+        }).strict(),
       )
       .mutation(async ({ input, ctx }) => {
         return db.$transaction(async (tx) => {
