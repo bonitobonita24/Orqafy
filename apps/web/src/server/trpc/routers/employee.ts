@@ -109,7 +109,15 @@ export const employeeRouter = createTRPCRouter({
     .input(employeeInput)
     .mutation(async ({ input, ctx }) => {
       const user = await db.user.findUnique({ where: { id: input.userId } });
-      if (!user) throw new TRPCError({ code: "BAD_REQUEST", message: "User not found." });
+      if (!user || user.tenantId !== ctx.tenantId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "User not found." });
+      }
+      if (input.departmentId !== undefined) {
+        const department = await db.department.findUnique({ where: { id: input.departmentId } });
+        if (!department || department.tenantId !== ctx.tenantId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Department not found." });
+        }
+      }
       const employeeNumber = `EMP-${Date.now()}`;
       return db.$transaction(async (tx) => {
         const created = await tx.employee.create({
@@ -160,6 +168,12 @@ export const employeeRouter = createTRPCRouter({
       await loadEmployeeForTenant(id, ctx);
       const existing = await db.employee.findUnique({ where: { id } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      if (rest.departmentId !== undefined && rest.departmentId !== null) {
+        const department = await db.department.findUnique({ where: { id: rest.departmentId } });
+        if (!department || department.tenantId !== ctx.tenantId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Department not found." });
+        }
+      }
       return db.$transaction(async (tx) => {
         const updated = await tx.employee.update({
           where: { id },
