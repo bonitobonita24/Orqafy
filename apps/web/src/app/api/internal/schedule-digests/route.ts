@@ -18,6 +18,7 @@
  *   0 6 * * * curl -s -X POST http://orqafy_web:3000/api/internal/schedule-digests \
  *     -H "x-internal-secret: $INTERNAL_CRON_SECRET"
  */
+import { timingSafeEqual } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@orqafy/db";
 import { scheduleDigestsForTenant } from "@/server/notifications/digest-scheduler";
@@ -25,6 +26,15 @@ import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/** Constant-time secret comparison (avoids timing side-channels). */
+function secretsMatch(provided: string | null, expected: string): boolean {
+  if (provided === null) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // ── Auth guard ────────────────────────────────────────────────────────────
@@ -35,7 +45,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const provided = req.headers.get("x-internal-secret");
-  if (provided !== secret) {
+  if (!secretsMatch(provided, secret)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

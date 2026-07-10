@@ -77,7 +77,7 @@ export function AppSidebar({ slug }: AppSidebarProps) {
       </div>
 
       {/* Flat nav — one clean list of items, rounded active highlight. */}
-      <nav className="flex-1 overflow-y-auto px-2 py-2">
+      <nav aria-label="Sidebar" className="flex-1 overflow-y-auto px-2 py-2">
         <ul className="space-y-0.5">
           {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
             const fullHref = `/${slug}/${href}`;
@@ -106,12 +106,12 @@ export function AppSidebar({ slug }: AppSidebarProps) {
 
       {/* Footer — version + white-label credit (design-defaults Entry 3) */}
       <div className="space-y-0.5 border-t border-border px-4 py-2">
-        <p className="text-[10px] text-muted-foreground/50">v{APP_VERSION}</p>
+        <p className="text-[10px] text-muted-foreground">v{APP_VERSION}</p>
         <a
           href="https://www.powerbyteitsolutions.com/"
           target="_blank"
           rel="noopener noreferrer"
-          className="block text-[10px] text-muted-foreground/50 transition-colors hover:text-foreground hover:underline"
+          className="block text-[10px] text-muted-foreground transition-colors hover:text-foreground hover:underline"
         >
           Developed by Powerbyte IT Solutions
         </a>
