@@ -200,26 +200,35 @@
 #   Validation: n/a (markdown-only).
 # Main-branch staging-deploy handoff state below is UNCHANGED.
 
-PHASE:        Session closed — CI fully green; staging deploy gated on Komodo provisioning (operator)
-LAST_DONE:    Authored OPERATOR_HANDOFF.md after re-checking state: SMTP + Komodo URL + Xendit
-              TEST/LIVE keys are ALREADY filled in CREDENTIALS.md, .env.staging and .env.prod fully
-              populated (zero ⏳). Prior STATE.md NEXT field overstated remaining credential work.
-NEXT:         Operator-only: follow OPERATOR_HANDOFF.md (10 steps, ~25–35 min). Summary:
-              (1) verify :staging-latest exists on Docker Hub; (2) ensure proxy network on Komodo server;
-              (3) add Docker Hub creds to Komodo Providers; (4) create Stack orqafy-staging with
-              auto_update: true; (5) paste merged staging compose; (6) paste .env.staging into Stack env;
-              (7) Deploy; (8) docker exec pnpm db:migrate deploy && pnpm db:seed; (9) verify
-              https://orqafy-staging.powerbyte.app; (10) test auto-update by pushing empty commit.
-              Prod still requires Turnstile LIVE keys + (optional) R2 creds before its own deploy.
-BLOCKERS:     Staging: Komodo Stack not yet provisioned (operator action).
-              Prod: Turnstile LIVE keys + (optional) Cloudflare R2 creds.
-GIT_BRANCH:   main
+PHASE:        FULL-AUTO run (owner-triggered 2026-07-10) — see docs/FULL_AUTO_PLAN.md. M1 DONE, M2a DONE; next = M2b.
+LAST_DONE:    M2a (RBAC gap analysis) COMPLETE on branch feat/tenant-rbac-3tier. Wrote docs/RBAC_ALIGNMENT.md.
+              KEY FINDING: Orqafy RBAC is DATA-DRIVEN per-tenant Role table (slug/name/permissions-JSON/isSystem),
+              NOT a UserRole enum; runtime authz keys off role NAME (user.role.name), not slug. So Scenario-42
+              enum-rename mechanic DOES NOT apply. Split into Wave A (safe mechanical), Wave B (one-owner integrity
+              + succession, dev-local), Wave C (platform tenant_id NULL / enforced permission-matrix / role-builder
+              UI — OWNER-GATED, real blast-radius). Executed Wave A1: fixed live bug — 3 routers (admin-xendit-config,
+              smtp-config, expense-category) gated on never-seeded role "Administrator" → corrected to
+              [Tenant Super Admin, Admin, Platform Owner]; fixed 13 fixture-baked tests; added admin-role-gate.test.ts.
+              Web suite 1055/1055 green, lint+typecheck clean. Commits: 9fdf95f (A1 fix), 780435d (M2a docs+governance).
+              A2 (slug rename) DEFERRED as cosmetic. Wave C → docs/PENDING_DECISIONS.md (D-RBAC-C1..C4).
+NEXT:         M2b — Wave B (dev-first, LOCAL, [HOW]): (1) one-owner-per-tenant integrity. NOTE: Orqafy owner =
+              User.roleId → the tenant's tenant_super_admin Role row (per-tenant FK, NOT a global enum value), so a
+              plain Postgres partial-unique index isn't directly expressible. Recommended: denormalized
+              users.is_tenant_owner boolean + CREATE UNIQUE INDEX ON users(tenant_id) WHERE is_tenant_owner,
+              normalize existing data to <=1 owner/tenant FIRST — OR an app-level transactional guard. Choose at
+              execution. (2) Two-way succession: extend packages/db/src/helpers/tenant-owner.ts (currently PROVISION
+              only) — add transferTenantOwnership (promote-then-demote, index-safe txn) + platform reassignTenantOwner.
+              Tests for both + the invariant. See docs/RBAC_ALIGNMENT.md §3 Wave B. Then back-port to PRODUCT.md list
+              + DECISIONS_LOG; dev Visual QA. THEN M3 (AIEF audit) → M4 (wrap).
+BLOCKERS:     None for M2b (dev-first local, [HOW]). Owner-gated items in docs/PENDING_DECISIONS.md (Wave C
+              D-RBAC-C1..C4, framework-sync push, tag push, RBAC RESEED, staging/prod deploy, D-1/D-3/D-4).
+GIT_BRANCH:   feat/tenant-rbac-3tier (branched off main; carries M1 work via main already; A1 + M2a docs committed)
 PORTS:        per .env.dev (unchanged)
 MODELS:
-  planning:   claude-code (Opus 4.6 — V32 primary)
+  planning:   claude-opus-4-8 (PM — V32 primary)
   execution:  claude-sonnet-4-6 via Agent dispatch (V32 Zero Opus Execution)
-  governance: opus 4.6 (this STATE.md write is the V32 R1 exception)
-LINES_TOUCHED: ~290 lines (OPERATOR_HANDOFF.md created + STATE.md updated)
+  governance: opus (this STATE.md write is the V32 R1 exception)
+LINES_TOUCHED: ~30 (footer + version wiring + config)
 CHECKPOINT_TYPE: full
-FILES_TOUCHED: ["/home/me/UbuntuDevFiles/1_COMPANY_DEV/CompanyApps/Orqafy/OPERATOR_HANDOFF.md", "/home/me/UbuntuDevFiles/1_COMPANY_DEV/CompanyApps/Orqafy/.cline/STATE.md"]
+FILES_TOUCHED: ["package.json", "apps/web/package.json", "apps/web/next.config.ts", "apps/web/src/components/layout/app-sidebar.tsx", "docs/FULL_AUTO_PLAN.md", ".cline/STATE.md"]
 TIER_CLASSIFICATION: 1 — lightweight
