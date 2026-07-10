@@ -72,7 +72,7 @@ function makeReq(): NextRequest {
   } as unknown as NextRequest;
 }
 
-function authenticatedCtx(roles: string[] = ["Administrator"], isDemoTenant = false) {
+function authenticatedCtx(roles: string[] = ["Admin"], isDemoTenant = false) {
   return {
     req: makeReq(),
     userId: "ck1234567890123456789012a",
@@ -262,7 +262,7 @@ describe("adminXenditConfig router", () => {
 
     it("cross-tenant isolation: every query scoped to ctx.tenantId", async () => {
       mockDb.tenantXenditConfig.findUnique.mockResolvedValue(null);
-      const caller = createCaller(authenticatedCtx(["Administrator"]));
+      const caller = createCaller(authenticatedCtx(["Admin"]));
       await caller.adminXenditConfig.get();
       expect(mockDb.tenantXenditConfig.findUnique).toHaveBeenCalledWith(
         expect.objectContaining({

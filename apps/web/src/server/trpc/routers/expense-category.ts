@@ -5,8 +5,13 @@ import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
 import { logger } from "@/lib/logger";
 
 // Admin-only writes; any authenticated user can read (used by expense forms).
+// Role names must match the seeded role names in packages/db/src/seed/roles.ts — the
+// prior list checked "Administrator", a role name that no seeded role carries, which
+// silently 403'd every real admin (see department.ts / compliance.ts / dsr.ts for the
+// same fix already applied to sibling routers).
+const ADMIN_ROLES = ["Tenant Super Admin", "Admin", "Platform Owner"];
 const adminWriteProcedure = writeProcedure.use(({ ctx, next }) => {
-  if (!ctx.roles.some((r) => ["Administrator", "Platform Owner"].includes(r))) {
+  if (!ctx.roles.some((r) => ADMIN_ROLES.includes(r))) {
     throw new TRPCError({ code: "FORBIDDEN" });
   }
   return next({ ctx });
