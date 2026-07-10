@@ -2412,3 +2412,14 @@
 - Errors resolved:     All 3 fixed + re-verified live on a freshly-registered tenant (qaverify2). #1 Chart of Accounts UI shows 35 accounts incl. 1350 Input VAT; settings show 5 GL defaults auto-mapped. #6 GR→JE auto-post fires: JE-0001 POSTED + balanced (DR 5100 Purchases 1,000 + DR 1350 Input VAT 120, CR 2100 AP 1,120). #7 vendor reactivate succeeds + L5-audited.
 - Validation:          Full gate green — vitest 5/5 tasks (worker 11 + web 1049 = 1,060 tests passed); `pnpm build` 4/4 tasks "Compiled successfully"; db typecheck clean. All 8 D-2 surfaces PASS.
 - Scope note:          DEV ONLY — deploy held. Staging/prod still need `prisma migrate deploy` of 20260625000000 + a rebuild carrying these fixes before any promotion (owner-gated).
+
+## 2026-07-10 — RBAC 3-tier fleet-standard alignment: M2a gap analysis + Wave A1 bug fix
+- Agent:               CLAUDE_CODE
+- Why:                 Full-Auto run M2 — align Orqafy RBAC to fleet standard (~/.claude/rules/tenant-rbac-standard.md). M2a = gap analysis; found Orqafy uses a DATA-DRIVEN per-tenant Role table (not a UserRole enum), so the Scenario-42 enum-rename mechanic does not apply. Work split into Wave A (safe/mechanical, done now), Wave B (one-owner integrity + succession, dev-local), Wave C (platform tenant_id NULL, enforced permission-matrix, role-builder UI — owner-gated, real blast-radius). Wave A1 fixed a live bug: 3 routers gated on the never-seeded role name "Administrator".
+- Files added:         docs/RBAC_ALIGNMENT.md, apps/web/src/__tests__/admin-role-gate.test.ts
+- Files modified:      apps/web/src/server/trpc/routers/{admin-xendit-config,smtp-config,expense-category}.ts (Administrator→[Tenant Super Admin, Admin, Platform Owner], sibling-router pattern); 3 test fixtures (admin-xendit-config.test.ts, expense-category-tenant-parity.test.ts, smtp-config-tenant-parity.test.ts) that baked the dead "Administrator" name into mocked ctx → "Admin"
+- Files deleted:       none
+- Schema/migrations:   none
+- Errors encountered:  3 routers silently over-restrictive (gated on nonexistent role "Administrator"; seeded admin name is "Admin"). Same stale-role-name class fixed earlier for purchasing.ts/departments (CHANGELOG 2026-06-25, DECISIONS_LOG 2026-06-19); A1 extends it to the 3 remaining routers.
+- Errors resolved:     All 3 gates corrected + 13 fixture-baked tests updated. Web suite 1055/1055 green; lint + typecheck clean.
+- Scope note:          DEV ONLY — LOCAL commits on feat/tenant-rbac-3tier. A2 slug rename (tenant_super_admin→tenant_superadmin) DEFERRED as cosmetic (authz keys off role NAME, not slug). Wave C items logged to docs/PENDING_DECISIONS.md (owner-gated).

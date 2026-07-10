@@ -34,7 +34,7 @@
 - Note: dev-container rebuild SKIPPED during full-auto (throughput); rebuild once at end / on owner word.
 
 ### M2 — RBAC 3-tier fleet-standard alignment (dev-first, LOCAL, NO reseed)
-- [ ] M2a — Gap analysis: map current `Role` model + slugs + `tenant-owner.ts` vs
+- [x] M2a — Gap analysis: map current `Role` model + slugs + `tenant-owner.ts` vs
       `~/.claude/rules/tenant-rbac-standard.md` (3 fixed tiers, one-owner partial-unique index,
       two-way succession, sub-role presets, custom-role matrix + role-builder UI, guardrails).
       Output `docs/RBAC_ALIGNMENT.md` + a concrete, sequenced change list. Branch `feat/tenant-rbac-3tier`.
@@ -61,3 +61,4 @@
 
 ## Log
 - 2026-07-10 — Plan authored. Running under claude-loop slot-4. Starting M1.
+- 2026-07-10 — M2a DONE: docs/RBAC_ALIGNMENT.md written (Wave A/B/C split). Wave A1 bug fix committed 9fdf95f (green). A2 deferred (cosmetic). Wave C → PENDING_DECISIONS.md. Next: M2b Wave B (one-owner + succession).

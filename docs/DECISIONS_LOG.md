@@ -1288,3 +1288,8 @@ The chart-on-provisioning seed is idempotent (ON CONFLICT DO NOTHING) and revers
 in Settings.
 
 **Phase:** Phase 7 Feature Update (Finance D-2 ruleset) — deploy HELD (commit+push to `main` only).
+
+## 2026-07-10 — RBAC alignment: Wave scoping + A2 defer (M2a)
+**Architecture finding (LOCKED):** Orqafy RBAC is a DATA-DRIVEN per-tenant `Role` table (slug/name/permissions-JSON/isSystem), NOT a `UserRole` enum. Runtime authz keys off role DISPLAY NAME (user.role.name), not slug. The fleet standard + Scenario 42 assume an enum; their `ALTER TYPE RENAME VALUE` mechanic does NOT apply here.
+**Wave split (LOCKED):** A = safe mechanical (done: A1 role-gate bug fix). B = one-owner-per-tenant integrity + two-way succession (dev-local [HOW], next). C = platform tenant_id NULL, enforced permission-matrix, tenant role-builder UI — OWNER-GATED [WHAT] (real blast-radius on tenant isolation / product scope) → docs/PENDING_DECISIONS.md D-RBAC-C1..C4.
+**A2 slug rename DEFERRED:** tenant_super_admin→tenant_superadmin is cosmetic (names, not slugs, drive authz) and adds migration churn for zero behavior change. Not executing under Full-Auto; revisit only if the enum-model migration (C1) is ever authorized.
