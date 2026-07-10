@@ -14,6 +14,71 @@ import { resolveAccountingDefaults, postJournalEntryTx, type JournalPostLine } f
 
 const STATUTORY_RATE_TYPES = ["sss", "philhealth", "pagibig", "withholding"] as const;
 
+// ── StatutoryRate.upsert — discriminated-union input (per-type config shape) ──
+// Mirrors the SssConfig / PhilhealthConfig / PagibigConfig / WithholdingConfig
+// interfaces in payroll-compute.ts — keep in sync if those change.
+
+const statutoryRateCommonFields = {
+  source: z.string().min(1).max(500),
+  effectiveFrom: z.string().min(1),
+  isActive: z.boolean().default(true),
+};
+
+const sssConfigSchema = z
+  .object({
+    totalRate: z.number().nonnegative(),
+    employeeRate: z.number().nonnegative(),
+    employerRate: z.number().nonnegative(),
+    mscFloor: z.number().nonnegative(),
+    mscCeiling: z.number().nonnegative(),
+  })
+  .strict();
+
+const philhealthConfigSchema = z
+  .object({
+    premiumRate: z.number().nonnegative(),
+    employeeRate: z.number().nonnegative(),
+    floor: z.number().nonnegative(),
+    ceiling: z.number().nonnegative(),
+  })
+  .strict();
+
+const pagibigConfigSchema = z
+  .object({
+    employeeRate: z.number().nonnegative(),
+    employerRate: z.number().nonnegative(),
+    compensationCap: z.number().nonnegative(),
+  })
+  .strict();
+
+const withholdingConfigSchema = z
+  .object({
+    frequency: z.enum(["monthly", "semi_monthly"]),
+    brackets: z
+      .array(
+        z
+          .object({
+            lower: z.number().nonnegative(),
+            baseTax: z.number().nonnegative(),
+            rate: z.number().nonnegative(),
+          })
+          .strict(),
+      )
+      .min(1),
+  })
+  .strict();
+
+const statutoryRateUpsertInputSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("sss"), config: sssConfigSchema, ...statutoryRateCommonFields }).strict(),
+  z
+    .object({ type: z.literal("philhealth"), config: philhealthConfigSchema, ...statutoryRateCommonFields })
+    .strict(),
+  z.object({ type: z.literal("pagibig"), config: pagibigConfigSchema, ...statutoryRateCommonFields }).strict(),
+  z
+    .object({ type: z.literal("withholding"), config: withholdingConfigSchema, ...statutoryRateCommonFields })
+    .strict(),
+]);
+
 // ── Tenant-scoped loaders ─────────────────────────────────────────────────────
 
 async function loadPayrollForTenant(id: string, ctx: { tenantId: string }) {
@@ -588,22 +653,14 @@ export const payrollRouter = createTRPCRouter({
     }),
 
     upsert: writeProcedure
-      .input(
-        z.object({
-          type: z.enum(STATUTORY_RATE_TYPES),
-          config: z.record(z.string(), z.unknown()),
-          source: z.string().min(1).max(500),
-          effectiveFrom: z.string().min(1),
-          isActive: z.boolean().default(true),
-        }).strict(),
-      )
+      .input(statutoryRateUpsertInputSchema)
       .mutation(async ({ input, ctx }) => {
         return db.$transaction(async (tx) => {
           const created = await tx.statutoryRate.create({
             data: {
               tenantId: ctx.tenantId,
               type: input.type,
-              config: input.config as Prisma.InputJsonValue,
+              config: input.config,
               source: input.source,
               effectiveFrom: new Date(input.effectiveFrom),
               isActive: input.isActive,

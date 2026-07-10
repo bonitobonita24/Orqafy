@@ -99,7 +99,7 @@ describe("payroll.statutoryRate", () => {
     mockStatutoryCreate.mockResolvedValue({ id: "sr-1", type: "sss", source: "x", effectiveFrom: new Date() });
     await createCaller(ctx("tenant-acme")).payroll.statutoryRate.upsert({
       type: "sss",
-      config: { employeeRate: 0.05 },
+      config: { totalRate: 0.15, employeeRate: 0.05, employerRate: 0.1, mscFloor: 5000, mscCeiling: 35000 },
       source: "SSS Circular 2024-006",
       effectiveFrom: "2025-01-01",
       isActive: true,
