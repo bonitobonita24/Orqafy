@@ -2422,4 +2422,16 @@
 - Schema/migrations:   none
 - Errors encountered:  3 routers silently over-restrictive (gated on nonexistent role "Administrator"; seeded admin name is "Admin"). Same stale-role-name class fixed earlier for purchasing.ts/departments (CHANGELOG 2026-06-25, DECISIONS_LOG 2026-06-19); A1 extends it to the 3 remaining routers.
 - Errors resolved:     All 3 gates corrected + 13 fixture-baked tests updated. Web suite 1055/1055 green; lint + typecheck clean.
+
+## 2026-07-11 — RBAC Wave B: one-owner-per-tenant + two-way succession (M2b)
+- Agent:               CLAUDE_CODE
+- Why:                 Full-Auto M2b — fleet RBAC standard §1 (one owner/tenant) + §2 (two-way succession), dev-local [HOW] per the M2a Wave split.
+- Files added:         packages/db/prisma/migrations/20260710160000_add_tenant_owner_flag/migration.sql, packages/db/src/helpers/succession.ts, apps/web/src/server/trpc/routers/__tests__/succession.test.ts, apps/worker/src/__tests__/succession.test.ts
+- Files modified:      packages/db/prisma/schema.prisma (User.isTenantOwner), packages/db/src/index.ts (export succession helpers), packages/db/src/helpers/tenant-owner.ts (owner isTenantOwner=true), packages/db/src/seed/index.ts (webmaster isTenantOwner=true), apps/web/src/server/trpc/routers/platform.ts (reassignTenantOwner mutation), apps/web/src/server/trpc/routers/user.ts (transferOwnership mutation)
+- Files deleted:       none
+- Schema/migrations:   migration 20260710160000_add_tenant_owner_flag authored (add column + backfill 1 owner/tenant + partial unique index one_tenant_owner_per_tenant). NOT applied (dev stack down) — apply via `prisma migrate deploy` on next dev up; staging/prod owner-gated.
+- Errors encountered:  none (Prisma client regenerated; packages/db dist rebuilt so web typecheck resolves succession exports).
+- Errors resolved:     none new.
+- Validation:          web vitest 1060/1060 (+5 succession unit tests); web/worker/db typecheck clean; web lint clean. Worker integration test succession.test.ts requires live DB (runs on dev up, like tenant-provisioning.test.ts).
+- Scope note:          DEV ONLY — LOCAL commit on feat/tenant-rbac-3tier. Wave C (platform tenant_id NULL, enforced permission-matrix, role-builder UI) remains owner-gated in docs/PENDING_DECISIONS.md.
 - Scope note:          DEV ONLY — LOCAL commits on feat/tenant-rbac-3tier. A2 slug rename (tenant_super_admin→tenant_superadmin) DEFERRED as cosmetic (authz keys off role NAME, not slug). Wave C items logged to docs/PENDING_DECISIONS.md (owner-gated).

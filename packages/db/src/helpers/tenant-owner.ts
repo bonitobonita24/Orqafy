@@ -76,6 +76,7 @@ export async function provisionTenantRolesAndOwner(
       roleId: superAdminRoleId,
       tenantId,
       isActive: true,
+      isTenantOwner: true,
     },
     create: {
       email: ownerEmail,
@@ -87,6 +88,7 @@ export async function provisionTenantRolesAndOwner(
       tenantId,
       isActive: true,
       securityVersion: 1,
+      isTenantOwner: true,
     },
   });
 

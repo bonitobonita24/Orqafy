@@ -141,6 +141,7 @@ async function main() {
       tenantId: demoTenant.id,
       isActive: true,
       securityVersion: 1,
+      isTenantOwner: true,
     },
   });
   console.log('  ✅ Webmaster account seeded (webmaster@orqafy.local)');

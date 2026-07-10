@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
-import { prisma as db } from "@orqafy/db";
+import { prisma as db, transferTenantOwnership } from "@orqafy/db";
 
 export const userRouter = createTRPCRouter({
   list: protectedProcedure
@@ -61,5 +61,36 @@ export const userRouter = createTRPCRouter({
         data: { isActive: false, securityVersion: { increment: 1 } },
         select: { id: true },
       });
+    }),
+
+  transferOwnership: protectedProcedure
+    .input(z.object({ toUserId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.userId || !ctx.tenantId) {
+        throw new TRPCError({ code: "UNAUTHORIZED" });
+      }
+
+      const caller = await db.user.findUnique({ where: { id: ctx.userId } });
+      if (caller === null || caller.isTenantOwner !== true) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only the current tenant owner may transfer ownership.",
+        });
+      }
+
+      try {
+        await transferTenantOwnership(db, {
+          tenantId: ctx.tenantId,
+          fromUserId: ctx.userId,
+          toUserId: input.toUserId,
+        });
+      } catch (e) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: e instanceof Error ? e.message : "Transfer failed.",
+        });
+      }
+
+      return { success: true };
     }),
 });

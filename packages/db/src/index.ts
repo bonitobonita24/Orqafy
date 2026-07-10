@@ -21,3 +21,5 @@ export {
   PASSWORD_BCRYPT_COST,
 } from './seed/roles';
 export type { StandardRoleDef } from './seed/roles';
+export { transferTenantOwnership, reassignTenantOwner } from './helpers/succession';
+export type { TransferTenantOwnershipInput, ReassignTenantOwnerInput } from './helpers/succession';

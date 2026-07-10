@@ -311,6 +311,7 @@ model User {
   department      Department? @relation(fields: [departmentId], references: [id])
   isActive        Boolean     @default(true) @map("is_active")
   securityVersion Int         @default(1) @map("security_version")
+  isTenantOwner   Boolean     @default(false) @map("is_tenant_owner")
   lastLoginAt     DateTime?   @map("last_login_at")
   emailVerifiedAt DateTime?   @map("email_verified_at")
   metadata        Json?

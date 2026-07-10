@@ -38,14 +38,19 @@
       `~/.claude/rules/tenant-rbac-standard.md` (3 fixed tiers, one-owner partial-unique index,
       two-way succession, sub-role presets, custom-role matrix + role-builder UI, guardrails).
       Output `docs/RBAC_ALIGNMENT.md` + a concrete, sequenced change list. Branch `feat/tenant-rbac-3tier`.
-- [ ] M2b — Backbone: slug `tenant_super_admin`→`tenant_superadmin`; ensure `tenant_admin`
+- [x] M2b — Backbone (Wave B): slug `tenant_super_admin`→`tenant_superadmin`; ensure `tenant_admin`
       (from `admin`) excludes Billing/User-Mgmt; add platform `tenant_manager` (tenant_id NULL);
       data-preserving migration + normalize ≤1 owner/tenant BEFORE the
-      `one_tenant_superadmin_per_tenant` partial-unique index. Rename code literals. Tests.
-- [ ] M2c — Two-way succession (platform reassign + owner transfer, index-safe) + tests
-      (extend `tenant-owner.ts` if partial).
-- [ ] M2d — Custom-role permission-matrix: confirm/upgrade feature registry + `role_permissions`
+      `one_tenant_superadmin_per_tenant` partial-unique index. Rename code literals. Tests. DONE
+      2026-07-11: one-owner `is_tenant_owner` + partial unique index + migration 20260710160000 (not
+      yet applied). Slug rename A2 deferred; platform tenant_manager tenant_id-NULL = Wave C
+      (owner-gated).
+- [x] M2c — Two-way succession (platform reassign + owner transfer, index-safe) + tests
+      (extend `tenant-owner.ts` if partial). DONE 2026-07-11 as part of Wave B
+      (transferTenantOwnership + reassignTenantOwner + platform/user wiring + tests).
+- [~] M2d — Custom-role permission-matrix: confirm/upgrade feature registry + `role_permissions`
       CRUD-split enforcement (tRPC + route + nav) + role-builder UI (shadcn). Build only what's missing.
+      → OWNER-GATED Wave C (D-RBAC-C2/C3 in PENDING_DECISIONS). Not auto-executed.
 - [ ] Back-port to `PRODUCT.md` (list change for human) + `DECISIONS_LOG.md`. Dev Visual QA.
 
 ### M3 — AIEF governance/policy full audit + sync-gap
@@ -62,3 +67,4 @@
 ## Log
 - 2026-07-10 — Plan authored. Running under claude-loop slot-4. Starting M1.
 - 2026-07-10 — M2a DONE: docs/RBAC_ALIGNMENT.md written (Wave A/B/C split). Wave A1 bug fix committed 9fdf95f (green). A2 deferred (cosmetic). Wave C → PENDING_DECISIONS.md. Next: M2b Wave B (one-owner + succession).
+- 2026-07-11 — M2b/M2c DONE (Wave B): one-owner-per-tenant integrity (is_tenant_owner + partial unique index, migration 20260710160000 authored/not-applied) + two-way succession (succession.ts + platform/user tRPC wiring + 5 web unit tests + worker integration test). Web 1060/1060 green. M2d + platform-NULL remain owner-gated Wave C. M2 [HOW]-scope complete → next M3 (AIEF audit).
