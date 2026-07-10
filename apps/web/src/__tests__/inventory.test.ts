@@ -280,7 +280,7 @@ describe("inventory.productById", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it("returns a product by id", async () => {
-    mockDb.product.findUnique.mockResolvedValue(sampleProduct);
+    mockDb.product.findFirst.mockResolvedValue(sampleProduct);
 
     const caller = createCaller(authenticatedCtx());
     const result = await caller.inventory.productById({ id: "prod-1" });
@@ -290,7 +290,7 @@ describe("inventory.productById", () => {
   });
 
   it("throws NOT_FOUND when product does not exist", async () => {
-    mockDb.product.findUnique.mockResolvedValue(null);
+    mockDb.product.findFirst.mockResolvedValue(null);
 
     const caller = createCaller(authenticatedCtx());
     await expect(caller.inventory.productById({ id: "nonexistent" })).rejects.toMatchObject({
@@ -361,7 +361,7 @@ describe("inventory.productToggleActive", () => {
   it("flips isActive from true to false", async () => {
     const existing = { ...sampleProduct, isActive: true };
     const updated = { ...existing, isActive: false };
-    mockDb.product.findUnique.mockResolvedValue(existing);
+    mockDb.product.findFirst.mockResolvedValue(existing);
     mockDb.product.update.mockResolvedValue(updated);
 
     const caller = createCaller(authenticatedCtx());
@@ -375,7 +375,7 @@ describe("inventory.productToggleActive", () => {
   it("flips isActive from false to true", async () => {
     const existing = { ...sampleProduct, isActive: false };
     const updated = { ...existing, isActive: true };
-    mockDb.product.findUnique.mockResolvedValue(existing);
+    mockDb.product.findFirst.mockResolvedValue(existing);
     mockDb.product.update.mockResolvedValue(updated);
 
     const caller = createCaller(authenticatedCtx());
@@ -385,7 +385,7 @@ describe("inventory.productToggleActive", () => {
   });
 
   it("throws NOT_FOUND for nonexistent product", async () => {
-    mockDb.product.findUnique.mockResolvedValue(null);
+    mockDb.product.findFirst.mockResolvedValue(null);
 
     const caller = createCaller(authenticatedCtx());
     await expect(

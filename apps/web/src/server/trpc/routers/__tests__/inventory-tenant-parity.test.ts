@@ -93,6 +93,23 @@ describe("category tenant parity", () => {
 describe("product tenant parity (M7.2 IDOR guards)", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
+  it("productById rejects cross-tenant id (read-IDOR closure)", async () => {
+    mockDb.product.findFirst.mockResolvedValue(null);
+    const caller = createCaller(tenantBCtx());
+    await expect(caller.inventory.productById({ id: "prod-owned-by-alpha" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    const call = mockDb.product.findFirst.mock.calls[0] as [{ where: { id: string; tenantId: string } }];
+    expect(call[0].where).toMatchObject({ id: "prod-owned-by-alpha", tenantId: "tid-bravo" });
+  });
+
+  it("productToggleActive rejects cross-tenant id (write-IDOR closure)", async () => {
+    mockDb.product.findFirst.mockResolvedValue(null);
+    const caller = createCaller(tenantBCtx());
+    await expect(caller.inventory.productToggleActive({ id: "prod-owned-by-alpha" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    const call = mockDb.product.findFirst.mock.calls[0] as [{ where: { id: string; tenantId: string } }];
+    expect(call[0].where).toMatchObject({ id: "prod-owned-by-alpha", tenantId: "tid-bravo" });
+    expect(mockDb.product.update).not.toHaveBeenCalled();
+  });
+
   it("productUpdate rejects cross-tenant id (IDOR closure)", async () => {
     mockDb.product.findFirst.mockResolvedValue(null);
     const caller = createCaller(tenantBCtx());
