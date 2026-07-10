@@ -306,6 +306,28 @@ const saleRouter = createTRPCRouter({
         });
       }
 
+      // Validate the warehouse belongs to this tenant before it is used as a
+      // stock-movement FK (M7.2 — cross-tenant IDOR closure).
+      const warehouse = await db.warehouse.findFirst({
+        where: { id: input.warehouseId, tenantId: ctx.tenantId },
+        select: { id: true },
+      });
+      if (warehouse === null) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Warehouse not found." });
+      }
+
+      // Validate the customer (when provided) belongs to this tenant before
+      // it is attached to the sale (M7.2 — cross-tenant IDOR closure).
+      if (input.customerId !== undefined) {
+        const customer = await db.customer.findFirst({
+          where: { id: input.customerId, tenantId: ctx.tenantId },
+          select: { id: true },
+        });
+        if (customer === null) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Customer not found." });
+        }
+      }
+
       const saleNumber = await generateSaleNumber(ctx.tenantId);
 
       const userId = ctx.userId;

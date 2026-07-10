@@ -29,6 +29,12 @@ vi.mock("@orqafy/db", () => ({
     product: {
       findMany: vi.fn(),
     },
+    warehouse: {
+      findFirst: vi.fn(),
+    },
+    customer: {
+      findFirst: vi.fn(),
+    },
     stockMovement: {
       create: vi.fn(),
       findMany: vi.fn(),
@@ -98,6 +104,8 @@ const mockDb = db as unknown as {
   };
   pOSSaleItem: { create: any };
   product: { findMany: any };
+  warehouse: { findFirst: any };
+  customer: { findFirst: any };
   stockMovement: { create: any; findMany: any };
   $transaction: any;
 };
@@ -410,6 +418,8 @@ describe("pos.sale.create", () => {
       const ids: string[] = where?.id?.in ?? [];
       return Promise.resolve(ids.map((id) => ({ id })));
     });
+    mockDb.warehouse.findFirst.mockResolvedValue({ id: WAREHOUSE_ID });
+    mockDb.customer.findFirst.mockResolvedValue({ id: CUSTOMER_ID });
     mockDb.pOSSale.findFirst.mockResolvedValue(null); // generateSaleNumber
     mockDb.$transaction.mockImplementation(async (fn: any) => fn(mockDb));
     mockDb.pOSSale.create.mockResolvedValue({
@@ -692,6 +702,62 @@ describe("pos.sale.create", () => {
         changeAmount: 0,
       }),
     });
+  });
+
+  it("rejects a cross-tenant warehouseId (M7.2 IDOR closure)", async () => {
+    mockDb.pOSSession.findFirst.mockResolvedValue({
+      id: SESSION_ID,
+      status: "open",
+    });
+    mockDb.product.findMany.mockResolvedValue([{ id: PRODUCT_A }]);
+    mockDb.warehouse.findFirst.mockResolvedValue(null); // belongs to another tenant
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.pos.sale.create({
+        sessionId: SESSION_ID,
+        warehouseId: WAREHOUSE_ID,
+        paymentMethod: "cash",
+        amountPaid: 500,
+        items: [
+          { productId: PRODUCT_A, description: "X", quantity: 1, unitPrice: 500 },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockDb.warehouse.findFirst).toHaveBeenCalledWith({
+      where: { id: WAREHOUSE_ID, tenantId: "acme-tenant-id" },
+      select: { id: true },
+    });
+    expect(mockDb.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a cross-tenant customerId (M7.2 IDOR closure)", async () => {
+    mockDb.pOSSession.findFirst.mockResolvedValue({
+      id: SESSION_ID,
+      status: "open",
+    });
+    mockDb.product.findMany.mockResolvedValue([{ id: PRODUCT_A }]);
+    mockDb.warehouse.findFirst.mockResolvedValue({ id: WAREHOUSE_ID });
+    mockDb.customer.findFirst.mockResolvedValue(null); // belongs to another tenant
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.pos.sale.create({
+        sessionId: SESSION_ID,
+        warehouseId: WAREHOUSE_ID,
+        customerId: CUSTOMER_ID,
+        paymentMethod: "cash",
+        amountPaid: 500,
+        items: [
+          { productId: PRODUCT_A, description: "X", quantity: 1, unitPrice: 500 },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockDb.customer.findFirst).toHaveBeenCalledWith({
+      where: { id: CUSTOMER_ID, tenantId: "acme-tenant-id" },
+      select: { id: true },
+    });
+    expect(mockDb.$transaction).not.toHaveBeenCalled();
   });
 
   it("rejects when discount exceeds subtotal + tax (negative total)", async () => {
