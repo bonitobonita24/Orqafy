@@ -13,9 +13,7 @@ import bcrypt from 'bcryptjs';
 import Redis from 'ioredis';
 import {
   prisma,
-  tenantSchemaExists,
   toSchemaName,
-  dropTenantSchema,
   STANDARD_ROLES,
 } from '@orqafy/db';
 import { processTenantProvisioning } from '../processors/tenant-provisioning.js';
@@ -90,11 +88,7 @@ describe('processTenantProvisioning', () => {
   beforeAll(async () => {
     connection = new Redis(REDIS_URL, { maxRetriesPerRequest: null });
 
-    // Clean slate: drop schema + any stale public rows from a prior run.
-    const exists = await tenantSchemaExists(prisma, TEST_SCHEMA);
-    if (exists) {
-      await dropTenantSchema(prisma, TEST_SCHEMA);
-    }
+    // Clean slate: remove any stale public rows from a prior run.
     await prisma.user.deleteMany({ where: { email: OWNER_EMAIL } });
     const stale = await prisma.tenant.findUnique({ where: { slug: TEST_SLUG } });
     if (stale !== null) {
@@ -114,10 +108,6 @@ describe('processTenantProvisioning', () => {
   });
 
   afterAll(async () => {
-    const exists = await tenantSchemaExists(prisma, TEST_SCHEMA);
-    if (exists) {
-      await dropTenantSchema(prisma, TEST_SCHEMA);
-    }
     await cleanupTenant(tenantId);
     await connection.quit();
     await prisma.$disconnect();
@@ -139,11 +129,8 @@ describe('processTenantProvisioning', () => {
     };
   }
 
-  it('creates the tenant schema, seeds roles, creates an active owner, and activates the tenant', async () => {
+  it('seeds roles, creates an active owner, and activates the tenant', async () => {
     await processTenantProvisioning(makeJob(jobData()) as never);
-
-    // Schema created
-    expect(await tenantSchemaExists(prisma, TEST_SCHEMA)).toBe(true);
 
     // Full 13-role set seeded for this tenant
     const roleCount = await prisma.role.count({ where: { tenantId } });
@@ -185,9 +172,6 @@ describe('processTenantProvisioning', () => {
     // and the REAL tenant's status must NOT flip to active.
     const failSlug = 'inttest-worker-fail';
     const failSchema = toSchemaName(failSlug);
-    if (await tenantSchemaExists(prisma, failSchema)) {
-      await dropTenantSchema(prisma, failSchema);
-    }
     const failTenant = await prisma.tenant.create({
       data: {
         slug: failSlug,
@@ -207,17 +191,13 @@ describe('processTenantProvisioning', () => {
 
     await expect(processTenantProvisioning(makeJob(data) as never)).rejects.toThrow();
 
-    // Schema got created (step 1) but the real tenant must stay "provisioning".
-    expect(await tenantSchemaExists(prisma, failSchema)).toBe(true);
+    // The real tenant must stay "provisioning".
     const stillProvisioning = await prisma.tenant.findUnique({ where: { id: failTenant.id } });
     expect(stillProvisioning?.status).toBe('provisioning');
 
     // Cleanup
     await prisma.user.deleteMany({ where: { email: 'owner@inttest-worker-fail.local' } });
     await prisma.role.deleteMany({ where: { tenantId: bogusTenantId } });
-    if (await tenantSchemaExists(prisma, failSchema)) {
-      await dropTenantSchema(prisma, failSchema);
-    }
     await prisma.tenant.deleteMany({ where: { id: failTenant.id } });
   });
 });

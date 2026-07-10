@@ -1,8 +1,6 @@
 import type { Job } from 'bullmq';
 import {
   prisma,
-  createTenantSchema,
-  tenantSchemaExists,
   toSchemaName,
   provisionTenantRolesAndOwner,
   provisionTenantFinancials,
@@ -20,20 +18,7 @@ export async function processTenantProvisioning(
     `[tenant-provisioning] job=${job.id} trace=${traceId ?? 'n/a'} slug=${tenantSlug} schema=${schemaName}`,
   );
 
-  // ── Step 1: tenant schema (idempotent) ──
-  const already = await tenantSchemaExists(prisma, schemaName);
-  if (already) {
-    console.log(
-      `[tenant-provisioning] schema ${schemaName} already exists — skipping schema create (idempotent)`,
-    );
-  } else {
-    await createTenantSchema(prisma, schemaName);
-    console.log(
-      `[tenant-provisioning] schema ${schemaName} created for tenant=${tenantId} name="${tenantName}"`,
-    );
-  }
-
-  // ── Step 2: seed standard roles + owner user, then activate tenant ──
+  // ── Step 1: seed standard roles + owner user, then activate tenant ──
   // If anything below throws AFTER the schema exists, we deliberately leave the
   // tenant at status="provisioning" (no rollback / no delete) so it surfaces in
   // the powerbyte-admin tenant view for manual retry. The whole step is idempotent
@@ -50,7 +35,7 @@ export async function processTenantProvisioning(
       `[tenant-provisioning] roles + owner user (${ownerEmail}, id=${ownerUserId}) provisioned for tenant=${tenantId}`,
     );
 
-    // ── Step 3: seed finance baseline (D-2 R4) — chart of accounts + fiscal year +
+    // ── Step 2: seed finance baseline (D-2 R4) — chart of accounts + fiscal year +
     //   VAT tax rate + 2025 statutory rates, and auto-map the 5 AccountingSettings
     //   default accounts so GR→JE auto-post works out-of-the-box. Idempotent. ──
     const fin = await provisionTenantFinancials(prisma, { tenantId, schemaName });
@@ -59,7 +44,7 @@ export async function processTenantProvisioning(
         `(${fin.accountsSeeded} accounts, ${fin.statutorySeeded} statutory rates, defaults auto-mapped)`,
     );
 
-    // ── Step 4: activate the tenant — owner can now log in (no email-verify gate) ──
+    // ── Step 3: activate the tenant — owner can now log in (no email-verify gate) ──
     await prisma.tenant.update({
       where: { id: tenantId },
       data: { status: 'active' },

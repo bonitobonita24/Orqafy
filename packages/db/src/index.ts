@@ -1,9 +1,6 @@
 export { prisma } from './client';
 export { writeAuditLog } from './helpers/audit';
 export {
-  createTenantSchema,
-  dropTenantSchema,
-  tenantSchemaExists,
   toSchemaName,
 } from './helpers/tenant-schema';
 export { provisionTenantRolesAndOwner } from './helpers/tenant-owner';
