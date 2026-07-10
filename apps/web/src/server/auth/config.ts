@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma as db } from "@orqafy/db";
 import { env } from "@/env";
+import { rateLimiters } from "@/server/lib/rate-limit";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -58,7 +59,17 @@ export const authConfig: NextAuthConfig = {
         password: { type: "password" },
         tenantSlug: { type: "text" },
       },
-      async authorize(rawCredentials) {
+      async authorize(rawCredentials, request) {
+        const ip =
+          request?.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+          request?.headers?.get("x-real-ip") ??
+          "unknown";
+        try {
+          rateLimiters.auth.check(ip);
+        } catch {
+          return null; // rate-limited: deny (opaque, no enumeration signal)
+        }
+
         const parsed = loginSchema.safeParse(rawCredentials);
         if (!parsed.success) return null;
 

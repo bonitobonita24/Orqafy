@@ -2,6 +2,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 import type { TRPCContext } from "./context";
+import { rateLimiters } from "@/server/lib/rate-limit";
 
 const t = initTRPC.context<TRPCContext>().create({
   transformer: superjson,
@@ -21,9 +22,15 @@ export const createCallerFactory = t.createCallerFactory;
 
 export const publicProcedure = t.procedure;
 
-export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
+export const protectedProcedure = t.procedure.use(({ ctx, type, next }) => {
   if (ctx.userId === null || ctx.tenantSlug === null) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+  // Rate limiting is a runtime concern — unit tests assert business logic, not
+  // throttling. The shared module-singleton limiter cache would otherwise pollute
+  // the vitest suite, which fires many mutations per userId within 60s.
+  if (type === "mutation" && process.env.NODE_ENV !== "test") {
+    rateLimiters.api.check(ctx.userId);
   }
   return next({
     ctx: {
