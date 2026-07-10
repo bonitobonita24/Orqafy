@@ -25,6 +25,14 @@ async function loadProjectForTenant(id: string, ctx: { tenantId: string }) {
   return p;
 }
 
+async function loadFundSourceForTenant(id: string, ctx: { tenantId: string }) {
+  const fs = await db.fundSource.findUnique({ where: { id } });
+  if (!fs || fs.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Fund source not found." });
+  }
+  return fs;
+}
+
 const projectInput = z.object({
   name: z.string().min(1).max(200),
   customerId: z.string().cuid().optional(),
@@ -80,8 +88,7 @@ const expenseRouter = createTRPCRouter({
     .mutation(async ({ input, ctx }) => {
       await loadProjectForTenant(input.projectId, ctx);
 
-      const fundSource = await db.fundSource.findUnique({ where: { id: input.fundSourceId } });
-      if (!fundSource) throw new TRPCError({ code: "NOT_FOUND", message: "Fund source not found." });
+      const fundSource = await loadFundSourceForTenant(input.fundSourceId, ctx);
 
       const currentBalance = parseFloat(fundSource.currentBalance.toString());
       if (isRealCashType(fundSource.type) && currentBalance < input.amount) {

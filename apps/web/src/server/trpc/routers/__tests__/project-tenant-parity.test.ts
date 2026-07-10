@@ -399,6 +399,27 @@ describe("Project tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)
     ).rejects.toMatchObject({ code: "NOT_FOUND", message: "Project not found" });
   });
 
+  // ── 11b. expense.recordProjectExpense fund-source IDOR guard ─────────────
+  it("expense.recordProjectExpense throws NOT_FOUND when fundSourceId belongs to a different tenant", async () => {
+    mockProjectFindUnique.mockResolvedValueOnce(PROJECT_A);
+    mockFundSourceFindUnique.mockResolvedValueOnce({ ...FUND_SOURCE_A, tenantId: "tenant-B" });
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+
+    await expect(
+      caller.project.expense.recordProjectExpense({
+        projectId: PROJECT_A.id,
+        amount: 1000,
+        type: "direct",
+        description: "Test expense",
+        fundSourceId: FUND_SOURCE_A.id,
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND", message: "Fund source not found." });
+
+    expect(mockFundSourceUpdate).not.toHaveBeenCalled();
+    expect(mockFundTransactionCreate).not.toHaveBeenCalled();
+  });
+
   // ── 12. demo tenant guard ─────────────────────────────────────────────────
   it("project.create throws FORBIDDEN on demo tenant", async () => {
     const caller = createCaller(ctxForTenant("tenant-A", true /* isDemoTenant */));

@@ -160,6 +160,7 @@ const fakeBankSource = {
   id: "src-1",
   name: "Main Bank",
   type: "bank",
+  tenantId: "acme-tenant-id",
   currentBalance: { toString: () => "5000" },
 };
 
@@ -167,6 +168,7 @@ const fakeCreditSource = {
   id: "src-2",
   name: "Corp Card",
   type: "credit_card",
+  tenantId: "acme-tenant-id",
   currentBalance: { toString: () => "0" },
 };
 
