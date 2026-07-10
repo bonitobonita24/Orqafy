@@ -194,6 +194,16 @@ export const storefrontRouter = createTRPCRouter({
         });
       }
 
+      // M7.2 — defensive: explicitly confirm the user-supplied warehouseId belongs to
+      // this tenant before it is written into stockMovement.fromWarehouseId /
+      // warehouseStock lookups. Currently unreachable with a foreign warehouse (the
+      // stock-availability check below would find no matching row and 0 out), but this
+      // makes the tenant boundary explicit rather than relying on that side effect.
+      const warehouse = await db.warehouse.findUnique({ where: { id: input.warehouseId } });
+      if (!warehouse || warehouse.tenantId !== ctx.tenantId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Warehouse not found." });
+      }
+
       const productIds = input.items.map((i) => i.productId);
       const products = await db.product.findMany({
         where: { id: { in: productIds }, isActive: true, tenantId: ctx.tenantId },

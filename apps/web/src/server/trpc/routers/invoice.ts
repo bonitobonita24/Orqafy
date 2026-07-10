@@ -14,6 +14,15 @@ async function loadInvoiceForTenant(id: string, ctx: { tenantId: string }) {
   return invoice;
 }
 
+// M7.2 — a user-supplied projectId must belong to the caller's tenant before it is
+// written into an invoice FK. Skips the check entirely when projectId is not supplied.
+async function assertProjectBelongsToTenant(projectId: string, ctx: { tenantId: string }) {
+  const project = await db.project.findUnique({ where: { id: projectId } });
+  if (!project || project.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Project not found." });
+  }
+}
+
 const PAYMENT_METHODS = ["cash", "bank_transfer", "gcash", "maya", "card", "xendit", "credit"] as const;
 
 /**
@@ -265,6 +274,9 @@ export const invoiceRouter = createTRPCRouter({
       if (!customer || customer.tenantId !== ctx.tenantId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Customer not found." });
       }
+      if (input.projectId !== undefined) {
+        await assertProjectBelongsToTenant(input.projectId, ctx);
+      }
 
       const subtotal = input.lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
       const invoiceNumber = `INV-${Date.now()}`;
@@ -295,6 +307,15 @@ export const invoiceRouter = createTRPCRouter({
       const existing = await loadInvoiceForTenant(id, ctx);
       if (existing.status !== "draft") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft invoices can be edited." });
+      }
+      if (rest.customerId !== undefined) {
+        const customer = await db.customer.findUnique({ where: { id: rest.customerId } });
+        if (!customer || customer.tenantId !== ctx.tenantId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Customer not found." });
+        }
+      }
+      if (rest.projectId !== undefined) {
+        await assertProjectBelongsToTenant(rest.projectId, ctx);
       }
 
       const subtotal =

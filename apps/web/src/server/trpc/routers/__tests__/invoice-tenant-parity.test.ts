@@ -7,16 +7,22 @@
  *  2. invoice.byId returns invoice when tenantId matches ctx
  *  3. invoice.create throws BAD_REQUEST when customer belongs to tenant-B but ctx is tenant-A
  *  4. invoice.create injects tenantId from ctx into db.invoice.create data when customer matches
+ *  5. (M7.2) invoice.create throws BAD_REQUEST when projectId belongs to tenant-B
+ *  6. (M7.2) invoice.update throws BAD_REQUEST when re-pointed customerId belongs to tenant-B
+ *  7. (M7.2) invoice.update throws BAD_REQUEST when re-pointed projectId belongs to tenant-B
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
-const { mockInvoiceCreate, mockInvoiceFindUnique, mockCustomerFindUnique } = vi.hoisted(() => ({
-  mockInvoiceCreate: vi.fn(),
-  mockInvoiceFindUnique: vi.fn(),
-  mockCustomerFindUnique: vi.fn(),
-}));
+const { mockInvoiceCreate, mockInvoiceUpdate, mockInvoiceFindUnique, mockCustomerFindUnique, mockProjectFindUnique } =
+  vi.hoisted(() => ({
+    mockInvoiceCreate: vi.fn(),
+    mockInvoiceUpdate: vi.fn(),
+    mockInvoiceFindUnique: vi.fn(),
+    mockCustomerFindUnique: vi.fn(),
+    mockProjectFindUnique: vi.fn(),
+  }));
 
 vi.mock("@orqafy/db", () => ({
   prisma: {
@@ -24,11 +30,14 @@ vi.mock("@orqafy/db", () => ({
       findMany: vi.fn(),
       findUnique: mockInvoiceFindUnique,
       create: mockInvoiceCreate,
-      update: vi.fn(),
+      update: mockInvoiceUpdate,
       count: vi.fn(),
     },
     customer: {
       findUnique: mockCustomerFindUnique,
+    },
+    project: {
+      findUnique: mockProjectFindUnique,
     },
   },
 }));
@@ -168,5 +177,83 @@ describe("Invoice tenant parity (K-prime closure)", () => {
     expect(mockInvoiceCreate).toHaveBeenCalledOnce();
     const callArg = mockInvoiceCreate.mock.calls[0]![0];
     expect(callArg.data.tenantId).toBe("tenant-A");
+  });
+
+  // ── M7.2 — raw-FK-write IDOR closures ────────────────────────────────────────
+
+  it("invoice.create throws BAD_REQUEST when projectId belongs to a different tenant (M7.2)", async () => {
+    mockCustomerFindUnique.mockResolvedValueOnce({
+      id: "clcustomerxxxxxxxxxx00",
+      tenantId: "tenant-A",
+    });
+    mockProjectFindUnique.mockResolvedValueOnce({
+      id: "clprojectxxxxxxxxxxx00",
+      tenantId: "tenant-B",
+    });
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+
+    await expect(
+      caller.invoice.create({
+        customerId: "clcustomerxxxxxxxxxx00",
+        projectId: "clprojectxxxxxxxxxxx00",
+        dueDate: new Date("2026-12-31"),
+        lineItems: [{ description: "x", quantity: 1, unitPrice: 100 }],
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Project not found.",
+    });
+    expect(mockInvoiceCreate).not.toHaveBeenCalled();
+  });
+
+  it("invoice.update throws BAD_REQUEST when re-pointed customerId belongs to a different tenant (M7.2)", async () => {
+    mockInvoiceFindUnique.mockResolvedValueOnce({
+      id: "clinvoicexxxxxxxxxx0001",
+      tenantId: "tenant-A",
+      status: "draft",
+    });
+    mockCustomerFindUnique.mockResolvedValueOnce({
+      id: "clcustomerxxxxxxxxxx0b",
+      tenantId: "tenant-B",
+    });
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+
+    await expect(
+      caller.invoice.update({
+        id: "clinvoicexxxxxxxxxx0001",
+        customerId: "clcustomerxxxxxxxxxx0b",
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Customer not found.",
+    });
+    expect(mockInvoiceUpdate).not.toHaveBeenCalled();
+  });
+
+  it("invoice.update throws BAD_REQUEST when re-pointed projectId belongs to a different tenant (M7.2)", async () => {
+    mockInvoiceFindUnique.mockResolvedValueOnce({
+      id: "clinvoicexxxxxxxxxx0002",
+      tenantId: "tenant-A",
+      status: "draft",
+    });
+    mockProjectFindUnique.mockResolvedValueOnce({
+      id: "clprojectxxxxxxxxxxx0b",
+      tenantId: "tenant-B",
+    });
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+
+    await expect(
+      caller.invoice.update({
+        id: "clinvoicexxxxxxxxxx0002",
+        projectId: "clprojectxxxxxxxxxxx0b",
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Project not found.",
+    });
+    expect(mockInvoiceUpdate).not.toHaveBeenCalled();
   });
 });

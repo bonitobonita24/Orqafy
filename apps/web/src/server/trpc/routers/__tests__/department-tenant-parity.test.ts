@@ -182,4 +182,23 @@ describe("Department tenant parity (K-prime closure)", () => {
       caller.department.delete({ id: "clh3dept0003hxog4d8e5f9d" }),
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
   });
+
+  // ── M7.2 — raw-FK-write IDOR closure (parentId re-validated on update) ──────
+
+  it("department.update throws BAD_REQUEST when re-pointed parentId belongs to a different tenant (M7.2)", async () => {
+    const deptId = "clh3dept0006hxog4d8e5f9g";
+    const parentId = "clh3dept0007hxog4d8e5f9h";
+    // First findUnique: the department being updated (tenant-A, ownership check).
+    // Second findUnique: the parentId guard — belongs to tenant-B.
+    mockDeptFindUnique
+      .mockResolvedValueOnce({ id: deptId, tenantId: "tenant-A", name: "Engineering", code: "ENG" })
+      .mockResolvedValueOnce({ id: parentId, tenantId: "tenant-B", name: "Other" });
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+
+    await expect(
+      caller.department.update({ id: deptId, parentId }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST", message: "Parent department not found." });
+    expect(mockDeptUpdate).not.toHaveBeenCalled();
+  });
 });

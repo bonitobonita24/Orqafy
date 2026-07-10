@@ -130,6 +130,14 @@ export const departmentRouter = createTRPCRouter({
       }
     }
 
+    // M7.2 — parentId must belong to same tenant (mirrors the create guard).
+    if (input.parentId != null && input.parentId !== "") {
+      const parent = await db.department.findUnique({ where: { id: input.parentId } });
+      if (!parent || parent.tenantId !== ctx.tenantId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Parent department not found." });
+      }
+    }
+
     const dept = await db.department.update({
       where: { id: input.id },
       data: {

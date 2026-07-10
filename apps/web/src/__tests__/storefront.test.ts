@@ -44,6 +44,7 @@ vi.mock("@orqafy/db", () => ({
     },
     warehouse: {
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
     },
     user: {
       findFirst: vi.fn(),
@@ -129,7 +130,7 @@ const mockDb = db as unknown as {
   stockMovement: { create: any; findMany: any };
   customer: { findUnique: any; findFirst: any; create: any };
   tenant: { findUnique: any };
-  warehouse: { findFirst: any };
+  warehouse: { findFirst: any; findUnique: any };
   user: { findFirst: any };
   $transaction: any;
 };
@@ -248,6 +249,9 @@ describe("storefront router", () => {
 
     function mockStockAvailable() {
       mockDb.customer.findUnique.mockResolvedValue({ id: CUSTOMER_ID, isActive: true, tenantId: TENANT_ID });
+      // M7.2 — placeOrder validates warehouseId belongs to ctx.tenantId before any
+      // product/stock lookups.
+      mockDb.warehouse.findUnique.mockResolvedValue({ id: WAREHOUSE_ID, tenantId: TENANT_ID });
       mockDb.product.findMany.mockResolvedValue([
         { id: PRODUCT_A, name: "A", isActive: true },
         { id: PRODUCT_B, name: "B", isActive: true },
@@ -350,6 +354,7 @@ describe("storefront router", () => {
 
     it("rejects when stock quantity insufficient", async () => {
       mockDb.customer.findUnique.mockResolvedValue({ id: CUSTOMER_ID, isActive: true, tenantId: TENANT_ID });
+      mockDb.warehouse.findUnique.mockResolvedValue({ id: WAREHOUSE_ID, tenantId: TENANT_ID });
       mockDb.product.findMany.mockResolvedValue([
         { id: PRODUCT_A, name: "A", isActive: true },
         { id: PRODUCT_B, name: "B", isActive: true },
@@ -367,6 +372,7 @@ describe("storefront router", () => {
 
     it("rejects when productId not found", async () => {
       mockDb.customer.findUnique.mockResolvedValue({ id: CUSTOMER_ID, isActive: true, tenantId: TENANT_ID });
+      mockDb.warehouse.findUnique.mockResolvedValue({ id: WAREHOUSE_ID, tenantId: TENANT_ID });
       mockDb.product.findMany.mockResolvedValue([
         { id: PRODUCT_A, name: "A", isActive: true },
         // PRODUCT_B missing
@@ -384,6 +390,27 @@ describe("storefront router", () => {
       const caller = createCaller(authenticatedCtx());
       await expect(caller.storefront.placeOrder(validInput)).rejects.toThrow(
         /customer/i,
+      );
+    });
+
+    it("rejects when warehouseId belongs to a different tenant (M7.2)", async () => {
+      mockDb.customer.findUnique.mockResolvedValue({ id: CUSTOMER_ID, isActive: true, tenantId: TENANT_ID });
+      mockDb.warehouse.findUnique.mockResolvedValue({ id: WAREHOUSE_ID, tenantId: "some-other-tenant" });
+
+      const caller = createCaller(authenticatedCtx());
+      await expect(caller.storefront.placeOrder(validInput)).rejects.toThrow(
+        /warehouse/i,
+      );
+      expect(mockDb.product.findMany).not.toHaveBeenCalled();
+    });
+
+    it("rejects when warehouseId does not exist (M7.2)", async () => {
+      mockDb.customer.findUnique.mockResolvedValue({ id: CUSTOMER_ID, isActive: true, tenantId: TENANT_ID });
+      mockDb.warehouse.findUnique.mockResolvedValue(null);
+
+      const caller = createCaller(authenticatedCtx());
+      await expect(caller.storefront.placeOrder(validInput)).rejects.toThrow(
+        /warehouse/i,
       );
     });
 

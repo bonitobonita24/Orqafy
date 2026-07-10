@@ -7,16 +7,19 @@
  *  2. expense.byId returns the expense when tenantId matches ctx
  *  3. expense.create throws BAD_REQUEST when expenseCategory belongs to tenant-B but ctx is tenant-A
  *  4. expense.create injects tenantId from ctx into db.expense.create data
+ *  5. (M7.2) expense.create throws BAD_REQUEST when projectId belongs to tenant-B
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
-const { mockExpenseFindUnique, mockExpenseCreate, mockExpenseCategoryFindUnique } = vi.hoisted(() => ({
-  mockExpenseFindUnique: vi.fn(),
-  mockExpenseCreate: vi.fn(),
-  mockExpenseCategoryFindUnique: vi.fn(),
-}));
+const { mockExpenseFindUnique, mockExpenseCreate, mockExpenseCategoryFindUnique, mockProjectFindUnique } =
+  vi.hoisted(() => ({
+    mockExpenseFindUnique: vi.fn(),
+    mockExpenseCreate: vi.fn(),
+    mockExpenseCategoryFindUnique: vi.fn(),
+    mockProjectFindUnique: vi.fn(),
+  }));
 
 vi.mock("@orqafy/db", () => ({
   prisma: {
@@ -30,6 +33,9 @@ vi.mock("@orqafy/db", () => ({
     expenseCategory: {
       findUnique: mockExpenseCategoryFindUnique,
       findMany: vi.fn(),
+    },
+    project: {
+      findUnique: mockProjectFindUnique,
     },
   },
 }));
@@ -174,5 +180,37 @@ describe("Expense tenant parity (K-prime closure)", () => {
     expect(mockExpenseCreate).toHaveBeenCalledOnce();
     const callArg = mockExpenseCreate.mock.calls[0]![0];
     expect(callArg.data.tenantId).toBe("tenant-A");
+  });
+
+  it("expense.create throws BAD_REQUEST when projectId belongs to a different tenant (M7.2)", async () => {
+    const catId = "clh3k2p0q0000hxog4d8e5f9j";
+    mockExpenseCategoryFindUnique.mockResolvedValueOnce({
+      id: catId,
+      tenantId: "tenant-A",
+      name: "Office",
+      isActive: true,
+    });
+    const projectId = "clh3k2p0q0005hxog4d8e5f9m";
+    mockProjectFindUnique.mockResolvedValueOnce({
+      id: projectId,
+      tenantId: "tenant-B",
+    });
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+
+    await expect(
+      caller.expense.create({
+        expenseCategoryId: catId,
+        projectId,
+        description: "test",
+        amount: 100,
+        currency: "PHP",
+        date: new Date("2024-01-01"),
+      })
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Project not found.",
+    });
+    expect(mockExpenseCreate).not.toHaveBeenCalled();
   });
 });

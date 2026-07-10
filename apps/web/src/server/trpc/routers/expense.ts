@@ -82,6 +82,13 @@ export const expenseRouter = createTRPCRouter({
       if (!cat || cat.tenantId !== ctx.tenantId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Category not found." });
       }
+      // M7.2 — a user-supplied projectId must belong to the caller's tenant.
+      if (input.projectId !== undefined) {
+        const project = await db.project.findUnique({ where: { id: input.projectId } });
+        if (!project || project.tenantId !== ctx.tenantId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Project not found." });
+        }
+      }
       const expenseNumber = `EXP-${Date.now()}`;
       return db.expense.create({
         data: {

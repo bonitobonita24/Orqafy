@@ -19,6 +19,7 @@ const {
   mockProductFindFirst,
   mockWarehouseFindMany,
   mockWarehouseFindFirst,
+  mockWarehouseFindUnique,
   mockWarehouseStockFindMany,
   mockCustomerFindUnique,
 } = vi.hoisted(() => ({
@@ -27,6 +28,7 @@ const {
   mockProductFindFirst: vi.fn(),
   mockWarehouseFindMany: vi.fn(),
   mockWarehouseFindFirst: vi.fn(),
+  mockWarehouseFindUnique: vi.fn(),
   mockWarehouseStockFindMany: vi.fn(),
   mockCustomerFindUnique: vi.fn(),
 }));
@@ -42,7 +44,7 @@ vi.mock("@orqafy/db", () => ({
     warehouse: {
       findMany: mockWarehouseFindMany,
       findFirst: mockWarehouseFindFirst,
-      findUnique: vi.fn(),
+      findUnique: mockWarehouseFindUnique,
       create: vi.fn(),
       update: vi.fn(),
     },
@@ -154,6 +156,12 @@ describe("Product + Warehouse tenant parity (K-prime Extended Phase 2 Wave B)", 
       tenantId: "tenant-A",
       isActive: true,
     });
+    // M7.2 — warehouseId is validated before the product check; return a tenant-A
+    // warehouse here so the test proceeds to the product-tenant rejection below.
+    mockWarehouseFindUnique.mockResolvedValueOnce({
+      id: WAREHOUSE_CUID,
+      tenantId: "tenant-A",
+    });
     // product.findMany returns empty because tenantId filter excludes tenant-B products
     mockProductFindMany.mockResolvedValueOnce([]);
 
@@ -175,6 +183,37 @@ describe("Product + Warehouse tenant parity (K-prime Extended Phase 2 Wave B)", 
     expect(mockProductFindMany).toHaveBeenCalledOnce();
     const callArg = mockProductFindMany.mock.calls[0]![0];
     expect(callArg.where).toMatchObject({ tenantId: "tenant-A" });
+  });
+
+  it("placeOrder rejects when warehouseId belongs to a different tenant (M7.2)", async () => {
+    mockCustomerFindUnique.mockResolvedValueOnce({
+      id: "clcustomerxxxxxxxxxxx0",
+      tenantId: "tenant-A",
+      isActive: true,
+    });
+    // Warehouse exists but belongs to tenant-B — must be rejected before any
+    // product/stock lookups run.
+    mockWarehouseFindUnique.mockResolvedValueOnce({
+      id: WAREHOUSE_CUID,
+      tenantId: "tenant-B",
+    });
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+
+    await expect(
+      caller.storefront.placeOrder({
+        customerId: "clcustomerxxxxxxxxxxx0",
+        warehouseId: WAREHOUSE_CUID,
+        items: [{ productId: PRODUCT_CUID, quantity: 1, unitPrice: 100 }],
+        shippingAddress: { line1: "123 Test St" },
+        billingAddress: { line1: "123 Test St" },
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Warehouse not found.",
+    });
+
+    expect(mockProductFindMany).not.toHaveBeenCalled();
   });
 
   it("warehouseList scopes findMany by ctx.tenantId", async () => {
