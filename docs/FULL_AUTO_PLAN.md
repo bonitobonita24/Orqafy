@@ -53,18 +53,42 @@
       → OWNER-GATED Wave C (D-RBAC-C2/C3 in PENDING_DECISIONS). Not auto-executed.
 - [ ] Back-port to `PRODUCT.md` (list change for human) + `DECISIONS_LOG.md`. Dev Visual QA.
 
-### M3 — AIEF governance/policy full audit + sync-gap
-- [ ] Confirm framework at V32.18 (just synced). Scan app vs AIEF governance surfaces:
-      Security_Checklist §1–§16 (114 items), WCAG gov gate, RBAC standard, design-defaults,
-      versioning, deploy discipline, motion layer, lint-design (D1–D7), privacy.md (RA 10173).
-- [ ] Produce `docs/AIEF_AUDIT_TODO.md` (prioritized P0/P1/P2). Apply small safe fixes; log the rest.
+### M3 — AIEF governance/policy full audit + sync-gap  ✅ DONE (2026-07-11, commit 2a0e9ca)
+- [x] 3 parallel read-only audits (security · design/a11y · governance) vs V32.18 surfaces.
+- [x] `docs/AIEF_AUDIT_TODO.md` produced (P0/P1/P2, reconciled vs existing docs).
+- [x] Applied small safe fixes: **P0 demo.reset cross-tenant wipe** (+3 tests), P2 cron
+      timingSafeEqual, a11y aria-labels + global prefers-reduced-motion + footer contrast.
+      web 1063/1063 · typecheck · lint · lint-design all green. Logged the rest (P1/P2).
+- Net result: 1 security P0 (fixed) · remaining = P1 rate-limiting + `.strict()` sweep +
+  Entry-1 container + mobile sidebar; P2 tenant-model dead-code cleanup + hardening.
 
-### M4 — Wrap
-- [ ] Reconcile all owner-gated items into `PENDING_DECISIONS.md`; final STATE + memory save.
-- [ ] Loop decision: only owner-gated `[WHAT]` left → reboot + `--hold` pace (never --stop while
-      open decisions exist).
+### M4 — Wrap  ✅ DONE (2026-07-11)
+- [x] Surfaced RA 10173 DPO/NPC/PIA into `PENDING_DECISIONS.md` (D-PRIV-1). All owner-gated items
+      reconciled. STATE + memory + handoff saved.
+- [x] Loop decision: un-gated `[HOW]` work still remains (M5/M6 below) → reboot (no --stop), next
+      session advances M5. NOT --hold (real work queued, not idle-on-decision).
+
+---
+
+## FORWARD QUEUE (un-gated [HOW] — keeps the loop alive; from AIEF_AUDIT_TODO.md)
+
+### M5 — Headless security hardening (no running stack needed; verify via typecheck + 1063 suite)
+- [ ] **S-P2a** tenant-model reconciliation: remove/neutralize the dormant schema-per-tenant machinery
+      (`createTenantPrisma`, `tenantGuardExtension` `SET search_path` path — zero runtime callers; root
+      cause of the M3 P0) OR guard `schemaName` interpolation; document the single `public`-schema +
+      explicit-`tenantId` isolation contract. Clean up any test-only references. Full suite must stay green.
+- [ ] **S-P1b** Zod `.strict()` sweep across ~32 routers (spec-executor dispatch; typecheck + suite).
+- [ ] **D-P2** lint-design P1a: add letter-spacing tracking to the 2 all-caps sites.
+
+### M6 — Dev-up session (needs LOCAL dev stack — owner word or deliberate rebuild)
+- [ ] Bring dev stack up + rebuild off branch; apply migration `20260710160000` (D-RBAC-B-APPLY);
+      run `apps/worker` succession integration test.
+- [ ] Visual QA (Rule 16): M2 RBAC flows + **D-P1a** Entry-1 max-width container (apply w/ QA across
+      89 pages) + **D-P1b** mobile off-canvas sidebar + **S-P1a** login/protected rate-limiting.
+- [ ] Then back-port to PRODUCT.md/DECISIONS_LOG; owner-gated staging/prod remains HARD HOLD.
 
 ## Log
 - 2026-07-10 — Plan authored. Running under claude-loop slot-4. Starting M1.
 - 2026-07-10 — M2a DONE: docs/RBAC_ALIGNMENT.md written (Wave A/B/C split). Wave A1 bug fix committed 9fdf95f (green). A2 deferred (cosmetic). Wave C → PENDING_DECISIONS.md. Next: M2b Wave B (one-owner + succession).
 - 2026-07-11 — M2b/M2c DONE (Wave B): one-owner-per-tenant integrity (is_tenant_owner + partial unique index, migration 20260710160000 authored/not-applied) + two-way succession (succession.ts + platform/user tRPC wiring + 5 web unit tests + worker integration test). Web 1060/1060 green. M2d + platform-NULL remain owner-gated Wave C. M2 [HOW]-scope complete → next M3 (AIEF audit).
+- 2026-07-11 — M3 + M4 DONE (commit 2a0e9ca). 3 parallel audits → docs/AIEF_AUDIT_TODO.md. Applied P0 fix (demo.reset cross-tenant deleteMany wipe → tenant-scoped, +3 tests), P2 cron timingSafeEqual, a11y (aria-labels + prefers-reduced-motion + footer contrast). web 1063/1063 · typecheck · lint · lint-design green. D-PRIV-1 surfaced to PENDING_DECISIONS. Un-gated [HOW] remains (M5 headless hardening / M6 dev-up) → reboot to advance M5, NOT --stop/--hold.

@@ -2435,3 +2435,18 @@
 - Validation:          web vitest 1060/1060 (+5 succession unit tests); web/worker/db typecheck clean; web lint clean. Worker integration test succession.test.ts requires live DB (runs on dev up, like tenant-provisioning.test.ts).
 - Scope note:          DEV ONLY — LOCAL commit on feat/tenant-rbac-3tier. Wave C (platform tenant_id NULL, enforced permission-matrix, role-builder UI) remains owner-gated in docs/PENDING_DECISIONS.md.
 - Scope note:          DEV ONLY — LOCAL commits on feat/tenant-rbac-3tier. A2 slug rename (tenant_super_admin→tenant_superadmin) DEFERRED as cosmetic (authz keys off role NAME, not slug). Wave C items logged to docs/PENDING_DECISIONS.md (owner-gated).
+
+## 2026-07-11 — AIEF governance audit M3 + P0/a11y fixes (Full-Auto)
+- Agent:               CLAUDE_CODE
+- Why:                 Full-Auto M3 — audit Orqafy vs AIEF V32.18 governance surfaces (Security_Checklist §1-16, WCAG gov gate, RBAC/design-defaults/versioning/deploy/motion/privacy standards) via 3 parallel read-only agents; apply small safe fixes, log the rest.
+- Files added:         docs/AIEF_AUDIT_TODO.md, apps/web/src/__tests__/demo-reset-tenant-scope.test.ts
+- Files modified:      apps/web/src/server/trpc/routers/demo.ts (P0), apps/web/src/app/api/internal/schedule-digests/route.ts (P2), apps/web/src/components/{attachments-panel.tsx,file-upload.tsx}, apps/web/src/components/layout/app-sidebar.tsx, apps/web/src/app/globals.css, docs/{PENDING_DECISIONS.md,FULL_AUTO_PLAN.md,STATE.md}
+- Schema/migrations:   none
+- What it adds:        P0 SECURITY FIX — demoRouter.reset ran deleteMany({}) unscoped on the shared public schema (inactive schema-per-tenant search_path), so a demo session could wipe every tenant's data; now tenant-scoped by ctx.tenantId + null-guard, +3 regression tests. P2 — cron secret now timingSafeEqual. a11y (WCAG 4.1.2/2.3.3, gov gate) — aria-labels on attachment download/delete + file-upload remove buttons + sidebar nav; global prefers-reduced-motion block; sidebar footer contrast (dropped /50 opacity). D-PRIV-1 (RA 10173 DPO/NPC/PIA) surfaced to PENDING_DECISIONS.
+- Scope:               App code (demo router + cron route + 3 components + globals.css + 1 test) + governance docs. LOCAL only, branch feat/tenant-rbac-3tier.
+- Verify:              web 1063/1063 tests · typecheck clean · lint clean · lint-design clean.
+- Commits:             2a0e9ca (fix(security,a11y): scope demo.reset per-tenant (P0) + audit quick-wins (M3))
+- Errors encountered:  test file initially tripped noUncheckedIndexedAccess + no-unsafe-* lint; fixed via Record<union> typing + dropping `as any`.
+- Errors resolved:     as above.
+- NEXT:                M5 headless hardening (tenant-model dead-code cleanup + .strict() sweep) then M6 dev-up session (apply migration + Visual QA). Remaining audit P1/P2 logged in docs/AIEF_AUDIT_TODO.md.
+- HOLD:                No push/staging/prod/deploy without explicit owner signal.
