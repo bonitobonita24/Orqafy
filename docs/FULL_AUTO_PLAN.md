@@ -72,7 +72,7 @@
 
 ## FORWARD QUEUE (un-gated [HOW] — keeps the loop alive; from AIEF_AUDIT_TODO.md)
 
-### M5 — Headless security hardening (no running stack needed; verify via typecheck + 1063 suite)
+### M5 — Headless security hardening  ✅ DONE (2026-07-11; commits 4fcd10b · 3dd3fe0 · bb09e3f)
 - [x] **S-P2a** tenant-model reconciliation: DELETED dormant schema-per-tenant runtime path
       (`createTenantPrisma` + `tenantGuardExtension` file w/ the `SET search_path` injection landmine —
       zero runtime callers, confirmed by scout) + 2 barrel exports + 1 test mock; added canonical
@@ -101,3 +101,4 @@
 - 2026-07-10 — M2a DONE: docs/RBAC_ALIGNMENT.md written (Wave A/B/C split). Wave A1 bug fix committed 9fdf95f (green). A2 deferred (cosmetic). Wave C → PENDING_DECISIONS.md. Next: M2b Wave B (one-owner + succession).
 - 2026-07-11 — M2b/M2c DONE (Wave B): one-owner-per-tenant integrity (is_tenant_owner + partial unique index, migration 20260710160000 authored/not-applied) + two-way succession (succession.ts + platform/user tRPC wiring + 5 web unit tests + worker integration test). Web 1060/1060 green. M2d + platform-NULL remain owner-gated Wave C. M2 [HOW]-scope complete → next M3 (AIEF audit).
 - 2026-07-11 — M3 + M4 DONE (commit 2a0e9ca). 3 parallel audits → docs/AIEF_AUDIT_TODO.md. Applied P0 fix (demo.reset cross-tenant deleteMany wipe → tenant-scoped, +3 tests), P2 cron timingSafeEqual, a11y (aria-labels + prefers-reduced-motion + footer contrast). web 1063/1063 · typecheck · lint · lint-design green. D-PRIV-1 surfaced to PENDING_DECISIONS. Un-gated [HOW] remains (M5 headless hardening / M6 dev-up) → reboot to advance M5, NOT --stop/--hold.
+- 2026-07-11 — M5 DONE (all headless, LOCAL, verified green each step). D-P2 (4fcd10b): lint-design P1a all-caps tracking. S-P2a (3dd3fe0): deleted dormant schema-per-tenant runtime path incl. the `SET search_path` injection landmine (tenant-guard.ts) + createTenantPrisma + barrel/mocks; documented single-public-schema+tenantId contract; zero-runtime-caller (scout-confirmed). S-P1b (bb09e3f): Zod .strict() sweep on ~130 mutation inputs / 29 routers (9 parallel spec-executors; base-const propagation; kept storefront passthrough). Verify each: web typecheck + eslint + lint-design + suite 1063/1063 green. Remainder→M6: vestigial physical t_<slug> schema creation (live worker caller). Next milestone M6 (dev-up) NEEDS local dev stack + browser Visual QA → milestone-barrier reboot (no --stop) so fresh session runs M6.
