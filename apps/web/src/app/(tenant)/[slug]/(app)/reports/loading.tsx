@@ -1,7 +1,26 @@
+import { Skeleton } from "@/components/ui/skeleton";
+
 export default function Loading() {
   return (
-    <div className="flex h-64 items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-72" />
+      </div>
+      <div className="flex gap-2">
+        <Skeleton className="h-9 w-32" />
+        <Skeleton className="h-9 w-32" />
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+      </div>
     </div>
   );
 }
