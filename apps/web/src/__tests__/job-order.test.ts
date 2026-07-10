@@ -31,12 +31,14 @@ vi.mock("@orqafy/db", () => ({
     },
     customer: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
     },
     user: {
       findUnique: vi.fn(),
     },
     product: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
     },
   },
 }));
@@ -91,9 +93,9 @@ const mockDb = db as unknown as {
   jobOrder: { findMany: any; findUnique: any; count: any; create: any; update: any };
   jobOrderPart: { create: any; findUnique: any; delete: any };
   jobOrderServiceLine: { create: any; findUnique: any; delete: any };
-  customer: { findUnique: any };
+  customer: { findUnique: any; findFirst: any };
   user: { findUnique: any };
-  product: { findUnique: any };
+  product: { findUnique: any; findFirst: any };
 };
 
 const JO_CUID = "ck1234567890123456789012a";
@@ -252,7 +254,7 @@ describe("jobOrder router", () => {
 
   describe("create", () => {
     it("creates a new job order with status=received and auto jobOrderNumber", async () => {
-      mockDb.customer.findUnique.mockResolvedValue({ id: CUST_CUID });
+      mockDb.customer.findFirst.mockResolvedValue({ id: CUST_CUID });
       mockDb.jobOrder.create.mockResolvedValue({ id: JO_CUID, status: "received" });
       const caller = createCaller(authenticatedCtx());
       await caller.jobOrder.create({
@@ -270,7 +272,7 @@ describe("jobOrder router", () => {
     });
 
     it("throws BAD_REQUEST when customer does not exist", async () => {
-      mockDb.customer.findUnique.mockResolvedValue(null);
+      mockDb.customer.findFirst.mockResolvedValue(null);
       const caller = createCaller(authenticatedCtx());
       await expect(
         caller.jobOrder.create({

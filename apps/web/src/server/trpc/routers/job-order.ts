@@ -163,7 +163,11 @@ export const jobOrderRouter = createTRPCRouter({
   create: writeProcedure
     .input(jobOrderInput)
     .mutation(async ({ input, ctx }) => {
-      const customer = await db.customer.findUnique({ where: { id: input.customerId } });
+      // Tenant-isolation: the customer MUST belong to the caller's tenant —
+      // otherwise a job order could be linked to another tenant's customer record.
+      const customer = await db.customer.findFirst({
+        where: { id: input.customerId, tenantId: ctx.tenantId },
+      });
       if (!customer) throw new TRPCError({ code: "BAD_REQUEST", message: "Customer not found." });
       const jobOrderNumber = `JO-${Date.now()}`;
       return db.jobOrder.create({
@@ -293,7 +297,11 @@ export const jobOrderRouter = createTRPCRouter({
         });
       }
       if (input.productId !== undefined) {
-        const product = await db.product.findUnique({ where: { id: input.productId } });
+        // Tenant-isolation: the product MUST belong to the caller's tenant —
+        // otherwise a job order part could reference another tenant's product.
+        const product = await db.product.findFirst({
+          where: { id: input.productId, tenantId: ctx.tenantId },
+        });
         if (!product) throw new TRPCError({ code: "BAD_REQUEST", message: "Product not found." });
       }
       const totalPrice = input.quantity * input.unitPrice;
