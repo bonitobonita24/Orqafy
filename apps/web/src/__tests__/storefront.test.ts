@@ -4,54 +4,72 @@ import { storefrontRouter } from "@/server/trpc/routers/storefront";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 
-vi.mock("@orqafy/db", () => ({
-  writeAuditLog: mockWriteAuditLog,
-  prisma: {
-    product: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      findFirst: vi.fn(),
-      count: vi.fn(),
+import type * as OrqafyDb from "@orqafy/db";
+
+// Keep the real `hasPermission` resolver (tenant-rbac-standard.md §4 — the
+// storefront router's admin-gated procedures now run through
+// matrixMiddleware, which calls hasPermission -> prisma.role.findFirst +
+// prisma.rolePermission.findUnique). Only the prisma client + writeAuditLog
+// are mocked; hasPermission itself stays the real implementation so it
+// resolves against the mocked role/rolePermission calls below.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    writeAuditLog: mockWriteAuditLog,
+    prisma: {
+      product: {
+        findMany: vi.fn(),
+        findUnique: vi.fn(),
+        findFirst: vi.fn(),
+        count: vi.fn(),
+      },
+      ecommerceOrder: {
+        findFirst: vi.fn(),
+        findUnique: vi.fn(),
+        findMany: vi.fn(),
+        count: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+      },
+      ecommerceOrderItem: {
+        create: vi.fn(),
+      },
+      warehouseStock: {
+        findFirst: vi.fn(),
+        findUnique: vi.fn(),
+        findMany: vi.fn(),
+        update: vi.fn(),
+      },
+      stockMovement: {
+        create: vi.fn(),
+        findMany: vi.fn(),
+      },
+      customer: {
+        findUnique: vi.fn(),
+        findFirst: vi.fn(),
+        create: vi.fn(),
+      },
+      tenant: {
+        findUnique: vi.fn(),
+      },
+      warehouse: {
+        findFirst: vi.fn(),
+        findUnique: vi.fn(),
+      },
+      user: {
+        findFirst: vi.fn(),
+      },
+      // RBAC matrix resolver mocks (tenant-rbac-standard.md §4) — see comment
+      // above. Default to a Platform Owner role (matrix bypass) in the
+      // top-level beforeEach so every existing assertion below is unaffected
+      // by the RBAC layer unless a test explicitly overrides it.
+      role: { findFirst: vi.fn() },
+      rolePermission: { findUnique: vi.fn() },
+      $transaction: vi.fn(),
     },
-    ecommerceOrder: {
-      findFirst: vi.fn(),
-      findUnique: vi.fn(),
-      findMany: vi.fn(),
-      count: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-    },
-    ecommerceOrderItem: {
-      create: vi.fn(),
-    },
-    warehouseStock: {
-      findFirst: vi.fn(),
-      findUnique: vi.fn(),
-      findMany: vi.fn(),
-      update: vi.fn(),
-    },
-    stockMovement: {
-      create: vi.fn(),
-      findMany: vi.fn(),
-    },
-    customer: {
-      findUnique: vi.fn(),
-      findFirst: vi.fn(),
-      create: vi.fn(),
-    },
-    tenant: {
-      findUnique: vi.fn(),
-    },
-    warehouse: {
-      findFirst: vi.fn(),
-      findUnique: vi.fn(),
-    },
-    user: {
-      findFirst: vi.fn(),
-    },
-    $transaction: vi.fn(),
-  },
-}));
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: {
@@ -91,6 +109,7 @@ function authenticatedCtx(roles: string[] = ["Administrator"], isDemoTenant = fa
     req: makeReq(),
     userId: "ck1234567890123456789012a",
     roles,
+    roleId: "role-a",
     tenantSlug: "test-tenant",
     tenantId: TENANT_ID,
     securityVersion: 0,
@@ -103,6 +122,7 @@ function unauthenticatedCtx() {
     req: makeReq(),
     userId: null,
     roles: [] as string[],
+    roleId: null,
     tenantSlug: null,
     tenantId: null,
     securityVersion: 0,
@@ -132,6 +152,8 @@ const mockDb = db as unknown as {
   tenant: { findUnique: any };
   warehouse: { findFirst: any; findUnique: any };
   user: { findFirst: any };
+  role: { findFirst: any };
+  rolePermission: { findUnique: any };
   $transaction: any;
 };
 
@@ -141,8 +163,28 @@ const PRODUCT_A = "ck1234567890123456789012e";
 const PRODUCT_B = "ck1234567890123456789012f";
 const ORDER_ID = "ck1234567890123456789012g";
 
+// RBAC matrix bypass (tenant-rbac-standard.md §4) — Platform Owner short-
+// circuits hasPermission entirely, so cross-tenant/business-logic assertions
+// below stay the sole focus. Re-armed after every vi.clearAllMocks(); tests
+// that specifically assert the admin-only gate override this with a
+// non-bypass role + denying matrix row.
+function grantMatrixBypass(): void {
+  mockDb.role.findFirst.mockResolvedValue({ id: "role-x", tenantId: TENANT_ID, name: "Platform Owner" });
+}
+
+// Non-bypass role with no "update" grant on the "storefront" feature —
+// preserves the pre-migration "non-admin -> FORBIDDEN" intent for the
+// admin-gated (storefrontManageProcedure / storefrontManageReadProcedure)
+// endpoints now that their inline requireAdmin() checks were removed in
+// favor of the RBAC matrix.
+function denyMatrixUpdate(): void {
+  mockDb.role.findFirst.mockResolvedValueOnce({ id: "role-staff", tenantId: TENANT_ID, name: "Staff" });
+  mockDb.rolePermission.findUnique.mockResolvedValueOnce({ view: true, create: true, update: false, delete: false });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  grantMatrixBypass();
 });
 
 describe("storefront router", () => {
@@ -979,6 +1021,7 @@ describe("storefront router", () => {
     });
 
     it("requires admin role (FORBIDDEN for non-admin)", async () => {
+      denyMatrixUpdate();
       const caller = createCaller(authenticatedCtx(["Staff"]));
       await expect(caller.storefront.listAllOrders({})).rejects.toThrow(
         TRPCError,
@@ -1044,6 +1087,7 @@ describe("storefront router", () => {
     });
 
     it("requires admin role (FORBIDDEN for non-admin)", async () => {
+      denyMatrixUpdate();
       const caller = createCaller(authenticatedCtx(["Staff"]));
       await expect(
         caller.storefront.updateOrderStatus({
@@ -1390,6 +1434,7 @@ describe("storefront router", () => {
     });
 
     it("requires admin role (FORBIDDEN for non-admin)", async () => {
+      denyMatrixUpdate();
       const caller = createCaller(authenticatedCtx(["Staff"]));
       await expect(
         caller.storefront.updateFulfillment({

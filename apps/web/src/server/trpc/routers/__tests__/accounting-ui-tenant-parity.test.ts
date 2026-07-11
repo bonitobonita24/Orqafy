@@ -13,6 +13,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as OrqafyDb from "@orqafy/db";
 import type { NextRequest } from "next/server";
 
 // ── DB mock ───────────────────────────────────────────────────────────────────
@@ -28,6 +29,8 @@ const {
   mockJournalEntryCount,
   mockAccountFindMany,
   mockJournalLineFindMany,
+  mockRoleFindFirst,
+  mockRolePermissionFindUnique,
   mockTransaction,
 } = vi.hoisted(() => ({
   mockAccountFindUnique:     vi.fn(),
@@ -41,6 +44,13 @@ const {
   mockJournalEntryCount:     vi.fn(),
   mockAccountFindMany:       vi.fn(),
   mockJournalLineFindMany:   vi.fn(),
+  // RBAC matrix resolver mocks (tenant-rbac-standard.md §4) — the router's
+  // procedures now run through matrixMiddleware, which calls hasPermission ->
+  // prisma.role.findFirst + prisma.rolePermission.findUnique. Tests grant a
+  // Platform Owner bypass role so all pre-existing tenant-parity assertions
+  // below are unaffected by the RBAC layer.
+  mockRoleFindFirst:            vi.fn(),
+  mockRolePermissionFindUnique: vi.fn(),
   mockTransaction: vi.fn().mockImplementation((fn: any) => Promise.resolve(fn({
     account: { create: mockAccountCreate, update: mockAccountUpdate },
     journalEntry: { create: mockJournalEntryCreate, update: mockJournalEntryUpdate },
@@ -48,31 +58,39 @@ const {
   }))),
 }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    account: {
-      findUnique:  mockAccountFindUnique,
-      create:      mockAccountCreate,
-      update:      mockAccountUpdate,
-      count:       mockAccountCount,
-      findMany:    mockAccountFindMany,
+// Keep the real `hasPermission` resolver (matrixMiddleware imports it from
+// this module) — only replace the prisma client calls it makes.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      account: {
+        findUnique:  mockAccountFindUnique,
+        create:      mockAccountCreate,
+        update:      mockAccountUpdate,
+        count:       mockAccountCount,
+        findMany:    mockAccountFindMany,
+      },
+      fiscalYear: {
+        findUnique: mockFiscalYearFindUnique,
+      },
+      journalEntry: {
+        findUnique: mockJournalEntryFindUnique,
+        create:     mockJournalEntryCreate,
+        update:     mockJournalEntryUpdate,
+        count:      mockJournalEntryCount,
+      },
+      journalLine: {
+        findMany: mockJournalLineFindMany,
+      },
+      role: { findFirst: mockRoleFindFirst },
+      rolePermission: { findUnique: mockRolePermissionFindUnique },
+      $transaction: mockTransaction,
     },
-    fiscalYear: {
-      findUnique: mockFiscalYearFindUnique,
-    },
-    journalEntry: {
-      findUnique: mockJournalEntryFindUnique,
-      create:     mockJournalEntryCreate,
-      update:     mockJournalEntryUpdate,
-      count:      mockJournalEntryCount,
-    },
-    journalLine: {
-      findMany: mockJournalLineFindMany,
-    },
-    $transaction: mockTransaction,
-  },
-  writeAuditLog: vi.fn(),
-}));
+    writeAuditLog: vi.fn(),
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: { api: { check: vi.fn() }, public: { check: vi.fn() } },
@@ -91,6 +109,7 @@ function ctx(tenantId: string) {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-a",
     tenantSlug: "test-slug",
     tenantId,
     securityVersion: 1,
@@ -107,7 +126,10 @@ const fakeJeB = { id: "je-B", tenantId: "tenant-B", entryNumber: "JE-0002", stat
 
 // ── account.update — tenant guard ─────────────────────────────────────────────
 describe("account.update — tenant guard", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: "tenant-A", name: "Platform Owner" });
+  });
 
   it("allows update when account belongs to caller's tenant", async () => {
     mockAccountFindUnique.mockResolvedValue(fakeAccountA);
@@ -128,7 +150,10 @@ describe("account.update — tenant guard", () => {
 
 // ── account.toggleActive — tenant guard ───────────────────────────────────────
 describe("account.toggleActive — tenant guard", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: "tenant-A", name: "Platform Owner" });
+  });
 
   it("allows toggle when account belongs to caller's tenant", async () => {
     mockAccountFindUnique.mockResolvedValue(fakeAccountA);
@@ -149,7 +174,10 @@ describe("account.toggleActive — tenant guard", () => {
 
 // ── account.create — tenantId from ctx ───────────────────────────────────────
 describe("account.create — tenantId injected from ctx", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: "tenant-A", name: "Platform Owner" });
+  });
 
   it("sets tenantId from ctx, not user input", async () => {
     mockAccountCreate.mockResolvedValue({ ...fakeAccountA, id: "acc-new" });
@@ -168,7 +196,10 @@ describe("account.create — tenantId injected from ctx", () => {
 
 // ── journalEntry.create — FY cross-tenant guard ───────────────────────────────
 describe("journalEntry.create — FY cross-tenant guard", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: "tenant-A", name: "Platform Owner" });
+  });
 
   it("throws NOT_FOUND when fiscal year belongs to different tenant", async () => {
     const fakeFyB = { id: "fy-B", tenantId: "tenant-B", name: "FY2025-B", isClosed: false };
@@ -210,7 +241,10 @@ describe("journalEntry.create — FY cross-tenant guard", () => {
 
 // ── journalEntry.update — tenant guard + draft-only guard ─────────────────────
 describe("journalEntry.update — tenant guard", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: "tenant-A", name: "Platform Owner" });
+  });
 
   it("allows update when entry belongs to caller's tenant and is draft", async () => {
     mockJournalEntryFindUnique.mockResolvedValue(fakeJeA);

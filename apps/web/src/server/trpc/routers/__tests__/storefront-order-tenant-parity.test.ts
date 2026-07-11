@@ -19,6 +19,8 @@ const {
   mockOrderCount,
   mockOrderUpdate,
   mockCustomerFindFirst,
+  mockRoleFindFirst,
+  mockRolePermissionFindUnique,
 } = vi.hoisted(() => ({
   mockOrderFindUnique: vi.fn(),
   mockOrderFindFirst: vi.fn(),
@@ -26,29 +28,46 @@ const {
   mockOrderCount: vi.fn(),
   mockOrderUpdate: vi.fn(),
   mockCustomerFindFirst: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
+  mockRolePermissionFindUnique: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    ecommerceOrder: {
-      findUnique: mockOrderFindUnique,
-      findFirst: mockOrderFindFirst,
-      findMany: mockOrderFindMany,
-      count: mockOrderCount,
-      update: mockOrderUpdate,
+import type * as OrqafyDb from "@orqafy/db";
+
+// Keep the real `hasPermission` resolver (tenant-rbac-standard.md §4 — the
+// storefront router's procedures now run through matrixMiddleware, which
+// calls hasPermission -> prisma.role.findFirst + prisma.rolePermission
+// .findUnique). Only the prisma client + writeAuditLog are mocked.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      ecommerceOrder: {
+        findUnique: mockOrderFindUnique,
+        findFirst: mockOrderFindFirst,
+        findMany: mockOrderFindMany,
+        count: mockOrderCount,
+        update: mockOrderUpdate,
+      },
+      customer: {
+        findFirst: mockCustomerFindFirst,
+        findUnique: vi.fn(),
+      },
+      tenant: { findUnique: vi.fn() },
+      warehouse: { findFirst: vi.fn() },
+      warehouseStock: { findMany: vi.fn(), update: vi.fn() },
+      product: { findMany: vi.fn(), findUnique: vi.fn() },
+      stockMovement: { findMany: vi.fn(), create: vi.fn() },
+      // RBAC matrix resolver mocks (tenant-rbac-standard.md §4). Defaulted
+      // to a Platform Owner bypass in the top-level beforeEach so these
+      // tenant-parity/IDOR assertions stay unaffected by the RBAC layer.
+      role: { findFirst: mockRoleFindFirst },
+      rolePermission: { findUnique: mockRolePermissionFindUnique },
     },
-    customer: {
-      findFirst: mockCustomerFindFirst,
-      findUnique: vi.fn(),
-    },
-    tenant: { findUnique: vi.fn() },
-    warehouse: { findFirst: vi.fn() },
-    warehouseStock: { findMany: vi.fn(), update: vi.fn() },
-    product: { findMany: vi.fn(), findUnique: vi.fn() },
-    stockMovement: { findMany: vi.fn(), create: vi.fn() },
-  },
-  writeAuditLog: vi.fn(),
-}));
+    writeAuditLog: vi.fn(),
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: {
@@ -86,6 +105,7 @@ function ctxForTenant(tenantId: string) {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-a",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -100,6 +120,10 @@ const CUSTOMER_CUID = "clcustomerxxxxxxxxxxx0";
 describe("Storefront EcommerceOrder tenant parity (K-prime Extended Phase 2)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // RBAC matrix bypass (tenant-rbac-standard.md §4) — Platform Owner
+    // short-circuits hasPermission entirely so the IDOR/tenant-parity
+    // assertions below stay the sole focus.
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: "tenant-A", name: "Platform Owner" });
   });
 
   it("getOrderById throws NOT_FOUND when order belongs to a different tenant", async () => {

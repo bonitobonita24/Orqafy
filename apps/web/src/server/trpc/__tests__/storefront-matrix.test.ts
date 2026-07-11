@@ -1,0 +1,167 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { TRPCError } from "@trpc/server";
+import {
+  createTRPCRouter,
+  createCallerFactory,
+  protectedProcedure,
+  writeProcedure,
+} from "@/server/trpc/trpc";
+import { matrixProcedure, matrixMiddleware } from "@/server/trpc/middleware/matrix";
+import type * as OrqafyDb from "@orqafy/db";
+
+vi.mock("@/server/lib/rate-limit", () => ({
+  rateLimiters: {
+    api: { check: vi.fn() },
+    auth: { check: vi.fn() },
+    upload: { check: vi.fn() },
+    public: { check: vi.fn() },
+  },
+}));
+
+// Keep the real `hasPermission` resolver (it takes prisma as an argument) —
+// only mock the prisma client calls it makes.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      role: { findFirst: vi.fn() },
+      rolePermission: { findUnique: vi.fn() },
+    },
+  };
+});
+
+import { prisma as db } from "@orqafy/db";
+const mockDb = db as unknown as {
+  role: { findFirst: any };
+  rolePermission: { findUnique: any };
+};
+
+import type { NextRequest } from "next/server";
+function makeReq(): NextRequest {
+  return {
+    headers: { get: (_h: string): string | null => null },
+  } as unknown as NextRequest;
+}
+
+function ctx(roleId: string | null = "role-1", isDemoTenant = false) {
+  return {
+    req: makeReq(),
+    userId: "user-1",
+    roles: ["Custom Role"],
+    roleId,
+    tenantSlug: "acme",
+    tenantId: "acme-tenant-id",
+    securityVersion: 1,
+    isDemoTenant,
+    session: null,
+  };
+}
+
+// Mini router mirroring storefront.ts's "storefront" feature wiring: a view
+// (matrixProcedure), a create (writeProcedure + matrixMiddleware "create"),
+// and an admin-manage endpoint (writeProcedure + matrixMiddleware "update").
+const testRouter = createTRPCRouter({
+  storefrontView: matrixProcedure("storefront", "view").query(() => "ok" as const),
+  storefrontCreate: writeProcedure.use(matrixMiddleware("storefront", "create")).mutation(() => "created" as const),
+  storefrontManageRead: protectedProcedure
+    .use(matrixMiddleware("storefront", "update"))
+    .query(() => "orders" as const),
+  storefrontManage: writeProcedure
+    .use(matrixMiddleware("storefront", "update"))
+    .mutation(() => "updated" as const),
+});
+const createCaller = createCallerFactory(testRouter);
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+describe("storefront router — matrix migration", () => {
+  it("allows a role WITH the matrix view/create grant (browseProducts / placeOrder shape)", async () => {
+    mockDb.role.findFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "acme-tenant-id",
+      name: "Custom Role",
+    });
+    mockDb.rolePermission.findUnique.mockResolvedValue({
+      view: true,
+      create: true,
+      update: false,
+      delete: false,
+    });
+
+    const caller = createCaller(ctx());
+    await expect(caller.storefrontView()).resolves.toBe("ok");
+    await expect(caller.storefrontCreate()).resolves.toBe("created");
+  });
+
+  it("denies a non-bypass role WITHOUT the storefront update grant on admin-manage endpoints (updateOrderStatus / listAllOrders / createXenditInvoice shape)", async () => {
+    mockDb.role.findFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "acme-tenant-id",
+      name: "Custom Role",
+    });
+    // Seed default: internalStaff has view+create but NOT update on "storefront".
+    mockDb.rolePermission.findUnique.mockResolvedValue({
+      view: true,
+      create: true,
+      update: false,
+      delete: false,
+    });
+
+    const caller = createCaller(ctx());
+    await expect(caller.storefrontManage()).rejects.toThrow(TRPCError);
+    await expect(caller.storefrontManage()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.storefrontManageRead()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("allows a non-bypass role that IS granted storefront update on admin-manage endpoints", async () => {
+    mockDb.role.findFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "acme-tenant-id",
+      name: "Custom Role",
+    });
+    mockDb.rolePermission.findUnique.mockResolvedValue({
+      view: true,
+      create: true,
+      update: true,
+      delete: false,
+    });
+
+    const caller = createCaller(ctx());
+    await expect(caller.storefrontManage()).resolves.toBe("updated");
+    await expect(caller.storefrontManageRead()).resolves.toBe("orders");
+  });
+
+  it("bypasses the matrix entirely for Platform Owner", async () => {
+    mockDb.role.findFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "acme-tenant-id",
+      name: "Platform Owner",
+    });
+
+    const caller = createCaller(ctx());
+    await expect(caller.storefrontManage()).resolves.toBe("updated");
+    expect(mockDb.rolePermission.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("bypasses the matrix entirely for Tenant Super Admin", async () => {
+    mockDb.role.findFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "acme-tenant-id",
+      name: "Tenant Super Admin",
+    });
+
+    const caller = createCaller(ctx());
+    await expect(caller.storefrontManage()).resolves.toBe("updated");
+    expect(mockDb.rolePermission.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("denies when ctx.roleId is missing without querying the matrix", async () => {
+    const caller = createCaller(ctx(null));
+    await expect(caller.storefrontView()).rejects.toThrow(TRPCError);
+    expect(mockDb.role.findFirst).not.toHaveBeenCalled();
+  });
+});

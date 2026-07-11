@@ -10,12 +10,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
-const { mockVendorCreate, mockVendorFindUnique } = vi.hoisted(() => ({
+const { mockVendorCreate, mockVendorFindUnique, mockRoleFindFirst, mockRolePermissionFindUnique } = vi.hoisted(() => ({
   mockVendorCreate: vi.fn(),
   mockVendorFindUnique: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
+  mockRolePermissionFindUnique: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => {
+import type * as OrqafyDb from "@orqafy/db";
+
+// Keep the real `hasPermission` resolver (it takes prisma as an argument) —
+// only mock the prisma client calls it makes. purchasing.ts procedures now
+// run through matrixMiddleware (tenant-rbac-standard.md §4), which calls
+// hasPermission -> prisma.role.findFirst + prisma.rolePermission.findUnique.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
   const mockAuditLogCreate = vi.fn();
   const mockDb = {
     vendor: {
@@ -61,8 +70,15 @@ vi.mock("@orqafy/db", () => {
       create: vi.fn(),
     },
     auditLog: { create: mockAuditLogCreate },
+    // RBAC matrix resolver mocks (tenant-rbac-standard.md §4) — purchasing.ts
+    // procedures now run through matrixMiddleware. Default to a Platform
+    // Owner role (matrix bypass) in beforeEach so the cross-tenant IDOR
+    // assertions below are unaffected by the RBAC layer.
+    role: { findFirst: mockRoleFindFirst },
+    rolePermission: { findUnique: mockRolePermissionFindUnique },
   };
   return {
+    ...actual,
     prisma: {
       ...mockDb,
       $transaction: vi.fn((fn: any) => fn(mockDb)),
@@ -94,6 +110,7 @@ function ctxForTenant(tenantId: string) {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-a",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -107,6 +124,10 @@ function ctxForTenant(tenantId: string) {
 describe("Vendor tenant parity (Batch 32 / Direction I close-out)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // RBAC matrix bypass (tenant-rbac-standard.md §4) — Platform Owner
+    // bypasses the matrix entirely, so every test below is unaffected by
+    // the RBAC layer (these tests focus purely on tenant-scope IDOR).
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: "tenant-A", name: "Platform Owner" });
   });
 
   it("vendor.create injects tenantId from ctx into db.vendor.create", async () => {

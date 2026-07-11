@@ -31,6 +31,8 @@ const {
   mockPoUpdate,
   mockTransaction,
   mockProductFindMany,
+  mockRoleFindFirst,
+  mockRolePermissionFindUnique,
 } = vi.hoisted(() => ({
   mockVendorFindUnique: vi.fn(),
   mockVendorUpdate: vi.fn(),
@@ -46,29 +48,47 @@ const {
   mockPoUpdate: vi.fn(),
   mockTransaction: vi.fn(),
   mockProductFindMany: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
+  mockRolePermissionFindUnique: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    vendor: { findMany: vi.fn(), findUnique: mockVendorFindUnique, create: vi.fn(), update: mockVendorUpdate, count: vi.fn() },
-    purchaseOrder: { findMany: vi.fn(), findFirst: mockPoFindFirst, findUnique: mockPoFindUnique, create: mockPoCreate, update: mockPoUpdate, count: vi.fn() },
-    purchaseOrderItem: { findMany: mockPoItemFindMany, create: mockPoItemCreate, update: vi.fn(), deleteMany: vi.fn() },
-    purchaseOrderItemAllocation: { create: mockPoItemAllocCreate, update: vi.fn() },
-    goodsReceipt: { findMany: vi.fn(), findFirst: mockGrFindFirst, findUnique: mockGrCreate, create: mockGrCreate, update: vi.fn(), count: vi.fn() },
-    goodsReceiptItem: { create: mockGrItemCreate },
-    stockMovement: { create: vi.fn() },
-    projectExpense: { create: vi.fn() },
-    // M7.2 — nested-FK tenant validation in po.create / goodsReceipt.create.
-    product: { findMany: mockProductFindMany },
-    project: { findMany: vi.fn() },
-    warehouse: { findMany: vi.fn() },
-    auditLog: { create: vi.fn() },
-    $transaction: mockTransaction,
-  },
-  writeAuditLog: async (tx: any, entry: any) => {
-    await tx.auditLog.create({ data: entry });
-  },
-}));
+import type * as OrqafyDb from "@orqafy/db";
+
+// Keep the real `hasPermission` resolver (it takes prisma as an argument) —
+// only mock the prisma client calls it makes. purchasing.ts procedures now
+// run through matrixMiddleware (tenant-rbac-standard.md §4), which calls
+// hasPermission -> prisma.role.findFirst + prisma.rolePermission.findUnique.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      vendor: { findMany: vi.fn(), findUnique: mockVendorFindUnique, create: vi.fn(), update: mockVendorUpdate, count: vi.fn() },
+      purchaseOrder: { findMany: vi.fn(), findFirst: mockPoFindFirst, findUnique: mockPoFindUnique, create: mockPoCreate, update: mockPoUpdate, count: vi.fn() },
+      purchaseOrderItem: { findMany: mockPoItemFindMany, create: mockPoItemCreate, update: vi.fn(), deleteMany: vi.fn() },
+      purchaseOrderItemAllocation: { create: mockPoItemAllocCreate, update: vi.fn() },
+      goodsReceipt: { findMany: vi.fn(), findFirst: mockGrFindFirst, findUnique: mockGrCreate, create: mockGrCreate, update: vi.fn(), count: vi.fn() },
+      goodsReceiptItem: { create: mockGrItemCreate },
+      stockMovement: { create: vi.fn() },
+      projectExpense: { create: vi.fn() },
+      // M7.2 — nested-FK tenant validation in po.create / goodsReceipt.create.
+      product: { findMany: mockProductFindMany },
+      project: { findMany: vi.fn() },
+      warehouse: { findMany: vi.fn() },
+      auditLog: { create: vi.fn() },
+      // RBAC matrix resolver mocks (tenant-rbac-standard.md §4) — purchasing.ts
+      // procedures now run through matrixMiddleware. Default to a Platform
+      // Owner role (matrix bypass) in beforeEach so tenant-guard assertions
+      // below are unaffected by the RBAC layer.
+      role: { findFirst: mockRoleFindFirst },
+      rolePermission: { findUnique: mockRolePermissionFindUnique },
+      $transaction: mockTransaction,
+    },
+    writeAuditLog: async (tx: any, entry: any) => {
+      await tx.auditLog.create({ data: entry });
+    },
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: { api: { check: vi.fn() }, public: { check: vi.fn() } },
@@ -92,6 +112,7 @@ function ctx(tenantId: string) {
     // which is NOT a seeded role — the D-2 R6 reactivate gate now checks real role names
     // (see purchasing.ts), so the actor must carry one a registered tenant actually has.
     roles: ["Tenant Super Admin"] as string[],
+    roleId: "role-a",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -125,6 +146,12 @@ function rewireDefaultTransaction() {
       auditLog: { create: vi.fn().mockResolvedValue({}) },
     }),
   );
+  // RBAC matrix bypass (tenant-rbac-standard.md §4) — Platform Owner bypasses
+  // the matrix entirely. Every beforeEach in this file calls
+  // rewireDefaultTransaction() right after vi.resetAllMocks(), so re-arming
+  // the bypass here keeps every tenant-guard test below unaffected by the
+  // RBAC layer unless a test explicitly overrides it (see vendor.reactivate below).
+  mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: "tenant-A", name: "Platform Owner" });
 }
 
 // ── vendor.update ─────────────────────────────────────────────────────────────
@@ -387,6 +414,13 @@ describe("vendor.reactivate — D-2 R6", () => {
   });
 
   it("forbids reactivation for a non-privileged role", async () => {
+    // vendor.reactivate is gated on the "purchasing" matrix "delete" action
+    // (the elevated-purchasing-action tier). Override the beforeEach's
+    // Platform Owner bypass with a non-bypass "Sales" role that has
+    // delete=false on the matrix, preserving this test's original
+    // "unprivileged role denied" intent.
+    mockRoleFindFirst.mockResolvedValueOnce({ id: "role-sales", tenantId: "tenant-A", name: "Sales" });
+    mockRolePermissionFindUnique.mockResolvedValueOnce({ view: true, create: true, update: true, delete: false });
     const lowCtx = { ...ctx("tenant-A"), roles: ["Sales"] as string[] };
     await expect(
       createCaller(lowCtx).purchasing.vendor.reactivate({ id: "vendor-A" }),

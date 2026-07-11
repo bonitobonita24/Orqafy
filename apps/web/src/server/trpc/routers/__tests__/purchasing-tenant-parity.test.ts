@@ -40,6 +40,8 @@ const {
   mockProductFindMany,
   mockProjectFindMany,
   mockWarehouseFindMany,
+  mockRoleFindFirst,
+  mockRolePermissionFindUnique,
 } = vi.hoisted(() => ({
   mockVendorFindUnique: vi.fn(),
   mockVendorCreate: vi.fn(),
@@ -62,9 +64,18 @@ const {
   mockProductFindMany: vi.fn(),
   mockProjectFindMany: vi.fn(),
   mockWarehouseFindMany: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
+  mockRolePermissionFindUnique: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => {
+import type * as OrqafyDb from "@orqafy/db";
+
+// Keep the real `hasPermission` resolver (it takes prisma as an argument) —
+// only mock the prisma client calls it makes. purchasing.ts procedures now
+// run through matrixMiddleware (tenant-rbac-standard.md §4), which calls
+// hasPermission -> prisma.role.findFirst + prisma.rolePermission.findUnique.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
   // mockDb is the object passed INTO the $transaction callback (represents the tx client).
   const mockDb = {
     vendor: {
@@ -100,8 +111,15 @@ vi.mock("@orqafy/db", () => {
     warehouse: { findMany: mockWarehouseFindMany },
     auditLog: { create: mockAuditLogCreate },
     accountingSettings: { findUnique: mockAccountingSettingsFindUnique },
+    // RBAC matrix resolver mocks (tenant-rbac-standard.md §4) — purchasing.ts
+    // procedures now run through matrixMiddleware. Default to a Platform
+    // Owner role (matrix bypass) in beforeEach so cross-tenant IDOR / audit
+    // assertions below are unaffected by the RBAC layer.
+    role: { findFirst: mockRoleFindFirst },
+    rolePermission: { findUnique: mockRolePermissionFindUnique },
   };
   return {
+    ...actual,
     prisma: {
       ...mockDb,
       // $transaction passes mockDb as the "tx" argument so router tx.xxx calls
@@ -139,6 +157,7 @@ function ctxForTenant(tenantId: string, opts: { isDemoTenant?: boolean; roles?: 
     req: makeReq(),
     userId: "user-1",
     roles: opts.roles ?? (["Administrator"] as string[]),
+    roleId: "role-a",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -256,6 +275,10 @@ describe("Purchasing tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolati
   beforeEach(async () => {
     vi.resetAllMocks();
     await rewireTransaction();
+    // RBAC matrix bypass (tenant-rbac-standard.md §4) — Platform Owner
+    // bypasses the matrix entirely, so every test below is unaffected by the
+    // RBAC layer unless it explicitly overrides this (see po.approve below).
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: "tenant-A", name: "Platform Owner" });
   });
 
   // ── vendor.create ─────────────────────────────────────────────────────────────
@@ -479,6 +502,13 @@ describe("Purchasing tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolati
   // ── po.approve ───────────────────────────────────────────────────────────────
   describe("po.approve", () => {
     it("throws FORBIDDEN when caller lacks approver role", async () => {
+      // po.approve is gated on the "purchasing" matrix "delete" action (the
+      // elevated-purchasing-action tier). Override the beforeEach's Platform
+      // Owner bypass with a non-bypass "Staff" role that has delete=false on
+      // the matrix, preserving this test's original "unprivileged role
+      // denied" intent.
+      mockRoleFindFirst.mockResolvedValueOnce({ id: "role-staff", tenantId: "tenant-A", name: "Staff" });
+      mockRolePermissionFindUnique.mockResolvedValueOnce({ view: true, create: true, update: true, delete: false });
       const caller = createCaller(ctxForTenant("tenant-A", { roles: ["Staff"] }));
       await expect(
         caller.po.approve({ id: PO_PENDING.id }),

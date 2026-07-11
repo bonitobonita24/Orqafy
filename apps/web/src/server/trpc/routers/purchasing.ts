@@ -1,12 +1,27 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db, writeAuditLog } from "@orqafy/db";
 import {
   resolveAccountingDefaults,
   postJournalEntryTx,
   type JournalPostLine,
 } from "@/server/lib/journal-posting";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key
+// "purchasing"). Reads use `matrixProcedure` (protectedProcedure +
+// matrixMiddleware); mutations compose `writeProcedure.use(matrixMiddleware(...))`
+// so the demo-tenant mutation guard survives alongside the matrix grant check.
+// The seed grants internal staff view/create/update on "purchasing" (no-op —
+// everyone already had access) and gates "delete" to Admin + Purchasing Staff +
+// bypass roles. There is no 4-action mapping for "approve" in this model, so
+// po.approve and vendor.reactivate — both elevated purchasing actions — map to
+// the "delete" tier, reproducing (and for po.approve, fixing) their real gate.
+const purchasingViewProcedure = matrixProcedure("purchasing", "view");
+const purchasingCreateProcedure = writeProcedure.use(matrixMiddleware("purchasing", "create"));
+const purchasingUpdateProcedure = writeProcedure.use(matrixMiddleware("purchasing", "update"));
+const purchasingDeleteProcedure = writeProcedure.use(matrixMiddleware("purchasing", "delete"));
 
 // ── Finance constants (D-2) ───────────────────────────────────────────────────
 
@@ -112,7 +127,7 @@ const poItemSchema = z.object({
 // ── Vendor sub-router ─────────────────────────────────────────────────────────
 
 export const vendorRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: purchasingViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -149,13 +164,13 @@ export const vendorRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: purchasingViewProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ input, ctx }) => {
       return loadVendorForTenant(input.id, ctx);
     }),
 
-  create: writeProcedure
+  create: purchasingCreateProcedure
     .input(
       z.object({
         type: z.enum(["direct", "ecommerce"]).default("direct"),
@@ -209,7 +224,7 @@ export const vendorRouter = createTRPCRouter({
       });
     }),
 
-  update: writeProcedure
+  update: purchasingUpdateProcedure
     .input(
       z.object({
         id: z.string().min(1),
@@ -268,7 +283,7 @@ export const vendorRouter = createTRPCRouter({
       });
     }),
 
-  deactivate: writeProcedure
+  deactivate: purchasingUpdateProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadVendorForTenant(input.id, ctx);
@@ -286,24 +301,12 @@ export const vendorRouter = createTRPCRouter({
       });
     }),
 
-  // R6 (D-2): reactivate a deactivated vendor; audited via L5. The allow-list must use
-  // real seeded role NAMES (packages/db/src/seed/roles.ts). The prior list
-  // ["Administrator", "Purchasing Manager", "admin"] matched NO seeded role, so
-  // reactivate 403'd for EVERY user — including the tenant owner ("Tenant Super Admin").
-  // Same stale-role-name class of bug resolved earlier for departments (department.ts /
-  // DECISIONS_LOG 2026-06-19). Seeded admins are "Tenant Super Admin" (the registered
-  // owner) + "Admin"; "Platform Owner" is cross-tenant; the purchasing role is
-  // "Purchasing Staff".
-  reactivate: writeProcedure
+  // R6 (D-2): reactivate a deactivated vendor; audited via L5. Gated on the
+  // "purchasing" matrix "delete" action (the elevated-purchasing-action tier —
+  // matches Admin + Purchasing Staff + bypass roles per the seed).
+  reactivate: purchasingDeleteProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
-      const allowedRoles = ["Tenant Super Admin", "Admin", "Platform Owner", "Purchasing Staff"];
-      if (!ctx.roles.some((r) => allowedRoles.includes(r))) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Only a tenant administrator or purchasing staff can reactivate a vendor.",
-        });
-      }
       const existing = await loadVendorForTenant(input.id, ctx);
       return db.$transaction(async (tx) => {
         const updated = await tx.vendor.update({ where: { id: input.id }, data: { isActive: true } });
@@ -323,7 +326,7 @@ export const vendorRouter = createTRPCRouter({
 // ── Purchase Order sub-router ─────────────────────────────────────────────────
 
 export const poRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: purchasingViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -364,7 +367,7 @@ export const poRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: purchasingViewProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const po = await db.purchaseOrder.findUnique({
@@ -390,7 +393,7 @@ export const poRouter = createTRPCRouter({
       return po;
     }),
 
-  create: writeProcedure
+  create: purchasingCreateProcedure
     .input(
       z.object({
         vendorId: z.string().min(1),
@@ -576,7 +579,7 @@ export const poRouter = createTRPCRouter({
       });
     }),
 
-  update: writeProcedure
+  update: purchasingUpdateProcedure
     .input(
       z.object({
         id: z.string().min(1),
@@ -636,7 +639,7 @@ export const poRouter = createTRPCRouter({
       });
     }),
 
-  submit: writeProcedure
+  submit: purchasingUpdateProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const po = await loadPoForTenant(input.id, ctx);
@@ -668,13 +671,13 @@ export const poRouter = createTRPCRouter({
       });
     }),
 
-  approve: writeProcedure
+  // Gated on the "purchasing" matrix "delete" action (the elevated-purchasing-action
+  // tier — matches Admin + Purchasing Staff + bypass roles per the seed). The prior
+  // inline allow-list ["Administrator", "Purchasing Manager", "admin"] matched NO
+  // seeded role name (packages/db/src/seed/roles.ts), so approve 403'd for everyone.
+  approve: purchasingDeleteProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
-      const allowedRoles = ["Administrator", "Purchasing Manager", "admin"];
-      if (!ctx.roles.some((r) => allowedRoles.includes(r))) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient role to approve POs" });
-      }
       const po = await loadPoForTenant(input.id, ctx);
       if (po.status !== "pending_approval") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only pending_approval POs can be approved" });
@@ -700,7 +703,7 @@ export const poRouter = createTRPCRouter({
       });
     }),
 
-  markOrdered: writeProcedure
+  markOrdered: purchasingUpdateProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const po = await loadPoForTenant(input.id, ctx);
@@ -724,7 +727,7 @@ export const poRouter = createTRPCRouter({
       });
     }),
 
-  cancel: writeProcedure
+  cancel: purchasingUpdateProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const po = await loadPoForTenant(input.id, ctx);
@@ -750,7 +753,7 @@ export const poRouter = createTRPCRouter({
       });
     }),
 
-  close: writeProcedure
+  close: purchasingUpdateProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const po = await loadPoForTenant(input.id, ctx);
@@ -778,7 +781,7 @@ export const poRouter = createTRPCRouter({
 // ── Goods Receipt sub-router ──────────────────────────────────────────────────
 
 export const goodsReceiptRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: purchasingViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -809,7 +812,7 @@ export const goodsReceiptRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: purchasingViewProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       await loadGrForTenant(input.id, ctx);
@@ -829,7 +832,7 @@ export const goodsReceiptRouter = createTRPCRouter({
       return gr;
     }),
 
-  create: writeProcedure
+  create: purchasingCreateProcedure
     .input(
       z.object({
         purchaseOrderId: z.string().min(1),
