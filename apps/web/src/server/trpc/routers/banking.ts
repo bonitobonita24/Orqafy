@@ -1,7 +1,20 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db } from "@orqafy/db";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key
+// "banking"). Reads use `matrixProcedure` (protectedProcedure +
+// matrixMiddleware); mutations compose `writeProcedure.use(matrixMiddleware(...))`
+// so the demo-tenant mutation guard survives alongside the matrix grant check.
+// This feature has NO delete endpoint — fund sources are deactivated via
+// `toggleActive`, never deleted, so every mutation maps to "create" (a brand
+// new FundTransaction/FundSource record) or "update" (an edit to an existing
+// record's fields/state, including toggleActive).
+const bankingViewProcedure = matrixProcedure("banking", "view");
+const bankingCreateProcedure = writeProcedure.use(matrixMiddleware("banking", "create"));
+const bankingUpdateProcedure = writeProcedure.use(matrixMiddleware("banking", "update"));
 
 const FUND_SOURCE_TYPES = [
   "cash_on_hand",
@@ -48,7 +61,7 @@ const transactionRouter = createTRPCRouter({
   // Sums real-cash sources (cash_on_hand + bank + e_wallet), credit-card
   // outstanding, loan balances, plus this-month income/expense and the most
   // recent 10 transactions across all sources.
-  summary: protectedProcedure.query(async ({ ctx }) => {
+  summary: bankingViewProcedure.query(async ({ ctx }) => {
     const allSources = await db.fundSource.findMany({
       where: { isActive: true, tenantId: ctx.tenantId },
       select: {
@@ -115,7 +128,7 @@ const transactionRouter = createTRPCRouter({
     };
   }),
 
-  list: protectedProcedure
+  list: bankingViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -152,7 +165,7 @@ const transactionRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: bankingViewProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ input, ctx }) => {
       const item = await db.fundTransaction.findUnique({ where: { id: input.id } });
@@ -160,7 +173,7 @@ const transactionRouter = createTRPCRouter({
       return item;
     }),
 
-  recordIncome: writeProcedure
+  recordIncome: bankingCreateProcedure
     .input(
       z.object({
         fundSourceId: z.string().min(1),
@@ -201,7 +214,7 @@ const transactionRouter = createTRPCRouter({
       });
     }),
 
-  recordExpense: writeProcedure
+  recordExpense: bankingCreateProcedure
     .input(
       z.object({
         fundSourceId: z.string().min(1),
@@ -252,7 +265,7 @@ const transactionRouter = createTRPCRouter({
       });
     }),
 
-  transfer: writeProcedure
+  transfer: bankingCreateProcedure
     .input(
       z.object({
         fromFundSourceId: z.string().min(1),
@@ -342,7 +355,7 @@ const transactionRouter = createTRPCRouter({
       });
     }),
 
-  recordCreditCardCharge: writeProcedure
+  recordCreditCardCharge: bankingCreateProcedure
     .input(
       z.object({
         fundSourceId: z.string().min(1),
@@ -391,7 +404,7 @@ const transactionRouter = createTRPCRouter({
       });
     }),
 
-  payCreditCard: writeProcedure
+  payCreditCard: bankingCreateProcedure
     .input(
       z.object({
         payerFundSourceId: z.string().min(1),
@@ -474,7 +487,7 @@ const transactionRouter = createTRPCRouter({
       });
     }),
 
-  loanMoneyOutTo: writeProcedure
+  loanMoneyOutTo: bankingCreateProcedure
     .input(
       z.object({
         loanFundSourceId: z.string().min(1),
@@ -543,7 +556,7 @@ const transactionRouter = createTRPCRouter({
       });
     }),
 
-  loanMoneyIn: writeProcedure
+  loanMoneyIn: bankingCreateProcedure
     .input(
       z.object({
         payerFundSourceId: z.string().min(1),
@@ -629,7 +642,7 @@ const transactionRouter = createTRPCRouter({
   // Phase 2b: refund — money returned TO us (e.g. vendor refund). Behaves
   // like income but tagged type=refund and optionally linked to the original
   // outgoing transaction via referenceId.
-  recordRefund: writeProcedure
+  recordRefund: bankingCreateProcedure
     .input(
       z.object({
         fundSourceId: z.string().min(1),
@@ -672,7 +685,7 @@ const transactionRouter = createTRPCRouter({
   // count off vs ledger). Delta can be positive or negative; reason is required
   // for audit trail. Restricted to real-cash types (cash_on_hand, bank,
   // e_wallet) — credit cards and loans need their own reconciliation paths.
-  recordAdjustment: writeProcedure
+  recordAdjustment: bankingCreateProcedure
     .input(
       z.object({
         fundSourceId: z.string().min(1),
@@ -729,7 +742,7 @@ const transactionRouter = createTRPCRouter({
 });
 
 export const bankingRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: bankingViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -756,7 +769,7 @@ export const bankingRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: bankingViewProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ input, ctx }) => {
       const item = await db.fundSource.findUnique({ where: { id: input.id } });
@@ -764,7 +777,7 @@ export const bankingRouter = createTRPCRouter({
       return item;
     }),
 
-  create: writeProcedure
+  create: bankingCreateProcedure
     .input(
       z.object({
         name: z.string().min(1).max(255),
@@ -798,7 +811,7 @@ export const bankingRouter = createTRPCRouter({
       });
     }),
 
-  update: writeProcedure
+  update: bankingUpdateProcedure
     .input(
       z.object({
         id: z.string().min(1),
@@ -828,7 +841,7 @@ export const bankingRouter = createTRPCRouter({
       });
     }),
 
-  toggleActive: writeProcedure
+  toggleActive: bankingUpdateProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadFundSourceForTenant(input.id, ctx);

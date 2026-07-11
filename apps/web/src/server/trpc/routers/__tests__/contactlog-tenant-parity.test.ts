@@ -10,17 +10,21 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as OrqafyDb from "@orqafy/db";
 
 // ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
-const { mockContactLogFindFirst, mockContactLogCreate, mockCustomerFindUnique, mockAuditLogCreate } =
+const { mockContactLogFindFirst, mockContactLogCreate, mockCustomerFindUnique, mockAuditLogCreate, mockRoleFindFirst, mockRolePermissionFindUnique } =
   vi.hoisted(() => ({
     mockContactLogFindFirst: vi.fn(),
     mockContactLogCreate: vi.fn(),
     mockCustomerFindUnique: vi.fn(),
     mockAuditLogCreate: vi.fn(),
+    mockRoleFindFirst: vi.fn(),
+    mockRolePermissionFindUnique: vi.fn(),
   }));
 
-vi.mock("@orqafy/db", () => {
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
   const mockDb = {
     contactLog: {
       findFirst: mockContactLogFindFirst,
@@ -34,8 +38,11 @@ vi.mock("@orqafy/db", () => {
       findUnique: mockCustomerFindUnique,
     },
     auditLog: { create: mockAuditLogCreate },
+    role: { findFirst: mockRoleFindFirst },
+    rolePermission: { findUnique: mockRolePermissionFindUnique },
   };
   return {
+    ...actual,
     prisma: {
       ...mockDb,
       $transaction: vi.fn((fn: any) => fn(mockDb)),
@@ -65,6 +72,7 @@ function ctxForTenant(tenantId: string) {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-1",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -78,6 +86,13 @@ function ctxForTenant(tenantId: string) {
 describe("ContactLog tenant parity (K-prime Extended IDOR closure)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Matrix middleware bypass by default — these tests assert tenant-isolation
+    // (IDOR) behavior, not RBAC grant/deny (covered by crm-matrix.test.ts).
+    mockRoleFindFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "tenant-A",
+      name: "Platform Owner",
+    });
   });
 
   it("contactLogById throws NOT_FOUND when contactLog belongs to a different tenant", async () => {

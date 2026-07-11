@@ -1,7 +1,20 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db, writeAuditLog } from "@orqafy/db";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key
+// "inventory"). Reads use `matrixProcedure` (protectedProcedure +
+// matrixMiddleware); mutations compose `writeProcedure.use(matrixMiddleware(...))`
+// so the demo-tenant mutation guard survives alongside the matrix grant check.
+// The seed grants internalStaff view+create on "inventory" but NOT delete —
+// there is no hard-delete endpoint in this router, so every write below maps
+// to either "create" (new primary record) or "update" (edits/state changes/
+// sub-record inserts such as stock movements, transfers, adjustments).
+const inventoryViewProcedure = matrixProcedure("inventory", "view");
+const inventoryCreateProcedure = writeProcedure.use(matrixMiddleware("inventory", "create"));
+const inventoryUpdateProcedure = writeProcedure.use(matrixMiddleware("inventory", "update"));
 
 // ── Tenant-ownership guards (close cross-tenant IDOR on FK/record writes) ───
 async function assertProductInTenant(id: string, tenantId: string): Promise<void> {
@@ -21,7 +34,7 @@ async function assertCategoryInTenant(id: string, tenantId: string): Promise<voi
 
 export const inventoryRouter = createTRPCRouter({
   // ── Products ──────────────────────────────────────────────────────────────
-  productList: protectedProcedure
+  productList: inventoryViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -58,7 +71,7 @@ export const inventoryRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  productById: protectedProcedure
+  productById: inventoryViewProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const item = await db.product.findFirst({ where: { id: input.id, tenantId: ctx.tenantId } });
@@ -66,7 +79,7 @@ export const inventoryRouter = createTRPCRouter({
       return item;
     }),
 
-  productCreate: writeProcedure
+  productCreate: inventoryCreateProcedure
     .input(
       z.object({
         name: z.string().min(1).max(500),
@@ -113,7 +126,7 @@ export const inventoryRouter = createTRPCRouter({
       });
     }),
 
-  productUpdate: writeProcedure
+  productUpdate: inventoryUpdateProcedure
     .input(
       z.object({
         id: z.string().min(1),
@@ -162,7 +175,7 @@ export const inventoryRouter = createTRPCRouter({
       });
     }),
 
-  productToggleActive: writeProcedure
+  productToggleActive: inventoryUpdateProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.product.findFirst({ where: { id: input.id, tenantId: ctx.tenantId } });
@@ -185,7 +198,7 @@ export const inventoryRouter = createTRPCRouter({
     }),
 
   // ── Categories ────────────────────────────────────────────────────────────
-  categoryList: protectedProcedure
+  categoryList: inventoryViewProcedure
     .input(z.object({ isActive: z.boolean().optional() }).default({}))
     .query(async ({ ctx, input }) => {
       return db.category.findMany({
@@ -197,7 +210,7 @@ export const inventoryRouter = createTRPCRouter({
       });
     }),
 
-  categoryCreate: writeProcedure
+  categoryCreate: inventoryCreateProcedure
     .input(
       z.object({
         name: z.string().min(1).max(200),
@@ -234,7 +247,7 @@ export const inventoryRouter = createTRPCRouter({
       });
     }),
 
-  categoryUpdate: writeProcedure
+  categoryUpdate: inventoryUpdateProcedure
     .input(
       z.object({
         id: z.string().min(1),
@@ -277,7 +290,7 @@ export const inventoryRouter = createTRPCRouter({
       });
     }),
 
-  categoryToggleActive: writeProcedure
+  categoryToggleActive: inventoryUpdateProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.category.findFirst({ where: { id: input.id, tenantId: ctx.tenantId } });
@@ -300,7 +313,7 @@ export const inventoryRouter = createTRPCRouter({
     }),
 
   // ── Warehouses ────────────────────────────────────────────────────────────
-  warehouseList: protectedProcedure
+  warehouseList: inventoryViewProcedure
     .input(z.object({ isActive: z.boolean().optional() }).default({}))
     .query(async ({ ctx, input }) => {
       return db.warehouse.findMany({
@@ -312,7 +325,7 @@ export const inventoryRouter = createTRPCRouter({
       });
     }),
 
-  warehouseCreate: writeProcedure
+  warehouseCreate: inventoryCreateProcedure
     .input(
       z.object({
         name: z.string().min(1).max(200),
@@ -344,7 +357,7 @@ export const inventoryRouter = createTRPCRouter({
       });
     }),
 
-  warehouseUpdate: writeProcedure
+  warehouseUpdate: inventoryUpdateProcedure
     .input(
       z.object({
         id: z.string().min(1),
@@ -382,7 +395,7 @@ export const inventoryRouter = createTRPCRouter({
       });
     }),
 
-  warehouseToggleActive: writeProcedure
+  warehouseToggleActive: inventoryUpdateProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.warehouse.findFirst({ where: { id: input.id, tenantId: ctx.tenantId } });
@@ -405,7 +418,7 @@ export const inventoryRouter = createTRPCRouter({
     }),
 
   // ── Stock levels ──────────────────────────────────────────────────────────
-  stockList: protectedProcedure
+  stockList: inventoryViewProcedure
     .input(
       z.object({
         warehouseId: z.string().min(1).optional(),
@@ -428,7 +441,7 @@ export const inventoryRouter = createTRPCRouter({
     }),
 
   // ── Stock Movements ───────────────────────────────────────────────────────
-  stockMovementList: protectedProcedure
+  stockMovementList: inventoryViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -465,7 +478,7 @@ export const inventoryRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  stockMovementById: protectedProcedure
+  stockMovementById: inventoryViewProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const item = await db.stockMovement.findFirst({
@@ -476,7 +489,7 @@ export const inventoryRouter = createTRPCRouter({
       return item;
     }),
 
-  stockMovementCreate: writeProcedure
+  stockMovementCreate: inventoryUpdateProcedure
     .input(
       z.object({
         type: z.enum(["in", "out", "adjustment", "transfer"]),
@@ -536,7 +549,7 @@ export const inventoryRouter = createTRPCRouter({
       });
     }),
 
-  stockTransfer: writeProcedure
+  stockTransfer: inventoryUpdateProcedure
     .input(
       z.object({
         productId: z.string().min(1),
@@ -580,7 +593,7 @@ export const inventoryRouter = createTRPCRouter({
       });
     }),
 
-  stockAdjustment: writeProcedure
+  stockAdjustment: inventoryUpdateProcedure
     .input(
       z.object({
         productId: z.string().min(1),

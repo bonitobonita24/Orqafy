@@ -1,7 +1,22 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db, writeAuditLog } from "@orqafy/db";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key "crm").
+// Reads use `matrixProcedure` (protectedProcedure + matrixMiddleware); mutations
+// compose `writeProcedure.use(matrixMiddleware(...))` so the demo-tenant mutation
+// guard survives alongside the matrix grant check.
+// Status-transition mutations (customerToggleActive, creditUpsert/ToggleActive,
+// quotationSend/Accept/Reject/CreateRevision/ConvertToInvoice, contactLogUpdate,
+// quotationUpdate's full-payload replace-children path) all map to "update" —
+// they mutate an existing entity, they don't create or delete it. contactDelete
+// and contactLogDelete hard-delete their own row and map to "delete".
+const crmViewProcedure = matrixProcedure("crm", "view");
+const crmCreateProcedure = writeProcedure.use(matrixMiddleware("crm", "create"));
+const crmUpdateProcedure = writeProcedure.use(matrixMiddleware("crm", "update"));
+const crmDeleteProcedure = writeProcedure.use(matrixMiddleware("crm", "delete"));
 
 const CUSTOMER_TIERS = ["regular", "vip", "authorized_dealer"] as const;
 
@@ -107,7 +122,7 @@ async function generateQuotationNumber(): Promise<string> {
 export const crmRouter = createTRPCRouter({
   // ── Customer ─────────────────────────────────────────────────────────────
 
-  customerList: protectedProcedure
+  customerList: crmViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -137,7 +152,7 @@ export const crmRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  customerById: protectedProcedure
+  customerById: crmViewProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       if (!ctx.tenantId) {
@@ -146,7 +161,7 @@ export const crmRouter = createTRPCRouter({
       return loadCustomerForTenant(input.id, { tenantId: ctx.tenantId });
     }),
 
-  customerCreate: writeProcedure
+  customerCreate: crmCreateProcedure
     .input(
       z.object({
         firstName: z.string().min(1).max(100),
@@ -198,7 +213,7 @@ export const crmRouter = createTRPCRouter({
       });
     }),
 
-  customerUpdate: writeProcedure
+  customerUpdate: crmUpdateProcedure
     .input(
       z.object({
         id: z.string().min(1),
@@ -249,7 +264,7 @@ export const crmRouter = createTRPCRouter({
       });
     }),
 
-  customerToggleActive: writeProcedure
+  customerToggleActive: crmUpdateProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await loadCustomerForTenant(input.id, {
@@ -274,7 +289,7 @@ export const crmRouter = createTRPCRouter({
 
   // ── CustomerContact ───────────────────────────────────────────────────────
 
-  contactList: protectedProcedure
+  contactList: crmViewProcedure
     .input(z.object({ customerId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       await loadCustomerForTenant(input.customerId, ctx);
@@ -284,7 +299,7 @@ export const crmRouter = createTRPCRouter({
       });
     }),
 
-  contactCreate: writeProcedure
+  contactCreate: crmCreateProcedure
     .input(
       z.object({
         customerId: z.string().min(1),
@@ -321,7 +336,7 @@ export const crmRouter = createTRPCRouter({
       });
     }),
 
-  contactUpdate: writeProcedure
+  contactUpdate: crmUpdateProcedure
     .input(
       z.object({
         id: z.string().min(1),
@@ -360,7 +375,7 @@ export const crmRouter = createTRPCRouter({
       });
     }),
 
-  contactDelete: writeProcedure
+  contactDelete: crmDeleteProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.customerContact.findUnique({ where: { id: input.id } });
@@ -382,7 +397,7 @@ export const crmRouter = createTRPCRouter({
 
   // ── CustomerCreditAccount ─────────────────────────────────────────────────
 
-  creditGet: protectedProcedure
+  creditGet: crmViewProcedure
     .input(z.object({ customerId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       if (!ctx.tenantId) {
@@ -396,7 +411,7 @@ export const crmRouter = createTRPCRouter({
       });
     }),
 
-  creditUpsert: writeProcedure
+  creditUpsert: crmUpdateProcedure
     .input(
       z.object({
         customerId: z.string().min(1),
@@ -436,7 +451,7 @@ export const crmRouter = createTRPCRouter({
       });
     }),
 
-  creditToggleActive: writeProcedure
+  creditToggleActive: crmUpdateProcedure
     .input(z.object({ customerId: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await loadCustomerCreditAccountForTenant(
@@ -470,7 +485,7 @@ export const crmRouter = createTRPCRouter({
   // change the totals. The accepted price is implicit at status=accepted and
   // is locked at conversion-to-invoice (Phase 3).
 
-  quotationList: protectedProcedure
+  quotationList: crmViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -515,7 +530,7 @@ export const crmRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  quotationById: protectedProcedure
+  quotationById: crmViewProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const quotation = await db.quotation.findFirst({
@@ -551,7 +566,7 @@ export const crmRouter = createTRPCRouter({
       return quotation;
     }),
 
-  quotationCreate: writeProcedure
+  quotationCreate: crmCreateProcedure
     .input(
       z.object({
         customerId: z.string().min(1),
@@ -750,7 +765,7 @@ export const crmRouter = createTRPCRouter({
       });
     }),
 
-  quotationUpdate: writeProcedure
+  quotationUpdate: crmUpdateProcedure
     .input(
       z.object({
         id: z.string().min(1),
@@ -962,7 +977,7 @@ export const crmRouter = createTRPCRouter({
       });
     }),
 
-  quotationSend: writeProcedure
+  quotationSend: crmUpdateProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await loadQuotationForTenant(input.id, {
@@ -991,7 +1006,7 @@ export const crmRouter = createTRPCRouter({
       });
     }),
 
-  quotationAccept: writeProcedure
+  quotationAccept: crmUpdateProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await loadQuotationForTenant(input.id, {
@@ -1020,7 +1035,7 @@ export const crmRouter = createTRPCRouter({
       });
     }),
 
-  quotationReject: writeProcedure
+  quotationReject: crmUpdateProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await loadQuotationForTenant(input.id, {
@@ -1049,7 +1064,7 @@ export const crmRouter = createTRPCRouter({
       });
     }),
 
-  quotationCreateRevision: writeProcedure
+  quotationCreateRevision: crmUpdateProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.quotation.findFirst({
@@ -1132,7 +1147,7 @@ export const crmRouter = createTRPCRouter({
       });
     }),
 
-  quotationConvertToInvoice: writeProcedure
+  quotationConvertToInvoice: crmUpdateProcedure
     .input(
       z.object({
         id: z.string().min(1),
@@ -1270,7 +1285,7 @@ export const crmRouter = createTRPCRouter({
 
   // ── ContactLog ────────────────────────────────────────────────────────────
 
-  contactLogList: protectedProcedure
+  contactLogList: crmViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -1315,7 +1330,7 @@ export const crmRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  contactLogById: protectedProcedure
+  contactLogById: crmViewProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const log = await db.contactLog.findFirst({
@@ -1343,7 +1358,7 @@ export const crmRouter = createTRPCRouter({
       return log;
     }),
 
-  contactLogListForCustomer: protectedProcedure
+  contactLogListForCustomer: crmViewProcedure
     .input(
       z.object({
         customerId: z.string().min(1),
@@ -1368,7 +1383,7 @@ export const crmRouter = createTRPCRouter({
       });
     }),
 
-  contactLogCreate: writeProcedure
+  contactLogCreate: crmCreateProcedure
     .input(
       z.object({
         customerId: z.string().min(1),
@@ -1410,7 +1425,7 @@ export const crmRouter = createTRPCRouter({
       });
     }),
 
-  contactLogUpdate: writeProcedure
+  contactLogUpdate: crmUpdateProcedure
     .input(
       z.object({
         id: z.string().min(1),
@@ -1444,7 +1459,7 @@ export const crmRouter = createTRPCRouter({
       });
     }),
 
-  contactLogDelete: writeProcedure
+  contactLogDelete: crmDeleteProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const prev = await loadContactLogForTenant(input.id, { tenantId: ctx.tenantId });

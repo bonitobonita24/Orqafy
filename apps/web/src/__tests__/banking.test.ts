@@ -23,6 +23,7 @@
 /* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/require-await */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as OrqafyDb from "@orqafy/db";
 
 // ---------------------------------------------------------------------------
 // Modules under test
@@ -33,25 +34,53 @@ import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 // ---------------------------------------------------------------------------
 // Mock heavy dependencies so unit tests don't need real DB / Redis
 // ---------------------------------------------------------------------------
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    fundSource: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      count: vi.fn(),
+// Keep the real `hasPermission` resolver (matrix.ts imports it directly from
+// "@orqafy/db") — only mock the prisma client calls it and the router make.
+// Router migrated to the data-driven `role_permissions` matrix (feature key
+// "banking") — matrixMiddleware resolves the caller's role via
+// role.findFirst. Every ctx below uses roleId "role-1" and role name
+// "Platform Owner" (set once below, survives vi.clearAllMocks() per-test
+// since that only clears call history, not the mocked implementation) so the
+// matrix bypasses entirely — this suite proves business logic, not matrix
+// grant/deny behaviour (see banking-matrix.test.ts for that coverage).
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      fundSource: {
+        findMany: vi.fn(),
+        findUnique: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+        count: vi.fn(),
+      },
+      fundTransaction: {
+        findMany: vi.fn(),
+        findUnique: vi.fn(),
+        create: vi.fn(),
+        count: vi.fn(),
+      },
+      fundTransfer: {
+        create: vi.fn(),
+      },
+      role: {
+        findFirst: vi.fn(),
+      },
+      rolePermission: {
+        findUnique: vi.fn(),
+      },
+      $transaction: vi.fn(),
     },
-    fundTransaction: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      count: vi.fn(),
-    },
-    fundTransfer: {
-      create: vi.fn(),
-    },
-    $transaction: vi.fn(),
+  };
+});
+
+vi.mock("@/server/lib/rate-limit", () => ({
+  rateLimiters: {
+    api: { check: vi.fn() },
+    auth: { check: vi.fn() },
+    upload: { check: vi.fn() },
+    public: { check: vi.fn() },
   },
 }));
 
@@ -69,6 +98,7 @@ function authenticatedCtx() {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"],
+    roleId: "role-1",
     tenantSlug: "acme",
     tenantId: "acme-tenant-id",
     securityVersion: 1,
@@ -82,6 +112,7 @@ function unauthenticatedCtx() {
     req: makeReq(),
     userId: null,
     roles: [],
+    roleId: null,
     tenantSlug: null,
     tenantId: null,
     securityVersion: 0,
@@ -117,8 +148,24 @@ const mockDb = db as unknown as {
   fundTransfer: {
     create: ReturnType<typeof vi.fn>;
   };
+  role: {
+    findFirst: ReturnType<typeof vi.fn>;
+  };
+  rolePermission: {
+    findUnique: ReturnType<typeof vi.fn>;
+  };
   $transaction: ReturnType<typeof vi.fn>;
 };
+
+// Every ctx above resolves to a "Platform Owner" role, which bypasses the
+// "banking" matrix entirely (tenant-rbac-standard.md §4). Set once here (not
+// inside a beforeEach) so it survives every local `vi.clearAllMocks()` below
+// — clearAllMocks() only clears call history, not the mocked implementation.
+mockDb.role.findFirst.mockResolvedValue({
+  id: "role-1",
+  tenantId: "acme-tenant-id",
+  name: "Platform Owner",
+});
 
 // ---------------------------------------------------------------------------
 // Sample fixtures

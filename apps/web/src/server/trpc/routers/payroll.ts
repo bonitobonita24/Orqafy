@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db, writeAuditLog } from "@orqafy/db";
 import type { Prisma } from "@prisma/client";
 import {
@@ -11,6 +12,20 @@ import {
   type StatutoryRateType,
 } from "@/server/lib/payroll-compute";
 import { resolveAccountingDefaults, postJournalEntryTx, type JournalPostLine } from "@/server/lib/journal-posting";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key
+// "payroll"). Reads use `matrixProcedure` (protectedProcedure + matrixMiddleware);
+// mutations compose `writeProcedure.use(matrixMiddleware(...))` so the
+// demo-tenant mutation guard survives alongside the matrix grant check.
+// process/approve/markPaid all map to "update" (they transition an existing
+// payroll run's status, not create or delete it). statutoryRate.upsert and
+// .seedDefaults always INSERT a new versioned row (no update-by-id path in
+// this router) so both map to "create". payslip.remove performs a genuine
+// hard delete of a Payslip row, so it maps to "delete".
+const payrollViewProcedure = matrixProcedure("payroll", "view");
+const payrollCreateProcedure = writeProcedure.use(matrixMiddleware("payroll", "create"));
+const payrollUpdateProcedure = writeProcedure.use(matrixMiddleware("payroll", "update"));
+const payrollDeleteProcedure = writeProcedure.use(matrixMiddleware("payroll", "delete"));
 
 const STATUTORY_RATE_TYPES = ["sss", "philhealth", "pagibig", "withholding"] as const;
 
@@ -127,7 +142,7 @@ const payslipInputSchema = z.object({
 // ── Payslip sub-router ────────────────────────────────────────────────────────
 
 const payslipRouter = createTRPCRouter({
-  listByRun: protectedProcedure
+  listByRun: payrollViewProcedure
     .input(z.object({ payrollId: z.string().cuid() }))
     .query(async ({ input, ctx }) => {
       await loadPayrollForTenant(input.payrollId, ctx);
@@ -144,7 +159,7 @@ const payslipRouter = createTRPCRouter({
       });
     }),
 
-  add: writeProcedure
+  add: payrollCreateProcedure
     .input(
       payslipInputSchema.extend({
         payrollId: z.string().cuid(),
@@ -209,7 +224,7 @@ const payslipRouter = createTRPCRouter({
       });
     }),
 
-  update: writeProcedure
+  update: payrollUpdateProcedure
     .input(
       payslipInputSchema.partial().extend({
         id: z.string().cuid(),
@@ -280,7 +295,7 @@ const payslipRouter = createTRPCRouter({
       });
     }),
 
-  remove: writeProcedure
+  remove: payrollDeleteProcedure
     .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadPayslipForTenant(input.id, ctx);
@@ -313,7 +328,7 @@ const payslipRouter = createTRPCRouter({
 // ── Payroll run router ────────────────────────────────────────────────────────
 
 export const payrollRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: payrollViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -339,7 +354,7 @@ export const payrollRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: payrollViewProcedure
     .input(z.object({ id: z.string().cuid() }))
     .query(async ({ input, ctx }) => {
       await loadPayrollForTenant(input.id, ctx);
@@ -361,7 +376,7 @@ export const payrollRouter = createTRPCRouter({
       return item;
     }),
 
-  create: writeProcedure
+  create: payrollCreateProcedure
     .input(
       z.object({
         periodStart: z.string().min(1), // ISO date string "YYYY-MM-DD"
@@ -403,7 +418,7 @@ export const payrollRouter = createTRPCRouter({
       });
     }),
 
-  update: writeProcedure
+  update: payrollUpdateProcedure
     .input(
       z.object({
         id: z.string().cuid(),
@@ -456,7 +471,7 @@ export const payrollRouter = createTRPCRouter({
   // process (§C): compute PH statutory deductions for every payslip in the run from
   //   the tenant's configurable StatutoryRate table (cited 2025 defaults as fallback),
   //   then transition draft→processing. Re-runnable while in draft.
-  process: writeProcedure
+  process: payrollUpdateProcedure
     .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadPayrollForTenant(input.id, ctx);
@@ -529,7 +544,7 @@ export const payrollRouter = createTRPCRouter({
 
   // HOLD(owner-rule): approve — transitions run from processing→approved.
   //   Full approval workflow with approver identity + notifications deferred.
-  approve: writeProcedure
+  approve: payrollUpdateProcedure
     .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadPayrollForTenant(input.id, ctx);
@@ -546,7 +561,7 @@ export const payrollRouter = createTRPCRouter({
   //   + employer remittances, and posts a payroll JE
   //   (DR salaries + employer-statutory expense, CR Accounts Payable for the full credit).
   //   Account mapping is resolved from AccountingSettings; unset → clear configuration error.
-  markPaid: writeProcedure
+  markPaid: payrollUpdateProcedure
     .input(z.object({ id: z.string().cuid(), fundSourceId: z.string().cuid(), paidAt: z.date().optional() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadPayrollForTenant(input.id, ctx);
@@ -639,7 +654,7 @@ export const payrollRouter = createTRPCRouter({
 
   // ── Statutory rate sub-router (§C — owner-configurable, cited, effective-dated) ──
   statutoryRate: createTRPCRouter({
-    list: protectedProcedure.query(async ({ ctx }) => {
+    list: payrollViewProcedure.query(async ({ ctx }) => {
       return db.statutoryRate.findMany({
         where: { tenantId: ctx.tenantId },
         orderBy: [{ type: "asc" }, { effectiveFrom: "desc" }],
@@ -647,12 +662,12 @@ export const payrollRouter = createTRPCRouter({
     }),
 
     // Effective values currently applied (resolved from rows + cited defaults).
-    resolved: protectedProcedure.query(async ({ ctx }) => {
+    resolved: payrollViewProcedure.query(async ({ ctx }) => {
       const rows = await db.statutoryRate.findMany({ where: { tenantId: ctx.tenantId } });
       return resolveRatesFromRows(rows);
     }),
 
-    upsert: writeProcedure
+    upsert: payrollCreateProcedure
       .input(statutoryRateUpsertInputSchema)
       .mutation(async ({ input, ctx }) => {
         return db.$transaction(async (tx) => {
@@ -679,7 +694,7 @@ export const payrollRouter = createTRPCRouter({
       }),
 
     // Seed the cited 2025 PH defaults for this tenant (idempotent per type).
-    seedDefaults: writeProcedure.mutation(async ({ ctx }) => {
+    seedDefaults: payrollCreateProcedure.mutation(async ({ ctx }) => {
       const existing = await db.statutoryRate.findMany({ where: { tenantId: ctx.tenantId } });
       const have = new Set(existing.map((r) => r.type));
       const toCreate = (STATUTORY_RATE_TYPES as readonly StatutoryRateType[]).filter((t) => !have.has(t));

@@ -19,6 +19,13 @@ const { _prismaMock } = vi.hoisted(() => {
     warehouseStock: { findMany: vi.fn() },
     stockMovement: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), count: vi.fn() },
     auditLog: { create: vi.fn() },
+    // RBAC matrix resolver mocks (tenant-rbac-standard.md §4) — the router's
+    // procedures now run through matrixMiddleware, which calls hasPermission ->
+    // prisma.role.findFirst + prisma.rolePermission.findUnique. Default to a
+    // Platform Owner role (matrix bypass) so all cross-tenant IDOR assertions
+    // below are unaffected by the RBAC layer.
+    role: { findFirst: vi.fn() },
+    rolePermission: { findUnique: vi.fn() },
     $transaction: vi.fn(),
   };
   // $transaction invokes its callback with the same mock object so tx === prisma
@@ -26,12 +33,20 @@ const { _prismaMock } = vi.hoisted(() => {
   return { _prismaMock: mock };
 });
 
-vi.mock("@orqafy/db", () => ({
-  prisma: _prismaMock,
-  writeAuditLog: async (tx: { auditLog: { create: (args: unknown) => Promise<unknown> } }, entry: unknown) => {
-    await tx.auditLog.create({ data: entry });
-  },
-}));
+import type * as OrqafyDb from "@orqafy/db";
+
+// Keep the real `hasPermission` resolver (it takes prisma as an argument) —
+// only mock the prisma client calls it makes.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: _prismaMock,
+    writeAuditLog: async (tx: { auditLog: { create: (args: unknown) => Promise<unknown> } }, entry: unknown) => {
+      await tx.auditLog.create({ data: entry });
+    },
+  };
+});
 
 import type { NextRequest } from "next/server";
 
@@ -41,19 +56,27 @@ const mockDb = _prismaMock;
 function makeReq(): NextRequest { return {} as NextRequest; }
 
 function tenantACtx() {
-  return { req: makeReq(), userId: "user-a", roles: ["Administrator"], tenantSlug: "alpha", tenantId: "tid-alpha", securityVersion: 1, isDemoTenant: false, session: null };
+  return { req: makeReq(), userId: "user-a", roles: ["Administrator"], roleId: "role-a", tenantSlug: "alpha", tenantId: "tid-alpha", securityVersion: 1, isDemoTenant: false, session: null };
 }
 function tenantBCtx() {
-  return { req: makeReq(), userId: "user-b", roles: ["Administrator"], tenantSlug: "bravo", tenantId: "tid-bravo", securityVersion: 1, isDemoTenant: false, session: null };
+  return { req: makeReq(), userId: "user-b", roles: ["Administrator"], roleId: "role-b", tenantSlug: "bravo", tenantId: "tid-bravo", securityVersion: 1, isDemoTenant: false, session: null };
 }
 
 const testRouter = createTRPCRouter({ inventory: inventoryRouter });
 const createCaller = createCallerFactory(testRouter);
 
+// Every describe block below clears mocks in its own beforeEach; re-arm the
+// matrix bypass there too so cross-tenant IDOR assertions stay the sole
+// focus. Platform Owner bypasses the matrix entirely (tenant-rbac-standard.md
+// §4), so this must be re-set after every vi.clearAllMocks().
+function grantMatrixBypass(): void {
+  mockDb.role.findFirst.mockResolvedValue({ id: "role-x", tenantId: "tid-alpha", name: "Platform Owner" });
+}
+
 // ── Category IDOR closure ───────────────────────────────────────────────────
 
 describe("category tenant parity", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => { vi.clearAllMocks(); grantMatrixBypass(); });
 
   it("categoryCreate injects ctx.tenantId into data", async () => {
     mockDb.category.create.mockResolvedValue({ id: "cat-new", tenantId: "tid-alpha" });
@@ -91,7 +114,7 @@ describe("category tenant parity", () => {
 // ── Product IDOR closure (M7.2) ─────────────────────────────────────────────
 
 describe("product tenant parity (M7.2 IDOR guards)", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => { vi.clearAllMocks(); grantMatrixBypass(); });
 
   it("productById rejects cross-tenant id (read-IDOR closure)", async () => {
     mockDb.product.findFirst.mockResolvedValue(null);
@@ -142,7 +165,7 @@ describe("product tenant parity (M7.2 IDOR guards)", () => {
 // ── StockMovement IDOR closure ──────────────────────────────────────────────
 
 describe("stockMovement tenant parity", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => { vi.clearAllMocks(); grantMatrixBypass(); });
 
   it("stockMovementCreate injects ctx.tenantId into data", async () => {
     mockDb.product.findFirst.mockResolvedValue({ id: "p1", tenantId: "tid-alpha" });
@@ -214,7 +237,7 @@ describe("stockMovement tenant parity", () => {
 // ── Audit log assertions ────────────────────────────────────────────────────
 
 describe("audit log written for inventory mutations", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => { vi.clearAllMocks(); grantMatrixBypass(); });
 
   it("categoryCreate writes an audit row with action CREATE entity Category", async () => {
     mockDb.category.create.mockResolvedValue({ id: "cat-audit", tenantId: "tid-alpha", name: "Audit Cat", slug: "audit-cat", isActive: true });

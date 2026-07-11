@@ -21,8 +21,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import { crmRouter } from "@/server/trpc/routers/crm";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
+import type * as OrqafyDb from "@orqafy/db";
 
-vi.mock("@orqafy/db", () => {
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
   const mockPrisma = {
     customer: {
       findMany: vi.fn(),
@@ -72,8 +74,11 @@ vi.mock("@orqafy/db", () => {
       count: vi.fn(),
     },
     auditLog: { create: vi.fn() },
+    role: { findFirst: vi.fn() },
+    rolePermission: { findUnique: vi.fn() },
   };
   return {
+    ...actual,
     prisma: {
       ...mockPrisma,
       $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(mockPrisma)),
@@ -96,6 +101,7 @@ function authenticatedCtx() {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"],
+    roleId: "role-1",
     tenantSlug: "acme",
     tenantId: "acme-tenant-id",
     securityVersion: 1,
@@ -109,6 +115,7 @@ function unauthenticatedCtx() {
     req: makeReq(),
     userId: null,
     roles: [],
+    roleId: null,
     tenantSlug: null,
     tenantId: null,
     securityVersion: 0,
@@ -172,8 +179,27 @@ const mockDb = db as unknown as {
   auditLog: {
     create: ReturnType<typeof vi.fn>;
   };
+  role: {
+    findFirst: ReturnType<typeof vi.fn>;
+  };
+  rolePermission: {
+    findUnique: ReturnType<typeof vi.fn>;
+  };
   $transaction: ReturnType<typeof vi.fn>;
 };
+
+// Matrix middleware bypass by default — these tests assert business logic, not
+// RBAC grant/deny behavior (that's covered by crm-matrix.test.ts). A default
+// "Platform Owner" role short-circuits hasPermission() to true regardless of
+// tenantId. vi.clearAllMocks() (called in every describe's beforeEach) clears
+// call-tracking data but NOT this mockResolvedValue, so the bypass persists.
+beforeEach(() => {
+  mockDb.role.findFirst.mockResolvedValue({
+    id: "role-1",
+    tenantId: "acme-tenant-id",
+    name: "Platform Owner",
+  });
+});
 
 const sampleCustomer = {
   id: "cust-1",
@@ -1264,6 +1290,7 @@ describe("crm.quotation* demo tenant blocking", () => {
       req: makeReq(),
       userId: "user-1",
       roles: ["Administrator"],
+      roleId: "role-1",
       tenantSlug: "demo",
       tenantId: "demo-tenant-id",
       securityVersion: 1,
@@ -1542,6 +1569,7 @@ describe("crm.contactLog demo tenant blocking", () => {
       req: makeReq(),
       userId: "user-1",
       roles: ["Administrator"],
+      roleId: "role-1",
       tenantSlug: "demo",
       tenantId: "demo-tenant-id",
       securityVersion: 1,
@@ -1779,6 +1807,7 @@ describe("crm.quotationConvertToInvoice", () => {
       req: makeReq(),
       userId: "user-1",
       roles: ["Administrator"],
+      roleId: "role-1",
       tenantSlug: "demo",
       tenantId: "demo-tenant-id",
       securityVersion: 1,

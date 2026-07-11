@@ -58,6 +58,11 @@ const { mockPrisma } = vi.hoisted(() => {
       count: vi.fn(),
     },
     auditLog: { create: mockAuditLogCreate },
+    // RBAC matrix resolver mocks (tenant-rbac-standard.md §4) — the router's
+    // procedures now run through matrixMiddleware, which calls hasPermission ->
+    // prisma.role.findFirst + prisma.rolePermission.findUnique.
+    role: { findFirst: vi.fn() },
+    rolePermission: { findUnique: vi.fn() },
     // $transaction invokes its callback with the same mock object as `tx`,
     // so router code using tx.<model>.<op> hits the same vi.fn() the tests assert on.
     $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(mockPrisma)),
@@ -65,15 +70,23 @@ const { mockPrisma } = vi.hoisted(() => {
   return { mockPrisma };
 });
 
-vi.mock("@orqafy/db", () => ({
-  prisma: mockPrisma,
-  writeAuditLog: async (
-    tx: { auditLog: { create: (args: unknown) => unknown } },
-    entry: unknown,
-  ) => {
-    await tx.auditLog.create({ data: entry });
-  },
-}));
+import type * as OrqafyDb from "@orqafy/db";
+
+// Keep the real `hasPermission` resolver (it takes prisma as an argument) —
+// only mock the prisma client calls it makes.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: mockPrisma,
+    writeAuditLog: async (
+      tx: { auditLog: { create: (args: unknown) => unknown } },
+      entry: unknown,
+    ) => {
+      await tx.auditLog.create({ data: entry });
+    },
+  };
+});
 
 import type { NextRequest } from "next/server";
 
@@ -86,6 +99,7 @@ function authenticatedCtx() {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"],
+    roleId: "role-1",
     tenantSlug: "acme",
     tenantId: "acme-tenant-id",
     securityVersion: 1,
@@ -145,7 +159,21 @@ const mockDb = db as unknown as {
     count: ReturnType<typeof vi.fn>;
   };
   auditLog: { create: ReturnType<typeof vi.fn> };
+  role: { findFirst: ReturnType<typeof vi.fn> };
+  rolePermission: { findUnique: ReturnType<typeof vi.fn> };
 };
+
+// inventory.* procedures now run through matrixMiddleware
+// (tenant-rbac-standard.md §4). Default every test to a Platform Owner role,
+// which bypasses the matrix entirely — this file's tests exercise business
+// logic and tenant scoping, not the RBAC matrix itself (see
+// inventory-matrix.test.ts for matrix grant/deny coverage). Placed at module
+// scope (outside every describe) so it runs before each per-describe
+// `beforeEach(() => vi.clearAllMocks())` and survives it — clearAllMocks()
+// only clears call history, it does not reset mock implementations.
+beforeEach(() => {
+  mockDb.role.findFirst.mockResolvedValue({ id: "role-1", tenantId: "acme-tenant-id", name: "Platform Owner" });
+});
 
 const sampleCategory = {
   id: "cat-1",

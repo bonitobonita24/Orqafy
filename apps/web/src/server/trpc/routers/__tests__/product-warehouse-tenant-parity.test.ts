@@ -22,6 +22,8 @@ const {
   mockWarehouseFindUnique,
   mockWarehouseStockFindMany,
   mockCustomerFindUnique,
+  mockRoleFindFirst,
+  mockRolePermissionFindUnique,
 } = vi.hoisted(() => ({
   mockProductFindMany: vi.fn(),
   mockProductCount: vi.fn(),
@@ -31,42 +33,56 @@ const {
   mockWarehouseFindUnique: vi.fn(),
   mockWarehouseStockFindMany: vi.fn(),
   mockCustomerFindUnique: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
+  mockRolePermissionFindUnique: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    product: {
-      findMany: mockProductFindMany,
-      findFirst: mockProductFindFirst,
-      findUnique: vi.fn(),
-      count: mockProductCount,
+import type * as OrqafyDb from "@orqafy/db";
+
+// Keep the real `hasPermission` resolver (it takes prisma as an argument) —
+// only mock the prisma client calls it makes. inventory.* procedures now run
+// through matrixMiddleware (tenant-rbac-standard.md §4); role/rolePermission
+// mocks below default to a Platform Owner bypass in beforeEach.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      product: {
+        findMany: mockProductFindMany,
+        findFirst: mockProductFindFirst,
+        findUnique: vi.fn(),
+        count: mockProductCount,
+      },
+      warehouse: {
+        findMany: mockWarehouseFindMany,
+        findFirst: mockWarehouseFindFirst,
+        findUnique: mockWarehouseFindUnique,
+        create: vi.fn(),
+        update: vi.fn(),
+      },
+      warehouseStock: {
+        findMany: mockWarehouseStockFindMany,
+        update: vi.fn(),
+      },
+      customer: { findUnique: mockCustomerFindUnique, findFirst: vi.fn() },
+      ecommerceOrder: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), count: vi.fn(), create: vi.fn(), update: vi.fn() },
+      ecommerceOrderItem: { create: vi.fn(), createMany: vi.fn() },
+      stockMovement: { findMany: vi.fn(), create: vi.fn() },
+      tenant: { findUnique: vi.fn() },
+      category: { findMany: vi.fn() },
+      role: { findFirst: mockRoleFindFirst },
+      rolePermission: { findUnique: mockRolePermissionFindUnique },
+      $transaction: vi.fn((fn: any) => fn({
+        ecommerceOrder: { create: vi.fn().mockResolvedValue({ id: "order-1", orderNumber: "ORD-001" }) },
+        ecommerceOrderItem: { create: vi.fn() },
+        warehouseStock: { update: vi.fn() },
+        stockMovement: { create: vi.fn() },
+      })),
     },
-    warehouse: {
-      findMany: mockWarehouseFindMany,
-      findFirst: mockWarehouseFindFirst,
-      findUnique: mockWarehouseFindUnique,
-      create: vi.fn(),
-      update: vi.fn(),
-    },
-    warehouseStock: {
-      findMany: mockWarehouseStockFindMany,
-      update: vi.fn(),
-    },
-    customer: { findUnique: mockCustomerFindUnique, findFirst: vi.fn() },
-    ecommerceOrder: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), count: vi.fn(), create: vi.fn(), update: vi.fn() },
-    ecommerceOrderItem: { create: vi.fn(), createMany: vi.fn() },
-    stockMovement: { findMany: vi.fn(), create: vi.fn() },
-    tenant: { findUnique: vi.fn() },
-    category: { findMany: vi.fn() },
-    $transaction: vi.fn((fn: any) => fn({
-      ecommerceOrder: { create: vi.fn().mockResolvedValue({ id: "order-1", orderNumber: "ORD-001" }) },
-      ecommerceOrderItem: { create: vi.fn() },
-      warehouseStock: { update: vi.fn() },
-      stockMovement: { create: vi.fn() },
-    })),
-  },
-  writeAuditLog: vi.fn(),
-}));
+    writeAuditLog: vi.fn(),
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: {
@@ -105,6 +121,7 @@ function ctxForTenant(tenantId: string) {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-1",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -119,6 +136,9 @@ const WAREHOUSE_CUID = "clwarehousexxxxxxxxxx0";
 describe("Product + Warehouse tenant parity (K-prime Extended Phase 2 Wave B)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // inventory.* procedures run through matrixMiddleware — default to a
+    // Platform Owner bypass so these IDOR/scoping assertions are unaffected.
+    mockRoleFindFirst.mockResolvedValue({ id: "role-1", tenantId: "tenant-A", name: "Platform Owner" });
   });
 
   it("browseProducts scopes findMany by ctx.tenantId", async () => {
