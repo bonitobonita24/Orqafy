@@ -2532,3 +2532,17 @@
 - Result:              Both previously-open owner-gated security gaps from the 2026-07-11 RBAC §4 Track C session are now closed.
 - NEXT:                Owner will direct. Standing owner-gated items unchanged: reseed live/staging/prod, apply migrations 20260710160000 + 20260711010000 to staging/prod, framework-sync push, git-tag push (next = MINOR 0.11.0), staging/prod/demo deploy, D-PRIV-1 (RA 10173), D-NUM-1. Optional [HOW] follow-up if owner wants: role.delete procedure + a succession/assign UI.
 - HOLD:                No push/staging/prod/deploy without explicit owner signal (default LOCAL DEV).
+
+## 2026-07-12 — RBAC §4 role-builder: complete custom-role CRUD (role.delete)
+- Agent:               CLAUDE_CODE
+- Why:                 The §4 custom-role permission-matrix system had create/update/assign but NO delete — the role-builder UI could create and edit custom roles yet never remove one (incomplete CRUD). This was the last un-gated [HOW] completeness gap for the RBAC §4 goal. Added the delete path end-to-end (procedure + tests + UI).
+- Files added:         none
+- Files modified:      apps/web/src/server/trpc/routers/role.ts (add deleteInput + delete mutation), apps/web/src/server/trpc/routers/__tests__/role.router.test.ts (+5 delete cases + role.delete/rolePermission.deleteMany/user.count mocks), apps/web/src/app/(tenant)/[slug]/(app)/settings/roles/roles-client.tsx (destructive "Delete role" two-step-confirm affordance + deleteMut wiring, existing-role mode only)
+- Files deleted:       none
+- Schema/migrations:   none
+- What it adds:        role.delete (superAdminProcedure) with fleet guardrails — TSA/PO only (assertCanManageRoles); the 3 fixed system tiers immutable (assertSystemRoleImmutable); tenant-scoped NOT_FOUND; in-use guard blocks deletion (BAD_REQUEST) when any user is still assigned so no user is orphaned into a dangling role; cascades the role's rolePermission rows in a transaction; audits DELETE.
+- Verification:        PM ground-truth — web typecheck 0 · web vitest 1258/1258 (+5 new) · eslint 0 · lint-design PASS. Live Rule-16 Visual QA (dev :42951, demo tenant, Tenant Super Admin): happy-path delete removes "QA Temp Role"; in-use guard blocks deleting "Staff" (assigned users) with a 400 toast and the role stays; new-role mode shows no Delete button; Users/Billing rows stay disabled. Only console errors = favicon 404 (pre-existing) + the intended role.delete 400.
+- Commits:             0270086 (feat(rbac): add role.delete — complete custom-role CRUD (§4 role-builder))
+- Errors encountered:  none
+- Errors resolved:     none
+- HOLD:                LOCAL only on feat/tenant-rbac-3tier (unpushed). No staging/prod/demo deploy or reseed without explicit owner signal.
