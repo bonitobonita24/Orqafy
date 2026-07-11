@@ -81,14 +81,17 @@ export default async function SettingsPage({
     select: { id: true, name: true, slug: true, status: true },
   });
 
-  // Custom-role management is Tenant Super Admin / Platform Owner only
-  // (tenant-rbac-standard.md §4 guardrails) — only surface the card to
-  // those roles; the roles page itself redirects everyone else.
+  // Custom-role management and User Management are Tenant Super Admin /
+  // Platform Owner only (tenant-rbac-standard.md §4 guardrails) — only
+  // surface these cards to those roles; the underlying pages redirect
+  // everyone else.
   const session = await auth();
   const sessionRoles = session?.user?.roles ?? [];
   const canManageRoles =
     sessionRoles.includes("Tenant Super Admin") || sessionRoles.includes("Platform Owner");
-  const cards = CARDS.filter((card) => card.key !== "roles" || canManageRoles);
+  const cards = CARDS.filter(
+    (card) => (card.key !== "roles" && card.key !== "users") || canManageRoles
+  );
 
   return (
     <div className="space-y-6">

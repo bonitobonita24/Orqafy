@@ -1,10 +1,22 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { createTRPCRouter, protectedProcedure, superAdminProcedure, writeProcedure } from "../trpc";
 import { prisma as db, transferTenantOwnership } from "@orqafy/db";
 
+// User Management is reserved for Tenant Super Admin / Platform Owner only
+// (tenant-rbac-standard.md §4: "Users" and "Billing" are FIXED-tier exclusive —
+// never matrix-configurable, even for a custom role at the Admin ceiling).
+// writeProcedure already blocks demo-tenant mutations; layer the fixed role
+// check on top so it composes with the demo guard for `deactivate`.
+const superAdminWriteProcedure = writeProcedure.use(({ ctx, next }) => {
+  if (!ctx.roles.includes("Tenant Super Admin") && !ctx.roles.includes("Platform Owner")) {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+  return next({ ctx });
+});
+
 export const userRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: superAdminProcedure
     .input(z.object({ page: z.number().int().min(1).default(1), limit: z.number().int().min(1).max(200).default(50) }))
     .query(async ({ ctx, input }) => {
       const [items, total] = await Promise.all([
@@ -29,7 +41,7 @@ export const userRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: superAdminProcedure
     .input(z.object({ id: z.string().cuid() }))
     .query(async ({ ctx, input }) => {
       const user = await db.user.findUnique({
@@ -51,7 +63,7 @@ export const userRouter = createTRPCRouter({
       return result;
     }),
 
-  deactivate: writeProcedure
+  deactivate: superAdminWriteProcedure
     .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ ctx, input }) => {
       const user = await db.user.findUnique({ where: { id: input.id }, select: { id: true, tenantId: true } });

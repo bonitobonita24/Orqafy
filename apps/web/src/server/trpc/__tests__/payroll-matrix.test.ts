@@ -143,4 +143,42 @@ describe("payroll router — matrix migration", () => {
     await expect(caller.payrollView()).rejects.toThrow(TRPCError);
     expect(mockDb.role.findFirst).not.toHaveBeenCalled();
   });
+
+  // Tightened per owner ruling 2026-07-11: payroll writes are HR Manager
+  // (+ Platform Owner / Tenant Super Admin bypass) only — mirrors the
+  // dtr.ts HR-Manager-override pattern (see role-permissions.ts seed).
+  it("a role granted create=true by the matrix (e.g. HR Manager) is ALLOWED to create payroll records", async () => {
+    mockDb.role.findFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "acme-tenant-id",
+      name: "HR Manager",
+    });
+    mockDb.rolePermission.findUnique.mockResolvedValue({
+      view: true,
+      create: true,
+      update: true,
+      delete: true,
+    });
+
+    const caller = createCaller(ctx());
+    await expect(caller.payrollCreate()).resolves.toBe("created");
+  });
+
+  it("a role WITHOUT the payroll create grant (e.g. a non-HR-Manager internal role) is DENIED", async () => {
+    mockDb.role.findFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "acme-tenant-id",
+      name: "Staff",
+    });
+    mockDb.rolePermission.findUnique.mockResolvedValue({
+      view: true,
+      create: false,
+      update: false,
+      delete: false,
+    });
+
+    const caller = createCaller(ctx());
+    await expect(caller.payrollCreate()).rejects.toThrow(TRPCError);
+    await expect(caller.payrollCreate()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
 });

@@ -67,13 +67,16 @@ const FEATURE_DEFAULTS: Record<
   pos: { internalStaff: { view: true, create: true, update: true, delete: false } }, // pos.ts: void is the closest to delete
   job_orders: { internalStaff: { view: true, create: true, update: true, delete: false } }, // job-order.ts: no delete endpoint
   expenses: { internalStaff: { view: true, create: true, update: true, delete: false } }, // expense.ts: approve/reject are ungated, no delete endpoint
-  // payroll.ts is FULLY ungated at the router (no ctx.roles check anywhere),
-  // even though the legacy STANDARD_ROLES wildcard string says 'payroll.*'
-  // belongs to HR Manager only (roles.ts). Ground truth wins per Task 3.3 —
-  // TODO(D-RBAC-PAYROLL-UNGATED): flag to the architect; this is a real,
-  // pre-existing gap between the legacy `permissions` JSON and actual
-  // enforcement, not something this no-op backfill may silently narrow.
-  payroll: { internalStaff: { view: true, create: true, update: true, delete: true } },
+  // TIGHTENED per owner ruling 2026-07-11: payroll writes are HR Manager
+  // (+ Platform Owner / Tenant Super Admin bypass) only. payroll.ts is now
+  // matrix-migrated (matrixMiddleware("payroll", create/update/delete)), so
+  // this is a pure seed-grant change — no router edit. `view` stays broad
+  // (nav-visibility, unfiltered today), mirroring the `dtr`/`employees`
+  // override pattern already used above.
+  payroll: {
+    internalStaff: { view: true, create: false, update: false, delete: false },
+    roleOverrides: { hr_manager: { create: true, update: true, delete: true } },
+  },
 
   // NARROW — admin-tier only (Tenant Super Admin | Admin | Platform Owner),
   // via `requireRole`/inline `ADMIN_ROLES` checks that use the REAL "Admin"
@@ -202,12 +205,13 @@ const FEATURE_DEFAULTS: Record<
   // Platform Owner) and with `assertNoForbiddenFeatures` in
   // packages/db/src/rbac/guardrails.ts, which will reject saving ANY
   // truthy users/billing grant on a non-system role via the role-builder.
-  // TODO(D-RBAC-USERS-UNGATED): this is a real, PRE-EXISTING security gap —
-  // ground-truthed and preserved per Task 3.3's explicit "preserve current
-  // behavior, do not silently restrict" instruction. Reported to the
-  // architect; fixing it is an explicit, separate, owner-approved change,
-  // NOT part of this no-op backfill. No `create` (no invite endpoint) or
-  // `delete` (no hard-delete endpoint) exists.
+  // RESOLVED 2026-07-12 (owner-approved): user.ts (list/byId/deactivate) is now
+  // gated to Tenant Super Admin / Platform Owner via the FIXED `superAdminProcedure`
+  // (+ a superAdmin-composed write) — NOT the matrix, because `users` is a
+  // guardrail-forbidden feature (custom roles may never hold it; see
+  // assertNoForbiddenFeatures). These rows are therefore DISPLAY-ONLY (the
+  // role-builder ceiling / greyed-out display) and do NOT drive enforcement.
+  // No `create` (no invite endpoint) or `delete` (no hard-delete endpoint) exists.
   users: { internalStaff: { view: true, create: false, update: true, delete: false } },
 
   // No billing/subscription router or mutation exists anywhere in the

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { createServerCaller } from "@/server/trpc/server";
 import { guardPage } from "@/server/rbac/guard-page";
+import { auth } from "@/server/auth";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -23,6 +25,15 @@ export default async function UsersSettingsPage({
 }) {
   const { slug } = await params;
   await guardPage(slug, "users");
+
+  // User Management is Tenant Super Admin / Platform Owner only
+  // (tenant-rbac-standard.md §4 guardrails) — defense-in-depth over the
+  // server mutations (`superAdminProcedure` in the `user` router).
+  const session = await auth();
+  const roles = session?.user?.roles ?? [];
+  if (!roles.includes("Tenant Super Admin") && !roles.includes("Platform Owner")) {
+    redirect(`/${slug}/settings`);
+  }
 
   const api = await createServerCaller();
   const { items: users, total } = await api.user.list({ page: 1, limit: 50 });

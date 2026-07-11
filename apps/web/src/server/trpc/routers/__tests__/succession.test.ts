@@ -4,6 +4,9 @@
  * Covers:
  *  1. platform.reassignTenantOwner — Platform Owner only; delegates to reassignTenantOwner helper
  *  2. user.transferOwnership — current tenant owner only; delegates to transferTenantOwnership helper
+ *  3. user.list / user.byId / user.deactivate — User Management is a FIXED-tier
+ *     surface (tenant-rbac-standard.md §4): Tenant Super Admin / Platform Owner
+ *     only, never matrix-configurable.
  */
 /* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 
@@ -64,6 +67,32 @@ function regularUserCtx() {
     req: makeReq(),
     userId: "user-1",
     roles: ["Admin"],
+    tenantSlug: "acme",
+    tenantId: "acme-tenant-id",
+    securityVersion: 1,
+    isDemoTenant: false,
+    session: null,
+  };
+}
+
+function tenantSuperAdminCtx() {
+  return {
+    req: makeReq(),
+    userId: "tsa-1",
+    roles: ["Tenant Super Admin"],
+    tenantSlug: "acme",
+    tenantId: "acme-tenant-id",
+    securityVersion: 1,
+    isDemoTenant: false,
+    session: null,
+  };
+}
+
+function staffCtx() {
+  return {
+    req: makeReq(),
+    userId: "staff-1",
+    roles: ["Staff"],
     tenantSlug: "acme",
     tenantId: "acme-tenant-id",
     securityVersion: 1,
@@ -174,6 +203,101 @@ describe("user.transferOwnership", () => {
       tenantId: ctx.tenantId,
       fromUserId: ctx.userId,
       toUserId: "u3",
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3. user.list / user.byId / user.deactivate — fixed-tier gate
+// ---------------------------------------------------------------------------
+describe("user.list / user.byId / user.deactivate — Tenant Super Admin / Platform Owner only", () => {
+  const router = createTRPCRouter({ user: userRouter });
+
+  it("allows user.list for a Tenant Super Admin", async () => {
+    const { prisma } = await import("@orqafy/db");
+    vi.mocked(prisma.user.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.user.count).mockResolvedValue(0);
+
+    const caller = createCallerFactory(router)(tenantSuperAdminCtx());
+    const result = await caller.user.list({ page: 1, limit: 50 });
+    expect(result.total).toBe(0);
+  });
+
+  it("allows user.list for a Platform Owner", async () => {
+    const { prisma } = await import("@orqafy/db");
+    vi.mocked(prisma.user.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.user.count).mockResolvedValue(0);
+
+    const caller = createCallerFactory(router)(platformOwnerCtx());
+    const result = await caller.user.list({ page: 1, limit: 50 });
+    expect(result.total).toBe(0);
+  });
+
+  it("rejects user.list for a non-privileged role (Staff)", async () => {
+    const caller = createCallerFactory(router)(staffCtx());
+    await expect(caller.user.list({ page: 1, limit: 50 })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+  });
+
+  it("rejects user.list for a regular Admin (non-owner) role", async () => {
+    const caller = createCallerFactory(router)(regularUserCtx());
+    await expect(caller.user.list({ page: 1, limit: 50 })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+  });
+
+  it("allows user.byId for a Tenant Super Admin", async () => {
+    const { prisma } = await import("@orqafy/db");
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: "cjld2cjxh0000qzrmn831i7rn",
+      tenantId: "acme-tenant-id",
+      email: "a@acme.test",
+      firstName: "A",
+      lastName: "B",
+      displayName: null,
+      isActive: true,
+      createdAt: new Date(),
+      role: { name: "Admin" },
+    } as never);
+
+    const caller = createCallerFactory(router)(tenantSuperAdminCtx());
+    const result = await caller.user.byId({ id: "cjld2cjxh0000qzrmn831i7rn" });
+    expect(result.id).toBe("cjld2cjxh0000qzrmn831i7rn");
+  });
+
+  it("rejects user.byId for a non-privileged role (Staff)", async () => {
+    const caller = createCallerFactory(router)(staffCtx());
+    await expect(caller.user.byId({ id: "cjld2cjxh0000qzrmn831i7rn" })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+  });
+
+  it("allows user.deactivate for a Tenant Super Admin", async () => {
+    const { prisma } = await import("@orqafy/db");
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: "cjld2cjxh0000qzrmn831i7rn",
+      tenantId: "acme-tenant-id",
+    } as never);
+    vi.mocked(prisma.user.update).mockResolvedValue({ id: "cjld2cjxh0000qzrmn831i7rn" } as never);
+
+    const caller = createCallerFactory(router)(tenantSuperAdminCtx());
+    const result = await caller.user.deactivate({ id: "cjld2cjxh0000qzrmn831i7rn" });
+    expect(result.id).toBe("cjld2cjxh0000qzrmn831i7rn");
+  });
+
+  it("rejects user.deactivate for a non-privileged role (Staff)", async () => {
+    const caller = createCallerFactory(router)(staffCtx());
+    await expect(caller.user.deactivate({ id: "cjld2cjxh0000qzrmn831i7rn" })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+  });
+
+  it("rejects user.deactivate on the demo tenant even for a Tenant Super Admin", async () => {
+    const ctx = { ...tenantSuperAdminCtx(), isDemoTenant: true };
+    const caller = createCallerFactory(router)(ctx);
+    await expect(caller.user.deactivate({ id: "cjld2cjxh0000qzrmn831i7rn" })).rejects.toMatchObject({
+      code: "FORBIDDEN",
     });
   });
 });

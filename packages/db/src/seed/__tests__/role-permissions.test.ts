@@ -196,6 +196,29 @@ describe('role-permissions backfill — day-one no-op parity', () => {
     });
   });
 
+  describe('payroll — tightened to HR Manager only (owner ruling 2026-07-11)', () => {
+    it('only HR Manager (of the non-bypass roles) may create/update/delete payroll records', async () => {
+      expect(await can('hr_manager', 'payroll', 'create')).toBe(true);
+      expect(await can('hr_manager', 'payroll', 'update')).toBe(true);
+      expect(await can('hr_manager', 'payroll', 'delete')).toBe(true);
+
+      expect(await can('admin', 'payroll', 'create')).toBe(false);
+      expect(await can('accountant', 'payroll', 'update')).toBe(false);
+      expect(await can('staff', 'payroll', 'delete')).toBe(false);
+    });
+
+    it('Platform Owner and Tenant Super Admin bypass the matrix for payroll', async () => {
+      expect(await can('platform_owner', 'payroll', 'create')).toBe(true);
+      expect(await can('tenant_super_admin', 'payroll', 'delete')).toBe(true);
+    });
+
+    it('view stays broad (nav-visibility) for every internal-staff role', async () => {
+      for (const slug of NON_BYPASS_NON_CUSTOMER_SLUGS) {
+        expect(await can(slug, 'payroll', 'view'), `${slug} should view payroll (nav)`).toBe(true);
+      }
+    });
+  });
+
   describe('purchasing — reactivate gate (already-fixed, real names)', () => {
     it('only Admin + Purchasing Staff may reactivate a vendor (mapped to delete)', async () => {
       expect(await can('admin', 'purchasing', 'delete')).toBe(true);
@@ -248,7 +271,6 @@ describe('role-permissions backfill — day-one no-op parity', () => {
       ['pos', 'create'], ['pos', 'update'],
       ['job_orders', 'create'], ['job_orders', 'update'],
       ['expenses', 'create'], ['expenses', 'update'],
-      ['payroll', 'create'], ['payroll', 'update'], ['payroll', 'delete'],
       ['support', 'create'], ['support', 'update'],
       ['dsr', 'create'],
     ] as const)('%s.%s is granted to a representative non-privileged role (Staff)', async (feature, action) => {
