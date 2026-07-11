@@ -21,11 +21,14 @@ const {
   mockRoleFindUnique,
   mockRoleFindMany,
   mockRoleCreate,
+  mockRoleDelete,
   mockRolePermissionFindMany,
   mockRolePermissionCreateMany,
   mockRolePermissionUpsert,
+  mockRolePermissionDeleteMany,
   mockUserFindUnique,
   mockUserUpdate,
+  mockUserCount,
   mockAuditLogCreate,
   mockTransaction,
 } = vi.hoisted(() => ({
@@ -33,11 +36,14 @@ const {
   mockRoleFindUnique: vi.fn(),
   mockRoleFindMany: vi.fn(),
   mockRoleCreate: vi.fn(),
+  mockRoleDelete: vi.fn(),
   mockRolePermissionFindMany: vi.fn(),
   mockRolePermissionCreateMany: vi.fn(),
   mockRolePermissionUpsert: vi.fn(),
+  mockRolePermissionDeleteMany: vi.fn(),
   mockUserFindUnique: vi.fn(),
   mockUserUpdate: vi.fn(),
+  mockUserCount: vi.fn(),
   mockAuditLogCreate: vi.fn(),
   mockTransaction: vi.fn(),
 }));
@@ -50,15 +56,18 @@ vi.mock("@orqafy/db", async () => {
       findUnique: mockRoleFindUnique,
       findMany: mockRoleFindMany,
       create: mockRoleCreate,
+      delete: mockRoleDelete,
     },
     rolePermission: {
       findMany: mockRolePermissionFindMany,
       createMany: mockRolePermissionCreateMany,
       upsert: mockRolePermissionUpsert,
+      deleteMany: mockRolePermissionDeleteMany,
     },
     user: {
       findUnique: mockUserFindUnique,
       update: mockUserUpdate,
+      count: mockUserCount,
     },
     auditLog: {
       create: mockAuditLogCreate,
@@ -118,8 +127,12 @@ beforeEach(() => {
   // Default $transaction: just invoke the callback with the same mocked "tx" shape.
   mockTransaction.mockImplementation((fn: any) =>
     fn({
-      role: { create: mockRoleCreate },
-      rolePermission: { createMany: mockRolePermissionCreateMany, upsert: mockRolePermissionUpsert },
+      role: { create: mockRoleCreate, delete: mockRoleDelete },
+      rolePermission: {
+        createMany: mockRolePermissionCreateMany,
+        upsert: mockRolePermissionUpsert,
+        deleteMany: mockRolePermissionDeleteMany,
+      },
       auditLog: { create: mockAuditLogCreate },
     }),
   );
@@ -320,6 +333,80 @@ describe("role router", () => {
       const caller = createCaller(ctx(["Sales Staff"], { roleId: null }));
       const result = await caller.role.myPermissions();
       expect(result.view).toEqual([]);
+    });
+  });
+
+  describe("delete", () => {
+    it("delete is blocked for a non-superadmin role", async () => {
+      const caller = createCaller(ctx(["Admin"]));
+      await expect(
+        caller.role.delete({ roleId: "clrole0custom000000001" }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    });
+
+    it("delete rejects a fixed system role", async () => {
+      mockRoleFindUnique.mockResolvedValueOnce({
+        id: "clrole0custom000000001",
+        tenantId: "tenant-A",
+        name: "Admin",
+        slug: "admin",
+        isSystem: true,
+      });
+
+      const caller = createCaller(ctx(["Tenant Super Admin"]));
+      await expect(
+        caller.role.delete({ roleId: "clrole0custom000000001" }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      expect(mockRoleDelete).not.toHaveBeenCalled();
+    });
+
+    it("delete rejects when users still assigned", async () => {
+      mockRoleFindUnique.mockResolvedValueOnce({
+        id: "clrole0custom000000001",
+        tenantId: "tenant-A",
+        name: "CRM Viewer",
+        slug: "crm_viewer",
+        isSystem: false,
+      });
+      mockUserCount.mockResolvedValueOnce(2);
+
+      const caller = createCaller(ctx(["Tenant Super Admin"]));
+      await expect(
+        caller.role.delete({ roleId: "clrole0custom000000001" }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(mockRoleDelete).not.toHaveBeenCalled();
+    });
+
+    it("delete returns NOT_FOUND for a role in another tenant", async () => {
+      mockRoleFindUnique.mockResolvedValueOnce({
+        id: "clrole0custom000000001",
+        tenantId: "tenant-OTHER",
+        isSystem: false,
+      });
+
+      const caller = createCaller(ctx(["Tenant Super Admin"]));
+      await expect(
+        caller.role.delete({ roleId: "clrole0custom000000001" }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+
+    it("delete happy path removes the role + its matrix rows and audits", async () => {
+      mockRoleFindUnique.mockResolvedValueOnce({
+        id: "clrole0custom000000001",
+        tenantId: "tenant-A",
+        name: "CRM Viewer",
+        slug: "crm_viewer",
+        isSystem: false,
+      });
+      mockUserCount.mockResolvedValueOnce(0);
+
+      const caller = createCaller(ctx(["Tenant Super Admin"]));
+      const result = await caller.role.delete({ roleId: "clrole0custom000000001" });
+
+      expect(result).toMatchObject({ success: true });
+      expect(mockRolePermissionDeleteMany).toHaveBeenCalledOnce();
+      expect(mockRoleDelete).toHaveBeenCalledOnce();
+      expect(mockAuditLogCreate).toHaveBeenCalledOnce();
     });
   });
 });

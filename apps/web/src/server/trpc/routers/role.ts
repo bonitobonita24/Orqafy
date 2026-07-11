@@ -52,6 +52,8 @@ const assignInput = z
   })
   .strict();
 
+const deleteInput = z.object({ roleId: z.string().cuid() }).strict();
+
 /** Resolves the caller's "acting role name" for the guardrail's `actorRoleName`
  * argument. superAdminProcedure already restricts callers to these two names —
  * this is defense-in-depth, not the primary gate. */
@@ -248,6 +250,53 @@ export const roleRouter = createTRPCRouter({
         entityId: role.id,
         before: null,
         after: { permissions: input.permissions },
+      });
+    });
+
+    return { id: role.id, success: true };
+  }),
+
+  /**
+   * Delete a custom role. Guardrails: only Tenant Super Admin/Platform Owner
+   * (superAdminProcedure + assertCanManageRoles); the 3 fixed system-tier roles
+   * are immutable (assertSystemRoleImmutable); and a role still assigned to any
+   * user CANNOT be deleted (BAD_REQUEST) — the caller must reassign those users
+   * first, so no user is ever orphaned into a dangling role. Cascades the role's
+   * permission-matrix rows in the same transaction and audits.
+   */
+  delete: superAdminProcedure.input(deleteInput).mutation(async ({ ctx, input }) => {
+    const role = await db.role.findUnique({ where: { id: input.roleId } });
+    if (!role || role.tenantId !== ctx.tenantId) {
+      throw new TRPCError({ code: "NOT_FOUND" });
+    }
+
+    try {
+      assertCanManageRoles(actorRoleName(ctx.roles));
+      assertSystemRoleImmutable(role);
+    } catch (e) {
+      rethrowGuardrailError(e);
+    }
+
+    const assignedCount = await db.user.count({
+      where: { tenantId: ctx.tenantId, roleId: role.id },
+    });
+    if (assignedCount > 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Cannot delete this role — ${assignedCount} user${assignedCount === 1 ? " is" : "s are"} still assigned to it. Reassign them to another role first.`,
+      });
+    }
+
+    await db.$transaction(async (tx) => {
+      await tx.rolePermission.deleteMany({ where: { tenantId: ctx.tenantId, roleId: role.id } });
+      await tx.role.delete({ where: { id: role.id } });
+      await writeAuditLog(tx, {
+        userId: ctx.userId,
+        action: "DELETE",
+        entity: "Role",
+        entityId: role.id,
+        before: { name: role.name, slug: role.slug, isSystem: role.isSystem },
+        after: null,
       });
     });
 

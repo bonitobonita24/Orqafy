@@ -112,17 +112,22 @@ function RoleEditor({
   onUpdate,
   onCancel,
   isSaving,
+  onDelete,
+  isDeleting = false,
 }: {
   initial: { mode: "new" } | { mode: "existing"; role: RoleRow };
   onCreate: (data: { name: string; permissions: PermissionRow[] }) => void;
   onUpdate: (data: { roleId: string; permissions: PermissionRow[] }) => void;
   onCancel: () => void;
   isSaving: boolean;
+  onDelete?: () => void;
+  isDeleting?: boolean;
 }) {
   const [name, setName] = useState(initial.mode === "existing" ? initial.role.name : "");
   const [matrix, setMatrix] = useState<PermissionMatrixState>(
     initial.mode === "existing" ? matrixFromPermissions(initial.role.permissions) : emptyMatrix(),
   );
+  const [confirming, setConfirming] = useState(false);
 
   function toggleCell(featureKey: FeatureKey, action: Action) {
     if (FORBIDDEN_FEATURES.includes(featureKey)) return;
@@ -208,13 +213,32 @@ function RoleEditor({
         </Table>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
         <Button onClick={handleSave} disabled={isSaving}>
           {isSaving ? "Saving…" : initial.mode === "new" ? "Create role" : "Save changes"}
         </Button>
         <Button variant="outline" onClick={onCancel} disabled={isSaving}>
           Cancel
         </Button>
+        {initial.mode === "existing" && onDelete && (
+          <div className="ml-auto">
+            {confirming ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Delete permanently?</span>
+                <Button variant="destructive" size="sm" onClick={onDelete} disabled={isDeleting}>
+                  {isDeleting ? "Deleting…" : "Delete"}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setConfirming(false)} disabled={isDeleting}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <Button variant="destructive" size="sm" onClick={() => setConfirming(true)} disabled={isSaving}>
+                Delete role
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -253,6 +277,16 @@ export function RolesClient() {
     onError: (err) => toast.error(err.message),
   });
 
+  const deleteMut = trpc.role.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Role deleted.");
+      setSelection(null);
+      void utils.role.list.invalidate();
+      router.refresh();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   if (isPending) {
     return (
       <div className="space-y-4">
@@ -262,7 +296,7 @@ export function RolesClient() {
     );
   }
 
-  const isSaving = createMut.isPending || updateMut.isPending;
+  const isSaving = createMut.isPending || updateMut.isPending || deleteMut.isPending;
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr]">
@@ -353,6 +387,8 @@ export function RolesClient() {
             onUpdate={(data) => updateMut.mutate(data)}
             onCancel={() => setSelection(null)}
             isSaving={isSaving}
+            onDelete={() => deleteMut.mutate({ roleId: selectedRole.id })}
+            isDeleting={deleteMut.isPending}
           />
         )}
       </Card>
