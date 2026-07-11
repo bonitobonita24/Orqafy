@@ -1471,3 +1471,93 @@ gating a real role). **Decision:** the C2/C3 matrix backfill will PRESERVE the c
 today's behavior, not a behavior expansion. Whether to loosen these 4 gates to grant the access to a
 real existing role is an owner product/business call, deferred to `PENDING_DECISIONS.md` as
 `D-RBAC-DEADGATE`. Not auto-fixed.
+
+## 2026-07-11 — RBAC §4 Track C deferred-router rulings + Tracks A/B (owner-approved)
+
+**Context:** `docs/RBAC_S4_ROLLOUT_PLAN.md` deferred 4 routers (`accounting`, `purchasing`,
+`storefront`, `dsr`) pending an owner `[WHAT]` ruling, and left Track A (nav filtering) and
+Track B (role-builder UI) not started. The owner accepted the "recommended" option on every
+open item this session. Rollout moves from 20/35 → 23/35 feature routers on the matrix, plus
+Tracks A and B are DONE.
+
+**Ruling 1 (LOCKED) — `accounting` migrates to the matrix as the deliberate tightening.**
+Reads → `matrix:view`. Writes (`account`/`journalEntry`/`fiscalYear`/`taxRate` create+update,
+JE post/reverse, `settings.update`, `toggleActive`) → `matrix:create`/`matrix:update`, which per
+the ground-truthed seed resolve to **Accountant + bypass roles only**. This NARROWS the
+previously-ungated broad `writeProcedure` writes (chart-of-accounts CRUD, journal creates) down
+to the seed's existing accountant-only grant — closing the pre-existing gap the rollout plan
+flagged as "internally inconsistent," rather than preserving it. It also retires the dead-name
+`accountantWriteProcedure` gate (matched no real role name, so it silently behaved as
+Accountant-only already — the matrix reproduces that outcome by design, not by accident).
+
+**Ruling 2 (LOCKED) — `purchasing` migrates; `approve` maps to `matrix:delete`.** Reads →
+`matrix:view`; vendor/PO creates+updates → `matrix:create`/`matrix:update`. The router's
+`approve`/`reactivate` actions map to `matrix:delete` (seeded to Admin + Purchasing Staff +
+bypass) — the "elevated purchasing action" bucket, since the 4-action CRUD model has no
+`approve` verb. This is a deliberate FIX of the router's pre-existing `po.approve` dead-gate
+(role names `["Administrator","Purchasing Manager","admin"]` matched no real role and 403'd for
+literally everyone, including bypass roles) — `po.approve` now actually functions. No seed
+change was required; the existing `purchasing:delete` grant already covered this action.
+
+**Ruling 3 (LOCKED) — `storefront` migrates; admin actions widen to Tenant Super Admin.**
+Reads → `matrix:view`; `placeOrder` → `matrix:create`. Admin-only actions
+(`listAllOrders`, `updateFulfillment`, `updateOrderStatus`, `createXenditInvoice`) →
+`matrix:update`, seeded to **bypass roles only** (Tenant Super Admin + Platform Owner). This
+is a deliberate WIDENING (owner-approved): the router's prior `requireAdmin` gate
+(`{"Administrator"(dead), "Platform Owner"}`) only ever let Platform Owner through — Tenant
+Super Admin is intentionally added as an order-management admin now. `createXenditInvoice` was
+previously completely ungated; bringing it under the same admin gate is an intended hardening,
+not a side effect. `listAllOrders` is gated on `matrix:update` (not the broader `matrix:view`)
+specifically to avoid over-widening read access to the full cross-customer order list. Guest
+`publicProcedure` catalog/checkout endpoints are unchanged.
+
+**Ruling 4 (LOCKED, no code change) — `dsr` stays on its real-name `requireRole` gate.**
+Confirmed as the correct terminal state, not a deferred item: the self-service DSR endpoints
+(RA 10173 data-subject rights) must remain open to the requesting user regardless of role, and
+the admin queue's `requireRole` gate (`DSR_ADMIN_ROLES` = Tenant Super Admin/Admin/Platform
+Owner) already matches real role names — there is no dead-gate or matrix-migration benefit here.
+Routing it through the matrix would either over-widen the RA-10173 admin queue (seed `view` is
+broad) or lock Admin out of `adminUpdateStatus` (seed `update` is false) without a dedicated
+seed change the owner has not requested. No seed edit, no router edit.
+
+**Track A (DONE) — sidebar nav filtered by the permission matrix.** The existing
+`role.myPermissions` tRPC query resolves the caller's effective `{view,create,update,delete}`
+per feature (bypass roles → all keys granted; deny-by-default while the query is pending, via a
+`Skeleton` placeholder — never a flash of unauthorized items). Every `NAV_ITEM` now carries a
+`FeatureKey`, and the sidebar filters to items whose `view` is `true`. Fixed a latent build
+regression surfaced by live Visual QA during this work: `packages/shared/src/rbac/index.ts` was
+the only shared package index using `.js`-suffixed re-export specifiers (its siblings are
+extensionless, consistent with the repo's `moduleResolution: "bundler"`); this 500'd the Next.js
+dev bundler on `role.ts`'s value import of the RBAC module ("Can't resolve `./features.js`").
+Changed to extensionless re-exports — no functional change, bundler-resolution fix only.
+
+**Track B (DONE) — Tenant Super Admin-only role-builder UI at `/settings/roles`.** Ships on top
+of the `role.ts` backend (list/create/update + guardrails) that already existed from M9. New
+screen renders a feature × action checkbox matrix, prefilled from `role.list`; the `users` and
+`billing` feature rows are rendered disabled with a "Reserved for owner" note (matching the
+non-negotiable guardrail that custom roles may never grant Billing or User-Management);
+guardrail rejections from the backend surface as toasts. The page itself is gated to Tenant
+Super Admin + Platform Owner (`guardPage`), and the "Roles" sidebar entry / settings card is
+conditionally rendered for the same tier.
+
+**Verification (PM ground-truth, not self-report):** web typecheck 0 errors · web vitest suite
+1242/1242 · web eslint 0 warnings · `lint-design.sh --report-only` PASS · `@orqafy/db` 61/61 ·
+`@orqafy/shared` 4/4. Live Visual QA against the dev app (port 42951): logged in as Tenant Super
+Admin — sidebar shows the filtered nav plus the Roles entry, `/settings/roles` renders the
+matrix prefilled per the seed with `users`/`billing` rows locked, 0 console errors; logged in as
+a Staff-tier role — redirected off `/settings/roles` and the Roles card is hidden from settings.
+
+**Commits (LOCAL on `feat/tenant-rbac-3tier`, HARD HOLD — no push/deploy):** `e3d8f1f` (Track C:
+accounting/purchasing/storefront migrated, dsr confirmed no-op), `f5092a6` (Track A: sidebar
+nav filtering + the rbac index `.js`→extensionless bundler fix), `d7e1f5a` (Track B:
+role-builder UI at `/settings/roles`).
+
+**Residual (owner-gated, tracked in `PENDING_DECISIONS.md`):** the feature-router matrix
+rollout is now considered COMPLETE at 23/35 (the remaining ~12 routers are non-feature/utility
+routers outside the matrix's scope, per the rollout plan's router inventory). Two pre-existing
+gaps surfaced but deliberately NOT auto-fixed this session, both owner `[WHAT]` calls:
+`user.ts` (`list`/`byId`/`deactivate`) has no matrix gate at all — any authenticated tenant
+member can currently list/view/deactivate any other user in the tenant, which conflicts with
+the fleet standard reserving User Management to Tenant Super Admin/Platform Owner; and
+`payroll.ts` is fully ungated versus its legacy HR-Manager-only intent. See
+`D-RBAC-USERS-UNGATED` and `D-RBAC-PAYROLL-UNGATED` in `PENDING_DECISIONS.md`.

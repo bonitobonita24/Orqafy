@@ -7,7 +7,45 @@
 > without explicit owner word. Reference: `~/.claude/rules/tenant-rbac-standard.md` §4;
 > `docs/RBAC_ALIGNMENT.md`; framework `.ai_prompt/rbac.md` + Scenario 42.
 
-## Progress — 2026-07-11 session (Track C)
+## Progress — 2026-07-11 UPDATE (Track C deferred routers resolved + Track A + Track B DONE)
+
+**Feature-router matrix rollout: 23 / 35 — COMPLETE.** All 4 previously-deferred routers are
+resolved via owner rulings (see `docs/DECISIONS_LOG.md` "RBAC §4 Track C deferred-router
+rulings + Tracks A/B" and `docs/CHANGELOG_AI.md` same date): `accounting` migrated (writes
+tighten to Accountant+bypass, fixes the dead-name `accountantWriteProcedure` gate);
+`purchasing` migrated (`approve`/`reactivate`→`matrix:delete`, fixes the `po.approve`
+dead-gate that previously 403'd everyone); `storefront` migrated (admin actions→`matrix:update`
+bypass-only, deliberately widens to Tenant Super Admin + brings `createXenditInvoice` under the
+admin gate); `dsr` CONFIRMED as correct terminal state with **zero code change** (self-service
+stays open per RA 10173, admin queue keeps its real-name `requireRole` gate). Zero seed edits
+required for any of the 4 — the ground-truthed seed already encoded every grant; only
+enforcement moved onto the matrix. Commits `e3d8f1f`/`f5092a6`/`d7e1f5a`, LOCAL, HARD HOLD.
+
+**Track A — sidebar nav filtering: DONE.** Nav items carry a `FeatureKey`, filtered via
+`role.myPermissions` (`view`); bypass roles see everything, deny-by-default (Skeleton) while
+pending. Also fixed a latent M9 build regression this work surfaced via live Visual QA:
+`packages/shared/src/rbac/index.ts` used `.js`-suffixed re-exports (the only shared index doing
+so; siblings are extensionless under `moduleResolution: "bundler"`) → 500'd the Next dev
+bundler resolving `role.ts`'s value import. Fixed to extensionless.
+
+**Track B — role-builder UI: DONE.** `/settings/roles`, Tenant Super Admin + Platform Owner
+only. Feature × action checkbox matrix prefilled from `role.list`; `users`/`billing` rows
+disabled ("Reserved for owner"); guardrail rejections surface as toasts.
+
+**Verification gate (PM ground-truth):** web typecheck 0 · web vitest 1242/1242 · web eslint 0
+warnings · `lint-design.sh --report-only` PASS · `@orqafy/db` 61/61 · `@orqafy/shared` 4/4. Live
+Visual QA on dev app (:42951) for both TSA and Staff-tier roles — 0 console errors.
+
+**Remaining RBAC follow-ups — both owner `[WHAT]`, tracked in `docs/PENDING_DECISIONS.md`:**
+`D-RBAC-USERS-UNGATED` (`user.ts` list/byId/deactivate has no matrix gate at all — any tenant
+member can currently list/view/deactivate any other user) and `D-RBAC-PAYROLL-UNGATED`
+(`payroll.ts` fully ungated versus its legacy HR-Manager-only intent). Neither was auto-fixed —
+both are authorization-scope decisions, not pure bugs. No further un-gated `[HOW]` RBAC work
+remains in this plan.
+
+---
+
+## Progress — 2026-07-11 session (Track C, superseded above — kept for history)
 
 **Router migration: 20 / 35 done, all LOCAL on `feat/tenant-rbac-3tier`, HARD HOLD.**
 Every slice PM-ground-truth verified (typecheck 0 · full web vitest green · eslint
