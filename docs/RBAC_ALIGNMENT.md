@@ -89,26 +89,27 @@ Low blast-radius, no behavior change beyond fixing already-broken gates. These a
   platform `reassignTenantOwner(tenantId, newOwnerUserId)` guarded by the platform tier. Tests for
   both + the index invariant.
 
-### Wave C — HEAVY / product-scoped — **owner `[WHAT]` gate before executing**
-These change the app's authorization model or add a tenant-facing feature. Executing them
-autonomously risks regressing multi-tenant isolation or shipping unspecced product surface. Logged
-to `PENDING_DECISIONS.md`; do NOT auto-execute.
+### Wave C — HEAVY / product-scoped — 🔧 IN PROGRESS (executing 2026-07-11)
+These change the app's authorization model or add a tenant-facing feature. Scope below reflects the
+CONFIRMED, owner-approved rulings — executed under the standing worker plan, not autonomous guesswork.
+Full worker plan + PM rulings recorded 2026-07-11; see `docs/DECISIONS_LOG.md`.
 
-- **C1 — Platform tier as `tenant_id NULL`.** The standard wants `tenant_manager` with `tenant_id
-  NULL` spanning all tenants. Orqafy's `User.tenantId` is NOT NULL and the entire L6 tenant-guard
-  Prisma extension assumes a tenant context. Making platform users tenant-NULL is a broad schema +
-  guard change with direct blast-radius on tenant isolation. **Decision:** keep the current
-  tenant-scoped `Platform Owner` (which already works and is gated) vs. migrate to `tenant_id NULL`?
-- **C2 — Enforce the permission matrix.** `Role.permissions` is currently decorative. Actually
-  reading it at runtime (or building the full §4 `role_permissions` CRUD-split matrix + feature
-  registry) is a **behavior change** on every gated procedure/route/nav item. High regression risk
-  without a full test pass. **Decision:** is enforced permission-matrix RBAC in scope now, or does
-  name-based RBAC remain acceptable for current product stage?
-- **C3 — Role-builder UI (tenant_superadmin-only).** Net-new tenant-facing feature (shadcn Data
-  Table + Checkbox matrix). This is product scope. **Decision:** build now or defer to a Phase-7
-  product wave? (Related to existing D-1 Customer Portal scope call.)
-- **C4 — Account RESEED to `universal-login-credentials`.** HARD HOLD per `~/.claude/CLAUDE.md`
-  (never auto-rotate deployed/live app creds). Owner word required.
+- **C1 — KEEP tenant-scoped Platform Owner; document as equivalent (NOT migrating to `tenant_id
+  NULL`).** Ruling: the standard's `tenant_manager` (`tenant_id NULL`) requirement is satisfied by
+  documented equivalence, not schema migration. Orqafy's `Platform Owner` role row stays
+  tenant-scoped, gated via `platformProcedure` + `powerbyte-admin/layout.tsx`. `User.tenantId`
+  remains NOT NULL; the L6 tenant-guard Prisma extension and `middleware.ts` tenant-slug routing are
+  unchanged. See appendix §"C1 — Platform-tier standard-equivalence" below for the full mapping.
+- **C2 — ENFORCE the full permission matrix** (registry + `role_permissions` + `hasPermission` +
+  3-surface enforcement — tRPC / route middleware / nav filtering). Ruling: build the real §4
+  system now, not defer. Backfill from the existing `Role.permissions` JSON is a day-one no-op
+  (current decorative values become the initial matrix rows — no behavior change on migration day;
+  the behavior change is the enforcement wiring itself, tested surface-by-surface).
+- **C3 — BUILD the role-builder UI now** (tenant_superadmin-only, shadcn Data Table + Checkbox
+  matrix). Ruling: in scope for this wave, not deferred to a later Phase-7 product wave.
+- **C4 — RESEED dev accounts** to `universal-login-credentials` `local_dev` per-env defaults.
+  Scope note: this is the **dev-environment** reseed only — staging/prod/demo account rotation
+  remains HARD HOLD per `~/.claude/CLAUDE.md` (never auto-rotate deployed/live app creds).
 
 ---
 
@@ -122,3 +123,39 @@ fleet-standard alignment (naming, integrity, succession) without betting the app
 autonomous architectural rewrite.
 
 Back-port target after execution: `docs/PRODUCT.md` (human back-port list) + `docs/DECISIONS_LOG.md`.
+
+---
+
+## C1 — Platform-tier standard-equivalence (documented, no migration)
+
+Per the C1 ruling above, Orqafy does **not** migrate its platform tier to a `tenant_id NULL` user
+model. Instead, the existing tenant-scoped `Platform Owner` role row is documented here as the
+accepted fleet-standard equivalent of `tenant_manager`.
+
+**Equivalence, not migration:**
+- Orqafy's `Platform Owner` role row **is** the accepted `tenant_manager`-equivalent for this app.
+  It is gated to `/powerbyte-admin` via `platformProcedure` (in
+  `apps/web/src/server/trpc/trpc.ts`) and mirrored in the UI guard at
+  `apps/web/src/app/powerbyte-admin/layout.tsx`.
+- `User.tenantId` stays **NOT NULL** for every user, including Platform Owners. The L6 tenant-guard
+  Prisma extension and `middleware.ts` tenant-slug routing (`/<slug>` subdirectory access) are
+  **intentionally unchanged** — no schema or guard rewrite, no blast-radius on tenant isolation.
+- This is a documented architectural equivalence, not a gap: the standard's intent (one
+  platform-wide, cross-tenant break-glass role) is satisfied by a gated procedure + UI guard rather
+  than a `tenant_id NULL` row.
+
+**Display-name → vault-canon mapping** (per RULING Q-C1 = keep current display names, map to vault
+canon rather than rename in code):
+
+| Orqafy display name (unchanged) | Fleet vault-canon equivalent |
+|---|---|
+| `Platform Owner` | `tenant_manager` |
+| `Tenant Super Admin` | `tenant_superadmin` |
+| `Admin` | `tenant_admin` |
+
+**Slug-audit finding:** runtime authorization keys off the role **display name**, not the slug —
+`apps/web/src/server/auth/config.ts` derives `session.user.roles: string[]` from `user.role.name`.
+Audit command: `grep -rn "\.slug ===\|role\.slug\|roleSlug" apps/web/src/server` — the only hit
+(`tasks.ts:397`, `plan.slug === "free"`) is an unrelated subscription-plan slug check, not a Role
+slug. **No slug-keyed RBAC enforcement exists** — slug hygiene/rename work (Wave A A2) therefore
+carries zero authorization-behavior impact.

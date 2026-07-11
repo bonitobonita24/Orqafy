@@ -2,29 +2,19 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { prisma as db } from "@orqafy/db";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
-import { requireRole } from "../middleware/rbac";
+import { matrixMiddleware } from "../middleware/matrix";
 import { logger } from "@/lib/logger";
 
-// Roles permitted to manage (create/update/delete) departments.
-// These are the seeded role NAMES (see packages/db/src/seed/roles.ts) — the tenant
-// owner ("Tenant Super Admin"), the tenant operational "Admin", and the cross-tenant
-// "Platform Owner". Owner decision (2026-06-19, DECISIONS_LOG): the tenant owner /
-// super-admin SHALL be permitted to manage departments in their own tenant. The prior
-// list checked a role NAME ("Administrator") that no seeded role carries, which 403'd
-// the owner — that stale gate is now resolved.
-const DEPARTMENT_MANAGE_ROLES = ["Tenant Super Admin", "Admin", "Platform Owner"];
-const _adminReadProcedure = requireRole(...DEPARTMENT_MANAGE_ROLES);
-const adminWriteProcedure = writeProcedure.use(({ ctx, next }) => {
-  if (!ctx.roles.some((r) => DEPARTMENT_MANAGE_ROLES.includes(r))) {
-    // UX: surface a human-readable message so the client toast isn't the bare
-    // literal "FORBIDDEN".
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "You don't have permission to manage departments.",
-    });
-  }
-  return next({ ctx });
-});
+// Task 5.1 — migrated from the inline `DEPARTMENT_MANAGE_ROLES` name-allowlist
+// to the data-driven `role_permissions` matrix (feature key "settings").
+// `writeProcedure` still enforces the demo-tenant mutation guard;
+// `matrixMiddleware` resolves the (feature, action) grant on top of it —
+// Tenant Super Admin / Platform Owner bypass the matrix, "Admin" is granted
+// create/update/delete on "settings" via the Task 3.3 backfill, matching
+// exactly what DEPARTMENT_MANAGE_ROLES allowed before.
+const settingsCreateProcedure = writeProcedure.use(matrixMiddleware("settings", "create"));
+const settingsUpdateProcedure = writeProcedure.use(matrixMiddleware("settings", "update"));
+const settingsDeleteProcedure = writeProcedure.use(matrixMiddleware("settings", "delete"));
 
 const createInput = z.object({
   name: z.string().min(1).max(200),
@@ -69,7 +59,7 @@ export const departmentRouter = createTRPCRouter({
    * Create a new department for the current tenant.
    * Enforces tenantId from ctx — never trusts client-supplied tenant.
    */
-  create: adminWriteProcedure.input(createInput).mutation(async ({ input, ctx }) => {
+  create: settingsCreateProcedure.input(createInput).mutation(async ({ input, ctx }) => {
     // Guard: if code supplied, ensure uniqueness within tenant
     if (input.code != null && input.code !== "") {
       const existing = await db.department.findUnique({
@@ -111,7 +101,7 @@ export const departmentRouter = createTRPCRouter({
   /**
    * Update an existing department. Only fields supplied are changed.
    */
-  update: adminWriteProcedure.input(updateInput).mutation(async ({ input, ctx }) => {
+  update: settingsUpdateProcedure.input(updateInput).mutation(async ({ input, ctx }) => {
     const existing = await db.department.findUnique({ where: { id: input.id } });
     if (!existing || existing.tenantId !== ctx.tenantId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Department not found." });
@@ -159,7 +149,7 @@ export const departmentRouter = createTRPCRouter({
   /**
    * Delete a department. Blocked if any users or employees still reference it.
    */
-  delete: adminWriteProcedure
+  delete: settingsDeleteProcedure
     .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await db.department.findUnique({

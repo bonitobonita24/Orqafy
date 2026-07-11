@@ -376,11 +376,36 @@ model Role {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   users User[]
+  rolePermissions RolePermission[]
 
   @@unique([tenantId, name])
   @@unique([tenantId, slug])
   @@index([tenantId])
   @@map("roles")
+  @@schema("public")
+}
+
+// Data-driven custom-role permission matrix (tenant-rbac-standard §4).
+// Strict CRUD split: view / create / update / delete are separate columns.
+// Scoped ≤ tenant_admin ceiling — enforced in application code, not here.
+model RolePermission {
+  id         String  @id @default(cuid())
+  tenantId   String  @map("tenant_id")
+  roleId     String  @map("role_id")
+  featureKey String  @map("feature_key")
+  view       Boolean @default(false) @map("can_view")
+  create     Boolean @default(false) @map("can_create")
+  update     Boolean @default(false) @map("can_update")
+  delete     Boolean @default(false) @map("can_delete")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, roleId, featureKey])
+  @@index([tenantId])
+  @@index([roleId])
+  @@map("role_permissions")
   @@schema("public")
 }
 

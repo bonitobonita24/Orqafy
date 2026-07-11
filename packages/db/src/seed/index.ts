@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { STANDARD_ROLES } from './roles';
+import { backfillRolePermissions } from './role-permissions';
 import { provisionTenantFinancials } from '../helpers/tenant-financials';
 
 const prisma = new PrismaClient();
@@ -45,6 +46,13 @@ async function main() {
     roles[r.slug] = role.id;
   }
   console.log(`  ✅ ${roleData.length} roles seeded`);
+
+  // ── role_permissions matrix backfill (Task 3.3 — day-one no-op) ──
+  const { rowsUpserted } = await backfillRolePermissions(prisma, {
+    tenantId: demoTenant.id,
+    roleIdBySlug: roles,
+  });
+  console.log(`  ✅ ${rowsUpserted} role_permissions rows backfilled`);
 
   // ── Plans ──
   const planData = [

@@ -5,6 +5,7 @@ import {
   TENANT_SUPER_ADMIN_SLUG,
   PASSWORD_BCRYPT_COST,
 } from '../seed/roles';
+import { backfillRolePermissions } from '../seed/role-permissions';
 
 /**
  * Roles and User are @@schema("public") models scoped by tenantId — they are NOT
@@ -59,6 +60,11 @@ export async function provisionTenantRolesAndOwner(
   if (superAdminRoleId === undefined) {
     throw new Error(`${TENANT_SUPER_ADMIN_SLUG} role not found after seeding`);
   }
+
+  // ── role_permissions matrix backfill (Task 3.3 — day-one no-op) so a
+  //    newly self-registered tenant gets the same matrix rows as the demo
+  //    tenant (mirrors the demo-tenant logic in packages/db/src/seed/index.ts). ──
+  await backfillRolePermissions(prisma, { tenantId, roleIdBySlug });
 
   // ── Owner user (bcrypt-hashed password, Tenant Super Admin, ready to login) ──
   const passwordHash = await bcrypt.hash(ownerPassword, PASSWORD_BCRYPT_COST);

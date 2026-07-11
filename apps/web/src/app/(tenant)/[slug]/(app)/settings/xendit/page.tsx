@@ -1,9 +1,17 @@
 import type { Metadata } from "next";
+import { guardPage } from "@/server/rbac/guard-page";
 import { XenditConfigForm } from "./config-form";
 
 export const metadata: Metadata = { title: "Xendit settings" };
 
-export default function XenditSettingsPage() {
+export default async function XenditSettingsPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  await guardPage(slug, "settings");
+
   return (
     <div className="space-y-6">
       <div>

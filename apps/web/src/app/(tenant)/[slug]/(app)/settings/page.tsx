@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Building2, CreditCard, FolderTree, Mail, Tag, Users } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { guardPage } from "@/server/rbac/guard-page";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -64,6 +65,7 @@ export default async function SettingsPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  await guardPage(slug, "settings");
 
   const tenant = await prisma.tenant.findUnique({
     where: { slug },

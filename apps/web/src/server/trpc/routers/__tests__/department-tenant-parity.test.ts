@@ -7,30 +7,66 @@
  *  2. department.delete throws NOT_FOUND when dept belongs to tenant-B but ctx is tenant-A
  *  3. department.create injects tenantId from ctx into db.department.create data
  *  4. department.delete throws PRECONDITION_FAILED when dept has assigned members
+ *
+ * RBAC note: department.create/update/delete are matrix-gated on the
+ * "settings" feature (writeProcedure.use(matrixMiddleware("settings", <action>))).
+ * "Tenant Super Admin" and "Platform Owner" bypass the matrix entirely; every
+ * other role (including "Admin") is resolved from the `role_permissions`
+ * matrix row for (tenantId, roleId, "settings"). Tests below mock
+ * `prisma.role.findFirst` + `prisma.rolePermission.findUnique` alongside the
+ * `prisma.department.*` mocks, following the pattern in
+ * matrix-procedure.test.ts.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { NextRequest } from "next/server";
+import type * as OrqafyDb from "@orqafy/db";
+
+vi.mock("@/server/lib/rate-limit", () => ({
+  rateLimiters: {
+    api: { check: vi.fn() },
+    auth: { check: vi.fn() },
+    upload: { check: vi.fn() },
+    public: { check: vi.fn() },
+  },
+}));
 
 // ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
-const { mockDeptFindUnique, mockDeptCreate, mockDeptUpdate, mockDeptDelete } = vi.hoisted(() => ({
+const {
+  mockDeptFindUnique,
+  mockDeptCreate,
+  mockDeptUpdate,
+  mockDeptDelete,
+  mockRoleFindFirst,
+  mockRolePermissionFindUnique,
+} = vi.hoisted(() => ({
   mockDeptFindUnique: vi.fn(),
   mockDeptCreate: vi.fn(),
   mockDeptUpdate: vi.fn(),
   mockDeptDelete: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
+  mockRolePermissionFindUnique: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    department: {
-      findUnique: mockDeptFindUnique,
-      findMany: vi.fn().mockResolvedValue([]),
-      create: mockDeptCreate,
-      update: mockDeptUpdate,
-      delete: mockDeptDelete,
+// Keep the real `hasPermission` resolver (it takes prisma as an argument) —
+// only mock the prisma client calls it (and the department router) make.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      department: {
+        findUnique: mockDeptFindUnique,
+        findMany: vi.fn().mockResolvedValue([]),
+        create: mockDeptCreate,
+        update: mockDeptUpdate,
+        delete: mockDeptDelete,
+      },
+      role: { findFirst: mockRoleFindFirst },
+      rolePermission: { findUnique: mockRolePermissionFindUnique },
     },
-  },
-}));
+  };
+});
 
 vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
@@ -43,14 +79,15 @@ const testRouter = createTRPCRouter({ department: departmentRouter });
 const createCaller = createCallerFactory(testRouter);
 
 function makeReq(): NextRequest {
-  return {} as NextRequest;
+  return { headers: { get: (_h: string): string | null => null } } as unknown as NextRequest;
 }
 
-function ctxForTenant(tenantId: string, roles: string[] = ["Tenant Super Admin"]) {
+function ctxForTenant(tenantId: string, roleId: string | null = "role-1") {
   return {
     req: makeReq(),
     userId: "user-1",
-    roles,
+    roles: ["Tenant Super Admin"],
+    roleId,
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -59,11 +96,26 @@ function ctxForTenant(tenantId: string, roles: string[] = ["Tenant Super Admin"]
   };
 }
 
+/** Wires `prisma.role.findFirst` to resolve a role by (roleId, tenantId, name). */
+function mockRole(roleId: string, tenantId: string, name: string) {
+  mockRoleFindFirst.mockImplementation(
+    (args: { where: { id: string; tenantId: string } }) => {
+      if (args.where.id === roleId && args.where.tenantId === tenantId) {
+        return Promise.resolve({ id: roleId, tenantId, name });
+      }
+      return Promise.resolve(null);
+    },
+  );
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("Department tenant parity (K-prime closure)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: acting role is the tenant owner, which bypasses the matrix
+    // entirely — pure tenant-parity assertions don't need matrix wiring.
+    mockRole("role-1", "tenant-A", "Tenant Super Admin");
   });
 
   it("department.update throws NOT_FOUND when dept belongs to tenant-B but ctx is tenant-A", async () => {
@@ -120,9 +172,11 @@ describe("Department tenant parity (K-prime closure)", () => {
     expect(callArg.data.tenantId).toBe("tenant-A");
   });
 
-  // ── RBAC: tenant owner ("Tenant Super Admin") may manage departments (#9b) ──────
+  // ── RBAC: matrix-gated on the "settings" feature (#9b) ──────────────────────
 
   it("department.create succeeds for the tenant owner role 'Tenant Super Admin'", async () => {
+    mockRole("role-1", "tenant-A", "Tenant Super Admin"); // bypass — matrix not consulted
+
     // No code supplied → no uniqueness findUnique call.
     mockDeptCreate.mockResolvedValueOnce({
       id: "clh3dept0004hxog4d8e5f9e",
@@ -134,14 +188,23 @@ describe("Department tenant parity (K-prime closure)", () => {
       isActive: true,
     });
 
-    const caller = createCaller(ctxForTenant("tenant-A", ["Tenant Super Admin"]));
+    const caller = createCaller(ctxForTenant("tenant-A"));
     await expect(caller.department.create({ name: "Marketing" })).resolves.toMatchObject({
       name: "Marketing",
     });
     expect(mockDeptCreate).toHaveBeenCalledOnce();
+    expect(mockRolePermissionFindUnique).not.toHaveBeenCalled();
   });
 
   it("department.create succeeds for the tenant 'Admin' role", async () => {
+    mockRole("role-1", "tenant-A", "Admin"); // NOT a bypass role — resolved via matrix
+    mockRolePermissionFindUnique.mockResolvedValueOnce({
+      view: true,
+      create: true,
+      update: true,
+      delete: true,
+    });
+
     // No code supplied → no uniqueness findUnique call.
     mockDeptCreate.mockResolvedValueOnce({
       id: "clh3dept0005hxog4d8e5f9f",
@@ -153,17 +216,19 @@ describe("Department tenant parity (K-prime closure)", () => {
       isActive: true,
     });
 
-    const caller = createCaller(ctxForTenant("tenant-A", ["Admin"]));
+    const caller = createCaller(ctxForTenant("tenant-A"));
     await expect(caller.department.create({ name: "Sales" })).resolves.toMatchObject({
       name: "Sales",
     });
   });
 
   it("department.create is FORBIDDEN for an unauthorized role ('Staff')", async () => {
-    const caller = createCaller(ctxForTenant("tenant-A", ["Staff"]));
+    mockRole("role-1", "tenant-A", "Staff"); // NOT a bypass role
+    mockRolePermissionFindUnique.mockResolvedValueOnce(null); // no matrix row → deny-by-default
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
     await expect(caller.department.create({ name: "Hacks" })).rejects.toMatchObject({
       code: "FORBIDDEN",
-      message: "You don't have permission to manage departments.",
     });
     expect(mockDeptCreate).not.toHaveBeenCalled();
   });

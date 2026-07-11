@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { prisma } from "@orqafy/db";
 import { createTRPCRouter } from "../trpc";
 import { requireRole } from "../middleware/rbac";
+import { matrixMiddleware } from "../middleware/matrix";
 import { writeProcedure } from "../trpc";
 import { encrypt, decrypt } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
@@ -14,14 +15,22 @@ import type * as Nodemailer from "nodemailer";
 // prior list checked "Administrator", a role name that no seeded role carries, which
 // silently 403'd every real admin (see department.ts / compliance.ts / dsr.ts for the
 // same fix already applied to sibling routers).
+//
+// Task 5.1 — `get` is DELIBERATELY LEFT on this inline `requireRole` gate, NOT
+// migrated to the matrix. The `settings` feature's `view` action is seeded
+// broad (true for every internal role, per the Task 3.3 "view tracks
+// nav-visibility" rule) — routing this masked-secrets read through
+// `matrixProcedure("settings","view")` would WIDEN access from admin-only to
+// every internal role. See the Task 5.1 handoff report for the full finding.
 const ADMIN_ROLES = ["Tenant Super Admin", "Admin", "Platform Owner"];
 const adminReadProcedure = requireRole(...ADMIN_ROLES);
-const adminWriteProcedure = writeProcedure.use(({ ctx, next }) => {
-  if (!ctx.roles.some((r) => ADMIN_ROLES.includes(r))) {
-    throw new TRPCError({ code: "FORBIDDEN" });
-  }
-  return next({ ctx });
-});
+// Writes — migrated to the data-driven `role_permissions` matrix (feature key
+// "settings"). `writeProcedure` still enforces the demo-tenant mutation
+// guard; `matrixMiddleware` resolves the (feature, action) grant on top of
+// it. `upsert` and `testConnection` both map to `update` (see the identical
+// rationale in admin-xendit-config.ts).
+const settingsUpdateProcedure = writeProcedure.use(matrixMiddleware("settings", "update"));
+const settingsDeleteProcedure = writeProcedure.use(matrixMiddleware("settings", "delete"));
 
 const upsertInput = z
   .object({
@@ -66,7 +75,7 @@ export const smtpConfigRouter = createTRPCRouter({
    * Encrypts the password before storage. Always resets isVerified to false —
    * any credential change requires re-running testConnection.
    */
-  upsert: adminWriteProcedure.input(upsertInput).mutation(async ({ ctx, input }) => {
+  upsert: settingsUpdateProcedure.input(upsertInput).mutation(async ({ ctx, input }) => {
     const passwordEnc = encrypt(input.password);
     const data = {
       host: input.host,
@@ -106,7 +115,7 @@ export const smtpConfigRouter = createTRPCRouter({
    * Uses nodemailer — only the host-level transport is verified (EHLO+STARTTLS),
    * no email is actually delivered to an external mailbox.
    */
-  testConnection: adminWriteProcedure.mutation(async ({ ctx }) => {
+  testConnection: settingsUpdateProcedure.mutation(async ({ ctx }) => {
     const row = await prisma.tenantSmtpConfig.findUnique({
       where: { tenantId: ctx.tenantId },
     });
@@ -173,7 +182,7 @@ export const smtpConfigRouter = createTRPCRouter({
   /**
    * Remove the SMTP config entirely.
    */
-  delete: adminWriteProcedure.mutation(async ({ ctx }) => {
+  delete: settingsDeleteProcedure.mutation(async ({ ctx }) => {
     const existing = await prisma.tenantSmtpConfig.findUnique({
       where: { tenantId: ctx.tenantId },
     });

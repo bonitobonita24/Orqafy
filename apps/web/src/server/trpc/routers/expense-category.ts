@@ -2,20 +2,18 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { prisma as db } from "@orqafy/db";
 import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { matrixMiddleware } from "../middleware/matrix";
 import { logger } from "@/lib/logger";
 
-// Admin-only writes; any authenticated user can read (used by expense forms).
-// Role names must match the seeded role names in packages/db/src/seed/roles.ts — the
-// prior list checked "Administrator", a role name that no seeded role carries, which
-// silently 403'd every real admin (see department.ts / compliance.ts / dsr.ts for the
-// same fix already applied to sibling routers).
-const ADMIN_ROLES = ["Tenant Super Admin", "Admin", "Platform Owner"];
-const adminWriteProcedure = writeProcedure.use(({ ctx, next }) => {
-  if (!ctx.roles.some((r) => ADMIN_ROLES.includes(r))) {
-    throw new TRPCError({ code: "FORBIDDEN" });
-  }
-  return next({ ctx });
-});
+// Task 5.1 — migrated from the inline `ADMIN_ROLES` name-allowlist to the
+// data-driven `role_permissions` matrix (feature key "settings"). Any
+// authenticated user can still read (list stays on `protectedProcedure`,
+// unchanged — used by expense forms). `writeProcedure` still enforces the
+// demo-tenant mutation guard; `matrixMiddleware` resolves the (feature,
+// action) grant on top of it.
+const settingsCreateProcedure = writeProcedure.use(matrixMiddleware("settings", "create"));
+const settingsUpdateProcedure = writeProcedure.use(matrixMiddleware("settings", "update"));
+const settingsDeleteProcedure = writeProcedure.use(matrixMiddleware("settings", "delete"));
 
 const createInput = z.object({
   name: z.string().min(1).max(200),
@@ -62,7 +60,7 @@ export const expenseCategoryRouter = createTRPCRouter({
   /**
    * Create a new expense category. Code must be unique within the tenant.
    */
-  create: adminWriteProcedure.input(createInput).mutation(async ({ input, ctx }) => {
+  create: settingsCreateProcedure.input(createInput).mutation(async ({ input, ctx }) => {
     const existing = await db.expenseCategory.findFirst({
       where: { tenantId: ctx.tenantId, code: input.code },
     });
@@ -99,7 +97,7 @@ export const expenseCategoryRouter = createTRPCRouter({
   /**
    * Update an existing expense category.
    */
-  update: adminWriteProcedure.input(updateInput).mutation(async ({ input, ctx }) => {
+  update: settingsUpdateProcedure.input(updateInput).mutation(async ({ input, ctx }) => {
     const existing = await db.expenseCategory.findUnique({ where: { id: input.id } });
     if (!existing || existing.tenantId !== ctx.tenantId) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Expense category not found." });
@@ -145,7 +143,7 @@ export const expenseCategoryRouter = createTRPCRouter({
   /**
    * Delete an expense category. Blocked when expenses still reference it.
    */
-  delete: adminWriteProcedure
+  delete: settingsDeleteProcedure
     .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await db.expenseCategory.findUnique({

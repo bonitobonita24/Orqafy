@@ -19,3 +19,15 @@ export {
 export type { StandardRoleDef } from './seed/roles';
 export { transferTenantOwnership, reassignTenantOwner } from './helpers/succession';
 export type { TransferTenantOwnershipInput, ReassignTenantOwnerInput } from './helpers/succession';
+export {
+  RbacGuardrailError,
+  assertNoForbiddenFeatures,
+  assertWithinAdminCeiling,
+  assertCanManageRoles,
+  assertSystemRoleImmutable,
+} from './rbac/guardrails';
+export type { PermissionMatrix, RbacGuardrailErrorCode } from './rbac/guardrails';
+export { hasPermission } from './rbac/has-permission';
+export type { HasPermissionArgs } from './rbac/has-permission';
+export { backfillRolePermissions } from './seed/role-permissions';
+export type { BackfillRolePermissionsInput } from './seed/role-permissions';

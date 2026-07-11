@@ -55,6 +55,18 @@ export const platformProcedure = t.procedure.use(({ ctx, next }) => {
   return next({ ctx: { ...ctx, userId: ctx.userId } });
 });
 
+// Tenant/platform role-management procedure — requires "Tenant Super Admin" or
+// "Platform Owner" (tenant-rbac-standard.md §4: "Only Tenant Super Admin (+
+// platform Platform Owner) may create/edit/assign custom roles"). Tenant-scoped
+// (unlike platformProcedure) — a Tenant Super Admin manages ONLY their own tenant.
+export const superAdminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  const allowed = ctx.roles.includes("Tenant Super Admin") || ctx.roles.includes("Platform Owner");
+  if (!allowed) {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+  return next({ ctx });
+});
+
 // Demo-safe write procedure — blocks mutations on demo tenant
 export const writeProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.isDemoTenant === true) {

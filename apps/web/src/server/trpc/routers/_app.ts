@@ -2,6 +2,7 @@ import { createTRPCRouter } from "../trpc";
 import { authRouter } from "./auth";
 import { tenantRouter } from "./tenant";
 import { userRouter } from "./user";
+import { roleRouter } from "./role";
 import { clientRouter } from "./client";
 import { projectRouter } from "./project";
 import { purchasingRouter } from "./purchasing";
@@ -37,6 +38,7 @@ export const appRouter = createTRPCRouter({
   auth: authRouter,
   tenant: tenantRouter,
   user: userRouter,
+  role: roleRouter,
   clients: clientRouter,
   project: projectRouter,
   purchasing: purchasingRouter,

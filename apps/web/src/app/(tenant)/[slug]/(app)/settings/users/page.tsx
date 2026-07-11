@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { createServerCaller } from "@/server/trpc/server";
+import { guardPage } from "@/server/rbac/guard-page";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -20,7 +21,8 @@ export default async function UsersSettingsPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  await params;
+  const { slug } = await params;
+  await guardPage(slug, "users");
 
   const api = await createServerCaller();
   const { items: users, total } = await api.user.list({ page: 1, limit: 50 });

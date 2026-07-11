@@ -8,16 +8,26 @@ import { TRPCError } from "@trpc/server";
 import { prisma as db } from "@orqafy/db";
 import { createTRPCRouter, writeProcedure } from "../trpc";
 import { requireRole } from "../middleware/rbac";
+import { matrixMiddleware } from "../middleware/matrix";
 
 // Admin roles — must match seeded role names in packages/db/src/seed/roles.ts
+//
+// Task 5.1 — `list`/`byId` are DELIBERATELY LEFT on this inline `requireRole`
+// gate, NOT migrated to the matrix. The `compliance` feature's `view` action
+// is seeded broad (true for every internal role, per the Task 3.3
+// "view tracks nav-visibility" rule) — routing these RA 10173 breach-record
+// reads through `matrixProcedure("compliance","view")` would WIDEN access
+// from admin-only to every internal role. See the Task 5.1 handoff report.
 const COMPLIANCE_ADMIN_ROLES = ["Tenant Super Admin", "Admin", "Platform Owner"] as const;
 const adminProcedure = requireRole(...COMPLIANCE_ADMIN_ROLES);
-const adminWriteProcedure = writeProcedure.use(({ ctx, next }) => {
-  if (!ctx.roles.some((r) => (COMPLIANCE_ADMIN_ROLES as readonly string[]).includes(r))) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "You don't have permission to manage compliance records." });
-  }
-  return next({ ctx });
-});
+// Writes — migrated to the data-driven `role_permissions` matrix (feature key
+// "compliance"). `writeProcedure` still enforces the demo-tenant mutation
+// guard; `matrixMiddleware` resolves the (feature, action) grant on top of
+// it. `create` maps to `create`; every lifecycle state-change (update,
+// markNpcNotified, markSubjectsNotified, fileReport, close) maps to
+// `update` — the Task 3.3 backfill grants Admin both on "compliance".
+const complianceCreateProcedure = writeProcedure.use(matrixMiddleware("compliance", "create"));
+const complianceUpdateProcedure = writeProcedure.use(matrixMiddleware("compliance", "update"));
 
 /**
  * Add N business days (Mon-Fri) to a date, skipping Sat/Sun.
@@ -88,7 +98,7 @@ const breachRouter = createTRPCRouter({
       return record;
     }),
 
-  create: adminWriteProcedure
+  create: complianceCreateProcedure
     .input(createBreachInput)
     .mutation(async ({ ctx, input }) => {
       const discoveredAt = new Date(input.discoveredAt);
@@ -126,7 +136,7 @@ const breachRouter = createTRPCRouter({
       return record;
     }),
 
-  update: adminWriteProcedure
+  update: complianceUpdateProcedure
     .input(updateBreachInput)
     .mutation(async ({ ctx, input }) => {
       const existing = await db.breachRecord.findUnique({ where: { id: input.id } });
@@ -163,7 +173,7 @@ const breachRouter = createTRPCRouter({
       return updated;
     }),
 
-  markNpcNotified: adminWriteProcedure
+  markNpcNotified: complianceUpdateProcedure
     .input(z.object({ id: z.string() }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.breachRecord.findUnique({ where: { id: input.id } });
@@ -190,7 +200,7 @@ const breachRouter = createTRPCRouter({
       return updated;
     }),
 
-  markSubjectsNotified: adminWriteProcedure
+  markSubjectsNotified: complianceUpdateProcedure
     .input(z.object({ id: z.string() }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.breachRecord.findUnique({ where: { id: input.id } });
@@ -217,7 +227,7 @@ const breachRouter = createTRPCRouter({
       return updated;
     }),
 
-  fileReport: adminWriteProcedure
+  fileReport: complianceUpdateProcedure
     .input(z.object({ id: z.string() }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.breachRecord.findUnique({ where: { id: input.id } });
@@ -244,7 +254,7 @@ const breachRouter = createTRPCRouter({
       return updated;
     }),
 
-  close: adminWriteProcedure
+  close: complianceUpdateProcedure
     .input(z.object({ id: z.string() }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.breachRecord.findUnique({ where: { id: input.id } });

@@ -1420,3 +1420,54 @@ ui-rules Rule 11 PATH A (shadcn-composed loading states use `<Skeleton>` inline)
 **Validation:** web typecheck 0 errors · web suite 1101/1101 (≈+35 new regression tests from the M7.2
 IDOR remediation) · lint-design PASS · worker typecheck 0 errors · live app smoke PASS. 12 LOCAL commits
 on `feat/tenant-rbac-3tier` (75bc162..418a3c8); HARD HOLD — no push/deploy.
+
+## 2026-07-11 — RBAC Wave C decisions (owner-approved)
+
+**C1 (LOCKED) — Keep tenant-scoped Platform Owner as the fleet `tenant_manager`-equivalent.** Orqafy's
+existing `Platform Owner` role (gated to `/powerbyte-admin` via `platformProcedure`) is retained as the
+documented equivalent of the fleet Tenant-RBAC standard's platform-level `tenant_manager` tier — it is
+NOT migrated to a true cross-tenant, `tenant_id = NULL` platform role. Do NOT migrate `User.tenantId` to
+nullable; do NOT touch the L6 tenant-guard Prisma extension or `middleware.ts` tenant-slug routing.
+Per-tenant `/<slug>` subdirectory access is preserved exactly as-is. Rationale: a true platform-role
+migration would touch the tenant isolation model built and hardened across 30+ Phase 8 batches (L1-L6,
+`tenant_id` scoping, the middleware slug-to-session cross-check) for no functional gain — the
+documented-equivalent mapping satisfies the fleet standard's intent (a designated break-glass/cross-
+tenant-admin tier exists and is named) without an isolation-architecture rewrite.
+
+**C2/C3 (LOCKED) — Implement the full standard §4 custom-role permission-matrix subsystem.** Build:
+(a) a feature registry (typed enum of gateable modules/features), (b) a `role_permissions` table with a
+strict CRUD-split schema (`tenant_id, role_id, feature_key, view, create, update, delete` — `create` and
+`update` as separate columns, never combined into a single "write"), (c) a `hasPermission(role, feature,
+action)` resolver reading the matrix, (d) matrix-driven enforcement wired identically at THREE surfaces:
+tRPC (a `matrixProcedure(feature, action)` factory), route/page-level guards (deny-by-default from the
+matrix), and sidebar nav (menu items filtered by `view`), and (e) a `tenant_superadmin`-only shadcn/ui
+role-builder screen (features down the side, 4 permission columns across the top, checkbox matrix).
+Guardrails carried over from the fleet standard (non-negotiable): a custom role can never exceed the
+`tenant_admin`/Admin capability ceiling; custom roles may NEVER grant Billing or User-Management; only
+`tenant_superadmin` (Tenant Super Admin) and the platform-equivalent (Platform Owner) may create/edit/
+assign custom roles; the fixed system-role tiers stay hard-coded, never data-driven. **CRITICAL
+backfill requirement:** the initial `role_permissions` data MUST be seeded to reproduce today's
+name-based role-gate grants EXACTLY (byte-for-byte equivalent access per existing role), so switching
+enforcement over to the matrix is a day-one no-op — no user's effective permissions change on cutover.
+
+**C4 (LOCKED, DEV/LOCAL only) — Reseed dev accounts to the canonical universal-login-credentials
+scheme.** Dev seed data is updated to match `Server-Setups/secrets/universal-login-credentials.enc.yaml`
+`local_dev` entries: `tenant_superadmin` → `webmaster@localhost.com`; `tenant_admin` →
+`admin@admin.com`; the universal `tenant_manager` account (`tenantadmin@powerbyteitsolutions.com`) is
+seeded as a Platform Owner within the demo tenant (consistent with C1's documented-equivalent mapping,
+since Orqafy's Platform Owner is tenant-scoped, not a true `tenant_id = NULL` role). All passwords are
+sourced ONLY from the vault or environment variables at seed time — never hardcoded in the seed script
+— and gated behind `SEED_DEV_ACCOUNTS=true` (dev-only flag, consistent with the framework's existing
+dev-weak-credential gating pattern). The vault is referenced by PATH ONLY in all governance docs and
+code comments; no credential VALUE is ever pasted into the repo, a commit message, or an AI context.
+
+**PM finding — dead-role-name gates (NEW, tracked as `D-RBAC-DEADGATE`):** a scout sweep found 4
+authorization gates referencing role name strings that do not exist in `STANDARD_ROLES`
+("Administrator" / "Manager") — in `accounting.ts`, `dtr.ts`, `employee.ts`, and `storefront.ts`. Because
+no user can ever hold a role literally named "Administrator" or "Manager", these gates are dead
+code that is accidentally MORE restrictive than intended (they silently deny everyone rather than
+gating a real role). **Decision:** the C2/C3 matrix backfill will PRESERVE the current effective
+(overly-restrictive) behavior of these 4 gates as-is — the backfill's job is byte-for-byte parity with
+today's behavior, not a behavior expansion. Whether to loosen these 4 gates to grant the access to a
+real existing role is an owner product/business call, deferred to `PENDING_DECISIONS.md` as
+`D-RBAC-DEADGATE`. Not auto-fixed.

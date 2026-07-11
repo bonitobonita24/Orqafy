@@ -1,9 +1,17 @@
 import type { Metadata } from "next";
+import { guardPage } from "@/server/rbac/guard-page";
 import { DepartmentsClient } from "./departments-client";
 
 export const metadata: Metadata = { title: "Departments settings" };
 
-export default function DepartmentsPage() {
+export default async function DepartmentsPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  await guardPage(slug, "settings");
+
   return (
     <div className="space-y-6">
       <div>

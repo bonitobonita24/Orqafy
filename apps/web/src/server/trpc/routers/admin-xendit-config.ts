@@ -4,6 +4,7 @@ import { Xendit } from "xendit-node";
 import { prisma } from "@orqafy/db";
 import { createTRPCRouter } from "../trpc";
 import { requireRole } from "../middleware/rbac";
+import { matrixMiddleware } from "../middleware/matrix";
 import { writeProcedure } from "../trpc";
 import { encrypt, decrypt } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
@@ -14,15 +15,25 @@ import { logger } from "@/lib/logger";
 // prior list checked "Administrator", a role name that no seeded role carries, which
 // silently 403'd every real admin (see department.ts / compliance.ts / dsr.ts for the
 // same fix already applied to sibling routers).
+//
+// Task 5.1 — `get` is DELIBERATELY LEFT on this inline `requireRole` gate, NOT
+// migrated to the matrix. The `settings` feature's `view` action is seeded
+// broad (true for every internal role, per the Task 3.3 "view tracks
+// nav-visibility" rule) — routing this masked-secrets read through
+// `matrixProcedure("settings","view")` would WIDEN access from admin-only to
+// every internal role. See the Task 5.1 handoff report for the full finding.
 const ADMIN_ROLES = ["Tenant Super Admin", "Admin", "Platform Owner"];
 const adminReadProcedure = requireRole(...ADMIN_ROLES);
-// Writes = same role check + demo-tenant guard from writeProcedure.
-const adminWriteProcedure = writeProcedure.use(({ ctx, next }) => {
-  if (!ctx.roles.some((r) => ADMIN_ROLES.includes(r))) {
-    throw new TRPCError({ code: "FORBIDDEN" });
-  }
-  return next({ ctx });
-});
+// Writes — migrated to the data-driven `role_permissions` matrix (feature key
+// "settings"). `writeProcedure` still enforces the demo-tenant mutation
+// guard; `matrixMiddleware` resolves the (feature, action) grant on top of
+// it. `upsert` and `testConnection` both map to `update` (an idempotent
+// "set the tenant's config" write, not a distinct create-vs-edit split) —
+// the Task 3.3 backfill grants Admin both `create` and `update` on
+// "settings" so either mapping preserves parity; `update` is used for
+// clarity since this config is repeatedly re-saved in place.
+const settingsUpdateProcedure = writeProcedure.use(matrixMiddleware("settings", "update"));
+const settingsDeleteProcedure = writeProcedure.use(matrixMiddleware("settings", "delete"));
 
 // ── Input schemas ─────────────────────────────────────────────────────────────
 const PAYMENT_METHODS = [
@@ -72,7 +83,7 @@ export const adminXenditConfigRouter = createTRPCRouter({
    * Encrypts secretKey + webhookToken before storage. Always resets isVerified
    * to false — any credential change requires re-running testConnection.
    */
-  upsert: adminWriteProcedure.input(upsertInput).mutation(async ({ ctx, input }) => {
+  upsert: settingsUpdateProcedure.input(upsertInput).mutation(async ({ ctx, input }) => {
     const secretKeyEnc = encrypt(input.secretKey);
     const webhookTokenEnc = encrypt(input.webhookToken);
     const data = {
@@ -99,7 +110,7 @@ export const adminXenditConfigRouter = createTRPCRouter({
    * secret. Batch 21c will refactor getXenditClient(tenantId) to share this
    * logic across the webhook + storefront paths.
    */
-  testConnection: adminWriteProcedure.mutation(async ({ ctx }) => {
+  testConnection: settingsUpdateProcedure.mutation(async ({ ctx }) => {
     const row = await prisma.tenantXenditConfig.findUnique({
       where: { tenantId: ctx.tenantId },
     });
@@ -141,7 +152,7 @@ export const adminXenditConfigRouter = createTRPCRouter({
    * reference Xendit payments (xenditPaymentId NOT NULL) to prevent orphaned
    * payment history from losing its credential audit chain.
    */
-  delete: adminWriteProcedure.mutation(async ({ ctx }) => {
+  delete: settingsDeleteProcedure.mutation(async ({ ctx }) => {
     // Batch 21c: EcommerceOrder now carries tenantId (public-schema column).
     // The 21b comment claiming this entity is tenant-schema was incorrect —
     // before 21c there was no tenant scoping on orders at all, so this FK

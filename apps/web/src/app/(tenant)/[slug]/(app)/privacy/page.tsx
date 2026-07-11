@@ -3,6 +3,7 @@
  * Server shell; heavy lifting in privacy-client.tsx (client component).
  */
 import type { Metadata } from "next";
+import { guardPage } from "@/server/rbac/guard-page";
 import { PrivacyClient } from "./privacy-client";
 
 export const metadata: Metadata = { title: "Privacy & My Data" };
@@ -14,7 +15,8 @@ export default async function TenantPrivacyPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  await params; // resolve per Next 15 pattern; slug not needed (session owns tenant)
+  const { slug } = await params;
+  await guardPage(slug, "dsr");
 
   return (
     <div className="space-y-6">
