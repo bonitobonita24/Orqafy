@@ -2516,3 +2516,19 @@
 - NEXT:                 RBAC §4 rollout is functionally complete. Remaining work is owner-gated: `D-RBAC-USERS-UNGATED`, `D-RBAC-PAYROLL-UNGATED`, plus the pre-existing staging/prod/deploy/reseed/push holds in `PENDING_DECISIONS.md`. A future release tag for Tracks A/B would be MINOR (additive features) per the versioning standard, pending owner greenlight.
 - HOLD:                 No push/staging/prod/deploy without explicit owner signal.
 - HOLD:                No push/staging/prod/deploy without explicit owner signal (default LOCAL DEV).
+
+## 2026-07-12 — RBAC §4 — user-management + payroll hardening (owner-approved)
+- Agent:               CLAUDE_CODE
+- Why:                 Owner approved (2026-07-12) both `D-RBAC-USERS-UNGATED` and `D-RBAC-PAYROLL-UNGATED`, previously logged as owner-gated `[WHAT]` items in `docs/PENDING_DECISIONS.md` (2026-07-11 RBAC §4 Track C session). Closes both.
+- Files added:         none
+- Files modified:      apps/web/src/server/trpc/routers/user.ts (list/byId/deactivate gated), apps/web/src/server/rbac/ (superAdminProcedure fix), apps/web/src/app/(tenant)/[slug]/(app)/settings/users/page.tsx (TSA/PO redirect gate), apps/web/src/components/layout/* (Users card hidden from non-TSA/PO), packages/db/src/seed/role-permissions.ts (payroll create/update/delete tightened to HR Manager + bypass), apps/web/src/server/trpc/routers/__tests__/succession.test.ts (new denial coverage), docs/PENDING_DECISIONS.md
+- Files deleted:       none
+- Schema/migrations:   none — seed data change only (grant tightening), not a schema migration
+- What it adds:        `user.ts` list/byId/deactivate now gated to a FIXED Tenant Super Admin/Platform Owner check (not the matrix — Users is guardrail-forbidden/reserved per fleet standard §4, correctly has no role_permissions rows). Takes effect immediately, no reseed needed. `payroll.ts` router was already matrix-migrated; the gap was in the seed grant (all internal staff → tightened to HR Manager + bypass only, mirroring dtr/employees). Required a dev reseed (`pnpm db:seed`, idempotent) to take effect.
+- Verify:              web typecheck 0 · web vitest 1253/1253 · web eslint 0 warnings · lint-design.sh --report-only PASS · @orqafy/db 61/61 + typecheck 0. Live QA: Staff redirected off /settings/users, Users card hidden from non-TSA/PO. succession.test.ts denies Staff and non-owner Admin on all three user.ts endpoints.
+- Commits:             cb0c783 (fix(rbac): harden user-management + payroll grants (owner-approved D-RBAC-USERS-UNGATED, D-RBAC-PAYROLL-UNGATED))
+- Errors encountered:  none
+- Errors resolved:     none
+- Result:              Both previously-open owner-gated security gaps from the 2026-07-11 RBAC §4 Track C session are now closed.
+- NEXT:                Owner will direct. Standing owner-gated items unchanged: reseed live/staging/prod, apply migrations 20260710160000 + 20260711010000 to staging/prod, framework-sync push, git-tag push (next = MINOR 0.11.0), staging/prod/demo deploy, D-PRIV-1 (RA 10173), D-NUM-1. Optional [HOW] follow-up if owner wants: role.delete procedure + a succession/assign UI.
+- HOLD:                No push/staging/prod/deploy without explicit owner signal (default LOCAL DEV).

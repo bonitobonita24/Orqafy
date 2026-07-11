@@ -1560,4 +1560,52 @@ gaps surfaced but deliberately NOT auto-fixed this session, both owner `[WHAT]` 
 member can currently list/view/deactivate any other user in the tenant, which conflicts with
 the fleet standard reserving User Management to Tenant Super Admin/Platform Owner; and
 `payroll.ts` is fully ungated versus its legacy HR-Manager-only intent. See
+
+---
+
+## Decision — 2026-07-12 — RBAC §4 — user-management + payroll hardening (owner-approved)
+
+**Decision:** Owner approved (2026-07-12) both `D-RBAC-USERS-UNGATED` and
+`D-RBAC-PAYROLL-UNGATED` from `PENDING_DECISIONS.md` — resolved as follows.
+
+**`user.ts` (list/byId/deactivate) — gated to a fixed Tenant Super Admin / Platform Owner
+check, NOT routed through the permission matrix.** User Management is explicitly excluded
+from the custom-role matrix by the fleet Tenant-RBAC standard §4 guardrail ("custom roles may
+NEVER grant Billing or User Management — those stay exclusive to `tenant_superadmin` + platform
+`tenant_manager`"); Users is a guardrail-forbidden/reserved feature in the role-builder UI
+(Track B), so it correctly has no `role_permissions` rows to key off. The fix instead hardens
+the existing `superAdminProcedure` (fixing a gap in that procedure itself) and composes a
+superAdmin-gated write for `deactivate`, applied to `list`/`byId`/`deactivate`. Also added a
+`/settings/users` page redirect gate (non-TSA/PO users bounced) and hid the Users card on the
+settings hub from non-TSA/PO roles. Takes effect immediately — no reseed required.
+
+**`payroll.ts` — tightened at the seed, not the router (router was already matrix-migrated).**
+`payroll.ts` create/update/delete already read the matrix; the gap was in
+`packages/db/src/seed/role-permissions.ts`, which had granted payroll write access to all
+internal staff roles instead of the legacy HR-Manager-only intent. Tightened the seed grant so
+payroll `create`/`update`/`delete` = HR Manager + bypass roles only, mirroring the existing
+`dtr`/`employees` grant pattern. Required a dev reseed (`pnpm db:seed`, idempotent) to take
+effect — verified at the data layer: payroll rows are HR Manager full CUD; Staff/Admin/
+Accountant view-only; Tenant Super Admin/Platform Owner full via bypass.
+
+**Verification (PM ground-truth):** web typecheck 0 · web vitest 1253/1253 · web eslint 0
+warnings · `lint-design.sh --report-only` PASS · `@orqafy/db` 61/61 + typecheck 0. Live QA:
+Staff redirected off `/settings/users`; Users card hidden from non-TSA/PO. `succession.test.ts`
+denies Staff and non-owner Admin on all three `user.ts` endpoints.
+
+**Reversible:** YES — both are seed/router-level authorization tightenings, not schema changes.
+
+**Files affected:**
+- `apps/web/src/server/trpc/routers/user.ts` — list/byId gated; deactivate composed with a
+  superAdmin-gated write
+- `apps/web/src/server/rbac/` — `superAdminProcedure` fix
+- `apps/web/src/app/(tenant)/[slug]/(app)/settings/users/page.tsx` — TSA/PO redirect gate
+- `apps/web/src/components/layout/*` — Users card hidden from non-TSA/PO
+- `packages/db/src/seed/role-permissions.ts` — payroll create/update/delete tightened to HR
+  Manager + bypass
+- `apps/web/src/server/trpc/routers/__tests__/succession.test.ts` — non-owner/Staff denial
+  coverage
+- `docs/PENDING_DECISIONS.md` — both items marked resolved
+
+**Commit (LOCAL on `feat/tenant-rbac-3tier`, HARD HOLD):** `cb0c783`.
 `D-RBAC-USERS-UNGATED` and `D-RBAC-PAYROLL-UNGATED` in `PENDING_DECISIONS.md`.
