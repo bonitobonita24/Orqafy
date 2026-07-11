@@ -1,7 +1,30 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-06-21 by CLAUDE_CODE (V32.9 Mega-Prompt Conformance check)
+> Last updated: 2026-07-11 by CLAUDE_CODE (RBAC §4 rollout — router matrix migration, Waves 1–3)
+
+---
+
+## Current Verification (Rule 32 Verifiable-Done evidence)
+
+Latest done-claim: RBAC §4 permission-matrix router migration, 20/35 routers
+migrated on `feat/tenant-rbac-3tier` (LOCAL, HARD HOLD, unpushed).
+
+evidence:
+  contract: "web typecheck 0 errors; full web vitest suite green; eslint clean; design anti-slop lint PASS — after each committed router-migration wave"
+  check_command: "pnpm --filter web typecheck && pnpm --filter web exec vitest run && pnpm --filter web lint && bash scripts/lint-design.sh --report-only apps/web/src"
+  captured_output: |
+    > @orqafy/web@0.9.0 typecheck
+    > tsc --noEmit
+    (0 errors)
+
+    Test Files  81 passed (81)
+    Tests       1218 passed (1218)
+
+    ✔ No ESLint warnings or errors
+
+    DESIGN ANTI-SLOP SUMMARY  |  files scanned: 253
+      Result : PASS  (no AI-slop tells found)
 
 ---
 
