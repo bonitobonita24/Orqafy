@@ -11,34 +11,59 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as OrqafyDb from "@orqafy/db";
 
 // ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
-const { mockExpenseFindUnique, mockExpenseCreate, mockExpenseCategoryFindUnique, mockProjectFindUnique } =
-  vi.hoisted(() => ({
-    mockExpenseFindUnique: vi.fn(),
-    mockExpenseCreate: vi.fn(),
-    mockExpenseCategoryFindUnique: vi.fn(),
-    mockProjectFindUnique: vi.fn(),
-  }));
-
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    expense: {
-      findUnique: mockExpenseFindUnique,
-      findMany: vi.fn(),
-      create: mockExpenseCreate,
-      update: vi.fn(),
-      count: vi.fn(),
-    },
-    expenseCategory: {
-      findUnique: mockExpenseCategoryFindUnique,
-      findMany: vi.fn(),
-    },
-    project: {
-      findUnique: mockProjectFindUnique,
-    },
-  },
+const {
+  mockExpenseFindUnique,
+  mockExpenseCreate,
+  mockExpenseCategoryFindUnique,
+  mockProjectFindUnique,
+  mockRoleFindFirst,
+} = vi.hoisted(() => ({
+  mockExpenseFindUnique: vi.fn(),
+  mockExpenseCreate: vi.fn(),
+  mockExpenseCategoryFindUnique: vi.fn(),
+  mockProjectFindUnique: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
 }));
+
+// Keep the real `hasPermission` resolver (matrix.ts imports it directly from
+// "@orqafy/db") — only mock the prisma client calls it and the router make.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      expense: {
+        findUnique: mockExpenseFindUnique,
+        findMany: vi.fn(),
+        create: mockExpenseCreate,
+        update: vi.fn(),
+        count: vi.fn(),
+      },
+      expenseCategory: {
+        findUnique: mockExpenseCategoryFindUnique,
+        findMany: vi.fn(),
+      },
+      project: {
+        findUnique: mockProjectFindUnique,
+      },
+      // Router migrated to the data-driven `role_permissions` matrix
+      // (feature key "expenses") — matrixMiddleware resolves the caller's
+      // role via role.findFirst. Every ctx below uses roleId "role-1" and
+      // role name "Platform Owner" so the matrix bypasses entirely (this
+      // suite proves tenant-scoping business logic, not matrix grants —
+      // see expense-matrix.test.ts for matrix grant/deny coverage).
+      role: {
+        findFirst: mockRoleFindFirst,
+      },
+      rolePermission: {
+        findUnique: vi.fn(),
+      },
+    },
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: { api: { check: vi.fn() }, public: { check: vi.fn() } },
@@ -61,6 +86,7 @@ function ctxForTenant(tenantId: string) {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-1",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -74,6 +100,15 @@ function ctxForTenant(tenantId: string) {
 describe("Expense tenant parity (K-prime closure)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Every test's caller resolves to a "Platform Owner" role, which
+    // bypasses the "expenses" matrix entirely (tenant-rbac-standard.md §4)
+    // — this suite exercises tenant-scoping business logic, not matrix
+    // grant/deny behaviour (see expense-matrix.test.ts for that coverage).
+    mockRoleFindFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "tenant-A",
+      name: "Platform Owner",
+    });
   });
 
   it("expense.byId throws NOT_FOUND when expense belongs to tenant-B but ctx is tenant-A", async () => {
