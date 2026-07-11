@@ -11,29 +11,43 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as OrqafyDb from "@orqafy/db";
 
 // ── DB mock (hoisted) ─────────────────────────────────────────────────────────
-const { mockInvoiceCreate, mockInvoiceFindUnique, mockCustomerFindUnique } = vi.hoisted(() => ({
-  mockInvoiceCreate: vi.fn(),
-  mockInvoiceFindUnique: vi.fn(),
-  mockCustomerFindUnique: vi.fn(),
-}));
+const { mockInvoiceCreate, mockInvoiceFindUnique, mockCustomerFindUnique, mockRoleFindFirst, mockRolePermissionFindUnique } =
+  vi.hoisted(() => ({
+    mockInvoiceCreate: vi.fn(),
+    mockInvoiceFindUnique: vi.fn(),
+    mockCustomerFindUnique: vi.fn(),
+    mockRoleFindFirst: vi.fn(),
+    mockRolePermissionFindUnique: vi.fn(),
+  }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    invoice: {
-      findMany: vi.fn(),
-      findUnique: mockInvoiceFindUnique,
-      create: mockInvoiceCreate,
-      update: vi.fn(),
-      count: vi.fn(),
+// invoice.create is now gated by the "invoices"/"create" RBAC matrix
+// (writeProcedure.use(matrixMiddleware(...))) — mock role/rolePermission
+// alongside the existing invoice/customer mocks so hasPermission() resolves.
+// publicView stays on publicProcedure (ungated) and needs no role mock.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      invoice: {
+        findMany: vi.fn(),
+        findUnique: mockInvoiceFindUnique,
+        create: mockInvoiceCreate,
+        update: vi.fn(),
+        count: vi.fn(),
+      },
+      customer: {
+        findUnique: mockCustomerFindUnique,
+      },
+      role: { findFirst: mockRoleFindFirst },
+      rolePermission: { findUnique: mockRolePermissionFindUnique },
     },
-    customer: {
-      findUnique: mockCustomerFindUnique,
-    },
-  },
-  writeAuditLog: vi.fn().mockResolvedValue(undefined),
-}));
+    writeAuditLog: vi.fn().mockResolvedValue(undefined),
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: {
@@ -70,6 +84,7 @@ function authenticatedCtx(tenantId = "tenant-a") {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-1",
     tenantSlug: "acme",
     tenantId,
     securityVersion: 1,
@@ -83,6 +98,7 @@ function publicCtx() {
     req: makeReq(),
     userId: null,
     roles: [] as string[],
+    roleId: null,
     tenantSlug: null,
     tenantId: null,
     securityVersion: 0,
@@ -133,6 +149,9 @@ function stubInvoiceRow(publicToken: string) {
 describe("invoice.create — publicToken generation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: Platform Owner bypasses the "invoices"/"create" matrix check
+    // entirely, preserving the original publicToken assertions below.
+    mockRoleFindFirst.mockResolvedValue({ id: "role-1", tenantId: "tenant-a", name: "Platform Owner" });
   });
 
   it("returns a non-null publicToken on every create", async () => {

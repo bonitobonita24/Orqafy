@@ -1,10 +1,23 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure, publicProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure, publicProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db, writeAuditLog } from "@orqafy/db";
 import { rateLimiters } from "@/server/lib/rate-limit";
 import { sanitizePlainText } from "@/server/lib/sanitize";
 import { createNotification } from "@/server/notifications/create";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key
+// "invoices"). Reads use `matrixProcedure` (protectedProcedure +
+// matrixMiddleware); mutations compose `writeProcedure.use(matrixMiddleware(...))`
+// so the demo-tenant mutation guard survives alongside the matrix grant check.
+// markSent/recordPayment/markPaid/void all map to "update" (they mutate an
+// existing invoice's status/balance, not create or delete it). `publicView`
+// is a public client-facing link (token-based, no session) and is
+// deliberately left on `publicProcedure` — it is NOT gated by the matrix.
+const invoicesViewProcedure = matrixProcedure("invoices", "view");
+const invoicesCreateProcedure = writeProcedure.use(matrixMiddleware("invoices", "create"));
+const invoicesUpdateProcedure = writeProcedure.use(matrixMiddleware("invoices", "update"));
 
 async function loadInvoiceForTenant(id: string, ctx: { tenantId: string }) {
   const invoice = await db.invoice.findUnique({ where: { id } });
@@ -188,7 +201,7 @@ const invoiceInput = z.object({
 }).strict();
 
 export const invoiceRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: invoicesViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -220,7 +233,7 @@ export const invoiceRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: invoicesViewProcedure
     .input(z.object({ id: z.string().cuid() }))
     .query(async ({ input, ctx }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
@@ -267,7 +280,7 @@ export const invoiceRouter = createTRPCRouter({
       };
     }),
 
-  create: writeProcedure
+  create: invoicesCreateProcedure
     .input(invoiceInput)
     .mutation(async ({ input, ctx }) => {
       const customer = await db.customer.findUnique({ where: { id: input.customerId } });
@@ -300,7 +313,7 @@ export const invoiceRouter = createTRPCRouter({
       });
     }),
 
-  update: writeProcedure
+  update: invoicesUpdateProcedure
     .input(invoiceInput.partial().extend({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const { id, ...rest } = input;
@@ -339,7 +352,7 @@ export const invoiceRouter = createTRPCRouter({
       });
     }),
 
-  markSent: writeProcedure
+  markSent: invoicesUpdateProcedure
     .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadInvoiceForTenant(input.id, ctx);
@@ -355,7 +368,7 @@ export const invoiceRouter = createTRPCRouter({
   // F2 (Phase 7) — record a partial or full payment. Drives the
   // partially_paid / paid lifecycle and (D1) auto-posts a Banking income
   // transaction when a fund source is supplied.
-  recordPayment: writeProcedure
+  recordPayment: invoicesUpdateProcedure
     .input(
       z.object({
         id: z.string().cuid(),
@@ -382,7 +395,7 @@ export const invoiceRouter = createTRPCRouter({
 
   // Thin "pay full balance" convenience over recordPayment (F2). Settles the
   // entire outstanding balance in one call.
-  markPaid: writeProcedure
+  markPaid: invoicesUpdateProcedure
     .input(
       z.object({
         id: z.string().cuid(),
@@ -413,7 +426,7 @@ export const invoiceRouter = createTRPCRouter({
       });
     }),
 
-  void: writeProcedure
+  void: invoicesUpdateProcedure
     .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadInvoiceForTenant(input.id, ctx);

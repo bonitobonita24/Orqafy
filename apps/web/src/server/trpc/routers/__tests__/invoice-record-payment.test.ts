@@ -11,6 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as OrqafyDb from "@orqafy/db";
 
 // ── DB mock (hoisted) ─────────────────────────────────────────────────────────
 const {
@@ -21,6 +22,8 @@ const {
   mockFundSourceUpdate,
   mockFundTransactionCreate,
   mockAuditCreate,
+  mockRoleFindFirst,
+  mockRolePermissionFindUnique,
 } = vi.hoisted(() => ({
   mockInvoiceFindUnique: vi.fn(),
   mockInvoiceUpdate: vi.fn(),
@@ -29,6 +32,8 @@ const {
   mockFundSourceUpdate: vi.fn(),
   mockFundTransactionCreate: vi.fn(),
   mockAuditCreate: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
+  mockRolePermissionFindUnique: vi.fn(),
 }));
 
 // D7 — recordPayment emits a notification to the invoice creator as a side
@@ -37,7 +42,13 @@ vi.mock("@/server/notifications/create", () => ({
   createNotification: vi.fn().mockResolvedValue({ id: "notif-test" }),
 }));
 
-vi.mock("@orqafy/db", () => {
+// recordPayment/markPaid are now gated by the "invoices"/"update" RBAC matrix
+// (writeProcedure.use(matrixMiddleware(...))) — mock role/rolePermission
+// alongside the existing invoice/fundSource/tx mocks so hasPermission()
+// resolves. Default (see beforeEach) is a Platform Owner bypass so the
+// original business-logic assertions are unaffected.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
   const tx = {
     payment: { create: mockPaymentCreate },
     invoice: { update: mockInvoiceUpdate },
@@ -46,9 +57,12 @@ vi.mock("@orqafy/db", () => {
     auditLog: { create: mockAuditCreate },
   };
   return {
+    ...actual,
     prisma: {
       invoice: { findUnique: mockInvoiceFindUnique, update: mockInvoiceUpdate },
       fundSource: { findUnique: mockFundSourceFindUnique },
+      role: { findFirst: mockRoleFindFirst },
+      rolePermission: { findUnique: mockRolePermissionFindUnique },
       $transaction: (fn: any) => Promise.resolve(fn(tx)),
     },
     writeAuditLog: async (txArg: any, entry: any) => {
@@ -79,6 +93,7 @@ function ctxForTenant(tenantId: string) {
     req: {} as NextRequest,
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-1",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -105,6 +120,9 @@ describe("invoice.recordPayment (F2 — partial payments + D1 auto-post)", () =>
     vi.clearAllMocks();
     mockPaymentCreate.mockResolvedValue({ id: "clpaymentxxxxxxxxxxx001" });
     mockInvoiceUpdate.mockImplementation(({ data }: any) => Promise.resolve({ id: INVOICE_CUID, ...data }));
+    // Default: Platform Owner bypasses the "invoices"/"update" matrix check
+    // entirely, preserving the original business-logic assertions below.
+    mockRoleFindFirst.mockResolvedValue({ id: "role-1", tenantId: "tenant-A", name: "Platform Owner" });
   });
 
   it("partial payment sets status partially_paid and decrements balance", async () => {

@@ -1,10 +1,24 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db } from "@orqafy/db";
 import { rateLimiters } from "@/server/lib/rate-limit";
 import { sanitizePlainText } from "@/server/lib/sanitize";
 import { createNotification } from "@/server/notifications/create";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key
+// "job_orders"). Reads use `matrixProcedure` (protectedProcedure +
+// matrixMiddleware); mutations compose `writeProcedure.use(matrixMiddleware(...))`
+// so the demo-tenant mutation guard survives alongside the matrix grant check.
+// assignTechnician/updateStatus/recordSignature all map to "update" (they
+// mutate an existing job order, never create or delete it). addPart and
+// addServiceLine map to "create"; removePart and removeServiceLine map to
+// "delete".
+const jobOrdersViewProcedure = matrixProcedure("job_orders", "view");
+const jobOrdersCreateProcedure = writeProcedure.use(matrixMiddleware("job_orders", "create"));
+const jobOrdersUpdateProcedure = writeProcedure.use(matrixMiddleware("job_orders", "update"));
+const jobOrdersDeleteProcedure = writeProcedure.use(matrixMiddleware("job_orders", "delete"));
 
 const jobOrderStatuses = [
   "received",
@@ -69,7 +83,7 @@ async function loadJobOrderForTenant(id: string, ctx: { tenantId: string }) {
 }
 
 export const jobOrderRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: jobOrdersViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -111,7 +125,7 @@ export const jobOrderRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: jobOrdersViewProcedure
     .input(z.object({ id: z.string().cuid() }))
     .query(async ({ input, ctx }) => {
       const ip = ctx.req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -131,7 +145,7 @@ export const jobOrderRouter = createTRPCRouter({
       return item;
     }),
 
-  publicView: protectedProcedure
+  publicView: jobOrdersViewProcedure
     .input(z.object({ id: z.string().cuid(), token: z.string().min(1) }))
     .query(async ({ input, ctx }) => {
       const ip = ctx.req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -160,7 +174,7 @@ export const jobOrderRouter = createTRPCRouter({
       return item;
     }),
 
-  create: writeProcedure
+  create: jobOrdersCreateProcedure
     .input(jobOrderInput)
     .mutation(async ({ input, ctx }) => {
       // Tenant-isolation: the customer MUST belong to the caller's tenant —
@@ -191,7 +205,7 @@ export const jobOrderRouter = createTRPCRouter({
       });
     }),
 
-  updateStatus: writeProcedure
+  updateStatus: jobOrdersUpdateProcedure
     .input(
       z.object({
         id: z.string().cuid(),
@@ -246,7 +260,7 @@ export const jobOrderRouter = createTRPCRouter({
       });
     }),
 
-  assignTechnician: writeProcedure
+  assignTechnician: jobOrdersUpdateProcedure
     .input(z.object({ id: z.string().cuid(), technicianId: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const jobOrder = await loadJobOrderForTenant(input.id, ctx);
@@ -277,7 +291,7 @@ export const jobOrderRouter = createTRPCRouter({
       return updated;
     }),
 
-  addPart: writeProcedure
+  addPart: jobOrdersCreateProcedure
     .input(
       z.object({
         jobOrderId: z.string().cuid(),
@@ -319,7 +333,7 @@ export const jobOrderRouter = createTRPCRouter({
       });
     }),
 
-  removePart: writeProcedure
+  removePart: jobOrdersDeleteProcedure
     .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const part = await db.jobOrderPart.findUnique({
@@ -337,7 +351,7 @@ export const jobOrderRouter = createTRPCRouter({
       return { id: input.id };
     }),
 
-  addServiceLine: writeProcedure
+  addServiceLine: jobOrdersCreateProcedure
     .input(
       z.object({
         jobOrderId: z.string().cuid(),
@@ -369,7 +383,7 @@ export const jobOrderRouter = createTRPCRouter({
       });
     }),
 
-  removeServiceLine: writeProcedure
+  removeServiceLine: jobOrdersDeleteProcedure
     .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const line = await db.jobOrderServiceLine.findUnique({
@@ -387,7 +401,7 @@ export const jobOrderRouter = createTRPCRouter({
       return { id: input.id };
     }),
 
-  recordSignature: writeProcedure
+  recordSignature: jobOrdersUpdateProcedure
     .input(
       z.object({
         id: z.string().cuid(),

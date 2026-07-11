@@ -1,7 +1,19 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db } from "@orqafy/db";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key "pos").
+// Reads use `matrixProcedure` (protectedProcedure + matrixMiddleware);
+// mutations compose `writeProcedure.use(matrixMiddleware(...))` so the
+// demo-tenant mutation guard survives alongside the matrix grant check.
+// open/create map to "create" (they create a new session/sale record);
+// close/void both map to "update" (they mutate an existing session/sale's
+// status, not create or delete it). No delete action is used by this router.
+const posViewProcedure = matrixProcedure("pos", "view");
+const posCreateProcedure = writeProcedure.use(matrixMiddleware("pos", "create"));
+const posUpdateProcedure = writeProcedure.use(matrixMiddleware("pos", "update"));
 
 // ── Sequence helpers ──────────────────────────────────────────────────────────
 
@@ -53,7 +65,7 @@ const saleItemInputSchema = z.object({
 // ── Session sub-router ────────────────────────────────────────────────────────
 
 const sessionRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: posViewProcedure
     .input(
       z
         .object({
@@ -88,7 +100,7 @@ const sessionRouter = createTRPCRouter({
       return { items, total };
     }),
 
-  byId: protectedProcedure.input(z.object({ id: cuid })).query(async ({ ctx, input }) => {
+  byId: posViewProcedure.input(z.object({ id: cuid })).query(async ({ ctx, input }) => {
     const session = await db.pOSSession.findFirst({
       where: { id: input.id, tenantId: ctx.tenantId },
       include: {
@@ -107,7 +119,7 @@ const sessionRouter = createTRPCRouter({
     return session;
   }),
 
-  open: writeProcedure
+  open: posCreateProcedure
     .input(z.object({ openingBalance: z.number().nonnegative(), notes: z.string().optional() }).strict())
     .mutation(async ({ ctx, input }) => {
       if (ctx.userId === null) {
@@ -136,7 +148,7 @@ const sessionRouter = createTRPCRouter({
       });
     }),
 
-  close: writeProcedure
+  close: posUpdateProcedure
     .input(
       z.object({
         id: cuid,
@@ -185,7 +197,7 @@ const sessionRouter = createTRPCRouter({
 // ── Sale sub-router ───────────────────────────────────────────────────────────
 
 const saleRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: posViewProcedure
     .input(
       z
         .object({
@@ -217,7 +229,7 @@ const saleRouter = createTRPCRouter({
       return { items, total };
     }),
 
-  byId: protectedProcedure.input(z.object({ id: cuid })).query(async ({ ctx, input }) => {
+  byId: posViewProcedure.input(z.object({ id: cuid })).query(async ({ ctx, input }) => {
     const sale = await db.pOSSale.findFirst({
       where: { id: input.id, tenantId: ctx.tenantId },
       include: {
@@ -231,7 +243,7 @@ const saleRouter = createTRPCRouter({
     return sale;
   }),
 
-  create: writeProcedure
+  create: posCreateProcedure
     .input(
       z.object({
         sessionId: cuid,
@@ -383,7 +395,7 @@ const saleRouter = createTRPCRouter({
       });
     }),
 
-  void: writeProcedure
+  void: posUpdateProcedure
     .input(z.object({ id: cuid, reason: z.string().trim().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       if (ctx.userId === null) {

@@ -13,34 +13,55 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as OrqafyDb from "@orqafy/db";
 
 // ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
-const { mockInvoiceCreate, mockInvoiceUpdate, mockInvoiceFindUnique, mockCustomerFindUnique, mockProjectFindUnique } =
-  vi.hoisted(() => ({
-    mockInvoiceCreate: vi.fn(),
-    mockInvoiceUpdate: vi.fn(),
-    mockInvoiceFindUnique: vi.fn(),
-    mockCustomerFindUnique: vi.fn(),
-    mockProjectFindUnique: vi.fn(),
-  }));
-
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    invoice: {
-      findMany: vi.fn(),
-      findUnique: mockInvoiceFindUnique,
-      create: mockInvoiceCreate,
-      update: mockInvoiceUpdate,
-      count: vi.fn(),
-    },
-    customer: {
-      findUnique: mockCustomerFindUnique,
-    },
-    project: {
-      findUnique: mockProjectFindUnique,
-    },
-  },
+const {
+  mockInvoiceCreate,
+  mockInvoiceUpdate,
+  mockInvoiceFindUnique,
+  mockCustomerFindUnique,
+  mockProjectFindUnique,
+  mockRoleFindFirst,
+  mockRolePermissionFindUnique,
+} = vi.hoisted(() => ({
+  mockInvoiceCreate: vi.fn(),
+  mockInvoiceUpdate: vi.fn(),
+  mockInvoiceFindUnique: vi.fn(),
+  mockCustomerFindUnique: vi.fn(),
+  mockProjectFindUnique: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
+  mockRolePermissionFindUnique: vi.fn(),
 }));
+
+// invoice.create/update are now gated by the "invoices" RBAC matrix
+// (writeProcedure.use(matrixMiddleware(...))) — mock role/rolePermission
+// alongside the existing invoice/customer/project mocks so hasPermission()
+// resolves. Default (see beforeEach) is a Platform Owner bypass so the
+// original IDOR-closure assertions below are unaffected.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      invoice: {
+        findMany: vi.fn(),
+        findUnique: mockInvoiceFindUnique,
+        create: mockInvoiceCreate,
+        update: mockInvoiceUpdate,
+        count: vi.fn(),
+      },
+      customer: {
+        findUnique: mockCustomerFindUnique,
+      },
+      project: {
+        findUnique: mockProjectFindUnique,
+      },
+      role: { findFirst: mockRoleFindFirst },
+      rolePermission: { findUnique: mockRolePermissionFindUnique },
+    },
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: {
@@ -71,6 +92,7 @@ function ctxForTenant(tenantId: string) {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-1",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -84,6 +106,10 @@ function ctxForTenant(tenantId: string) {
 describe("Invoice tenant parity (K-prime closure)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: Platform Owner bypasses the "invoices" matrix check entirely,
+    // preserving the original IDOR-closure assertions below (all callers in
+    // this suite authenticate as ctxForTenant("tenant-A")).
+    mockRoleFindFirst.mockResolvedValue({ id: "role-1", tenantId: "tenant-A", name: "Platform Owner" });
   });
 
   it("invoice.byId throws NOT_FOUND when invoice belongs to a different tenant", async () => {
