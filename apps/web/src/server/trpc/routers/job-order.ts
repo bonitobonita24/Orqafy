@@ -18,7 +18,11 @@ import { createNotification } from "@/server/notifications/create";
 const jobOrdersViewProcedure = matrixProcedure("job_orders", "view");
 const jobOrdersCreateProcedure = writeProcedure.use(matrixMiddleware("job_orders", "create"));
 const jobOrdersUpdateProcedure = writeProcedure.use(matrixMiddleware("job_orders", "update"));
-const jobOrdersDeleteProcedure = writeProcedure.use(matrixMiddleware("job_orders", "delete"));
+// NOTE: job_orders has NO hard-delete-the-job-order endpoint (seed
+// role-permissions.ts sets delete:false for internal staff). addPart/
+// removePart/removeServiceLine mutate an EXISTING job order's line items →
+// they map to "create"/"update", NOT "delete". Mapping a line-item removal to
+// "delete" would route it through a bypass-only gate and lock out all staff.
 
 const jobOrderStatuses = [
   "received",
@@ -333,7 +337,7 @@ export const jobOrderRouter = createTRPCRouter({
       });
     }),
 
-  removePart: jobOrdersDeleteProcedure
+  removePart: jobOrdersUpdateProcedure
     .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const part = await db.jobOrderPart.findUnique({
@@ -383,7 +387,7 @@ export const jobOrderRouter = createTRPCRouter({
       });
     }),
 
-  removeServiceLine: jobOrdersDeleteProcedure
+  removeServiceLine: jobOrdersUpdateProcedure
     .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const line = await db.jobOrderServiceLine.findUnique({

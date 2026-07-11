@@ -8,8 +8,13 @@ import { prisma as db, writeAuditLog } from "@orqafy/db";
 // Reads use `matrixProcedure` (protectedProcedure + matrixMiddleware);
 // mutations compose `writeProcedure.use(matrixMiddleware(...))` so the
 // demo-tenant mutation guard survives alongside the matrix grant check.
-// Classification: clock-in/leave-create are NEW records → "create". clock-out/
-// approve/reject/cancel mutate an EXISTING record's state → "update".
+// Classification follows the ground-truthed seed (role-permissions.ts, feature
+// "dtr"): self-service actions stay broad on "create" (create:true) — clock-in,
+// clock-out, leave-request-create, leave-request-cancel are own-record workflows
+// every employee performs. approve/reject are the ONLY admin actions → "update"
+// (update:false for internal staff, granted to HR Manager via roleOverride),
+// matching the router's requireApproverRole gate. Mapping clock-out/cancel to
+// "update" would silently lock every non-HR employee out of self-service.
 const dtrViewProcedure = matrixProcedure("dtr", "view");
 const dtrCreateProcedure = writeProcedure.use(matrixMiddleware("dtr", "create"));
 const dtrUpdateProcedure = writeProcedure.use(matrixMiddleware("dtr", "update"));
@@ -158,7 +163,7 @@ export const dtrRouter = createTRPCRouter({
       });
     }),
 
-  attendanceClockOut: dtrUpdateProcedure
+  attendanceClockOut: dtrCreateProcedure
     .input(z.object({
       attendanceId: z.string().min(1),
       lat: z.number(),
@@ -379,7 +384,7 @@ export const dtrRouter = createTRPCRouter({
   // the request is still "pending". The owner check loads the employee row and
   // compares its userId to the caller's; tenant scoping is enforced by
   // loadLeaveRequestForTenant + loadEmployeeForTenant.
-  leaveRequestCancel: dtrUpdateProcedure
+  leaveRequestCancel: dtrCreateProcedure
     .input(z.object({ leaveRequestId: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadLeaveRequestForTenant(input.leaveRequestId, ctx);
