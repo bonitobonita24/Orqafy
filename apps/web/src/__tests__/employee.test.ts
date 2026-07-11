@@ -3,8 +3,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { employeeRouter } from "@/server/trpc/routers/employee";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
+import type * as OrqafyDb from "@orqafy/db";
 
-vi.mock("@orqafy/db", () => {
+// Router migrated to the data-driven `role_permissions` matrix (feature key
+// "employees") — matrixMiddleware imports the real `hasPermission` resolver
+// from "@orqafy/db" directly, so this mock spreads the actual module (via
+// vi.importActual) and only overrides the `prisma` client it reads from.
+// This suite defaults every ctx to a "Platform Owner" role, which bypasses
+// the matrix entirely (see employee-matrix.test.ts for grant/deny coverage).
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
   const mockPrisma = {
     employee: {
       findMany: vi.fn(),
@@ -21,8 +29,11 @@ vi.mock("@orqafy/db", () => {
       findUnique: vi.fn(),
     },
     auditLog: { create: vi.fn() },
+    role: { findFirst: vi.fn() },
+    rolePermission: { findUnique: vi.fn() },
   };
   return {
+    ...actual,
     prisma: {
       ...mockPrisma,
       $transaction: vi.fn(async (fn: any) => fn(mockPrisma)),
@@ -30,6 +41,15 @@ vi.mock("@orqafy/db", () => {
     writeAuditLog: async (tx: any, entry: any) => { await tx.auditLog.create({ data: entry }); },
   };
 });
+
+vi.mock("@/server/lib/rate-limit", () => ({
+  rateLimiters: {
+    api: { check: vi.fn() },
+    auth: { check: vi.fn() },
+    upload: { check: vi.fn() },
+    public: { check: vi.fn() },
+  },
+}));
 
 import type { NextRequest } from "next/server";
 function makeReq(): NextRequest {
@@ -40,6 +60,7 @@ function authenticatedCtx(roles: string[] = ["Administrator"], isDemoTenant = fa
     req: makeReq(),
     userId: "user-1",
     roles,
+    roleId: "role-1",
     tenantSlug: "acme",
     tenantId: "acme-tenant-id",
     securityVersion: 1,
@@ -52,6 +73,7 @@ function unauthenticatedCtx() {
     req: makeReq(),
     userId: null,
     roles: [] as string[],
+    roleId: null,
     tenantSlug: null,
     tenantId: null,
     securityVersion: 0,
@@ -75,6 +97,8 @@ const mockDb = db as unknown as {
   user: { findUnique: any };
   department: { findMany: any; findUnique: any };
   auditLog: { create: any };
+  role: { findFirst: any };
+  rolePermission: { findUnique: any };
 };
 
 const VALID_CUID = "ck1234567890123456789012a";
@@ -84,6 +108,15 @@ const DEPT_CUID = "ck1234567890123456789012c";
 describe("employee router", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Every test's caller resolves to a "Platform Owner" role by default,
+    // which bypasses the "employees" matrix entirely (tenant-rbac-standard.md
+    // §4) — this suite exercises router business logic, not matrix
+    // grant/deny behaviour (see employee-matrix.test.ts for that coverage).
+    mockDb.role.findFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "acme-tenant-id",
+      name: "Platform Owner",
+    });
   });
 
   describe("list", () => {

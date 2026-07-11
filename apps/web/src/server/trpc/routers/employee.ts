@@ -1,7 +1,19 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db, writeAuditLog } from "@orqafy/db";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key
+// "employees"). Reads use `matrixProcedure` (protectedProcedure +
+// matrixMiddleware); mutations compose `writeProcedure.use(matrixMiddleware(...))`
+// so the demo-tenant mutation guard survives alongside the matrix grant check.
+// `terminate` maps to "update" (it mutates an existing employee's
+// dateTerminated field, not create or delete it) — mirrors expense.ts's
+// approve/reject → "update" convention.
+const employeesViewProcedure = matrixProcedure("employees", "view");
+const employeesCreateProcedure = writeProcedure.use(matrixMiddleware("employees", "create"));
+const employeesUpdateProcedure = writeProcedure.use(matrixMiddleware("employees", "update"));
 
 async function loadEmployeeForTenant(id: string, ctx: { tenantId: string }) {
   const e = await db.employee.findUnique({ where: { id } });
@@ -46,7 +58,7 @@ const employeeInput = z.object({
 }).strict();
 
 export const employeeRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: employeesViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -90,7 +102,7 @@ export const employeeRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: employeesViewProcedure
     .input(z.object({ id: z.string().cuid() }))
     .query(async ({ input, ctx }) => {
       await loadEmployeeForTenant(input.id, ctx);
@@ -105,7 +117,7 @@ export const employeeRouter = createTRPCRouter({
       return item;
     }),
 
-  create: writeProcedure
+  create: employeesCreateProcedure
     .input(employeeInput)
     .mutation(async ({ input, ctx }) => {
       const user = await db.user.findUnique({ where: { id: input.userId } });
@@ -161,7 +173,7 @@ export const employeeRouter = createTRPCRouter({
       });
     }),
 
-  update: writeProcedure
+  update: employeesUpdateProcedure
     .input(employeeInput.partial().extend({ id: z.string().cuid() }))
     .mutation(async ({ input, ctx }) => {
       const { id, userId: _userId, ...rest } = input;
@@ -217,7 +229,7 @@ export const employeeRouter = createTRPCRouter({
       });
     }),
 
-  terminate: writeProcedure
+  terminate: employeesUpdateProcedure
     .input(z.object({ id: z.string().cuid(), dateTerminated: z.date() }).strict())
     .mutation(async ({ input, ctx }) => {
       requireTerminateAuthority(ctx.roles);
@@ -245,7 +257,7 @@ export const employeeRouter = createTRPCRouter({
       });
     }),
 
-  departments: protectedProcedure.query(async ({ ctx }) => {
+  departments: employeesViewProcedure.query(async ({ ctx }) => {
     return db.department.findMany({
       where: { tenantId: ctx.tenantId, isActive: true },
       orderBy: { name: "asc" },

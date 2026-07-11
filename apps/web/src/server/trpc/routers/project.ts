@@ -1,8 +1,20 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db, writeAuditLog } from "@orqafy/db";
 import { sanitizePlainText } from "@/server/lib/sanitize";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key
+// "projects"). Reads use `matrixProcedure` (protectedProcedure +
+// matrixMiddleware); mutations compose `writeProcedure.use(matrixMiddleware(...))`
+// so the demo-tenant mutation guard survives alongside the matrix grant check.
+// archive/complete both map to "update" (they mutate an existing record's
+// status, not create or delete it).
+const projectsViewProcedure = matrixProcedure("projects", "view");
+const projectsCreateProcedure = writeProcedure.use(matrixMiddleware("projects", "create"));
+const projectsUpdateProcedure = writeProcedure.use(matrixMiddleware("projects", "update"));
+const projectsDeleteProcedure = writeProcedure.use(matrixMiddleware("projects", "delete"));
 
 const REAL_CASH_TYPES = new Set(["cash_on_hand", "bank", "e_wallet"]);
 function isRealCashType(type: string): boolean {
@@ -44,7 +56,7 @@ const projectInput = z.object({
 }).strict();
 
 const expenseRouter = createTRPCRouter({
-  listByProject: protectedProcedure
+  listByProject: projectsViewProcedure
     .input(
       z.object({
         projectId: z.string().min(1),
@@ -67,7 +79,7 @@ const expenseRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  recordProjectExpense: writeProcedure
+  recordProjectExpense: projectsCreateProcedure
     .input(
       z.object({
         projectId: z.string().min(1),
@@ -160,7 +172,7 @@ const expenseRouter = createTRPCRouter({
 });
 
 const milestoneRouter = createTRPCRouter({
-  listByProject: protectedProcedure
+  listByProject: projectsViewProcedure
     .input(z.object({ projectId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       await loadProjectForTenant(input.projectId, ctx);
@@ -170,7 +182,7 @@ const milestoneRouter = createTRPCRouter({
       });
     }),
 
-  create: writeProcedure
+  create: projectsCreateProcedure
     .input(
       z.object({
         projectId: z.string().min(1),
@@ -208,7 +220,7 @@ const milestoneRouter = createTRPCRouter({
       });
     }),
 
-  update: writeProcedure
+  update: projectsUpdateProcedure
     .input(
       z.object({
         milestoneId: z.string().min(1),
@@ -248,7 +260,7 @@ const milestoneRouter = createTRPCRouter({
       });
     }),
 
-  complete: writeProcedure
+  complete: projectsUpdateProcedure
     .input(z.object({ milestoneId: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.milestone.findUnique({ where: { id: input.milestoneId } });
@@ -275,7 +287,7 @@ const milestoneRouter = createTRPCRouter({
       });
     }),
 
-  delete: writeProcedure
+  delete: projectsDeleteProcedure
     .input(z.object({ milestoneId: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.milestone.findUnique({ where: { id: input.milestoneId } });
@@ -298,7 +310,7 @@ const milestoneRouter = createTRPCRouter({
 });
 
 export const projectRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: projectsViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -325,7 +337,7 @@ export const projectRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: projectsViewProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       await loadProjectForTenant(input.id, ctx);
@@ -337,7 +349,7 @@ export const projectRouter = createTRPCRouter({
       return item;
     }),
 
-  create: writeProcedure
+  create: projectsCreateProcedure
     .input(projectInput)
     .mutation(async ({ input, ctx }) => {
       if (input.customerId !== undefined) {
@@ -373,7 +385,7 @@ export const projectRouter = createTRPCRouter({
       });
     }),
 
-  update: writeProcedure
+  update: projectsUpdateProcedure
     .input(projectInput.partial().extend({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
@@ -416,7 +428,7 @@ export const projectRouter = createTRPCRouter({
       });
     }),
 
-  archive: writeProcedure
+  archive: projectsUpdateProcedure
     .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await loadProjectForTenant(input.id, ctx);
@@ -446,7 +458,7 @@ export const projectRouter = createTRPCRouter({
       });
     }),
 
-  budgetSummary: protectedProcedure
+  budgetSummary: projectsViewProcedure
     .input(z.object({ projectId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const project = await loadProjectForTenant(input.projectId, ctx);

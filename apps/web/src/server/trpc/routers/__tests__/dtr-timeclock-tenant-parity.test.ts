@@ -26,6 +26,7 @@ const {
   mockAttendanceCreate,
   mockAttendanceUpdate,
   mockAuditLogCreate,
+  mockRoleFindFirst,
 } = vi.hoisted(() => ({
   mockEmployeeFindUnique: vi.fn(),
   mockAttendanceFindFirst: vi.fn(),
@@ -33,6 +34,7 @@ const {
   mockAttendanceCreate: vi.fn(),
   mockAttendanceUpdate: vi.fn(),
   mockAuditLogCreate: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
 }));
 
 vi.mock("@orqafy/db", () => {
@@ -51,12 +53,32 @@ vi.mock("@orqafy/db", () => {
   return {
     prisma: {
       ...mockDb,
+      // RBAC matrix middleware (dtr router migrated to `matrixProcedure` /
+      // `matrixMiddleware("dtr", ...)`). Every ctxForTenant() caller below
+      // resolves to a "Platform Owner" DB role, which `hasPermission`
+      // bypasses entirely — preserves this file's original intent of
+      // exercising tenant-scope isolation + demo guard + approver-role
+      // checks, not the matrix grant itself (covered by dtr-matrix.test.ts).
+      role: { findFirst: mockRoleFindFirst },
       // $transaction passes mockDb as "tx" so router's tx.attendanceRecord.xxx
       // calls resolve to the same mocks.
       $transaction: vi.fn((fn: any) => fn(mockDb)),
     },
     writeAuditLog: async (tx: any, entry: any) => {
       await tx.auditLog.create({ data: entry });
+    },
+    // Minimal stand-in for the real @orqafy/db#hasPermission resolver —
+    // mirrors its Platform Owner / Tenant Super Admin bypass path only
+    // (matrix-row grants are exercised separately in dtr-matrix.test.ts).
+    hasPermission: async (
+      _prisma: unknown,
+      args: { roleId: string; tenantId: string },
+    ): Promise<boolean> => {
+      const role = (await mockRoleFindFirst({
+        where: { id: args.roleId, tenantId: args.tenantId },
+      })) as { name: string } | null;
+      if (!role) return false;
+      return ["Platform Owner", "Tenant Super Admin"].includes(role.name);
     },
   };
 });
@@ -83,6 +105,7 @@ function ctxForTenant(
     req: makeReq(),
     userId: "user-1",
     roles: options.roles ?? ["Administrator"],
+    roleId: "role-1",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -123,6 +146,13 @@ const ATT_A = {
 describe("DTR timeclock tenant-parity", () => {
   beforeEach(async () => {
     vi.resetAllMocks();
+    // Default: authenticated caller resolves to a "Platform Owner" DB role,
+    // which bypasses the RBAC matrix entirely (tenant-rbac-standard.md §4).
+    mockRoleFindFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "tenant-A",
+      name: "Platform Owner",
+    });
     // Re-wire $transaction after reset so it always passes mockDb to the callback.
     const { prisma } = await import("@orqafy/db");
     (prisma as any).$transaction.mockImplementation((fn: any) => {

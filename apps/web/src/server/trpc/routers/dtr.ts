@@ -1,7 +1,18 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db, writeAuditLog } from "@orqafy/db";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key "dtr").
+// Reads use `matrixProcedure` (protectedProcedure + matrixMiddleware);
+// mutations compose `writeProcedure.use(matrixMiddleware(...))` so the
+// demo-tenant mutation guard survives alongside the matrix grant check.
+// Classification: clock-in/leave-create are NEW records → "create". clock-out/
+// approve/reject/cancel mutate an EXISTING record's state → "update".
+const dtrViewProcedure = matrixProcedure("dtr", "view");
+const dtrCreateProcedure = writeProcedure.use(matrixMiddleware("dtr", "create"));
+const dtrUpdateProcedure = writeProcedure.use(matrixMiddleware("dtr", "update"));
 
 async function loadEmployeeForTenant(id: string, ctx: { tenantId: string }) {
   const e = await db.employee.findUnique({ where: { id } });
@@ -73,7 +84,7 @@ function startOfTodayUtc(): Date {
 
 export const dtrRouter = createTRPCRouter({
   // ─── Attendance ──────────────────────────────────────────────────────────
-  attendanceList: protectedProcedure
+  attendanceList: dtrViewProcedure
     .input(z.object({
       employeeId: z.string().min(1),
       status: z.string().min(1).optional(),
@@ -93,14 +104,14 @@ export const dtrRouter = createTRPCRouter({
       return db.attendanceRecord.findMany({ where, orderBy: { date: "desc" } });
     }),
 
-  attendanceById: protectedProcedure
+  attendanceById: dtrViewProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ input, ctx }) => {
       const record = await loadAttendanceForTenant(input.id, ctx);
       return record;
     }),
 
-  attendanceClockIn: writeProcedure
+  attendanceClockIn: dtrCreateProcedure
     .input(z.object({
       employeeId: z.string().min(1),
       lat: z.number(),
@@ -147,7 +158,7 @@ export const dtrRouter = createTRPCRouter({
       });
     }),
 
-  attendanceClockOut: writeProcedure
+  attendanceClockOut: dtrUpdateProcedure
     .input(z.object({
       attendanceId: z.string().min(1),
       lat: z.number(),
@@ -190,7 +201,7 @@ export const dtrRouter = createTRPCRouter({
       });
     }),
 
-  attendanceApprove: writeProcedure
+  attendanceApprove: dtrUpdateProcedure
     .input(z.object({ attendanceId: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       requireApproverRole(ctx.roles);
@@ -213,7 +224,7 @@ export const dtrRouter = createTRPCRouter({
       });
     }),
 
-  attendanceReject: writeProcedure
+  attendanceReject: dtrUpdateProcedure
     .input(z.object({
       attendanceId: z.string().min(1),
       reason: z.string().min(1).optional(),
@@ -245,7 +256,7 @@ export const dtrRouter = createTRPCRouter({
     }),
 
   // ─── Leave requests ──────────────────────────────────────────────────────
-  leaveRequestList: protectedProcedure
+  leaveRequestList: dtrViewProcedure
     .input(z.object({
       employeeId: z.string().min(1),
       type: LEAVE_TYPE.optional(),
@@ -259,7 +270,7 @@ export const dtrRouter = createTRPCRouter({
       return db.leaveRequest.findMany({ where, orderBy: { startDate: "desc" } });
     }),
 
-  leaveRequestCreate: writeProcedure
+  leaveRequestCreate: dtrCreateProcedure
     .input(z.object({
       employeeId: z.string().min(1),
       type: LEAVE_TYPE,
@@ -301,7 +312,7 @@ export const dtrRouter = createTRPCRouter({
       });
     }),
 
-  leaveRequestApprove: writeProcedure
+  leaveRequestApprove: dtrUpdateProcedure
     .input(z.object({ leaveRequestId: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       requireApproverRole(ctx.roles);
@@ -332,7 +343,7 @@ export const dtrRouter = createTRPCRouter({
       });
     }),
 
-  leaveRequestReject: writeProcedure
+  leaveRequestReject: dtrUpdateProcedure
     .input(z.object({
       leaveRequestId: z.string().min(1),
       reason: z.string().min(1).optional(),
@@ -368,7 +379,7 @@ export const dtrRouter = createTRPCRouter({
   // the request is still "pending". The owner check loads the employee row and
   // compares its userId to the caller's; tenant scoping is enforced by
   // loadLeaveRequestForTenant + loadEmployeeForTenant.
-  leaveRequestCancel: writeProcedure
+  leaveRequestCancel: dtrUpdateProcedure
     .input(z.object({ leaveRequestId: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadLeaveRequestForTenant(input.leaveRequestId, ctx);

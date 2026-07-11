@@ -13,6 +13,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as OrqafyDb from "@orqafy/db";
 
 // ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
 const {
@@ -26,6 +27,7 @@ const {
   mockUserFindUnique,
   mockTaskAssignmentFindFirst,
   mockTaskAssignmentCreate,
+  mockRoleFindFirst,
 } = vi.hoisted(() => ({
   mockTaskFindUnique: vi.fn(),
   mockTaskFindMany: vi.fn(),
@@ -37,9 +39,13 @@ const {
   mockUserFindUnique: vi.fn(),
   mockTaskAssignmentFindFirst: vi.fn(),
   mockTaskAssignmentCreate: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => {
+vi.mock("@orqafy/db", async () => {
+  // Keep the real `hasPermission` resolver (matrix.ts imports it directly
+  // from "@orqafy/db") — only mock the prisma client calls it and the router make.
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
   // mockDb is the object passed INTO the $transaction callback (represents the tx client).
   // It must include every model the router touches inside a transaction.
   const mockDb = {
@@ -61,8 +67,17 @@ vi.mock("@orqafy/db", () => {
       create: mockTaskAssignmentCreate,
     },
     auditLog: { create: mockAuditLogCreate },
+    // Router migrated to the data-driven `role_permissions` matrix (feature
+    // key "tasks") — matrixMiddleware resolves the caller's role via
+    // role.findFirst. Every ctx below uses roleId "role-1" and role name
+    // "Platform Owner" so the matrix bypasses entirely (this suite proves
+    // tenant-scoping business logic, not matrix grants — see
+    // tasks-matrix.test.ts for matrix grant/deny coverage).
+    role: { findFirst: mockRoleFindFirst },
+    rolePermission: { findUnique: vi.fn() },
   };
   return {
+    ...actual,
     prisma: {
       ...mockDb,
       // $transaction passes mockDb as the "tx" argument so the router's tx.task.xxx calls
@@ -103,6 +118,7 @@ function ctxForTenant(tenantId: string, isDemoTenant = false) {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-1",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -138,6 +154,14 @@ describe("Tasks tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)",
     // resetAllMocks clears both call history AND mockResolvedValueOnce queues,
     // preventing leftover queued values from leaking into subsequent tests.
     vi.resetAllMocks();
+    // Every test's caller resolves to a "Platform Owner" role, which bypasses
+    // the "tasks" matrix entirely (tenant-rbac-standard.md §4) — this suite
+    // exercises tenant-scoping business logic, not matrix grant/deny behaviour.
+    mockRoleFindFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "tenant-A",
+      name: "Platform Owner",
+    });
     // Re-wire $transaction after reset so it always passes mockDb to the callback.
     const { prisma } = await import("@orqafy/db");
     (prisma as any).$transaction.mockImplementation((fn: any) => {

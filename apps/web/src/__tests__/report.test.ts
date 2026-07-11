@@ -1,40 +1,48 @@
 /* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/require-await */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as OrqafyDb from "@orqafy/db";
 import { reportRouter } from "@/server/trpc/routers/report";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    invoice: {
-      aggregate: vi.fn(),
-      findMany: vi.fn(),
-      groupBy: vi.fn(),
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      invoice: {
+        aggregate: vi.fn(),
+        findMany: vi.fn(),
+        groupBy: vi.fn(),
+      },
+      expense: {
+        aggregate: vi.fn(),
+        groupBy: vi.fn(),
+      },
+      expenseCategory: {
+        findMany: vi.fn(),
+      },
+      jobOrder: {
+        groupBy: vi.fn(),
+      },
+      customer: {
+        count: vi.fn(),
+      },
+      project: {
+        count: vi.fn(),
+      },
+      employee: {
+        count: vi.fn(),
+      },
+      payroll: {
+        aggregate: vi.fn(),
+      },
+      // RBAC matrix (feature "reports"): resolved via the real hasPermission.
+      role: { findFirst: vi.fn() },
+      rolePermission: { findUnique: vi.fn() },
     },
-    expense: {
-      aggregate: vi.fn(),
-      groupBy: vi.fn(),
-    },
-    expenseCategory: {
-      findMany: vi.fn(),
-    },
-    jobOrder: {
-      groupBy: vi.fn(),
-    },
-    customer: {
-      count: vi.fn(),
-    },
-    project: {
-      count: vi.fn(),
-    },
-    employee: {
-      count: vi.fn(),
-    },
-    payroll: {
-      aggregate: vi.fn(),
-    },
-  },
-}));
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: {
@@ -53,6 +61,7 @@ function authenticatedCtx(roles: string[] = ["Administrator"]) {
     req: makeReq(),
     userId: "user-1",
     roles,
+    roleId: "role-1",
     tenantSlug: "acme",
     tenantId: "acme-tenant-id",
     securityVersion: 1,
@@ -65,6 +74,7 @@ function unauthenticatedCtx() {
     req: makeReq(),
     userId: null,
     roles: [] as string[],
+    roleId: null,
     tenantSlug: null,
     tenantId: null,
     securityVersion: 0,
@@ -86,10 +96,20 @@ const mockDb = db as unknown as {
   project: { count: any };
   employee: { count: any };
   payroll: { aggregate: any };
+  role: { findFirst: any };
+  rolePermission: { findUnique: any };
 };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // These are aggregation tests, not RBAC tests: resolve the caller's role to a
+  // matrix-bypass role ("Platform Owner") so the reports "view" gate short-circuits
+  // to allow. The matrix gate itself is covered in report-matrix.test.ts.
+  mockDb.role.findFirst.mockResolvedValue({
+    id: "role-1",
+    tenantId: "acme-tenant-id",
+    name: "Platform Owner",
+  });
 });
 
 describe("report.dashboardKPIs", () => {
