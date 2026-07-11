@@ -7,6 +7,58 @@
 > without explicit owner word. Reference: `~/.claude/rules/tenant-rbac-standard.md` §4;
 > `docs/RBAC_ALIGNMENT.md`; framework `.ai_prompt/rbac.md` + Scenario 42.
 
+## Progress — 2026-07-11 session (Track C)
+
+**Router migration: 20 / 35 done, all LOCAL on `feat/tenant-rbac-3tier`, HARD HOLD.**
+Every slice PM-ground-truth verified (typecheck 0 · full web vitest green · eslint
+clean · lint-design PASS) before commit.
+
+- Newly migrated this session (15 routers): `expense`, `report`, `employee`,
+  `project`, `tasks`, `dtr`, `invoice`, `client`(crm), `support`, `job-order`,
+  `pos`, `crm`, `inventory`, `banking`, `payroll`.
+- Commits: `49d141c`, `e4e2469`, `0174790`, `8168a0d` (regression fix), `77c82b1`.
+
+**KEY PRINCIPLE ESTABLISHED — the seed is the authoritative endpoint→action map.**
+`packages/db/src/seed/role-permissions.ts` was ground-truthed as a behavioral
+no-op. Naive name-based CRUD classification DIVERGES from it and ships regressions
+that are INVISIBLE to the test suite (all matrix tests run under Platform-Owner
+bypass). Anti-regression rule for any migration: an ungated/self-service write
+maps to an action whose `internalStaff` grant is `true`; only a genuine
+primary-entity hard-delete maps to `delete`, and only on a `delete:true` feature;
+inline role gates that the seed reproduces may be REPLACED by the matrix (no-op),
+otherwise KEEP them as additional gates. Two regressions were caught+fixed this
+session (dtr clockOut/leaveRequestCancel → create; job-order removePart/
+removeServiceLine → update) — see `8168a0d`.
+
+### Deferred — needs an owner `[WHAT]`/policy decision (do NOT migrate blindly)
+
+1. **`dsr`** — self-service endpoints are RA 10173 data-subject rights (should not
+   be role-gated); admin surface stays `requireRole`. Matrix `dsr:update` (seeded
+   false) would lock out Admin (adminUpdateStatus) + all staff (rectify). Reverted
+   from the matrix pending a decision on how data-subject rights map to §4.
+2. **`accounting`** — router gating is internally inconsistent: some writes are
+   ungated-broad `writeProcedure` (chart-of-accounts CRUD, journal creates), others
+   are `accountantWriteProcedure`-gated. Seed grants `accounting` write to
+   accountant-only. Migrating the broad writes narrows them (regression). Needs a
+   ruling: are those ungated writes a pre-existing gap to tighten, or genuinely broad?
+3. **`purchasing`** — `approve` is a dead-gate (all role names non-existent → 403 for
+   everyone incl. bypass). Matrix can't reproduce 403-for-all. Seed `TODO(D-RBAC-
+   DEADGATE-5)`. Reads + vendor/PO create/update are safely migratable; `reactivate`
+   → `purchasing:delete` (admin/purchasing_staff override) reproduces its gate exactly.
+4. **`storefront`** — `requireAdmin` = {"Administrator"(dead), "Platform Owner"} → only
+   PO passes today; matrix `update:false` widens to Tenant Super Admin. Policy call on
+   whether TSA-exclusion is a bug to fix or behavior to preserve. Public catalog +
+   placeOrder(create) + customer self-service reads are safely migratable.
+
+### Still NOT started (separate features)
+- **Track A** — sidebar nav filtering by matrix `view` (needs a `me.permissions` query).
+- **Track B** — `tenant_superadmin`-only role-builder UI.
+- **Track D** — seed backfill parity: already largely satisfied (seed is exhaustive +
+  ground-truthed), but the accounting/purchasing/storefront rulings above may require
+  seed edits.
+
+---
+
 ## What M9 already delivered (do NOT rebuild)
 - `packages/db` `role_permissions` table + migration `20260711000414` (APPLIED to dev),
   `hasPermission(prisma,{tenantId,roleId,feature,action})` resolver, guardrails, seed helper.
