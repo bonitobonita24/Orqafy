@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Building2, CreditCard, FolderTree, Mail, Tag, Users } from "lucide-react";
+import { Building2, CreditCard, FolderTree, Mail, ShieldCheck, Tag, Users } from "lucide-react";
 import { prisma } from "@orqafy/db";
 import { guardPage } from "@/server/rbac/guard-page";
+import { auth } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -32,6 +33,14 @@ const CARDS = [
     description: "Organize your team by department.",
     live: true,
     href: "settings/departments",
+  },
+  {
+    key: "roles",
+    icon: ShieldCheck,
+    title: "Roles & Permissions",
+    description: "Create custom roles and set feature permissions.",
+    live: true,
+    href: "settings/roles",
   },
   {
     key: "expense-categories",
@@ -71,6 +80,15 @@ export default async function SettingsPage({
     where: { slug },
     select: { id: true, name: true, slug: true, status: true },
   });
+
+  // Custom-role management is Tenant Super Admin / Platform Owner only
+  // (tenant-rbac-standard.md §4 guardrails) — only surface the card to
+  // those roles; the roles page itself redirects everyone else.
+  const session = await auth();
+  const sessionRoles = session?.user?.roles ?? [];
+  const canManageRoles =
+    sessionRoles.includes("Tenant Super Admin") || sessionRoles.includes("Platform Owner");
+  const cards = CARDS.filter((card) => card.key !== "roles" || canManageRoles);
 
   return (
     <div className="space-y-6">
@@ -119,7 +137,7 @@ export default async function SettingsPage({
           Configuration areas
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {CARDS.map((card) => {
+          {cards.map((card) => {
             const Icon = card.icon;
             const inner = (
               <div className="flex h-full flex-col rounded-lg border border-border bg-card p-5 transition-colors hover:bg-muted/20">
