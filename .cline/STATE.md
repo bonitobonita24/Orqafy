@@ -80,7 +80,15 @@ M8 (this session, no code change — verification only): closed the IDOR audit-c
               ctx.tenantId only; auth/plan/registration = public/global, no tenant context). Full router
               surface 33/33 now verified. Working tree still CLEAN (no code change), HEAD dbe7bf0.
 
-NEXT:         ASSESS §4 RBAC ROLLOUT before declaring exhaustion (this is likely the next un-gated [HOW]).
+NEXT:         ⭐ VERIFIED-CLEAN CHECKPOINT (owner-parked 2026-07-11). M9 committed + live-re-verified
+              GREEN (web typecheck 0 · web 1129/1129) after a mid-flight memory interruption — nothing
+              lost (git 0f3f811/5e20614 clean tree = the green state). Owner said: leave as checkpoint.
+              NEXT TASK IS WRITTEN UP IN FULL → **docs/RBAC_S4_ROLLOUT_PLAN.md** (grounded scan:
+              5/35 routers migrated; role-builder UI NOT built; sidebar nav-filter NOT wired; feature
+              registry complete). Tracks: A nav-filter by `view`, B tenant_superadmin role-builder UI,
+              C migrate remaining ~30 routers to matrixProcedure, D seed-grant Admin parity. Dev-first,
+              HARD HOLD. Below is the same plan in brief:
+              ASSESS §4 RBAC ROLLOUT before declaring exhaustion (this is likely the next un-gated [HOW]).
               M9 landed the matrix INFRASTRUCTURE + migrated a first router slice (settings/compliance/
               smtp/admin-xendit/department/expense-category writes). Per tenant-rbac-standard.md §4, the
               full rollout also wants: (i) sidebar-nav filtering by `view` (surface 3 of 3 — verify it is
