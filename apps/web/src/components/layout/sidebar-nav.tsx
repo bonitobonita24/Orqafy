@@ -24,31 +24,36 @@ import {
   UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { trpc } from "@/lib/trpc";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { FeatureKey } from "@orqafy/shared/rbac";
 
 // Flat nav — section headers removed (owner: the item names are self-explanatory
 // and most groups just duplicated their single child, e.g. PURCHASING→Purchasing).
 // Each item is its own top-level entry. Colors stay neutral-dark (reskin).
+// featureKey ties each item to the RBAC permission matrix `view` grant
+// (tenant-rbac-standard §4, Surface 3 — sidebar nav filtered by role.myPermissions).
 const NAV_ITEMS = [
-  { label: "Dashboard", href: "dashboard", icon: LayoutDashboard },
-  { label: "CRM", href: "crm/customers", icon: HeartHandshake },
-  { label: "Invoices", href: "invoices", icon: FileText },
-  { label: "Purchasing", href: "purchasing", icon: ShoppingBag },
-  { label: "Inventory", href: "inventory", icon: Package },
-  { label: "Projects", href: "projects", icon: FolderOpen },
-  { label: "Tasks", href: "tasks", icon: CheckSquare },
-  { label: "Employees", href: "employees", icon: UserCheck },
-  { label: "DTR", href: "dtr", icon: Clock },
-  { label: "Payroll", href: "payroll", icon: DollarSign },
-  { label: "Expenses", href: "expenses", icon: Receipt },
-  { label: "Banking", href: "banking", icon: Landmark },
-  { label: "Accounting", href: "accounting", icon: BookOpen },
-  { label: "Reports", href: "reports", icon: BarChart3 },
-  { label: "Ecommerce", href: "ecommerce/orders", icon: ShoppingCart },
-  { label: "POS", href: "pos", icon: Calculator },
-  { label: "Support", href: "support", icon: LifeBuoy },
-  { label: "Job Orders", href: "job-orders", icon: ClipboardList },
-  { label: "Settings", href: "settings", icon: Settings },
-] as const;
+  { label: "Dashboard", href: "dashboard", icon: LayoutDashboard, featureKey: "dashboard" },
+  { label: "CRM", href: "crm/customers", icon: HeartHandshake, featureKey: "crm" },
+  { label: "Invoices", href: "invoices", icon: FileText, featureKey: "invoices" },
+  { label: "Purchasing", href: "purchasing", icon: ShoppingBag, featureKey: "purchasing" },
+  { label: "Inventory", href: "inventory", icon: Package, featureKey: "inventory" },
+  { label: "Projects", href: "projects", icon: FolderOpen, featureKey: "projects" },
+  { label: "Tasks", href: "tasks", icon: CheckSquare, featureKey: "tasks" },
+  { label: "Employees", href: "employees", icon: UserCheck, featureKey: "employees" },
+  { label: "DTR", href: "dtr", icon: Clock, featureKey: "dtr" },
+  { label: "Payroll", href: "payroll", icon: DollarSign, featureKey: "payroll" },
+  { label: "Expenses", href: "expenses", icon: Receipt, featureKey: "expenses" },
+  { label: "Banking", href: "banking", icon: Landmark, featureKey: "banking" },
+  { label: "Accounting", href: "accounting", icon: BookOpen, featureKey: "accounting" },
+  { label: "Reports", href: "reports", icon: BarChart3, featureKey: "reports" },
+  { label: "Ecommerce", href: "ecommerce/orders", icon: ShoppingCart, featureKey: "storefront" },
+  { label: "POS", href: "pos", icon: Calculator, featureKey: "pos" },
+  { label: "Support", href: "support", icon: LifeBuoy, featureKey: "support" },
+  { label: "Job Orders", href: "job-orders", icon: ClipboardList, featureKey: "job_orders" },
+  { label: "Settings", href: "settings", icon: Settings, featureKey: "settings" },
+] as const satisfies readonly { label: string; href: string; icon: typeof LayoutDashboard; featureKey: FeatureKey }[];
 
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.9.0";
 
@@ -62,6 +67,12 @@ interface SidebarNavProps {
 // width/border/bg so both wrappers can supply their own chrome.
 export function SidebarNav({ slug, onNavigate }: SidebarNavProps) {
   const pathname = usePathname();
+  const { data: perms, isPending } = trpc.role.myPermissions.useQuery();
+  // Deny-by-default: while permissions are loading, show placeholder rows
+  // instead of the full unfiltered list (Rule 11 PATH A — shadcn Skeleton).
+  const visibleItems = isPending
+    ? []
+    : NAV_ITEMS.filter((item) => perms?.view.includes(item.featureKey) ?? false);
 
   return (
     <div className="flex h-full flex-col">
@@ -80,8 +91,18 @@ export function SidebarNav({ slug, onNavigate }: SidebarNavProps) {
 
       {/* Flat nav — one clean list of items, rounded active highlight. */}
       <nav aria-label="Sidebar" className="flex-1 overflow-y-auto px-2 py-2">
+        {isPending ? (
+          <ul className="space-y-0.5" aria-hidden="true">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <li key={i} className="flex items-center gap-2.5 px-3 py-2">
+                <Skeleton className="h-4 w-4 shrink-0 rounded" />
+                <Skeleton className="h-3.5 w-24 rounded" />
+              </li>
+            ))}
+          </ul>
+        ) : (
         <ul className="space-y-0.5">
-          {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
+          {visibleItems.map(({ label, href, icon: Icon }) => {
             const fullHref = `/${slug}/${href}`;
             const isActive =
               pathname === fullHref || pathname.startsWith(`${fullHref}/`);
@@ -105,6 +126,7 @@ export function SidebarNav({ slug, onNavigate }: SidebarNavProps) {
             );
           })}
         </ul>
+        )}
       </nav>
 
       {/* Footer — version + white-label credit (design-defaults Entry 3) */}
