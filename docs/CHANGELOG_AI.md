@@ -2546,3 +2546,18 @@
 - Errors encountered:  none
 - Errors resolved:     none
 - HOLD:                LOCAL only on feat/tenant-rbac-3tier (unpushed). No staging/prod/demo deploy or reseed without explicit owner signal.
+
+## 2026-07-12 — RBAC §4: owner-transfer UI (two-way succession §2)
+- Agent:               CLAUDE_CODE
+- Why:                 §2 of the tenant-RBAC standard requires two-way succession. The transferOwnership tRPC procedure + tests already existed (M2), but there was no UI — a tenant owner could only hand over ownership via a raw API call. This closes the last un-gated [HOW] gap by adding the in-app owner-transfer path.
+- Files added:         apps/web/src/app/(tenant)/[slug]/(app)/settings/users/transfer-ownership.tsx (client component, mirrors deactivate-button.tsx)
+- Files modified:      apps/web/src/server/trpc/routers/user.ts (expose isTenantOwner from user.list + user.byId select), apps/web/src/app/(tenant)/[slug]/(app)/settings/users/page.tsx (owner-only "Ownership" transfer panel + data-driven "Owner" badge on the owner row)
+- Files deleted:       none
+- Schema/migrations:   none
+- What it adds:        On the (already TSA/PO-gated) Users settings page, the CURRENT tenant owner sees an "Ownership" panel with a Transfer-ownership dialog: a shadcn Select of eligible members (active, non-owner, non-self), two-step confirm, calls user.transferOwnership, toast + refresh. The owner's row shows an "Owner" badge for all viewers (data-driven). Owner-only visibility from isTenantOwner; the procedure re-checks ownership server-side. Platform break-glass reassignTenantOwner UI deliberately NOT built — no platform console exists in this app; break-glass stays API/ops-only.
+- Verification:        PM ground-truth — web typecheck 0 · web vitest 1258/1258 · eslint 0 · lint-design.sh PASS. Live Rule-16 Visual QA (dev :42951, demo tenant): owner (webmaster) sees the panel + "Owner" badge; dialog lists exactly the 2 eligible members (admin, user), confirm gated on selection (canceled without executing to preserve fixture); non-owner (admin, TSA) sees no panel but still sees the Owner badge. 0 console errors on the Users page.
+- Commits:             f89e689 (feat(rbac): owner-transfer UI on Users settings — two-way succession §2)
+- Errors encountered:  none
+- Errors resolved:     none
+- Result:              RBAC §4 goal's un-gated [HOW] queue is now GENUINELY EXHAUSTED. Succession is fully usable in-app (owner transfer); platform break-glass reassign intentionally stays API-only.
+- HOLD:                LOCAL only on feat/tenant-rbac-3tier (unpushed). No staging/prod/demo deploy or reseed without explicit owner signal.
