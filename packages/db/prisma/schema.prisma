@@ -37,6 +37,10 @@ model Tenant {
   demoResetAt DateTime? @map("demo_reset_at")
   metadata         Json?
   storageBytesUsed BigInt    @default(0) @map("storage_bytes_used")
+  // Telegram-default media storage (media-storage-default.md): the private
+  // channel this tenant's persistent media is uploaded to. Null falls back to
+  // TELEGRAM_DEFAULT_CHANNEL_ID at the app layer.
+  telegramChannelId String?  @map("telegram_channel_id")
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
@@ -136,8 +140,37 @@ model Tenant {
   notifications                Notification[]                @relation("TenantNotifications")
   dsrRequests                  DataSubjectRequest[]          @relation("TenantDsr")
   breachRecords                BreachRecord[]                @relation("TenantBreach")
+  mediaObjects                 MediaObject[]
 
   @@map("tenants")
+  @@schema("public")
+}
+
+// Storage ledger — maps a tenant-scoped storage key to its backend location
+// (Telegram file_id / message_id, or S3/MinIO). The /api/media proxy resolves
+// bytes via this row. Telegram-first, MinIO-fallback (media-storage-default.md).
+model MediaObject {
+  id                String    @id @default(cuid())
+  tenantId          String    @map("tenant_id")
+  storageKey        String    @map("storage_key")
+  entityType        String    @map("entity_type")
+  backend           String    @default("telegram")
+  telegramChatId    String?   @map("telegram_chat_id")
+  telegramFileId    String?   @map("telegram_file_id")
+  telegramMessageId BigInt?   @map("telegram_message_id")
+  sizeBytes         Int?      @map("size_bytes")
+  mimeType          String?   @map("mime_type")
+  migratedAt        DateTime? @map("migrated_at")
+  minioReclaimedAt  DateTime? @map("minio_reclaimed_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, storageKey])
+  @@index([tenantId])
+  @@index([tenantId, backend])
+  @@map("media_objects")
   @@schema("public")
 }
 
