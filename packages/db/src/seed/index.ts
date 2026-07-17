@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { STANDARD_ROLES } from './roles';
 import { backfillRolePermissions } from './role-permissions';
 import { provisionTenantFinancials } from '../helpers/tenant-financials';
+import { seedDemoShowcase } from './demo-showcase';
 
 const prisma = new PrismaClient();
 
@@ -222,6 +223,10 @@ async function main() {
   console.log(
     `  ✅ Finance baseline seeded (${fin.accountsSeeded} accounts, ${fin.statutorySeeded} statutory rates, defaults auto-mapped)`,
   );
+
+  // ── Demo showcase: populate every module with realistic dummy data so a
+  //   reviewer sees each list-page filled (idempotent; per-module guarded). ──
+  await seedDemoShowcase(prisma, demoTenant.id);
 
   console.log('\n✅ Seeding complete!');
 }
