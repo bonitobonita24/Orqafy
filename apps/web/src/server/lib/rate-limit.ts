@@ -41,6 +41,8 @@ export const rateLimiters = {
   api: rateLimit({ interval: 60_000, limit: 120 }),
   // File upload — 20/min per user
   upload: rateLimit({ interval: 60_000, limit: 20 }),
+  // Media proxy download (/api/media) — 120/min per user
+  mediaDownload: rateLimit({ interval: 60_000, limit: 120 }),
   // Mobile sync — 60/min per user
   mobile_sync: rateLimit({ interval: 60_000, limit: 60 }),
   // Public invoice page (no auth) — 30/min per IP

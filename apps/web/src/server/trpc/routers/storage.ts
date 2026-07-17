@@ -10,6 +10,8 @@ import {
   createPresignedDownloadUrl,
   deleteObject,
   isKeyOwnedByTenant,
+  resolveBackend,
+  getStorageBackend,
   MAX_FILE_SIZE,
 } from "@orqafy/storage";
 
@@ -132,6 +134,27 @@ export const storageRouter = createTRPCRouter({
           where: { id: ctx.tenantId },
           data: { storageBytesUsed: { increment: BigInt(input.sizeBytes) } },
         });
+        // Storage ledger row (backend "s3" — the presigned path always lands in
+        // MinIO/S3). Lets the /api/media proxy resolve S3-backed media uniformly
+        // (dual-read alongside Telegram). Idempotent on (tenantId, storageKey).
+        await tx.mediaObject.upsert({
+          where: {
+            tenantId_storageKey: { tenantId: ctx.tenantId, storageKey: input.storageKey },
+          },
+          create: {
+            tenantId: ctx.tenantId,
+            storageKey: input.storageKey,
+            entityType: input.entityType,
+            backend: "s3",
+            sizeBytes: input.sizeBytes,
+            mimeType: input.contentType,
+          },
+          update: {
+            sizeBytes: input.sizeBytes,
+            mimeType: input.contentType,
+            backend: "s3",
+          },
+        });
         await writeAuditLog(tx, {
           userId: ctx.userId,
           action: "CREATE",
@@ -143,6 +166,144 @@ export const storageRouter = createTRPCRouter({
       });
 
       return { id: attachment.id, storageKey: attachment.storageKey };
+    }),
+
+  /**
+   * Server-side direct upload — the Telegram-capable path (browser cannot PUT
+   * directly to Telegram, so the bytes are sent through the server). Routes
+   * through the STORAGE_BACKEND-selected adapter (telegram default, S3/MinIO
+   * fallback), then records the Attachment + MediaObject ledger + quota in one
+   * transaction. The presigned getUploadUrl/confirmUpload pair remains for the
+   * S3 direct-browser-upload flow (existing consumers unchanged).
+   */
+  uploadDirect: writeProcedure
+    .input(
+      z.object({
+        filename: z.string().min(1).max(255),
+        contentType: z.string().min(1).max(100),
+        entityType: z.enum(ENTITY_TYPES),
+        entityId: z.string().cuid(),
+        /** File bytes, base64-encoded (tRPC transport is JSON). */
+        bodyBase64: z.string().min(1).max(72_000_000),
+      }).strict()
+    )
+    .mutation(async ({ input, ctx }) => {
+      const body = Buffer.from(input.bodyBase64, "base64");
+      if (body.byteLength <= 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Empty file body." });
+      }
+
+      // Quota check (same as getUploadUrl).
+      const quota = await getStorageQuota(ctx.tenantId);
+      if (quota.usedBytes + BigInt(body.byteLength) > quota.maxBytes) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `Storage quota exceeded. Used ${(Number(quota.usedBytes) / (1024 * 1024)).toFixed(1)} MB of ${(Number(quota.maxBytes) / (1024 * 1024)).toFixed(0)} MB (${quota.planName} plan).`,
+        });
+      }
+
+      // Resolve the Telegram channel for this tenant (null => default channel).
+      let chatId: string | undefined;
+      if (getStorageBackend() === "telegram") {
+        const tenant = await db.tenant.findUnique({
+          where: { id: ctx.tenantId },
+          select: { telegramChannelId: true },
+        });
+        chatId =
+          tenant?.telegramChannelId ??
+          process.env["TELEGRAM_DEFAULT_CHANNEL_ID"] ??
+          "";
+      }
+
+      // Upload OUTSIDE the DB transaction (external network I/O: Telegram/S3).
+      let result;
+      try {
+        result = await resolveBackend().upload({
+          tenantId: ctx.tenantId,
+          tenantSlug: ctx.tenantSlug,
+          entityType: input.entityType,
+          entityId: input.entityId,
+          originalFilename: input.filename,
+          mimeType: input.contentType,
+          body,
+          bucket: getStorageBucket(),
+          ...(chatId !== undefined ? { chatId } : {}),
+        });
+      } catch (err) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: err instanceof Error ? err.message : "Upload failed.",
+        });
+      }
+
+      const attachment = await db.$transaction(async (tx) => {
+        const a = await tx.attachment.create({
+          data: {
+            tenantId: ctx.tenantId,
+            entityType: input.entityType,
+            entityId: input.entityId,
+            storageKey: result.storageKey,
+            filename: input.filename,
+            mimeType: input.contentType,
+            sizeBytes: BigInt(result.sizeBytes),
+            uploadedByUserId: ctx.userId,
+          },
+        });
+        await tx.tenant.update({
+          where: { id: ctx.tenantId },
+          data: { storageBytesUsed: { increment: BigInt(result.sizeBytes) } },
+        });
+        await tx.mediaObject.upsert({
+          where: {
+            tenantId_storageKey: { tenantId: ctx.tenantId, storageKey: result.storageKey },
+          },
+          create: {
+            tenantId: ctx.tenantId,
+            storageKey: result.storageKey,
+            entityType: input.entityType,
+            backend: result.backend,
+            telegramChatId: result.telegramChatId ?? null,
+            telegramFileId: result.telegramFileId ?? null,
+            telegramMessageId:
+              result.telegramMessageId !== undefined
+                ? BigInt(result.telegramMessageId)
+                : null,
+            sizeBytes: result.sizeBytes,
+            mimeType: result.mimeType,
+          },
+          update: {
+            backend: result.backend,
+            telegramChatId: result.telegramChatId ?? null,
+            telegramFileId: result.telegramFileId ?? null,
+            telegramMessageId:
+              result.telegramMessageId !== undefined
+                ? BigInt(result.telegramMessageId)
+                : null,
+            sizeBytes: result.sizeBytes,
+            mimeType: result.mimeType,
+          },
+        });
+        await writeAuditLog(tx, {
+          userId: ctx.userId,
+          action: "CREATE",
+          entity: "Attachment",
+          entityId: a.id,
+          after: {
+            filename: input.filename,
+            entityType: input.entityType,
+            entityId: input.entityId,
+            sizeBytes: result.sizeBytes,
+            backend: result.backend,
+          },
+        });
+        return a;
+      });
+
+      return {
+        id: attachment.id,
+        storageKey: attachment.storageKey,
+        backend: result.backend,
+      };
     }),
 
   /** List attachments for a specific entity. */
