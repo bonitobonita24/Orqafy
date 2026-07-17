@@ -16,6 +16,11 @@ services:
       - TZ=Asia/Manila
       - NODE_ENV=production
       - PORT=${APP_PORT}
+      # Persistent media default = Telegram on dev+staging+prod (media-storage-default.md).
+      # TELEGRAM_* real values come from Server-Setups (SOPS+age) via .env.staging at deploy time — never hardcode.
+      - STORAGE_BACKEND=telegram
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_DEFAULT_CHANNEL_ID=${TELEGRAM_DEFAULT_CHANNEL_ID}
     networks: [app_network, proxy]
     restart: unless-stopped
     depends_on:
