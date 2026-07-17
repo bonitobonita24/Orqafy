@@ -19,9 +19,17 @@
   dev stays MinIO unless owner provides a dedicated dev channel. Wire STORAGE_BACKEND=telegram
   + TELEGRAM_BOT_TOKEN + TELEGRAM_DEFAULT_CHANNEL_ID into staging/prod .env (gitignored) + mirror
   vault; end-to-end upload test. Owner task #1.
-- [ ] **M3 — Cloudflare DNS.** Create subdomains under Powerbyte-Hostinger (VPS 72.62.74.203):
-  orqafy-demo.powerbyte.app / orqafy-staging.powerbyte.app / orqafy.powerbyte.app.
-  Creds: Server-Setups cloudflare.enc.yaml / deploy-api.enc.yaml. Owner task #4.
+- [x] **M3 — Cloudflare DNS. ✅ DONE 2026-07-18 (already existed).** All three A records
+  (orqafy / orqafy-staging / orqafy-demo → 72.62.74.203, proxied) already present in zone
+  powerbyte.app (814c7d6e8db45e1a4015e67a030d5e41). Verified read-only; nothing created.
+
+### ⚠ Verified server state (2026-07-18) — reshapes M4–M7
+Despite the Jun-16 deploy runbook, the VPS currently has **NO orqafy Komodo stacks, containers, or
+volumes** → M4/M6/M7 are **greenfield deploys**. DNS is ready. Sequencing decision:
+**DEPLOY DEMO FIRST** — demo uses MinIO (not Telegram) so it is fully unblocked and is the owner's
+most-wanted tangible result. Staging+prod are pinned to Telegram (Jul-17) → they depend on M2's
+chat_id (owner channel post). New order: M5(demo creds)+M6(demo seed)+M4(demo stack)→M7-demo, then
+unblock M2 → staging/prod.
 - [ ] **M4 — CI/CD pipeline (demo/staging/prod).** Groundwork already committed Jul-17
   (orqafy_demo compose, Telegram pin on stage/prod, staging data-first gate, demo/prod promotion
   scripts, docker-publish.yml). Wire Komodo stacks + Traefik routers for the 3 subdomains; gate CI

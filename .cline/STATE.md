@@ -14,10 +14,13 @@ LAST_DONE:    • Resumed interrupted session; verified Telegram media work gree
               • Appended Telegram-storage governance entry to CHANGELOG_AI.md.
 GATE:         web typecheck 0 · web vitest 1265/1265 · tree clean (before this session's doc commits).
 NEXT (Full-Auto milestone queue — one at a time, reboot between):
-              M1 (IN PROGRESS) — finalize + commit MOBILE_UX_PLAN.md + PRODUCT_COVERAGE_AUDIT.md
-                (coverage re-verification agent running); commit FULL_AUTO_PLAN + governance docs.
-              M2 — Telegram go-live (PRIORITY) — BLOCKED on chat_id (owner posts in channel).
-              M3 — Cloudflare DNS (orqafy-demo/-staging/ .powerbyte.app under Powerbyte-Hostinger).
+              M1 ✅ DONE (32d19e6) — coverage independently verified ≈93-94%; mobile plan + audit + gov committed.
+              M3 ✅ DONE — all 3 DNS A-records already exist (orqafy/-staging/-demo → 72.62.74.203, proxied).
+              ⚠ VERIFIED: VPS has NO orqafy stacks/containers/volumes → M4/M6/M7 GREENFIELD.
+              NEXT ACTIONABLE = DEMO-FIRST (unblocked; MinIO): M5-demo creds + M6 demo seed + M4 demo
+                stack → M7 deploy orqafy-demo.powerbyte.app.
+              M2 — Telegram go-live (PRIORITY) — BLOCKED on chat_id (owner posts in "Orqafy - Assets").
+                Staging+prod deploy DEPEND on this (pinned to Telegram).
               M4 — CI/CD + Komodo stacks (demo/staging/prod) — groundwork committed Jul-17.
               M5 — default env creds from universal-login-credentials vault.
               M6 — demo full-featured dummy seed (all 18 modules).
