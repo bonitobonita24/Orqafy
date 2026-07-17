@@ -2561,3 +2561,15 @@
 - Errors resolved:     none
 - Result:              RBAC §4 goal's un-gated [HOW] queue is now GENUINELY EXHAUSTED. Succession is fully usable in-app (owner transfer); platform break-glass reassign intentionally stays API-only.
 - HOLD:                LOCAL only on feat/tenant-rbac-3tier (unpushed). No staging/prod/demo deploy or reseed without explicit owner signal.
+
+## 2026-07-18 — Telegram media storage (fleet default V32.27) — governance wrap-up
+- Agent:               CLAUDE_CODE
+- Why:                 Roll Orqafy onto the fleet-wide Telegram-as-default media storage standard (media-storage-default.md / V32.27). Work was implemented + committed on branch feat/telegram-storage the night of 2026-07-17→18 but the session was interrupted (PC hang) before its governance wrap-up. This entry closes that gap; code was already committed and is verified green.
+- Files added:         packages/storage/src/telegram.ts (+ __tests__), apps/web/src/app/api/media/route.ts (+ __tests__), apps/web/src/server/lib/media-bytes.ts, deploy/ demo compose + staging-refresh + demo/prod promotion scripts
+- Files modified:      packages/storage/src/adapter.ts (STORAGE_BACKEND switch), apps/web/src/server/trpc/routers/storage.ts (Telegram upload path + MediaObject ledger), packages/db/prisma/schema.prisma (MediaObject model + tenant.telegram_channel_id), apps/web/src/server/lib/rate-limit.ts, .env.example, deploy compose (stage/prod pin Telegram)
+- Schema/migrations:   MediaObject storage ledger + tenant telegram_channel_id (cf50921)
+- What it adds:        StorageAdapter selecting backend via STORAGE_BACKEND (telegram|s3|minio); Telegram backend uploads bytes to a private channel + records a MediaObject ledger row mapping key→message/file id; /api/media proxy resolves reads; deploy scaffolding for a 4-tier promotion flow (dev/demo/staging/prod) with demo=MinIO, staging+prod pinned to Telegram; staging data-first gate + manual demo/prod promotion scripts.
+- Commits:             80ec97b · cf50921 · b099501 · d662f8e · b984d1a · e16a4fb · 060dc0f (on feat/telegram-storage, after merge 71b304b of the RBAC retrofit into main)
+- Verification:        PM ground-truth on resume (2026-07-18) — web typecheck 0 · web vitest 1265/1265 (+7 new /api/media proxy tests) · working tree clean.
+- Credentials:         Bot @orqafy_bot token stored ONLY in Server-Setups/Powerbyte-Hostinger/secrets/orqafy-telegram.enc.yaml (SOPS+age); never in repo. Channel "Orqafy - Assets" = staging/prod assets channel; numeric chat_id PENDING (needs one channel post → getUpdates). Dev stays MinIO unless a dedicated dev channel is provided.
+- HOLD:                LOCAL only on feat/telegram-storage (unpushed). No staging/prod/demo deploy until the owner-authorized Full-Auto deploy milestones (docs/FULL_AUTO_PLAN.md M3–M7).
