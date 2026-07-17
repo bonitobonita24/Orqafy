@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import { FEATURE_KEYS, type FeatureKey } from '@orqafy/shared/rbac';
+import type { FeatureKey } from '@orqafy/shared/rbac' with { 'resolution-mode': 'import' };
 
 /**
  * Day-one `role_permissions` matrix backfill (Task 3.3, tenant-rbac-standard.md §4).
@@ -246,6 +246,9 @@ function resolveRow(roleSlug: string, feature: FeatureKey): CUD {
   }
 
   const def = FEATURE_DEFAULTS[feature];
+  // `feature` is a FeatureKey so FEATURE_DEFAULTS always has an entry; guard
+  // for noUncheckedIndexedAccess type-safety (behavior-preserving — never hit).
+  if (!def) return { ...NONE };
   const override = def.roleOverrides?.[roleSlug];
   return { ...def.internalStaff, ...(override ?? {}) };
 }
@@ -267,6 +270,11 @@ export async function backfillRolePermissions(
 ): Promise<{ rowsUpserted: number }> {
   const { tenantId, roleIdBySlug } = input;
   let rowsUpserted = 0;
+
+  // Runtime value from the ESM `@orqafy/shared` package. The db package is
+  // CommonJS, so a static value import of an ESM module is illegal under
+  // Node16 (TS1479); a dynamic import is the sanctioned CJS→ESM interop.
+  const { FEATURE_KEYS } = await import('@orqafy/shared/rbac');
 
   for (const [slug, roleId] of Object.entries(roleIdBySlug)) {
     const isBypass = BYPASS_ROLE_SLUGS.has(slug);

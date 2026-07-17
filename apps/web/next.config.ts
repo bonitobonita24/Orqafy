@@ -39,7 +39,19 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  transpilePackages: ["@orqafy/db", "@orqafy/storage"],
+  transpilePackages: ["@orqafy/db", "@orqafy/storage", "@orqafy/shared"],
+  // Source-only workspace packages (@orqafy/shared) use NodeNext-style `.js`
+  // extensions on relative re-exports (required by tsc-Node16 in packages/db).
+  // Teach webpack to resolve those `.js` specifiers to the real `.ts`/`.tsx`
+  // source. `.js` stays last so genuine .js files still resolve.
+  webpack: (config) => {
+    config.resolve.extensionAlias = {
+      ".js": [".ts", ".tsx", ".js"],
+      ".mjs": [".mts", ".mjs"],
+      ...(config.resolve.extensionAlias ?? {}),
+    };
+    return config;
+  },
   experimental: {
     // nodeMiddleware is a Next.js canary/16 feature not yet in 15.x stable types.
     // Remove suppression when Next.js types include nodeMiddleware.
