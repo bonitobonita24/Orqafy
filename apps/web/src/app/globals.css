@@ -112,8 +112,7 @@
     font-size: 0.875rem;       /* 14px */
     font-weight: 600;
     line-height: 1.43;
-    letter-spacing: 2.52px;
-    text-transform: uppercase;
+    letter-spacing: 2.52px; text-transform: uppercase;
   }
 
   /* signal-glow animation — neutral-dark palette: pulsing ring-color drop-shadow     */
@@ -136,5 +135,19 @@
   }
   50% {
     filter: drop-shadow(0 0 8px hsl(var(--ring) / 0.9));
+  }
+}
+
+/* ── Reduced motion (WCAG 2.3.3 / motion.md gate) ──
+   Respect the user's OS-level "reduce motion" preference app-wide: neutralize
+   animations and transitions so vestibular-sensitive users aren't harmed. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

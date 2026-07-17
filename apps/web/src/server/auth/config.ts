@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma as db } from "@orqafy/db";
 import { env } from "@/env";
+import { rateLimiters } from "@/server/lib/rate-limit";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -23,6 +24,7 @@ export const authConfig: NextAuthConfig = {
       if (user !== undefined) {
         token.userId = user.id;
         token.roles = (user as { roles?: string[] }).roles ?? [];
+        token.roleId = (user as { roleId?: string }).roleId ?? "";
         token.tenantSlug = (user as { tenantSlug?: string }).tenantSlug ?? "";
         token.tenantId = (user as { tenantId?: string }).tenantId ?? "";
         token.securityVersion = (user as { securityVersion?: number }).securityVersion ?? 0;
@@ -44,6 +46,7 @@ export const authConfig: NextAuthConfig = {
       }
       session.user.id = token.userId as string;
       session.user.roles = token.roles as string[];
+      session.user.roleId = token.roleId as string;
       session.user.tenantSlug = token.tenantSlug as string;
       session.user.tenantId = token.tenantId as string;
       session.user.securityVersion = token.securityVersion as number;
@@ -58,7 +61,17 @@ export const authConfig: NextAuthConfig = {
         password: { type: "password" },
         tenantSlug: { type: "text" },
       },
-      async authorize(rawCredentials) {
+      async authorize(rawCredentials, request) {
+        const ip =
+          request?.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+          request?.headers?.get("x-real-ip") ??
+          "unknown";
+        try {
+          rateLimiters.auth.check(ip);
+        } catch {
+          return null; // rate-limited: deny (opaque, no enumeration signal)
+        }
+
         const parsed = loginSchema.safeParse(rawCredentials);
         if (!parsed.success) return null;
 
@@ -83,6 +96,7 @@ export const authConfig: NextAuthConfig = {
             displayName: true,
             passwordHash: true,
             securityVersion: true,
+            roleId: true,
             role: { select: { name: true } },
           },
         });
@@ -99,6 +113,7 @@ export const authConfig: NextAuthConfig = {
           email: user.email,
           name: displayName,
           roles,
+          roleId: user.roleId,
           tenantSlug: tenant.slug,
           tenantId: tenant.id,
           securityVersion: user.securityVersion,

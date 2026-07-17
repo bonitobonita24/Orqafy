@@ -8,8 +8,22 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db } from "@orqafy/db";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key
+// "support"). Reads use `matrixProcedure` (protectedProcedure +
+// matrixMiddleware); mutations compose `writeProcedure.use(matrixMiddleware(...))`
+// so the demo-tenant mutation guard survives alongside the matrix grant check.
+// assign/changeStatus/close all map to "update" (they mutate an existing
+// ticket's fields/status, not create or delete it). The pre-existing
+// role-based guards (Administrator/Manager checks) inside update/assign
+// remain unchanged — the matrix grant is an ADDITIONAL gate, not a
+// replacement for that business logic.
+const supportViewProcedure = matrixProcedure("support", "view");
+const supportCreateProcedure = writeProcedure.use(matrixMiddleware("support", "create"));
+const supportUpdateProcedure = writeProcedure.use(matrixMiddleware("support", "update"));
 
 // Schema stores status + priority as String (not Prisma enums) — comments in
 // schema.prisma define the allowed values.
@@ -60,7 +74,7 @@ const VALID_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
 // ── Sub-routers ───────────────────────────────────────────────────────────────
 
 const ticketRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: supportViewProcedure
     .input(
       z.object({
         status: ticketStatusSchema.optional(),
@@ -103,7 +117,7 @@ const ticketRouter = createTRPCRouter({
       return { items, total };
     }),
 
-  byId: protectedProcedure
+  byId: supportViewProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       await loadTicketForTenant(input.id, ctx);
@@ -143,14 +157,14 @@ const ticketRouter = createTRPCRouter({
       return ticket;
     }),
 
-  create: writeProcedure
+  create: supportCreateProcedure
     .input(
       z.object({
         title: z.string().min(1).max(200),
         description: z.string().min(1),
         category: z.string().optional(),
         priority: ticketPrioritySchema.optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       const ticketNumber = await generateTicketNumber();
@@ -168,7 +182,7 @@ const ticketRouter = createTRPCRouter({
       });
     }),
 
-  update: writeProcedure
+  update: supportUpdateProcedure
     .input(
       z.object({
         id: z.string(),
@@ -176,7 +190,7 @@ const ticketRouter = createTRPCRouter({
         description: z.string().min(1).optional(),
         category: z.string().nullable().optional(),
         priority: ticketPrioritySchema.optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       const existing = await loadTicketForTenant(input.id, ctx);
@@ -205,12 +219,12 @@ const ticketRouter = createTRPCRouter({
       });
     }),
 
-  assign: writeProcedure
+  assign: supportUpdateProcedure
     .input(
       z.object({
         id: z.string(),
         assignedToId: z.string().nullable(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       const isAdmin =
@@ -226,6 +240,16 @@ const ticketRouter = createTRPCRouter({
 
       const existing = await loadTicketForTenant(input.id, ctx);
 
+      // Tenant-isolation: the assignee (when not unassigning) must belong to
+      // the caller's tenant — otherwise a ticket could be handed to a
+      // cross-tenant user, leaking that user's identity/reference.
+      if (input.assignedToId !== null) {
+        const assignee = await db.user.findUnique({ where: { id: input.assignedToId } });
+        if (!assignee || assignee.tenantId !== ctx.tenantId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Assignee not found." });
+        }
+      }
+
       const newStatus =
         input.assignedToId !== null && existing.status === "open"
           ? "in_progress"
@@ -240,12 +264,12 @@ const ticketRouter = createTRPCRouter({
       });
     }),
 
-  changeStatus: writeProcedure
+  changeStatus: supportUpdateProcedure
     .input(
       z.object({
         id: z.string(),
         status: ticketStatusSchema,
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       const existing = await loadTicketForTenant(input.id, ctx);
@@ -273,8 +297,8 @@ const ticketRouter = createTRPCRouter({
       });
     }),
 
-  close: writeProcedure
-    .input(z.object({ id: z.string() }))
+  close: supportUpdateProcedure
+    .input(z.object({ id: z.string() }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await loadTicketForTenant(input.id, ctx);
 
@@ -296,7 +320,7 @@ const ticketRouter = createTRPCRouter({
 });
 
 const commentRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: supportViewProcedure
     .input(z.object({ ticketId: z.string() }))
     .query(async ({ ctx, input }) => {
       await loadTicketForTenant(input.ticketId, ctx);
@@ -324,13 +348,13 @@ const commentRouter = createTRPCRouter({
       });
     }),
 
-  create: writeProcedure
+  create: supportCreateProcedure
     .input(
       z.object({
         ticketId: z.string(),
         content: z.string().min(1),
         isInternal: z.boolean().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       await loadTicketForTenant(input.ticketId, ctx);
@@ -355,7 +379,7 @@ const commentRouter = createTRPCRouter({
 });
 
 const attachmentRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: supportViewProcedure
     .input(z.object({ ticketId: z.string() }))
     .query(async ({ ctx, input }) => {
       await loadTicketForTenant(input.ticketId, ctx);

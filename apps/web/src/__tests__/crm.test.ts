@@ -21,8 +21,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import { crmRouter } from "@/server/trpc/routers/crm";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
+import type * as OrqafyDb from "@orqafy/db";
 
-vi.mock("@orqafy/db", () => {
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
   const mockPrisma = {
     customer: {
       findMany: vi.fn(),
@@ -68,9 +70,15 @@ vi.mock("@orqafy/db", () => {
     invoice: {
       create: vi.fn(),
     },
+    product: {
+      count: vi.fn(),
+    },
     auditLog: { create: vi.fn() },
+    role: { findFirst: vi.fn() },
+    rolePermission: { findUnique: vi.fn() },
   };
   return {
+    ...actual,
     prisma: {
       ...mockPrisma,
       $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(mockPrisma)),
@@ -93,6 +101,7 @@ function authenticatedCtx() {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"],
+    roleId: "role-1",
     tenantSlug: "acme",
     tenantId: "acme-tenant-id",
     securityVersion: 1,
@@ -106,6 +115,7 @@ function unauthenticatedCtx() {
     req: makeReq(),
     userId: null,
     roles: [],
+    roleId: null,
     tenantSlug: null,
     tenantId: null,
     securityVersion: 0,
@@ -163,11 +173,33 @@ const mockDb = db as unknown as {
   invoice: {
     create: ReturnType<typeof vi.fn>;
   };
+  product: {
+    count: ReturnType<typeof vi.fn>;
+  };
   auditLog: {
     create: ReturnType<typeof vi.fn>;
   };
+  role: {
+    findFirst: ReturnType<typeof vi.fn>;
+  };
+  rolePermission: {
+    findUnique: ReturnType<typeof vi.fn>;
+  };
   $transaction: ReturnType<typeof vi.fn>;
 };
+
+// Matrix middleware bypass by default — these tests assert business logic, not
+// RBAC grant/deny behavior (that's covered by crm-matrix.test.ts). A default
+// "Platform Owner" role short-circuits hasPermission() to true regardless of
+// tenantId. vi.clearAllMocks() (called in every describe's beforeEach) clears
+// call-tracking data but NOT this mockResolvedValue, so the bypass persists.
+beforeEach(() => {
+  mockDb.role.findFirst.mockResolvedValue({
+    id: "role-1",
+    tenantId: "acme-tenant-id",
+    name: "Platform Owner",
+  });
+});
 
 const sampleCustomer = {
   id: "cust-1",
@@ -868,6 +900,68 @@ describe("crm.quotationCreate", () => {
       }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
+
+  it("rejects when a line item references a product from another tenant (M7.2)", async () => {
+    setupHappyPath();
+    // Product exists but count query (id IN [...] AND tenantId = ctx.tenantId) finds 0 matches
+    // because the product belongs to a different tenant.
+    mockDb.product.count.mockResolvedValue(0);
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.quotationCreate({
+        customerId: CUSTOMER_ID,
+        title: "Q",
+        taxAmount: 0,
+        markupColumns: [],
+        sections: [
+          {
+            name: "S",
+            sortOrder: 0,
+            lineItems: [
+              {
+                productId: "product-from-other-tenant",
+                description: "X",
+                unit: "pcs",
+                quantity: 1,
+                baseCost: 100,
+                sortOrder: 0,
+                markups: [],
+              },
+            ],
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockDb.product.count).toHaveBeenCalledWith({
+      where: { id: { in: ["product-from-other-tenant"] }, tenantId: "acme-tenant-id" },
+    });
+    expect(mockDb.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("allows a line item with no productId (no product FK check triggered)", async () => {
+    setupHappyPath();
+
+    const caller = createCaller(authenticatedCtx());
+    await caller.crm.quotationCreate({
+      customerId: CUSTOMER_ID,
+      title: "Q",
+      taxAmount: 0,
+      markupColumns: [],
+      sections: [
+        {
+          name: "S",
+          sortOrder: 0,
+          lineItems: [
+            { description: "X", unit: "pcs", quantity: 1, baseCost: 100, sortOrder: 0, markups: [] },
+          ],
+        },
+      ],
+    });
+
+    expect(mockDb.product.count).not.toHaveBeenCalled();
+    expect(mockDb.$transaction).toHaveBeenCalledTimes(1);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -993,6 +1087,43 @@ describe("crm.quotationUpdate", () => {
         ],
       }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockDb.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects full-payload edit when a line item references a product from another tenant (M7.2)", async () => {
+    mockDb.quotation.findUnique.mockResolvedValue({ id: QUOTATION_ID, tenantId: "acme-tenant-id", status: "draft" });
+    mockDb.product.count.mockResolvedValue(0);
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.crm.quotationUpdate({
+        id: QUOTATION_ID,
+        taxAmount: 0,
+        markupColumns: [],
+        sections: [
+          {
+            name: "S1",
+            sortOrder: 0,
+            lineItems: [
+              {
+                productId: "product-from-other-tenant",
+                description: "Widget",
+                unit: "pcs",
+                quantity: 1,
+                baseCost: 50,
+                sortOrder: 0,
+                markups: [],
+              },
+            ],
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockDb.product.count).toHaveBeenCalledWith({
+      where: { id: { in: ["product-from-other-tenant"] }, tenantId: "acme-tenant-id" },
+    });
+    // Destructive deleteMany calls must never run before the FK check passes.
+    expect(mockDb.quotationSection.deleteMany).not.toHaveBeenCalled();
     expect(mockDb.$transaction).not.toHaveBeenCalled();
   });
 });
@@ -1159,6 +1290,7 @@ describe("crm.quotation* demo tenant blocking", () => {
       req: makeReq(),
       userId: "user-1",
       roles: ["Administrator"],
+      roleId: "role-1",
       tenantSlug: "demo",
       tenantId: "demo-tenant-id",
       securityVersion: 1,
@@ -1437,6 +1569,7 @@ describe("crm.contactLog demo tenant blocking", () => {
       req: makeReq(),
       userId: "user-1",
       roles: ["Administrator"],
+      roleId: "role-1",
       tenantSlug: "demo",
       tenantId: "demo-tenant-id",
       securityVersion: 1,
@@ -1674,6 +1807,7 @@ describe("crm.quotationConvertToInvoice", () => {
       req: makeReq(),
       userId: "user-1",
       roles: ["Administrator"],
+      roleId: "role-1",
       tenantSlug: "demo",
       tenantId: "demo-tenant-id",
       securityVersion: 1,

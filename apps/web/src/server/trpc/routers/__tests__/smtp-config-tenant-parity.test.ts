@@ -11,24 +11,41 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { NextRequest } from "next/server";
+import type * as OrqafyDb from "@orqafy/db";
 
 // ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
-const { mockSmtpFindUnique, mockSmtpUpsert, mockSmtpDelete } = vi.hoisted(() => ({
+const {
+  mockSmtpFindUnique,
+  mockSmtpUpsert,
+  mockSmtpDelete,
+  mockRoleFindFirst,
+  mockRolePermFindUnique,
+} = vi.hoisted(() => ({
   mockSmtpFindUnique: vi.fn(),
   mockSmtpUpsert: vi.fn(),
   mockSmtpDelete: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
+  mockRolePermFindUnique: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    tenantSmtpConfig: {
-      findUnique: mockSmtpFindUnique,
-      upsert: mockSmtpUpsert,
-      update: vi.fn(),
-      delete: mockSmtpDelete,
+// Keep the real `hasPermission` resolver (it takes prisma as an argument) —
+// only mock the prisma client calls it and the router make.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      tenantSmtpConfig: {
+        findUnique: mockSmtpFindUnique,
+        upsert: mockSmtpUpsert,
+        update: vi.fn(),
+        delete: mockSmtpDelete,
+      },
+      role: { findFirst: mockRoleFindFirst },
+      rolePermission: { findUnique: mockRolePermFindUnique },
     },
-  },
-}));
+  };
+});
 
 // Crypto: test the tenantId contract, not the encryption algorithm
 vi.mock("@/lib/crypto", () => ({
@@ -38,6 +55,15 @@ vi.mock("@/lib/crypto", () => ({
 
 vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
+}));
+
+vi.mock("@/server/lib/rate-limit", () => ({
+  rateLimiters: {
+    api: { check: vi.fn() },
+    auth: { check: vi.fn() },
+    upload: { check: vi.fn() },
+    public: { check: vi.fn() },
+  },
 }));
 
 import { smtpConfigRouter } from "@/server/trpc/routers/smtp-config";
@@ -54,7 +80,8 @@ function ctxForTenant(tenantId: string) {
   return {
     req: makeReq(),
     userId: "user-1",
-    roles: ["Administrator"] as string[],
+    roles: ["Admin"] as string[],
+    roleId: "role-1",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -78,6 +105,18 @@ const validUpsertInput = {
 describe("SmtpConfig tenant parity (K-prime closure)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: caller's role resolves as "Admin" in the caller's own tenant,
+    // with full CRUD granted on the "settings" feature — matches the seed.
+    mockRoleFindFirst.mockImplementation(
+      ({ where }: { where: { id: string; tenantId: string } }) =>
+        Promise.resolve({ id: where.id, tenantId: where.tenantId, name: "Admin" }),
+    );
+    mockRolePermFindUnique.mockResolvedValue({
+      view: true,
+      create: true,
+      update: true,
+      delete: true,
+    });
   });
 
   it("smtpConfig.get returns null when no config exists for tenant", async () => {

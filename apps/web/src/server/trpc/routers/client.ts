@@ -1,8 +1,19 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db, writeAuditLog } from "@orqafy/db";
 import { sanitizePlainText } from "@/server/lib/sanitize";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key "crm" —
+// clients/customers are CRM entities and share the "crm" feature key). Reads
+// use `matrixProcedure` (protectedProcedure + matrixMiddleware); mutations
+// compose `writeProcedure.use(matrixMiddleware(...))` so the demo-tenant
+// mutation guard survives alongside the matrix grant check.
+const crmViewProcedure = matrixProcedure("crm", "view");
+const crmCreateProcedure = writeProcedure.use(matrixMiddleware("crm", "create"));
+const crmUpdateProcedure = writeProcedure.use(matrixMiddleware("crm", "update"));
+const crmDeleteProcedure = writeProcedure.use(matrixMiddleware("crm", "delete"));
 
 const customerInput = z.object({
   firstName: z.string().min(1).max(100),
@@ -16,10 +27,10 @@ const customerInput = z.object({
   postalCode: z.string().max(20).optional(),
   taxId: z.string().max(50).optional(),
   notes: z.string().max(1000).optional(),
-});
+}).strict();
 
 export const clientRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: crmViewProcedure
     .input(z.object({ page: z.number().int().min(1).default(1), limit: z.number().int().min(1).max(200).default(50), search: z.string().optional() }))
     .query(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
@@ -41,7 +52,7 @@ export const clientRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: crmViewProcedure
     .input(z.object({ id: z.string().cuid() }))
     .query(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
@@ -50,7 +61,7 @@ export const clientRouter = createTRPCRouter({
       return item;
     }),
 
-  create: writeProcedure
+  create: crmCreateProcedure
     .input(customerInput)
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
@@ -89,7 +100,7 @@ export const clientRouter = createTRPCRouter({
       });
     }),
 
-  update: writeProcedure
+  update: crmUpdateProcedure
     .input(customerInput.partial().extend({ id: z.string().cuid() }))
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
@@ -137,8 +148,8 @@ export const clientRouter = createTRPCRouter({
       });
     }),
 
-  delete: writeProcedure
-    .input(z.object({ id: z.string().cuid() }))
+  delete: crmDeleteProcedure
+    .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
       const existing = await db.customer.findFirst({ where: { id: input.id, tenantId: ctx.tenantId } });

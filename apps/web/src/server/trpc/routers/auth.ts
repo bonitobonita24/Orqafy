@@ -5,7 +5,7 @@ import { verifyTurnstile } from "@/lib/turnstile";
 
 export const authRouter = createTRPCRouter({
   verifyTurnstile: publicProcedure
-    .input(z.object({ token: z.string().min(1) }))
+    .input(z.object({ token: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       const ip =
         ctx.req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??

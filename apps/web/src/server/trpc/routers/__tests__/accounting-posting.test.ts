@@ -15,6 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as OrqafyDb from "@orqafy/db";
 import type { NextRequest } from "next/server";
 
 // ── DB mock (hoisted so vi.mock factory can reference) ───────────────────────
@@ -30,6 +31,8 @@ const {
   mockJournalLineFindMany,
   mockJournalLineCount,
   mockAuditLogCreate: _mockAuditLogCreate,
+  mockRoleFindFirst,
+  mockRolePermissionFindUnique,
   mockTransaction,
 } = vi.hoisted(() => {
   const mockAuditLogCreate = vi.fn();
@@ -49,6 +52,13 @@ const {
     mockJournalLineFindMany:    vi.fn(),
     mockJournalLineCount:       vi.fn(),
     mockAuditLogCreate,
+    // RBAC matrix resolver mocks (tenant-rbac-standard.md §4) — the router's
+    // procedures now run through matrixMiddleware, which calls hasPermission ->
+    // prisma.role.findFirst + prisma.rolePermission.findUnique. Tests grant a
+    // Platform Owner bypass role so all pre-existing business-logic assertions
+    // below are unaffected by the RBAC layer.
+    mockRoleFindFirst:            vi.fn(),
+    mockRolePermissionFindUnique: vi.fn(),
     mockTransaction: vi.fn().mockImplementation((fn: any) =>
       Promise.resolve(fn({
         journalEntry: {
@@ -62,32 +72,40 @@ const {
   };
 });
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    account: {
-      findUnique: mockAccountFindUnique,
-      findMany:   mockAccountFindMany,
+// Keep the real `hasPermission` resolver (matrixMiddleware imports it from
+// this module) — only replace the prisma client calls it makes.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      account: {
+        findUnique: mockAccountFindUnique,
+        findMany:   mockAccountFindMany,
+      },
+      fiscalYear: {
+        findUnique: mockFiscalYearFindUnique,
+      },
+      journalEntry: {
+        findUnique: mockJournalEntryFindUnique,
+        findFirst:  mockJournalEntryFindFirst,
+        create:     mockJournalEntryCreate,
+        update:     mockJournalEntryUpdate,
+        count:      mockJournalEntryCount,
+      },
+      journalLine: {
+        findMany: mockJournalLineFindMany,
+        count:    mockJournalLineCount,
+      },
+      role: { findFirst: mockRoleFindFirst },
+      rolePermission: { findUnique: mockRolePermissionFindUnique },
+      $transaction: mockTransaction,
     },
-    fiscalYear: {
-      findUnique: mockFiscalYearFindUnique,
+    writeAuditLog: async (tx: any, entry: any) => {
+      await tx.auditLog.create({ data: entry });
     },
-    journalEntry: {
-      findUnique: mockJournalEntryFindUnique,
-      findFirst:  mockJournalEntryFindFirst,
-      create:     mockJournalEntryCreate,
-      update:     mockJournalEntryUpdate,
-      count:      mockJournalEntryCount,
-    },
-    journalLine: {
-      findMany: mockJournalLineFindMany,
-      count:    mockJournalLineCount,
-    },
-    $transaction: mockTransaction,
-  },
-  writeAuditLog: async (tx: any, entry: any) => {
-    await tx.auditLog.create({ data: entry });
-  },
-}));
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: { api: { check: vi.fn() }, public: { check: vi.fn() } },
@@ -107,6 +125,7 @@ function ctx(tenantId: string, roles: string[] = ["Administrator"]) {
     req: makeReq(),
     userId: "user-1",
     roles,
+    roleId: "role-a",
     tenantSlug: "test-slug",
     tenantId,
     securityVersion: 1,
@@ -148,7 +167,10 @@ const POSTED_ENTRY = { ...DRAFT_ENTRY, id: "je-002", entryNumber: "JE-0002", sta
 
 // ── 1. post — happy path ──────────────────────────────────────────────────────
 describe("journalEntry.post — happy path", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: TENANT, name: "Platform Owner" });
+  });
 
   it("transitions DRAFT → POSTED with all guards passing", async () => {
     mockJournalEntryFindUnique.mockResolvedValueOnce(DRAFT_ENTRY);
@@ -171,7 +193,10 @@ describe("journalEntry.post — happy path", () => {
 
 // ── 2. post — unbalanced guard ────────────────────────────────────────────────
 describe("journalEntry.post — unbalanced guard", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: TENANT, name: "Platform Owner" });
+  });
 
   it("throws BAD_REQUEST when Σdebit ≠ Σcredit", async () => {
     mockJournalEntryFindUnique.mockResolvedValueOnce({ ...DRAFT_ENTRY, lines: LINES_UNBALANCED });
@@ -185,7 +210,10 @@ describe("journalEntry.post — unbalanced guard", () => {
 
 // ── 3. post — closed fiscal year guard ───────────────────────────────────────
 describe("journalEntry.post — closed fiscal year guard", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: TENANT, name: "Platform Owner" });
+  });
 
   it("throws BAD_REQUEST when fiscal year is closed", async () => {
     mockJournalEntryFindUnique.mockResolvedValueOnce({ ...DRAFT_ENTRY, fiscalYearId: "fy-2024" });
@@ -201,7 +229,10 @@ describe("journalEntry.post — closed fiscal year guard", () => {
 
 // ── 4. post — inactive account guard ─────────────────────────────────────────
 describe("journalEntry.post — inactive account guard", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: TENANT, name: "Platform Owner" });
+  });
 
   it("throws BAD_REQUEST when a line account is inactive", async () => {
     const linesWithInactive = [
@@ -220,7 +251,10 @@ describe("journalEntry.post — inactive account guard", () => {
 
 // ── 5. post — already posted guard ───────────────────────────────────────────
 describe("journalEntry.post — already posted guard", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: TENANT, name: "Platform Owner" });
+  });
 
   it("throws BAD_REQUEST when entry is already posted", async () => {
     mockJournalEntryFindUnique.mockResolvedValueOnce(POSTED_ENTRY);
@@ -234,7 +268,10 @@ describe("journalEntry.post — already posted guard", () => {
 
 // ── 6. reverse — happy path ───────────────────────────────────────────────────
 describe("journalEntry.reverse — happy path", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: TENANT, name: "Platform Owner" });
+  });
 
   it("creates a mirror reversal entry; original status stays 'posted'", async () => {
     mockJournalEntryFindUnique.mockResolvedValueOnce(POSTED_ENTRY);
@@ -267,7 +304,10 @@ describe("journalEntry.reverse — happy path", () => {
 
 // ── 7. reverse — not posted guard ─────────────────────────────────────────────
 describe("journalEntry.reverse — not posted guard", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: TENANT, name: "Platform Owner" });
+  });
 
   it("throws BAD_REQUEST when entry is not posted", async () => {
     mockJournalEntryFindUnique.mockResolvedValueOnce(DRAFT_ENTRY);
@@ -281,7 +321,10 @@ describe("journalEntry.reverse — not posted guard", () => {
 
 // ── 8. reverse — already reversed guard ──────────────────────────────────────
 describe("journalEntry.reverse — already reversed guard", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: TENANT, name: "Platform Owner" });
+  });
 
   it("throws BAD_REQUEST when entry has already been reversed", async () => {
     mockJournalEntryFindUnique.mockResolvedValueOnce(POSTED_ENTRY);
@@ -296,7 +339,10 @@ describe("journalEntry.reverse — already reversed guard", () => {
 
 // ── 9. update — immutability guard (posted entry) ─────────────────────────────
 describe("journalEntry.update — posted entry immutability", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: TENANT, name: "Platform Owner" });
+  });
 
   it("throws BAD_REQUEST when trying to update a posted entry", async () => {
     mockJournalEntryFindUnique.mockResolvedValueOnce(POSTED_ENTRY);
@@ -310,7 +356,10 @@ describe("journalEntry.update — posted entry immutability", () => {
 
 // ── 10. trialBalance — aggregation ───────────────────────────────────────────
 describe("journalEntry.trialBalance — aggregation", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: TENANT, name: "Platform Owner" });
+  });
 
   it("returns aggregated rows with correct totals", async () => {
     mockJournalLineFindMany.mockResolvedValueOnce([

@@ -1,8 +1,21 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db, writeAuditLog } from "@orqafy/db";
 import { createNotification } from "@/server/notifications/create";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key
+// "tasks"). Reads use `matrixProcedure` (protectedProcedure +
+// matrixMiddleware); mutations compose `writeProcedure.use(matrixMiddleware(...))`
+// so the demo-tenant mutation guard survives alongside the matrix grant check.
+// taskUpdateStatus/taskSetDueDate/taskAssign/taskUnassign/taskAddStatusReport/
+// todoComplete/todoAddAttachment all map to "update" — each mutates an
+// existing task/to-do rather than creating or deleting one.
+const tasksViewProcedure = matrixProcedure("tasks", "view");
+const tasksCreateProcedure = writeProcedure.use(matrixMiddleware("tasks", "create"));
+const tasksUpdateProcedure = writeProcedure.use(matrixMiddleware("tasks", "update"));
+const tasksDeleteProcedure = writeProcedure.use(matrixMiddleware("tasks", "delete"));
 
 const TASK_STATUS = z.enum(["todo", "in_progress", "review", "done", "blocked"]);
 const TASK_PRIORITY = z.enum(["low", "medium", "high", "critical"]);
@@ -44,7 +57,7 @@ async function loadToDoForUser(id: string, ctx: { tenantId: string; userId: stri
 
 export const tasksRouter = createTRPCRouter({
   // Cross-project query — returns all tasks for the tenant, optionally filtered by project.
-  taskListAll: protectedProcedure
+  taskListAll: tasksViewProcedure
     .input(z.object({
       projectId: z.string().min(1).optional(),
       status: TASK_STATUS.optional(),
@@ -67,7 +80,7 @@ export const tasksRouter = createTRPCRouter({
       });
     }),
 
-  taskList: protectedProcedure
+  taskList: tasksViewProcedure
     .input(z.object({
       projectId: z.string().min(1),
       status: TASK_STATUS.optional(),
@@ -87,7 +100,7 @@ export const tasksRouter = createTRPCRouter({
       return db.task.findMany({ where });
     }),
 
-  taskGetById: protectedProcedure
+  taskGetById: tasksViewProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ input, ctx }) => {
       await loadTaskForTenant(input.id, ctx);
@@ -103,7 +116,7 @@ export const tasksRouter = createTRPCRouter({
       return task;
     }),
 
-  taskCreate: writeProcedure
+  taskCreate: tasksCreateProcedure
     .input(z.object({
       projectId: z.string().min(1),
       title: z.string().min(1),
@@ -111,9 +124,14 @@ export const tasksRouter = createTRPCRouter({
       priority: TASK_PRIORITY.optional(),
       dueDate: z.coerce.date().optional(),
       parentTaskId: z.string().min(1).optional(),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       await loadProjectForTenant(input.projectId, ctx);
+      // Tenant-isolation: a parent task (if any) must belong to the caller's
+      // tenant — otherwise a cross-tenant task could be nested under it.
+      if (input.parentTaskId !== undefined) {
+        await loadTaskForTenant(input.parentTaskId, ctx);
+      }
       return db.$transaction(async (tx) => {
         const created = await tx.task.create({
           data: {
@@ -150,14 +168,14 @@ export const tasksRouter = createTRPCRouter({
       });
     }),
 
-  taskUpdate: writeProcedure
+  taskUpdate: tasksUpdateProcedure
     .input(z.object({
       id: z.string().min(1),
       title: z.string().min(1).optional(),
       description: z.string().min(1).optional(),
       priority: TASK_PRIORITY.optional(),
       dueDate: z.coerce.date().nullable().optional(),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       const before = await loadTaskForTenant(input.id, ctx);
       return db.$transaction(async (tx) => {
@@ -182,11 +200,11 @@ export const tasksRouter = createTRPCRouter({
       });
     }),
 
-  taskUpdateStatus: writeProcedure
+  taskUpdateStatus: tasksUpdateProcedure
     .input(z.object({
       id: z.string().min(1),
       status: TASK_STATUS,
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       const task = await loadTaskForTenant(input.id, ctx);
       const current = (task as { status: string }).status;
@@ -211,8 +229,8 @@ export const tasksRouter = createTRPCRouter({
       });
     }),
 
-  taskDelete: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+  taskDelete: tasksDeleteProcedure
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       const task = await loadTaskForTenant(input.id, ctx);
       return db.$transaction(async (tx) => {
@@ -229,11 +247,11 @@ export const tasksRouter = createTRPCRouter({
       });
     }),
 
-  taskSetDueDate: writeProcedure
+  taskSetDueDate: tasksUpdateProcedure
     .input(z.object({
       id: z.string().min(1),
       dueDate: z.coerce.date().nullable(),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       const before = await loadTaskForTenant(input.id, ctx);
       return db.$transaction(async (tx) => {
@@ -250,10 +268,17 @@ export const tasksRouter = createTRPCRouter({
       });
     }),
 
-  taskAssign: writeProcedure
-    .input(z.object({ taskId: z.string().min(1), userId: z.string().min(1) }))
+  taskAssign: tasksUpdateProcedure
+    .input(z.object({ taskId: z.string().min(1), userId: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       const task = await loadTaskForTenant(input.taskId, ctx);
+      // Tenant-isolation: the assignee must belong to the caller's tenant —
+      // both for the assignment itself and so the notification below can
+      // never be published to a cross-tenant user.
+      const assignee = await db.user.findUnique({ where: { id: input.userId } });
+      if (!assignee || assignee.tenantId !== ctx.tenantId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "User not found." });
+      }
       const existing = await db.taskAssignment.findFirst({
         where: { taskId: input.taskId, userId: input.userId },
       });
@@ -281,8 +306,8 @@ export const tasksRouter = createTRPCRouter({
       return assignment;
     }),
 
-  taskUnassign: writeProcedure
-    .input(z.object({ taskId: z.string().min(1), userId: z.string().min(1) }))
+  taskUnassign: tasksUpdateProcedure
+    .input(z.object({ taskId: z.string().min(1), userId: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       await loadTaskForTenant(input.taskId, ctx);
       const assignment = await db.taskAssignment.findFirst({
@@ -293,12 +318,12 @@ export const tasksRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  taskAddStatusReport: writeProcedure
+  taskAddStatusReport: tasksUpdateProcedure
     .input(z.object({
       taskId: z.string().min(1),
       status: z.string().min(1),
       note: z.string().optional(),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       const task = await loadTaskForTenant(input.taskId, ctx);
       return db.taskStatusReport.create({
@@ -312,17 +337,17 @@ export const tasksRouter = createTRPCRouter({
       });
     }),
 
-  todoList: protectedProcedure
+  todoList: tasksViewProcedure
     .query(async ({ ctx }) => {
       return db.toDo.findMany({ where: { userId: ctx.userId, tenantId: ctx.tenantId } });
     }),
 
-  todoCreate: writeProcedure
+  todoCreate: tasksCreateProcedure
     .input(z.object({
       title: z.string().min(1),
       description: z.string().min(1).optional(),
       priority: TODO_PRIORITY.optional(),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       return db.toDo.create({
         data: {
@@ -335,13 +360,13 @@ export const tasksRouter = createTRPCRouter({
       });
     }),
 
-  todoUpdate: writeProcedure
+  todoUpdate: tasksUpdateProcedure
     .input(z.object({
       id: z.string().min(1),
       title: z.string().min(1).optional(),
       description: z.string().min(1).optional(),
       priority: TODO_PRIORITY.optional(),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       await loadToDoForUser(input.id, ctx);
       return db.toDo.update({
@@ -354,29 +379,29 @@ export const tasksRouter = createTRPCRouter({
       });
     }),
 
-  todoDelete: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+  todoDelete: tasksDeleteProcedure
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       await loadToDoForUser(input.id, ctx);
       await db.toDo.delete({ where: { id: input.id } });
       return { success: true };
     }),
 
-  todoComplete: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+  todoComplete: tasksUpdateProcedure
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       await loadToDoForUser(input.id, ctx);
       return db.toDo.update({ where: { id: input.id }, data: { isCompleted: true } });
     }),
 
-  todoAddAttachment: writeProcedure
+  todoAddAttachment: tasksUpdateProcedure
     .input(z.object({
       toDoId: z.string().min(1),
       fileName: z.string().min(1),
       fileUrl: z.string().min(1),
       fileSizeBytes: z.number().int().positive(),
       mimeType: z.string().min(1),
-    }))
+    }).strict())
     .mutation(async ({ input, ctx }) => {
       const todo = await loadToDoForUser(input.toDoId, ctx);
       const tenant = await db.tenant.findFirst({ where: { id: ctx.tenantId } });

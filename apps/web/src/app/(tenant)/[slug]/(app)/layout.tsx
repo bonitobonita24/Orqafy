@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppHeader } from "@/components/layout/app-header";
+import { ContentContainer } from "@/components/layout/content-container";
 
 export const metadata: Metadata = { title: "Orqafy" };
 
@@ -17,7 +18,9 @@ export default async function AppLayout({ children, params }: AppLayoutProps) {
       <AppSidebar slug={slug} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <AppHeader tenantSlug={slug} />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto py-6">
+          <ContentContainer>{children}</ContentContainer>
+        </main>
       </div>
     </div>
   );

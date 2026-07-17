@@ -4,6 +4,7 @@
  * surfaced gracefully by the client component.
  */
 import type { Metadata } from "next";
+import { guardPage } from "@/server/rbac/guard-page";
 import { BreachClient } from "./breach-client";
 
 export const metadata: Metadata = { title: "Data Breach Register" };
@@ -15,7 +16,8 @@ export default async function BreachRegisterPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  await params; // resolve per Next 15 pattern
+  const { slug } = await params;
+  await guardPage(slug, "compliance");
 
   return (
     <div className="space-y-6">

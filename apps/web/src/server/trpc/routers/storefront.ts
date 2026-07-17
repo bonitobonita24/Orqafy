@@ -7,6 +7,7 @@ import {
   publicProcedure,
   writeProcedure,
 } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db, writeAuditLog } from "@orqafy/db";
 import { createXenditInvoiceForOrder } from "@/lib/xendit-invoice";
 import { sanitizePlainText } from "@/server/lib/sanitize";
@@ -31,7 +32,20 @@ async function loadProductForTenant(id: string, ctx: { tenantId: string }) {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const ADMIN_ROLES = new Set(["Administrator", "Platform Owner"]);
+// Migrated to the data-driven `role_permissions` matrix (feature key
+// "storefront"). Seed grants internalStaff {view:true, create:true,
+// update:false} + Customer {view:true, create:true}. Reads and placeOrder
+// stay broad (matches Customer's own grant); admin-only actions (order
+// management, fulfillment, Xendit invoice creation) are gated on "update",
+// which no non-bypass role is granted — resolving to bypass-only (Tenant
+// Super Admin + Platform Owner). This replaces the old ADMIN_ROLES set,
+// which listed the dead role name "Administrator" and so was effectively
+// Platform-Owner-only; the matrix now correctly also admits Tenant Super
+// Admin per the owner's RBAC ruling.
+const storefrontViewProcedure = matrixProcedure("storefront", "view");
+const storefrontCreateProcedure = writeProcedure.use(matrixMiddleware("storefront", "create"));
+const storefrontManageReadProcedure = protectedProcedure.use(matrixMiddleware("storefront", "update"));
+const storefrontManageProcedure = writeProcedure.use(matrixMiddleware("storefront", "update"));
 
 const STATUS_VALUES = [
   "pending",
@@ -94,18 +108,20 @@ const addressSchema = z
   .passthrough()
   .optional();
 
-const placeOrderInputSchema = z.object({
-  customerId: cuid,
-  warehouseId: cuid,
-  items: z.array(orderItemInputSchema).min(1),
-  shippingAddress: addressSchema,
-  billingAddress: addressSchema,
-  paymentMethod: z.string().optional(),
-  notes: z.string().optional(),
-  taxAmount: z.number().nonnegative().default(0),
-  shippingAmount: z.number().nonnegative().default(0),
-  discountAmount: z.number().nonnegative().default(0),
-});
+const placeOrderInputSchema = z
+  .object({
+    customerId: cuid,
+    warehouseId: cuid,
+    items: z.array(orderItemInputSchema).min(1),
+    shippingAddress: addressSchema,
+    billingAddress: addressSchema,
+    paymentMethod: z.string().optional(),
+    notes: z.string().optional(),
+    taxAmount: z.number().nonnegative().default(0),
+    shippingAmount: z.number().nonnegative().default(0),
+    discountAmount: z.number().nonnegative().default(0),
+  })
+  .strict();
 
 const guestCustomerSchema = z.object({
   firstName: z.string().trim().min(1).max(100),
@@ -114,27 +130,23 @@ const guestCustomerSchema = z.object({
   phone: z.string().trim().max(50).optional(),
 });
 
-const placeOrderAsCustomerInputSchema = z.object({
-  tenantSlug: z.string().trim().min(1).max(100),
-  items: z.array(orderItemInputSchema).min(1),
-  customer: guestCustomerSchema,
-  shippingAddress: addressSchema,
-  billingAddress: addressSchema,
-  paymentMethod: z.enum(["cod", "bank_transfer", "xendit"]),
-  notes: z.string().max(2000).optional(),
-  cfTurnstileToken: z.string().min(1),
-});
-
-function requireAdmin(roles: readonly string[]): void {
-  if (!roles.some((r) => ADMIN_ROLES.has(r))) {
-    throw new TRPCError({ code: "FORBIDDEN" });
-  }
-}
+const placeOrderAsCustomerInputSchema = z
+  .object({
+    tenantSlug: z.string().trim().min(1).max(100),
+    items: z.array(orderItemInputSchema).min(1),
+    customer: guestCustomerSchema,
+    shippingAddress: addressSchema,
+    billingAddress: addressSchema,
+    paymentMethod: z.enum(["cod", "bank_transfer", "xendit"]),
+    notes: z.string().max(2000).optional(),
+    cfTurnstileToken: z.string().min(1),
+  })
+  .strict();
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
 export const storefrontRouter = createTRPCRouter({
-  browseProducts: protectedProcedure
+  browseProducts: storefrontViewProcedure
     .input(
       z
         .object({
@@ -167,13 +179,13 @@ export const storefrontRouter = createTRPCRouter({
       return { items, total };
     }),
 
-  getProductById: protectedProcedure
+  getProductById: storefrontViewProcedure
     .input(z.object({ id: cuid }))
     .query(async ({ ctx, input }) => {
       return loadProductForTenant(input.id, ctx);
     }),
 
-  placeOrder: writeProcedure
+  placeOrder: storefrontCreateProcedure
     .input(placeOrderInputSchema)
     .mutation(async ({ ctx, input }) => {
       const customer = await db.customer.findUnique({
@@ -188,6 +200,16 @@ export const storefrontRouter = createTRPCRouter({
           code: "BAD_REQUEST",
           message: "Customer not found or inactive",
         });
+      }
+
+      // M7.2 — defensive: explicitly confirm the user-supplied warehouseId belongs to
+      // this tenant before it is written into stockMovement.fromWarehouseId /
+      // warehouseStock lookups. Currently unreachable with a foreign warehouse (the
+      // stock-availability check below would find no matching row and 0 out), but this
+      // makes the tenant boundary explicit rather than relying on that side effect.
+      const warehouse = await db.warehouse.findUnique({ where: { id: input.warehouseId } });
+      if (!warehouse || warehouse.tenantId !== ctx.tenantId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Warehouse not found." });
       }
 
       const productIds = input.items.map((i) => i.productId);
@@ -526,7 +548,7 @@ export const storefrontRouter = createTRPCRouter({
       };
     }),
 
-  getOrderById: protectedProcedure
+  getOrderById: storefrontViewProcedure
     .input(z.object({ id: cuid }))
     .query(async ({ ctx, input }) => {
       const order = await db.ecommerceOrder.findFirst({
@@ -542,7 +564,7 @@ export const storefrontRouter = createTRPCRouter({
       return order;
     }),
 
-  listMyOrders: protectedProcedure
+  listMyOrders: storefrontViewProcedure
     .input(
       z.object({
         customerId: cuid,
@@ -576,7 +598,7 @@ export const storefrontRouter = createTRPCRouter({
       return { items, total };
     }),
 
-  listAllOrders: protectedProcedure
+  listAllOrders: storefrontManageReadProcedure
     .input(
       z
         .object({
@@ -594,7 +616,6 @@ export const storefrontRouter = createTRPCRouter({
         .default({}),
     )
     .query(async ({ ctx, input }) => {
-      requireAdmin(ctx.roles);
       const where: Record<string, unknown> = { tenantId: ctx.tenantId };
       if (input.status !== undefined) where.status = input.status;
       if (input.paymentStatus !== undefined)
@@ -665,8 +686,8 @@ export const storefrontRouter = createTRPCRouter({
       return order;
     }),
 
-  createXenditInvoice: writeProcedure
-    .input(z.object({ orderId: cuid }))
+  createXenditInvoice: storefrontManageProcedure
+    .input(z.object({ orderId: cuid }).strict())
     .mutation(async ({ ctx, input }) => {
       // Batch 21c: scope by ctx.tenantId so an admin cannot create an invoice
       // against another tenant's order even if they guess the cuid.
@@ -707,16 +728,17 @@ export const storefrontRouter = createTRPCRouter({
       return { invoiceUrl, invoiceId };
     }),
 
-  updateFulfillment: writeProcedure
+  updateFulfillment: storefrontManageProcedure
     .input(
-      z.object({
-        id: cuid,
-        trackingNumber: z.string().trim().min(1).max(200).optional(),
-        paymentMethod: z.string().trim().min(1).max(100).optional(),
-      }),
+      z
+        .object({
+          id: cuid,
+          trackingNumber: z.string().trim().min(1).max(200).optional(),
+          paymentMethod: z.string().trim().min(1).max(100).optional(),
+        })
+        .strict(),
     )
     .mutation(async ({ ctx, input }) => {
-      requireAdmin(ctx.roles);
       await loadOrderForTenant(input.id, ctx);
       return db.ecommerceOrder.update({
         where: { id: input.id },
@@ -731,16 +753,17 @@ export const storefrontRouter = createTRPCRouter({
       });
     }),
 
-  updateOrderStatus: writeProcedure
+  updateOrderStatus: storefrontManageProcedure
     .input(
-      z.object({
-        id: cuid,
-        status: z.enum(STATUS_VALUES),
-        notes: z.string().optional(),
-      }),
+      z
+        .object({
+          id: cuid,
+          status: z.enum(STATUS_VALUES),
+          notes: z.string().optional(),
+        })
+        .strict(),
     )
     .mutation(async ({ ctx, input }) => {
-      requireAdmin(ctx.roles);
       const current = await loadOrderForTenant(input.id, ctx);
       const allowed = STATUS_TRANSITIONS[current.status as OrderStatus] ?? [];
       if (!allowed.includes(input.status)) {

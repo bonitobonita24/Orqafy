@@ -3,39 +3,63 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { posRouter } from "@/server/trpc/routers/pos";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
+import type * as OrqafyDb from "@orqafy/db";
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    pOSSession: {
-      findFirst: vi.fn(),
-      findUnique: vi.fn(),
-      findMany: vi.fn(),
-      count: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
+// Keep the real `hasPermission` resolver (matrix.ts imports it directly from
+// "@orqafy/db") — only mock the prisma client calls it and the router make.
+// Router migrated to the data-driven `role_permissions` matrix (feature key
+// "pos") — matrixMiddleware resolves the caller's role via role.findFirst.
+// Every ctx below defaults to roleId "role-1" and role name "Platform Owner"
+// so the matrix bypasses entirely (this suite proves business logic, not
+// matrix grant/deny behaviour — see pos-matrix.test.ts for that coverage).
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      pOSSession: {
+        findFirst: vi.fn(),
+        findUnique: vi.fn(),
+        findMany: vi.fn(),
+        count: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+      },
+      pOSSale: {
+        findFirst: vi.fn(),
+        findUnique: vi.fn(),
+        findMany: vi.fn(),
+        count: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+        aggregate: vi.fn(),
+      },
+      pOSSaleItem: {
+        create: vi.fn(),
+      },
+      product: {
+        findMany: vi.fn(),
+      },
+      warehouse: {
+        findFirst: vi.fn(),
+      },
+      customer: {
+        findFirst: vi.fn(),
+      },
+      stockMovement: {
+        create: vi.fn(),
+        findMany: vi.fn(),
+      },
+      role: {
+        findFirst: vi.fn(),
+      },
+      rolePermission: {
+        findUnique: vi.fn(),
+      },
+      $transaction: vi.fn(),
     },
-    pOSSale: {
-      findFirst: vi.fn(),
-      findUnique: vi.fn(),
-      findMany: vi.fn(),
-      count: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      aggregate: vi.fn(),
-    },
-    pOSSaleItem: {
-      create: vi.fn(),
-    },
-    product: {
-      findMany: vi.fn(),
-    },
-    stockMovement: {
-      create: vi.fn(),
-      findMany: vi.fn(),
-    },
-    $transaction: vi.fn(),
-  },
-}));
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: {
@@ -54,6 +78,7 @@ function authenticatedCtx(roles: string[] = ["Administrator"], isDemoTenant = fa
     req: makeReq(),
     userId: "user-1",
     roles,
+    roleId: "role-1",
     tenantSlug: "acme",
     tenantId: "acme-tenant-id",
     securityVersion: 1,
@@ -66,6 +91,7 @@ function unauthenticatedCtx() {
     req: makeReq(),
     userId: null,
     roles: [] as string[],
+    roleId: null,
     tenantSlug: null,
     tenantId: null,
     securityVersion: 0,
@@ -98,7 +124,11 @@ const mockDb = db as unknown as {
   };
   pOSSaleItem: { create: any };
   product: { findMany: any };
+  warehouse: { findFirst: any };
+  customer: { findFirst: any };
   stockMovement: { create: any; findMany: any };
+  role: { findFirst: any };
+  rolePermission: { findUnique: any };
   $transaction: any;
 };
 
@@ -111,6 +141,15 @@ const CUSTOMER_ID = "ck1234567890123456789012f";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Every test's caller resolves to a "Platform Owner" role, which bypasses
+  // the "pos" matrix entirely (tenant-rbac-standard.md §4) — this suite
+  // exercises business logic, not matrix grant/deny behaviour (see
+  // pos-matrix.test.ts for that coverage).
+  mockDb.role.findFirst.mockResolvedValue({
+    id: "role-1",
+    tenantId: "acme-tenant-id",
+    name: "Platform Owner",
+  });
 });
 
 // ── session.list ──────────────────────────────────────────────────────────────
@@ -410,6 +449,8 @@ describe("pos.sale.create", () => {
       const ids: string[] = where?.id?.in ?? [];
       return Promise.resolve(ids.map((id) => ({ id })));
     });
+    mockDb.warehouse.findFirst.mockResolvedValue({ id: WAREHOUSE_ID });
+    mockDb.customer.findFirst.mockResolvedValue({ id: CUSTOMER_ID });
     mockDb.pOSSale.findFirst.mockResolvedValue(null); // generateSaleNumber
     mockDb.$transaction.mockImplementation(async (fn: any) => fn(mockDb));
     mockDb.pOSSale.create.mockResolvedValue({
@@ -692,6 +733,62 @@ describe("pos.sale.create", () => {
         changeAmount: 0,
       }),
     });
+  });
+
+  it("rejects a cross-tenant warehouseId (M7.2 IDOR closure)", async () => {
+    mockDb.pOSSession.findFirst.mockResolvedValue({
+      id: SESSION_ID,
+      status: "open",
+    });
+    mockDb.product.findMany.mockResolvedValue([{ id: PRODUCT_A }]);
+    mockDb.warehouse.findFirst.mockResolvedValue(null); // belongs to another tenant
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.pos.sale.create({
+        sessionId: SESSION_ID,
+        warehouseId: WAREHOUSE_ID,
+        paymentMethod: "cash",
+        amountPaid: 500,
+        items: [
+          { productId: PRODUCT_A, description: "X", quantity: 1, unitPrice: 500 },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockDb.warehouse.findFirst).toHaveBeenCalledWith({
+      where: { id: WAREHOUSE_ID, tenantId: "acme-tenant-id" },
+      select: { id: true },
+    });
+    expect(mockDb.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a cross-tenant customerId (M7.2 IDOR closure)", async () => {
+    mockDb.pOSSession.findFirst.mockResolvedValue({
+      id: SESSION_ID,
+      status: "open",
+    });
+    mockDb.product.findMany.mockResolvedValue([{ id: PRODUCT_A }]);
+    mockDb.warehouse.findFirst.mockResolvedValue({ id: WAREHOUSE_ID });
+    mockDb.customer.findFirst.mockResolvedValue(null); // belongs to another tenant
+
+    const caller = createCaller(authenticatedCtx());
+    await expect(
+      caller.pos.sale.create({
+        sessionId: SESSION_ID,
+        warehouseId: WAREHOUSE_ID,
+        customerId: CUSTOMER_ID,
+        paymentMethod: "cash",
+        amountPaid: 500,
+        items: [
+          { productId: PRODUCT_A, description: "X", quantity: 1, unitPrice: 500 },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockDb.customer.findFirst).toHaveBeenCalledWith({
+      where: { id: CUSTOMER_ID, tenantId: "acme-tenant-id" },
+      select: { id: true },
+    });
+    expect(mockDb.$transaction).not.toHaveBeenCalled();
   });
 
   it("rejects when discount exceeds subtotal + tax (negative total)", async () => {

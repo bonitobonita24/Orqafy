@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { tasksRouter } from "@/server/trpc/routers/tasks";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
+import type * as OrqafyDb from "@orqafy/db";
 
 // D7 — taskAssign emits a notification as a side effect; stub it here (the
 // createNotification helper is unit-tested separately in notifications/__tests__).
@@ -14,7 +15,10 @@ vi.mock("@/server/notifications/create", () => ({
   createNotification: vi.fn().mockResolvedValue({ id: "notif-test" }),
 }));
 
-vi.mock("@orqafy/db", () => {
+vi.mock("@orqafy/db", async () => {
+  // Keep the real `hasPermission` resolver (matrix.ts imports it directly
+  // from "@orqafy/db") — only mock the prisma client calls it and the router make.
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
   const mockPrisma = {
     project: {
       findUnique: vi.fn(),
@@ -55,10 +59,26 @@ vi.mock("@orqafy/db", () => {
     auditLog: {
       create: vi.fn(),
     },
+    user: {
+      findUnique: vi.fn(),
+    },
+    // Router migrated to the data-driven `role_permissions` matrix (feature
+    // key "tasks") — matrixMiddleware resolves the caller's role via
+    // role.findFirst. Every authenticated ctx below resolves to "Platform
+    // Owner", which bypasses the matrix entirely (tenant-rbac-standard.md
+    // §4) — this suite exercises business logic, not matrix grant/deny
+    // behaviour (see tasks-matrix.test.ts for that coverage).
+    role: {
+      findFirst: vi.fn().mockResolvedValue({ id: "role-1", tenantId: "acme-tenant-id", name: "Platform Owner" }),
+    },
+    rolePermission: {
+      findUnique: vi.fn(),
+    },
     // Pass-through $transaction so router mutations that wrap in a transaction work in tests.
     $transaction: vi.fn((fn: (tx: unknown) => unknown) => Promise.resolve(fn(mockPrisma))),
   };
   return {
+    ...actual,
     prisma: mockPrisma,
     writeAuditLog: vi.fn(),
   };
@@ -73,6 +93,7 @@ function authenticatedCtx() {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-1",
     tenantSlug: "acme",
     tenantId: "acme-tenant-id",
     securityVersion: 1,
@@ -85,6 +106,7 @@ function unauthenticatedCtx() {
     req: makeReq(),
     userId: null,
     roles: [] as string[],
+    roleId: null,
     tenantSlug: null,
     tenantId: null,
     securityVersion: 0,
@@ -132,6 +154,9 @@ const mockDb = db as unknown as {
   };
   plan: {
     findFirst: ReturnType<typeof vi.fn>;
+  };
+  user: {
+    findUnique: ReturnType<typeof vi.fn>;
   };
 };
 
@@ -265,6 +290,7 @@ describe("tasks.taskCreate", () => {
 
   it("forwards optional priority, description, and parentTaskId to Prisma", async () => {
     mockDb.project.findUnique.mockResolvedValueOnce({ id: "proj-1", tenantId: "acme-tenant-id" });
+    mockDb.task.findUnique.mockResolvedValueOnce({ id: "task-parent", tenantId: "acme-tenant-id" }); // loadTaskForTenant(parentTaskId)
     mockDb.task.create.mockResolvedValueOnce({ id: "task-new" });
 
     const caller = createCaller(authenticatedCtx());
@@ -417,6 +443,7 @@ describe("tasks.taskAssign", () => {
     const existing = { id: "task-1", status: "todo", tenantId: "acme-tenant-id" };
     const assignment = { id: "assign-1", taskId: "task-1", userId: "user-2" };
     mockDb.task.findUnique.mockResolvedValueOnce(existing);
+    mockDb.user.findUnique.mockResolvedValueOnce({ id: "user-2", tenantId: "acme-tenant-id" });
     mockDb.taskAssignment.findFirst.mockResolvedValueOnce(null);
     mockDb.taskAssignment.create.mockResolvedValueOnce(assignment);
 
@@ -430,6 +457,7 @@ describe("tasks.taskAssign", () => {
   it("throws CONFLICT when user is already assigned", async () => {
     const existing = { id: "task-1", status: "todo", tenantId: "acme-tenant-id" };
     mockDb.task.findUnique.mockResolvedValueOnce(existing);
+    mockDb.user.findUnique.mockResolvedValueOnce({ id: "user-2", tenantId: "acme-tenant-id" });
     mockDb.taskAssignment.findFirst.mockResolvedValueOnce({ id: "assign-existing" });
 
     const caller = createCaller(authenticatedCtx());

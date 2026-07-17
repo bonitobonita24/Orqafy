@@ -30,7 +30,15 @@ import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 // ---------------------------------------------------------------------------
 // Mock heavy dependencies so unit tests don't need real DB / Redis
 // ---------------------------------------------------------------------------
-vi.mock("@orqafy/db", () => {
+// Keep the real `hasPermission` resolver (matrixMiddleware imports it from
+// this module) — only replace the prisma client calls it makes. Router
+// procedures now run through matrixMiddleware (tenant-rbac-standard.md §4);
+// tests grant a Platform Owner bypass role via mockDb.role.findFirst so all
+// pre-existing business-logic assertions below are unaffected by RBAC.
+import type * as OrqafyDb from "@orqafy/db";
+
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
   const accountCreate = vi.fn();
   const accountUpdate = vi.fn();
   const journalEntryCreate = vi.fn();
@@ -43,6 +51,7 @@ vi.mock("@orqafy/db", () => {
     auditLog: { create: vi.fn() },
   };
   return {
+    ...actual,
     prisma: {
       account: {
         findMany: vi.fn(),
@@ -75,6 +84,9 @@ vi.mock("@orqafy/db", () => {
         create: vi.fn(),
         count: vi.fn(),
       },
+      // RBAC matrix resolver mocks (tenant-rbac-standard.md §4) — see comment above.
+      role: { findFirst: vi.fn() },
+      rolePermission: { findUnique: vi.fn() },
       $transaction: vi.fn().mockImplementation(async (fn: (tx: typeof mockTx) => Promise<unknown>) => fn(mockTx)),
     },
     writeAuditLog: vi.fn(),
@@ -95,6 +107,7 @@ function authenticatedCtx() {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"],
+    roleId: "role-a",
     tenantSlug: "acme",
     tenantId: "acme-tenant-id",
     securityVersion: 1,
@@ -108,6 +121,7 @@ function unauthenticatedCtx() {
     req: makeReq(),
     userId: null,
     roles: [],
+    roleId: null,
     tenantSlug: null,
     tenantId: null,
     securityVersion: 0,
@@ -153,6 +167,12 @@ const mockDb = db as unknown as {
     findUnique: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
     count: ReturnType<typeof vi.fn>;
+  };
+  role: {
+    findFirst: ReturnType<typeof vi.fn>;
+  };
+  rolePermission: {
+    findUnique: ReturnType<typeof vi.fn>;
   };
 };
 
@@ -231,6 +251,10 @@ const sampleTaxRate = {
 describe("accounting.account.list", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-arm the RBAC matrix bypass after every clearAllMocks — Platform Owner
+    // bypasses the matrix entirely (tenant-rbac-standard.md §4), keeping these
+    // pre-existing assertions focused on business logic, not RBAC.
+    mockDb.role.findFirst.mockResolvedValue({ id: "role-x", tenantId: "acme-tenant-id", name: "Platform Owner" });
   });
 
   it("returns paginated accounts for authenticated user", async () => {
@@ -304,6 +328,10 @@ describe("accounting.account.list", () => {
 describe("accounting.account.byId", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-arm the RBAC matrix bypass after every clearAllMocks — Platform Owner
+    // bypasses the matrix entirely (tenant-rbac-standard.md §4), keeping these
+    // pre-existing assertions focused on business logic, not RBAC.
+    mockDb.role.findFirst.mockResolvedValue({ id: "role-x", tenantId: "acme-tenant-id", name: "Platform Owner" });
   });
 
   it("returns an account by id", async () => {
@@ -332,6 +360,10 @@ describe("accounting.account.byId", () => {
 describe("accounting.account.create", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-arm the RBAC matrix bypass after every clearAllMocks — Platform Owner
+    // bypasses the matrix entirely (tenant-rbac-standard.md §4), keeping these
+    // pre-existing assertions focused on business logic, not RBAC.
+    mockDb.role.findFirst.mockResolvedValue({ id: "role-x", tenantId: "acme-tenant-id", name: "Platform Owner" });
   });
 
   it("creates an account with required fields", async () => {
@@ -370,6 +402,10 @@ describe("accounting.account.create", () => {
 describe("accounting.account.update", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-arm the RBAC matrix bypass after every clearAllMocks — Platform Owner
+    // bypasses the matrix entirely (tenant-rbac-standard.md §4), keeping these
+    // pre-existing assertions focused on business logic, not RBAC.
+    mockDb.role.findFirst.mockResolvedValue({ id: "role-x", tenantId: "acme-tenant-id", name: "Platform Owner" });
   });
 
   it("updates account name and description", async () => {
@@ -446,6 +482,10 @@ describe("accounting.account.update", () => {
 describe("accounting.account.toggleActive", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-arm the RBAC matrix bypass after every clearAllMocks — Platform Owner
+    // bypasses the matrix entirely (tenant-rbac-standard.md §4), keeping these
+    // pre-existing assertions focused on business logic, not RBAC.
+    mockDb.role.findFirst.mockResolvedValue({ id: "role-x", tenantId: "acme-tenant-id", name: "Platform Owner" });
   });
 
   it("flips isActive from true to false", async () => {
@@ -483,6 +523,10 @@ describe("accounting.account.toggleActive", () => {
 describe("accounting.journalEntry.list", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-arm the RBAC matrix bypass after every clearAllMocks — Platform Owner
+    // bypasses the matrix entirely (tenant-rbac-standard.md §4), keeping these
+    // pre-existing assertions focused on business logic, not RBAC.
+    mockDb.role.findFirst.mockResolvedValue({ id: "role-x", tenantId: "acme-tenant-id", name: "Platform Owner" });
   });
 
   it("returns paginated journal entries for authenticated user", async () => {
@@ -531,6 +575,10 @@ describe("accounting.journalEntry.list", () => {
 describe("accounting.journalEntry.byId", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-arm the RBAC matrix bypass after every clearAllMocks — Platform Owner
+    // bypasses the matrix entirely (tenant-rbac-standard.md §4), keeping these
+    // pre-existing assertions focused on business logic, not RBAC.
+    mockDb.role.findFirst.mockResolvedValue({ id: "role-x", tenantId: "acme-tenant-id", name: "Platform Owner" });
   });
 
   it("returns a journal entry by id", async () => {
@@ -559,6 +607,10 @@ describe("accounting.journalEntry.byId", () => {
 describe("accounting.journalEntry.create", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-arm the RBAC matrix bypass after every clearAllMocks — Platform Owner
+    // bypasses the matrix entirely (tenant-rbac-standard.md §4), keeping these
+    // pre-existing assertions focused on business logic, not RBAC.
+    mockDb.role.findFirst.mockResolvedValue({ id: "role-x", tenantId: "acme-tenant-id", name: "Platform Owner" });
   });
 
   it("creates a journal entry with balanced lines", async () => {
@@ -611,6 +663,10 @@ describe("accounting.journalEntry.create", () => {
 describe("accounting.journalEntry.post", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-arm the RBAC matrix bypass after every clearAllMocks — Platform Owner
+    // bypasses the matrix entirely (tenant-rbac-standard.md §4), keeping these
+    // pre-existing assertions focused on business logic, not RBAC.
+    mockDb.role.findFirst.mockResolvedValue({ id: "role-x", tenantId: "acme-tenant-id", name: "Platform Owner" });
   });
 
   it("posts a draft journal entry", async () => {
@@ -672,6 +728,10 @@ describe("accounting.journalEntry.post", () => {
 describe("accounting.journalEntry.reverse", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-arm the RBAC matrix bypass after every clearAllMocks — Platform Owner
+    // bypasses the matrix entirely (tenant-rbac-standard.md §4), keeping these
+    // pre-existing assertions focused on business logic, not RBAC.
+    mockDb.role.findFirst.mockResolvedValue({ id: "role-x", tenantId: "acme-tenant-id", name: "Platform Owner" });
   });
 
   it("reverses a posted entry by creating a counter-entry with swapped debits/credits", async () => {
@@ -770,6 +830,10 @@ describe("accounting.journalEntry.reverse", () => {
 describe("accounting.fiscalYear.list", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-arm the RBAC matrix bypass after every clearAllMocks — Platform Owner
+    // bypasses the matrix entirely (tenant-rbac-standard.md §4), keeping these
+    // pre-existing assertions focused on business logic, not RBAC.
+    mockDb.role.findFirst.mockResolvedValue({ id: "role-x", tenantId: "acme-tenant-id", name: "Platform Owner" });
   });
 
   it("returns paginated fiscal years for authenticated user", async () => {
@@ -796,6 +860,10 @@ describe("accounting.fiscalYear.list", () => {
 describe("accounting.fiscalYear.create", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-arm the RBAC matrix bypass after every clearAllMocks — Platform Owner
+    // bypasses the matrix entirely (tenant-rbac-standard.md §4), keeping these
+    // pre-existing assertions focused on business logic, not RBAC.
+    mockDb.role.findFirst.mockResolvedValue({ id: "role-x", tenantId: "acme-tenant-id", name: "Platform Owner" });
   });
 
   it("creates a fiscal year with required fields", async () => {
@@ -834,6 +902,10 @@ describe("accounting.fiscalYear.create", () => {
 describe("accounting.taxRate.list", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-arm the RBAC matrix bypass after every clearAllMocks — Platform Owner
+    // bypasses the matrix entirely (tenant-rbac-standard.md §4), keeping these
+    // pre-existing assertions focused on business logic, not RBAC.
+    mockDb.role.findFirst.mockResolvedValue({ id: "role-x", tenantId: "acme-tenant-id", name: "Platform Owner" });
   });
 
   it("returns paginated tax rates for authenticated user", async () => {
@@ -871,6 +943,10 @@ describe("accounting.taxRate.list", () => {
 describe("accounting.taxRate.create", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-arm the RBAC matrix bypass after every clearAllMocks — Platform Owner
+    // bypasses the matrix entirely (tenant-rbac-standard.md §4), keeping these
+    // pre-existing assertions focused on business logic, not RBAC.
+    mockDb.role.findFirst.mockResolvedValue({ id: "role-x", tenantId: "acme-tenant-id", name: "Platform Owner" });
   });
 
   it("creates a tax rate with required fields", async () => {

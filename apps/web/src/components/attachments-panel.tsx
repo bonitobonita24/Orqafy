@@ -108,6 +108,7 @@ export function AttachmentsPanel({ entityType, entityId, readOnly = false }: Pro
                 className="h-7 w-7 shrink-0"
                 onClick={() => void handleDownload(a.id, a.filename)}
                 title="Download"
+                aria-label={`Download ${a.filename}`}
               >
                 <Download className="h-3.5 w-3.5" />
               </Button>
@@ -119,6 +120,7 @@ export function AttachmentsPanel({ entityType, entityId, readOnly = false }: Pro
                   onClick={() => deleteAttachment.mutate({ attachmentId: a.id })}
                   disabled={deleteAttachment.isPending}
                   title="Delete"
+                  aria-label={`Delete ${a.filename}`}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>

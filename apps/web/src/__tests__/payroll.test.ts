@@ -3,40 +3,51 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { payrollRouter } from "@/server/trpc/routers/payroll";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
+import type * as OrqafyDb from "@orqafy/db";
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    payroll: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      count: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
+// Keep the real `hasPermission` resolver (matrix.ts imports it directly from
+// "@orqafy/db" — payroll.ts is migrated to the data-driven `role_permissions`
+// matrix, feature key "payroll") — only mock the prisma client calls it and
+// the router make.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      role: { findFirst: vi.fn() },
+      rolePermission: { findUnique: vi.fn() },
+      payroll: {
+        findMany: vi.fn(),
+        findUnique: vi.fn(),
+        count: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+      },
+      payslip: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn() },
+      statutoryRate: { findMany: vi.fn().mockResolvedValue([]) },
+      fundSource: { findUnique: vi.fn() },
+      accountingSettings: { findUnique: vi.fn().mockResolvedValue(null) },
+      $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          payroll: {
+            create: vi.fn().mockResolvedValue({ id: "ck1234567890123456789012a", status: "draft", payrollNumber: "PAY-0001" }),
+            // Echo input data so callers reading the returned object see what was written.
+            update: vi.fn().mockImplementation((args: any) => Promise.resolve({ id: "ck1234567890123456789012a", ...args.data })),
+          },
+          payslip: { create: vi.fn(), update: vi.fn(), delete: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
+          fundSource: { update: vi.fn() },
+          fundTransaction: { create: vi.fn() },
+          statutoryRate: { create: vi.fn(), createMany: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
+          accountingSettings: { findUnique: vi.fn().mockResolvedValue(null) },
+          fiscalYear: { findUnique: vi.fn().mockResolvedValue({ id: "fy-1", tenantId: "acme-tenant-id", isClosed: false }) },
+          account: { findMany: vi.fn().mockResolvedValue([{ id: "acct-exp", tenantId: "acme-tenant-id", isActive: true, name: "Expense" }, { id: "acct-ap", tenantId: "acme-tenant-id", isActive: true, name: "AP" }]) },
+          journalEntry: { count: vi.fn().mockResolvedValue(0), create: vi.fn().mockResolvedValue({ id: "je-1", entryNumber: "JE-0001" }) },
+        })
+      ),
     },
-    payslip: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn() },
-    statutoryRate: { findMany: vi.fn().mockResolvedValue([]) },
-    fundSource: { findUnique: vi.fn() },
-    accountingSettings: { findUnique: vi.fn().mockResolvedValue(null) },
-    $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) =>
-      fn({
-        payroll: {
-          create: vi.fn().mockResolvedValue({ id: "ck1234567890123456789012a", status: "draft", payrollNumber: "PAY-0001" }),
-          // Echo input data so callers reading the returned object see what was written.
-          update: vi.fn().mockImplementation((args: any) => Promise.resolve({ id: "ck1234567890123456789012a", ...args.data })),
-        },
-        payslip: { create: vi.fn(), update: vi.fn(), delete: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
-        fundSource: { update: vi.fn() },
-        fundTransaction: { create: vi.fn() },
-        statutoryRate: { create: vi.fn(), createMany: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
-        accountingSettings: { findUnique: vi.fn().mockResolvedValue(null) },
-        fiscalYear: { findUnique: vi.fn().mockResolvedValue({ id: "fy-1", tenantId: "acme-tenant-id", isClosed: false }) },
-        account: { findMany: vi.fn().mockResolvedValue([{ id: "acct-exp", tenantId: "acme-tenant-id", isActive: true, name: "Expense" }, { id: "acct-ap", tenantId: "acme-tenant-id", isActive: true, name: "AP" }]) },
-        journalEntry: { count: vi.fn().mockResolvedValue(0), create: vi.fn().mockResolvedValue({ id: "je-1", entryNumber: "JE-0001" }) },
-      })
-    ),
-  },
-  writeAuditLog: vi.fn(),
-}));
+    writeAuditLog: vi.fn(),
+  };
+});
 
 import type { NextRequest } from "next/server";
 function makeReq(): NextRequest {
@@ -47,6 +58,7 @@ function authenticatedCtx(roles: string[] = ["Administrator"], isDemoTenant = fa
     req: makeReq(),
     userId: "user-1",
     roles,
+    roleId: "role-1",
     tenantSlug: "acme",
     tenantId: "acme-tenant-id",
     securityVersion: 1,
@@ -59,6 +71,7 @@ function unauthenticatedCtx() {
     req: makeReq(),
     userId: null,
     roles: [] as string[],
+    roleId: null,
     tenantSlug: null,
     tenantId: null,
     securityVersion: 0,
@@ -72,6 +85,8 @@ const createCaller = createCallerFactory(testRouter);
 
 import { prisma as db } from "@orqafy/db";
 const mockDb = db as unknown as {
+  role: { findFirst: any };
+  rolePermission: { findUnique: any };
   payroll: {
     findMany: any;
     findUnique: any;
@@ -90,6 +105,11 @@ const PAYROLL_CUID = "ck1234567890123456789012a";
 describe("payroll router", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Matrix bypass — Platform Owner skips the rolePermission grant lookup
+    // entirely (tenant-rbac-standard.md §4). Pre-existing tests in this file
+    // assert business logic, not RBAC grants — the matrix migration itself is
+    // covered by payroll-matrix.test.ts.
+    mockDb.role.findFirst.mockResolvedValue({ id: "role-1", tenantId: "acme-tenant-id", name: "Platform Owner" });
   });
 
   describe("list", () => {

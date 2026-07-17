@@ -1,10 +1,23 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure, publicProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure, publicProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db, writeAuditLog } from "@orqafy/db";
 import { rateLimiters } from "@/server/lib/rate-limit";
 import { sanitizePlainText } from "@/server/lib/sanitize";
 import { createNotification } from "@/server/notifications/create";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key
+// "invoices"). Reads use `matrixProcedure` (protectedProcedure +
+// matrixMiddleware); mutations compose `writeProcedure.use(matrixMiddleware(...))`
+// so the demo-tenant mutation guard survives alongside the matrix grant check.
+// markSent/recordPayment/markPaid/void all map to "update" (they mutate an
+// existing invoice's status/balance, not create or delete it). `publicView`
+// is a public client-facing link (token-based, no session) and is
+// deliberately left on `publicProcedure` — it is NOT gated by the matrix.
+const invoicesViewProcedure = matrixProcedure("invoices", "view");
+const invoicesCreateProcedure = writeProcedure.use(matrixMiddleware("invoices", "create"));
+const invoicesUpdateProcedure = writeProcedure.use(matrixMiddleware("invoices", "update"));
 
 async function loadInvoiceForTenant(id: string, ctx: { tenantId: string }) {
   const invoice = await db.invoice.findUnique({ where: { id } });
@@ -12,6 +25,15 @@ async function loadInvoiceForTenant(id: string, ctx: { tenantId: string }) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
   }
   return invoice;
+}
+
+// M7.2 — a user-supplied projectId must belong to the caller's tenant before it is
+// written into an invoice FK. Skips the check entirely when projectId is not supplied.
+async function assertProjectBelongsToTenant(projectId: string, ctx: { tenantId: string }) {
+  const project = await db.project.findUnique({ where: { id: projectId } });
+  if (!project || project.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Project not found." });
+  }
 }
 
 const PAYMENT_METHODS = ["cash", "bank_transfer", "gcash", "maya", "card", "xendit", "credit"] as const;
@@ -176,10 +198,10 @@ const invoiceInput = z.object({
   dueDate: z.date(),
   notes: z.string().max(1000).optional(),
   lineItems: z.array(lineItemInput).min(1).max(50),
-});
+}).strict();
 
 export const invoiceRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: invoicesViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -211,7 +233,7 @@ export const invoiceRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: invoicesViewProcedure
     .input(z.object({ id: z.string().cuid() }))
     .query(async ({ input, ctx }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
@@ -258,12 +280,15 @@ export const invoiceRouter = createTRPCRouter({
       };
     }),
 
-  create: writeProcedure
+  create: invoicesCreateProcedure
     .input(invoiceInput)
     .mutation(async ({ input, ctx }) => {
       const customer = await db.customer.findUnique({ where: { id: input.customerId } });
       if (!customer || customer.tenantId !== ctx.tenantId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Customer not found." });
+      }
+      if (input.projectId !== undefined) {
+        await assertProjectBelongsToTenant(input.projectId, ctx);
       }
 
       const subtotal = input.lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
@@ -288,13 +313,22 @@ export const invoiceRouter = createTRPCRouter({
       });
     }),
 
-  update: writeProcedure
-    .input(invoiceInput.partial().extend({ id: z.string().cuid() }))
+  update: invoicesUpdateProcedure
+    .input(invoiceInput.partial().extend({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const { id, ...rest } = input;
       const existing = await loadInvoiceForTenant(id, ctx);
       if (existing.status !== "draft") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft invoices can be edited." });
+      }
+      if (rest.customerId !== undefined) {
+        const customer = await db.customer.findUnique({ where: { id: rest.customerId } });
+        if (!customer || customer.tenantId !== ctx.tenantId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Customer not found." });
+        }
+      }
+      if (rest.projectId !== undefined) {
+        await assertProjectBelongsToTenant(rest.projectId, ctx);
       }
 
       const subtotal =
@@ -318,8 +352,8 @@ export const invoiceRouter = createTRPCRouter({
       });
     }),
 
-  markSent: writeProcedure
-    .input(z.object({ id: z.string().cuid() }))
+  markSent: invoicesUpdateProcedure
+    .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadInvoiceForTenant(input.id, ctx);
       if (existing.status !== "draft") {
@@ -334,7 +368,7 @@ export const invoiceRouter = createTRPCRouter({
   // F2 (Phase 7) — record a partial or full payment. Drives the
   // partially_paid / paid lifecycle and (D1) auto-posts a Banking income
   // transaction when a fund source is supplied.
-  recordPayment: writeProcedure
+  recordPayment: invoicesUpdateProcedure
     .input(
       z.object({
         id: z.string().cuid(),
@@ -344,7 +378,7 @@ export const invoiceRouter = createTRPCRouter({
         paidAt: z.date().optional(),
         referenceNumber: z.string().max(255).optional(),
         notes: z.string().max(1000).optional(),
-      }),
+      }).strict(),
     )
     .mutation(async ({ input, ctx }) => {
       return recordInvoicePayment({
@@ -361,14 +395,14 @@ export const invoiceRouter = createTRPCRouter({
 
   // Thin "pay full balance" convenience over recordPayment (F2). Settles the
   // entire outstanding balance in one call.
-  markPaid: writeProcedure
+  markPaid: invoicesUpdateProcedure
     .input(
       z.object({
         id: z.string().cuid(),
         paidAt: z.date().optional(),
         method: z.enum(PAYMENT_METHODS).default("cash"),
         fundSourceId: z.string().cuid().optional(),
-      }),
+      }).strict(),
     )
     .mutation(async ({ input, ctx }) => {
       const existing = await loadInvoiceForTenant(input.id, ctx);
@@ -392,8 +426,8 @@ export const invoiceRouter = createTRPCRouter({
       });
     }),
 
-  void: writeProcedure
-    .input(z.object({ id: z.string().cuid() }))
+  void: invoicesUpdateProcedure
+    .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadInvoiceForTenant(input.id, ctx);
       if (existing.status === "paid") {

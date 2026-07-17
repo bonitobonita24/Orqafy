@@ -1,7 +1,38 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-06-21 by CLAUDE_CODE (V32.9 Mega-Prompt Conformance check)
+> Last updated: 2026-07-12 by CLAUDE_CODE (RBAC §4 — owner-transfer UI, two-way succession §2)
+
+---
+
+## Current Verification (Rule 32 Verifiable-Done evidence)
+
+Latest done-claim: RBAC §4 owner-transfer UI (two-way succession §2) on
+`feat/tenant-rbac-3tier` (LOCAL, HARD HOLD, unpushed). Commit f89e689.
+This closed the last un-gated [HOW] gap for the RBAC §4 goal.
+
+evidence:
+  contract: "web typecheck 0 errors; full web vitest suite green; eslint clean; design anti-slop lint PASS; live Rule-16 QA of owner + non-owner paths with 0 console errors"
+  check_command: "pnpm --filter @orqafy/web typecheck && pnpm --filter @orqafy/web test && pnpm --filter @orqafy/web lint && bash scripts/lint-design.sh --report-only apps/web/src"
+  captured_output: |
+    > @orqafy/web@0.9.0 typecheck
+    > tsc --noEmit
+    (0 errors)
+
+    Test Files  84 passed (84)
+    Tests       1258 passed (1258)
+
+    ✔ No ESLint warnings or errors
+
+    DESIGN ANTI-SLOP SUMMARY  |  files scanned: 256
+      Result : PASS  (no AI-slop tells found)
+
+    Live Rule-16 QA (dev :42951, demo tenant):
+      - owner (webmaster, is_tenant_owner): sees "Ownership" panel + "Owner"
+        badge; dialog lists exactly the 2 eligible members (admin, user),
+        confirm gated on selection.
+      - non-owner (admin@mail.com, Tenant Super Admin): no panel; Owner badge
+        still shown on webmaster row (data-driven). 0 console errors.
 
 ---
 

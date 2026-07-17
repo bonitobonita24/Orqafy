@@ -11,30 +11,39 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as OrqafyDb from "@orqafy/db";
 
 // ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
-const { mockQuotationFindFirst, mockCustomerFindUnique, mockQuotationCreate } =
+const { mockQuotationFindFirst, mockCustomerFindUnique, mockQuotationCreate, mockRoleFindFirst, mockRolePermissionFindUnique } =
   vi.hoisted(() => ({
     mockQuotationFindFirst: vi.fn(),
     mockCustomerFindUnique: vi.fn(),
     mockQuotationCreate: vi.fn(),
+    mockRoleFindFirst: vi.fn(),
+    mockRolePermissionFindUnique: vi.fn(),
   }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    quotation: {
-      findFirst: mockQuotationFindFirst,
-      findUnique: vi.fn(),
-      findMany: vi.fn(),
-      create: mockQuotationCreate,
-      count: vi.fn(),
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      quotation: {
+        findFirst: mockQuotationFindFirst,
+        findUnique: vi.fn(),
+        findMany: vi.fn(),
+        create: mockQuotationCreate,
+        count: vi.fn(),
+      },
+      customer: {
+        findUnique: mockCustomerFindUnique,
+      },
+      role: { findFirst: mockRoleFindFirst },
+      rolePermission: { findUnique: mockRolePermissionFindUnique },
+      $transaction: vi.fn(),
     },
-    customer: {
-      findUnique: mockCustomerFindUnique,
-    },
-    $transaction: vi.fn(),
-  },
-}));
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: { api: { check: vi.fn() }, public: { check: vi.fn() } },
@@ -57,6 +66,7 @@ function ctxForTenant(tenantId: string) {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-1",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -70,6 +80,13 @@ function ctxForTenant(tenantId: string) {
 describe("Quotation tenant parity (K-prime Extended closure)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Matrix middleware bypass by default — these tests assert tenant-isolation
+    // (IDOR) behavior, not RBAC grant/deny (covered by crm-matrix.test.ts).
+    mockRoleFindFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "tenant-A",
+      name: "Platform Owner",
+    });
   });
 
   it("quotationById throws NOT_FOUND when quotation belongs to a different tenant", async () => {

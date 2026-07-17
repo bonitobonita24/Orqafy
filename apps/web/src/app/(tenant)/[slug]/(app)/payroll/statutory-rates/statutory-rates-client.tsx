@@ -94,13 +94,17 @@ export function StatutoryRatesClient({ slug: _slug }: { slug: string }) {
       toast.error("Effective from date is required.");
       return;
     }
+    // The admin form accepts free-form JSON in a textarea (per-type config shape
+    // varies — see payroll-compute.ts). The server's discriminated-union Zod
+    // schema is the actual enforcement point; this cast only satisfies the
+    // client-side mutation input type for the raw-JSON authoring flow.
     upsertMut.mutate({
       type,
       config: parsed,
       source,
       effectiveFrom,
       isActive: true,
-    });
+    } as unknown as Parameters<typeof upsertMut.mutate>[0]);
   }
 
   if (isLoading) {

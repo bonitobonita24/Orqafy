@@ -7,32 +7,63 @@
  *  2. expense.byId returns the expense when tenantId matches ctx
  *  3. expense.create throws BAD_REQUEST when expenseCategory belongs to tenant-B but ctx is tenant-A
  *  4. expense.create injects tenantId from ctx into db.expense.create data
+ *  5. (M7.2) expense.create throws BAD_REQUEST when projectId belongs to tenant-B
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as OrqafyDb from "@orqafy/db";
 
 // ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
-const { mockExpenseFindUnique, mockExpenseCreate, mockExpenseCategoryFindUnique } = vi.hoisted(() => ({
+const {
+  mockExpenseFindUnique,
+  mockExpenseCreate,
+  mockExpenseCategoryFindUnique,
+  mockProjectFindUnique,
+  mockRoleFindFirst,
+} = vi.hoisted(() => ({
   mockExpenseFindUnique: vi.fn(),
   mockExpenseCreate: vi.fn(),
   mockExpenseCategoryFindUnique: vi.fn(),
+  mockProjectFindUnique: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    expense: {
-      findUnique: mockExpenseFindUnique,
-      findMany: vi.fn(),
-      create: mockExpenseCreate,
-      update: vi.fn(),
-      count: vi.fn(),
+// Keep the real `hasPermission` resolver (matrix.ts imports it directly from
+// "@orqafy/db") — only mock the prisma client calls it and the router make.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      expense: {
+        findUnique: mockExpenseFindUnique,
+        findMany: vi.fn(),
+        create: mockExpenseCreate,
+        update: vi.fn(),
+        count: vi.fn(),
+      },
+      expenseCategory: {
+        findUnique: mockExpenseCategoryFindUnique,
+        findMany: vi.fn(),
+      },
+      project: {
+        findUnique: mockProjectFindUnique,
+      },
+      // Router migrated to the data-driven `role_permissions` matrix
+      // (feature key "expenses") — matrixMiddleware resolves the caller's
+      // role via role.findFirst. Every ctx below uses roleId "role-1" and
+      // role name "Platform Owner" so the matrix bypasses entirely (this
+      // suite proves tenant-scoping business logic, not matrix grants —
+      // see expense-matrix.test.ts for matrix grant/deny coverage).
+      role: {
+        findFirst: mockRoleFindFirst,
+      },
+      rolePermission: {
+        findUnique: vi.fn(),
+      },
     },
-    expenseCategory: {
-      findUnique: mockExpenseCategoryFindUnique,
-      findMany: vi.fn(),
-    },
-  },
-}));
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: { api: { check: vi.fn() }, public: { check: vi.fn() } },
@@ -55,6 +86,7 @@ function ctxForTenant(tenantId: string) {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-1",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -68,6 +100,15 @@ function ctxForTenant(tenantId: string) {
 describe("Expense tenant parity (K-prime closure)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Every test's caller resolves to a "Platform Owner" role, which
+    // bypasses the "expenses" matrix entirely (tenant-rbac-standard.md §4)
+    // — this suite exercises tenant-scoping business logic, not matrix
+    // grant/deny behaviour (see expense-matrix.test.ts for that coverage).
+    mockRoleFindFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "tenant-A",
+      name: "Platform Owner",
+    });
   });
 
   it("expense.byId throws NOT_FOUND when expense belongs to tenant-B but ctx is tenant-A", async () => {
@@ -174,5 +215,37 @@ describe("Expense tenant parity (K-prime closure)", () => {
     expect(mockExpenseCreate).toHaveBeenCalledOnce();
     const callArg = mockExpenseCreate.mock.calls[0]![0];
     expect(callArg.data.tenantId).toBe("tenant-A");
+  });
+
+  it("expense.create throws BAD_REQUEST when projectId belongs to a different tenant (M7.2)", async () => {
+    const catId = "clh3k2p0q0000hxog4d8e5f9j";
+    mockExpenseCategoryFindUnique.mockResolvedValueOnce({
+      id: catId,
+      tenantId: "tenant-A",
+      name: "Office",
+      isActive: true,
+    });
+    const projectId = "clh3k2p0q0005hxog4d8e5f9m";
+    mockProjectFindUnique.mockResolvedValueOnce({
+      id: projectId,
+      tenantId: "tenant-B",
+    });
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+
+    await expect(
+      caller.expense.create({
+        expenseCategoryId: catId,
+        projectId,
+        description: "test",
+        amount: 100,
+        currency: "PHP",
+        date: new Date("2024-01-01"),
+      })
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Project not found.",
+    });
+    expect(mockExpenseCreate).not.toHaveBeenCalled();
   });
 });

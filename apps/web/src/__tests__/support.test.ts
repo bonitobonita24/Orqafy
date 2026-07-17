@@ -16,28 +16,49 @@
 /* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/require-await */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as OrqafyDb from "@orqafy/db";
 import { supportRouter } from "@/server/trpc/routers/support";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    supportTicket: {
-      findFirst: vi.fn(),
-      findUnique: vi.fn(),
-      findMany: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      count: vi.fn(),
+// Keep the real `hasPermission` resolver (matrix.ts imports it directly from
+// "@orqafy/db") — only mock the prisma client calls it and the router make.
+// Router migrated to the data-driven `role_permissions` matrix (feature key
+// "support"); every ctx below resolves to a "Platform Owner" role via
+// role.findFirst so the matrix bypasses entirely (this suite proves
+// business logic, not matrix grant/deny behaviour — see
+// server/trpc/__tests__/support-matrix.test.ts for that coverage).
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      supportTicket: {
+        findFirst: vi.fn(),
+        findUnique: vi.fn(),
+        findMany: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+        count: vi.fn(),
+      },
+      ticketComment: {
+        findMany: vi.fn(),
+        create: vi.fn(),
+      },
+      ticketAttachment: {
+        findMany: vi.fn(),
+      },
+      user: {
+        findUnique: vi.fn(),
+      },
+      role: {
+        findFirst: vi.fn(),
+      },
+      rolePermission: {
+        findUnique: vi.fn(),
+      },
     },
-    ticketComment: {
-      findMany: vi.fn(),
-      create: vi.fn(),
-    },
-    ticketAttachment: {
-      findMany: vi.fn(),
-    },
-  },
-}));
+  };
+});
 
 const testRouter = createTRPCRouter({ support: supportRouter });
 const createCaller = createCallerFactory(testRouter);
@@ -55,6 +76,9 @@ const mockDb = db as unknown as {
   };
   ticketComment: { findMany: MockFn; create: MockFn };
   ticketAttachment: { findMany: MockFn };
+  user: { findUnique: MockFn };
+  role: { findFirst: MockFn };
+  rolePermission: { findUnique: MockFn };
 };
 
 // ── Context factories ─────────────────────────────────────────────────────────
@@ -68,6 +92,7 @@ function adminCtx() {
     req: makeReq(),
     userId: "user-admin",
     roles: ["Administrator"] as string[],
+    roleId: "role-1",
     tenantSlug: "acme",
     tenantId: "tenant-acme",
     securityVersion: 1,
@@ -143,6 +168,14 @@ const fakeAttachment = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Every test's caller resolves to a "Platform Owner" role, which bypasses
+  // the "support" matrix entirely (tenant-rbac-standard.md §4) — this suite
+  // exercises business logic, not matrix grant/deny behaviour.
+  mockDb.role.findFirst.mockResolvedValue({
+    id: "role-1",
+    tenantId: "tenant-acme",
+    name: "Platform Owner",
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -392,6 +425,7 @@ describe("support.ticket.assign", () => {
       tenantId: "tenant-acme",
       status: "open",
     });
+    mockDb.user.findUnique.mockResolvedValueOnce({ id: "user-mgr", tenantId: "tenant-acme" });
     mockDb.supportTicket.update.mockResolvedValueOnce({
       ...fakeTicket,
       status: "in_progress",
@@ -417,6 +451,7 @@ describe("support.ticket.assign", () => {
       tenantId: "tenant-acme",
       status: "waiting",
     });
+    mockDb.user.findUnique.mockResolvedValueOnce({ id: "user-mgr", tenantId: "tenant-acme" });
     mockDb.supportTicket.update.mockResolvedValueOnce(fakeTicket);
 
     const caller = createCaller(adminCtx());

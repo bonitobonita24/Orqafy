@@ -65,7 +65,7 @@ export const notificationRouter = createTRPCRouter({
   }),
 
   markRead: protectedProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       // updateMany with the tenant + recipient predicate guarantees a caller can
       // only ever mark THEIR OWN notification read — a cross-tenant or

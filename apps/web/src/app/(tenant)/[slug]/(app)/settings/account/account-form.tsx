@@ -102,7 +102,7 @@ export function AccountForm({
           value={currency}
           onChange={(e) => setCurrency(e.target.value.toUpperCase())}
           maxLength={3}
-          className="bg-background font-mono uppercase"
+          className="bg-background font-mono uppercase tracking-widest"
           placeholder="PHP"
         />
         <p className="text-xs text-muted-foreground">

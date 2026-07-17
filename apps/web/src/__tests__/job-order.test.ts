@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { jobOrderRouter } from "@/server/trpc/routers/job-order";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
+import type * as OrqafyDb from "@orqafy/db";
 
 // D7 — assignTechnician emits a notification as a side effect; stub it (the
 // createNotification helper is unit-tested separately).
@@ -10,36 +11,52 @@ vi.mock("@/server/notifications/create", () => ({
   createNotification: vi.fn().mockResolvedValue({ id: "notif-test" }),
 }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    jobOrder: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      count: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
+// Keep the real `hasPermission` resolver (it takes prisma as an argument) —
+// only mock the prisma client calls it makes. Every test in this file uses
+// "Platform Owner" (see authenticatedCtx below) which bypasses the
+// role_permissions matrix entirely, so no rolePermission fixtures are needed.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      jobOrder: {
+        findMany: vi.fn(),
+        findUnique: vi.fn(),
+        count: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+      },
+      jobOrderPart: {
+        create: vi.fn(),
+        findUnique: vi.fn(),
+        delete: vi.fn(),
+      },
+      jobOrderServiceLine: {
+        create: vi.fn(),
+        findUnique: vi.fn(),
+        delete: vi.fn(),
+      },
+      customer: {
+        findUnique: vi.fn(),
+        findFirst: vi.fn(),
+      },
+      user: {
+        findUnique: vi.fn(),
+      },
+      product: {
+        findUnique: vi.fn(),
+        findFirst: vi.fn(),
+      },
+      role: {
+        findFirst: vi.fn(),
+      },
+      rolePermission: {
+        findUnique: vi.fn(),
+      },
     },
-    jobOrderPart: {
-      create: vi.fn(),
-      findUnique: vi.fn(),
-      delete: vi.fn(),
-    },
-    jobOrderServiceLine: {
-      create: vi.fn(),
-      findUnique: vi.fn(),
-      delete: vi.fn(),
-    },
-    customer: {
-      findUnique: vi.fn(),
-    },
-    user: {
-      findUnique: vi.fn(),
-    },
-    product: {
-      findUnique: vi.fn(),
-    },
-  },
-}));
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: {
@@ -63,6 +80,7 @@ function authenticatedCtx(roles: string[] = ["Administrator"], isDemoTenant = fa
     req: makeReq(),
     userId: "user-1",
     roles,
+    roleId: "role-1",
     tenantSlug: "acme",
     tenantId: "acme-tenant-id",
     securityVersion: 1,
@@ -75,6 +93,7 @@ function unauthenticatedCtx() {
     req: makeReq(),
     userId: null,
     roles: [] as string[],
+    roleId: null,
     tenantSlug: null,
     tenantId: null,
     securityVersion: 0,
@@ -91,9 +110,11 @@ const mockDb = db as unknown as {
   jobOrder: { findMany: any; findUnique: any; count: any; create: any; update: any };
   jobOrderPart: { create: any; findUnique: any; delete: any };
   jobOrderServiceLine: { create: any; findUnique: any; delete: any };
-  customer: { findUnique: any };
+  customer: { findUnique: any; findFirst: any };
   user: { findUnique: any };
-  product: { findUnique: any };
+  product: { findUnique: any; findFirst: any };
+  role: { findFirst: any };
+  rolePermission: { findUnique: any };
 };
 
 const JO_CUID = "ck1234567890123456789012a";
@@ -103,6 +124,14 @@ const TECH_CUID = "ck1234567890123456789012c";
 describe("jobOrder router", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default every caller to "Platform Owner", which bypasses the
+    // role_permissions matrix entirely (tenant-rbac-standard.md §4) — these
+    // tests assert business logic, not matrix grants (see job-order-matrix.test.ts).
+    mockDb.role.findFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "acme-tenant-id",
+      name: "Platform Owner",
+    });
   });
 
   describe("list", () => {
@@ -252,7 +281,7 @@ describe("jobOrder router", () => {
 
   describe("create", () => {
     it("creates a new job order with status=received and auto jobOrderNumber", async () => {
-      mockDb.customer.findUnique.mockResolvedValue({ id: CUST_CUID });
+      mockDb.customer.findFirst.mockResolvedValue({ id: CUST_CUID });
       mockDb.jobOrder.create.mockResolvedValue({ id: JO_CUID, status: "received" });
       const caller = createCaller(authenticatedCtx());
       await caller.jobOrder.create({
@@ -270,7 +299,7 @@ describe("jobOrder router", () => {
     });
 
     it("throws BAD_REQUEST when customer does not exist", async () => {
-      mockDb.customer.findUnique.mockResolvedValue(null);
+      mockDb.customer.findFirst.mockResolvedValue(null);
       const caller = createCaller(authenticatedCtx());
       await expect(
         caller.jobOrder.create({

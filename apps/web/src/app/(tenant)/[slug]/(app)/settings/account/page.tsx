@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { createServerCaller } from "@/server/trpc/server";
+import { guardPage } from "@/server/rbac/guard-page";
 import { AccountForm } from "./account-form";
 
 export const metadata: Metadata = { title: "Account settings" };
@@ -11,7 +12,8 @@ export default async function AccountSettingsPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  await params; // resolve but we don't need slug — createServerCaller uses session tenant
+  const { slug } = await params;
+  await guardPage(slug, "settings");
 
   const api = await createServerCaller();
   const tenant = await api.tenant.current();

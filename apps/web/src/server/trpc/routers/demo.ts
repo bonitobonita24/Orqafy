@@ -19,22 +19,32 @@ export const demoRouter = createTRPCRouter({
       });
     }
 
-    // Delete all mutable tenant data — schema-isolated tables only
-    // The seed script will re-populate demo data afterwards
+    // Runtime isolation is by explicit tenantId filtering on the shared `public`
+    // schema — the schema-per-tenant SET search_path path is NOT active at runtime.
+    // Every deleteMany MUST be tenant-scoped, or a demo session would wipe every
+    // tenant's data platform-wide. (AIEF audit M3 P0 fix, 2026-07-11.)
+    const tenantId = ctx.tenantId;
+    if (tenantId === null) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "No tenant context for reset.",
+      });
+    }
+
+    // Delete all mutable tenant data — tenant-scoped, dependency order
+    // (children before parents). The seed script re-populates demo data after.
+    // lineItems are JSON on Invoice (no separate InvoiceItem model).
     await db.$transaction(async (tx: Prisma.TransactionClient) => {
-      // Delete in dependency order (children before parents)
-      // Schema-per-tenant: SET search_path handles isolation — no tenantId filters needed
-      // lineItems are JSON on Invoice (no separate InvoiceItem model)
-      await tx.invoice.deleteMany({});
-      await tx.expense.deleteMany({});
-      await tx.jobOrderPart.deleteMany({});
-      await tx.jobOrder.deleteMany({});
-      await tx.payslip.deleteMany({});
-      await tx.payroll.deleteMany({});
-      await tx.employee.deleteMany({});
-      await tx.task.deleteMany({});
-      await tx.project.deleteMany({});
-      await tx.customer.deleteMany({});
+      await tx.invoice.deleteMany({ where: { tenantId } });
+      await tx.expense.deleteMany({ where: { tenantId } });
+      await tx.jobOrderPart.deleteMany({ where: { tenantId } });
+      await tx.jobOrder.deleteMany({ where: { tenantId } });
+      await tx.payslip.deleteMany({ where: { tenantId } });
+      await tx.payroll.deleteMany({ where: { tenantId } });
+      await tx.employee.deleteMany({ where: { tenantId } });
+      await tx.task.deleteMany({ where: { tenantId } });
+      await tx.project.deleteMany({ where: { tenantId } });
+      await tx.customer.deleteMany({ where: { tenantId } });
     });
 
     return { success: true, message: "Demo tenant reset complete." };
@@ -42,7 +52,7 @@ export const demoRouter = createTRPCRouter({
 
   // Seed demo data for the current demo tenant
   seed: protectedProcedure
-    .input(z.object({ scenario: z.enum(["default", "full"]).default("default") }))
+    .input(z.object({ scenario: z.enum(["default", "full"]).default("default") }).strict())
     .mutation(({ ctx }) => {
       if (ctx.isDemoTenant !== true) {
         throw new TRPCError({

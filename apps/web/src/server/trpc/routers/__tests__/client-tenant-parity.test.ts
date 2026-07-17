@@ -14,6 +14,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as OrqafyDb from "@orqafy/db";
 
 // ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
 const {
@@ -24,6 +25,7 @@ const {
   mockCustomerDelete,
   mockCustomerCount,
   mockAuditLogCreate,
+  mockRoleFindFirst,
 } = vi.hoisted(() => ({
   mockCustomerFindFirst: vi.fn(),
   mockCustomerFindMany: vi.fn(),
@@ -32,9 +34,18 @@ const {
   mockCustomerDelete: vi.fn(),
   mockCustomerCount: vi.fn(),
   mockAuditLogCreate: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => {
+// Router migrated to the data-driven `role_permissions` matrix (feature key
+// "crm") — matrixMiddleware resolves the caller's role via role.findFirst.
+// Every ctx below uses roleId "role-1" and role name "Platform Owner" so the
+// matrix bypasses entirely (this suite proves tenant-scoping business logic,
+// not matrix grants — see client-matrix.test.ts for matrix grant/deny
+// coverage). Keep the real `hasPermission` resolver (it takes prisma as an
+// argument) via importActual — only mock the prisma client calls it makes.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
   // mockDb is the object passed INTO the $transaction callback (represents the tx client).
   const mockDb = {
     customer: {
@@ -46,8 +57,11 @@ vi.mock("@orqafy/db", () => {
       count: mockCustomerCount,
     },
     auditLog: { create: mockAuditLogCreate },
+    role: { findFirst: mockRoleFindFirst },
+    rolePermission: { findUnique: vi.fn() },
   };
   return {
+    ...actual,
     prisma: {
       ...mockDb,
       // $transaction passes mockDb as the "tx" argument so the router's tx.customer.xxx calls
@@ -85,6 +99,7 @@ function ctxForTenant(tenantId: string, isDemoTenant = false) {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-1",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -139,6 +154,15 @@ describe("Client tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)"
         auditLog: { create: mockAuditLogCreate },
       };
       return fn(mockDb);
+    });
+    // Every test's caller resolves to a "Platform Owner" role, which
+    // bypasses the "crm" matrix entirely (tenant-rbac-standard.md §4) — this
+    // suite exercises tenant-scoping business logic, not matrix grant/deny
+    // behaviour (see client-matrix.test.ts for that coverage).
+    mockRoleFindFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "tenant-A",
+      name: "Platform Owner",
     });
   });
 

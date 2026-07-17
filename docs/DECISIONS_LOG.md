@@ -1288,3 +1288,324 @@ The chart-on-provisioning seed is idempotent (ON CONFLICT DO NOTHING) and revers
 in Settings.
 
 **Phase:** Phase 7 Feature Update (Finance D-2 ruleset) — deploy HELD (commit+push to `main` only).
+
+## 2026-07-10 — RBAC alignment: Wave scoping + A2 defer (M2a)
+**Architecture finding (LOCKED):** Orqafy RBAC is a DATA-DRIVEN per-tenant `Role` table (slug/name/permissions-JSON/isSystem), NOT a `UserRole` enum. Runtime authz keys off role DISPLAY NAME (user.role.name), not slug. The fleet standard + Scenario 42 assume an enum; their `ALTER TYPE RENAME VALUE` mechanic does NOT apply here.
+**Wave split (LOCKED):** A = safe mechanical (done: A1 role-gate bug fix). B = one-owner-per-tenant integrity + two-way succession (dev-local [HOW], next). C = platform tenant_id NULL, enforced permission-matrix, tenant role-builder UI — OWNER-GATED [WHAT] (real blast-radius on tenant isolation / product scope) → docs/PENDING_DECISIONS.md D-RBAC-C1..C4.
+**A2 slug rename DEFERRED:** tenant_super_admin→tenant_superadmin is cosmetic (names, not slugs, drive authz) and adds migration churn for zero behavior change. Not executing under Full-Auto; revisit only if the enum-model migration (C1) is ever authorized.
+
+## 2026-07-11 — RBAC Wave B: one-owner-per-tenant integrity + two-way succession (M2b)
+**Owner model (LOCKED):** A tenant's OWNER is a single user flagged `users.is_tenant_owner = true`, DISTINCT from the `tenant_super_admin` ROLE (several users may hold that role — the seed creates webmaster + dev admin — but only ONE is the owner). This decouples ownership from role and avoids denormalizing the role.
+**DB enforcement (LOCKED):** partial unique index `one_tenant_owner_per_tenant ON users(tenant_id) WHERE is_tenant_owner` — guarantees ≤1 owner/tenant, parity with the fleet standard's one-owner index. The standard's enum form (`WHERE role='tenant_superadmin'`) is not expressible here (roles are per-tenant FK rows), so the boolean-flag form is used. Migration `20260710160000_add_tenant_owner_flag` backfills exactly one owner/tenant (earliest-created tenant_super_admin holder via `DISTINCT ON`) BEFORE creating the index.
+**Succession (LOCKED, both directions per standard §2):** `packages/db/src/helpers/succession.ts` — `transferTenantOwnership(from→to)` (in-tenant, owner-only; index-safe demote-then-promote in a txn; outgoing owner demoted to `admin` role, incoming promoted to `tenant_super_admin`; both `securityVersion++` to force re-auth) and `reassignTenantOwner(tenantId, newOwnerUserId)` (platform break-glass; clears existing owner first; rejects unknown tenant with `NOT_FOUND`). Wired: `platform.reassignTenantOwner` (platformProcedure, audited `PLATFORM:REASSIGN_TENANT_OWNER`) + `user.transferOwnership` (protectedProcedure, current-owner-only guard). Backend only — role-builder/transfer UI is Wave C (owner-gated).
+**Seed/provisioning:** `provisionTenantRolesAndOwner` + demo seed set `isTenantOwner: true` on the owner; dev `admin@mail.com` stays non-owner (default false).
+**NOT applied yet:** migration authored but NOT run (dev Docker stack down during Full-Auto). Apply via `prisma migrate deploy` on next dev up; staging/prod application owner-gated. Worker integration test `apps/worker/src/__tests__/succession.test.ts` verifies the index + succession against a live DB then.
+**Validation:** web suite 1060/1060 green (+5 mocked succession unit tests); typecheck + lint clean (web + worker + db). LOCAL commits on `feat/tenant-rbac-3tier`; HARD HOLD — no push/deploy.
+
+## 2026-07-11 — Tenant-model canonicalization + rate-limiting + UI defaults (M5 remainder + M6.2–M6.5)
+
+**Tenant data model (LOCKED — single canonical form):** Orqafy stores ALL tenant-scoped data in the
+single `public` schema, isolated by an explicit `tenantId` column (+ the L1/L3/L5/L6 guards). The dormant
+"physical schema-per-tenant" path is REMOVED, not just unused:
+- M5 S-P2a (commit 3dd3fe0): deleted `createTenantPrisma` + the `tenantGuardExtension` file that ran
+  `SET search_path` (a SQL-injection landmine) — zero runtime callers (scout-confirmed).
+- M6.2 (commit 5422479): removed the remaining physical `t_<slug>` machinery
+  (`createTenantSchema`/`tenantSchemaExists`/`dropTenantSchema`) from the helper, barrel, worker
+  provisioning, and tests (kept only `toSchemaName`). Removing the hack UNCOVERED + FIXED two latent
+  multi-tenant PROD bugs it was masking:
+  - (a) the seed wrote demo departments/expense-categories/warehouse via raw SQL into the invisible
+    `t_demo` schema (so `public` had 0 demo rows) → rewritten to Prisma upserts into `public`; last
+    `SET search_path` in the codebase removed.
+  - (b) STALE single-column `UNIQUE(code)` indexes on `warehouses`/`accounts`/`tax_rates`/
+    `expense_categories` blocked two tenants ever sharing a code (e.g. both provisioning `vat-12`). Root
+    cause: migration `20260616120000` used `DROP CONSTRAINT`, a no-op on a Prisma single-col `@unique`
+    (which is a UNIQUE INDEX, not a constraint). Fix = new migration
+    `20260711010000_drop_stale_single_col_code_uniques` (correct `DROP INDEX`).
+- Both dev migrations (`20260710160000_add_tenant_owner_flag` + `20260711010000`) are applied to the DEV
+  DB. **Applying them to staging/prod is owner-gated (HARD HOLD)** → PENDING_DECISIONS D-MIG-APPLY.
+- Verified: fresh seed → demo data in `public`, zero `t_*` schemas, 1 owner; worker 15/15; web 1063/1063.
+- Two global footgun lessons logged (`~/.claude/LESSONS_GLOBAL.md`).
+
+**Rate-limiting posture (LOCKED — M6.3 / S-P1a, commit 0e1e45f):** two authenticated-abuse surfaces are
+gated via the existing pure `rateLimiters` lib (no tRPC dependency → no circular import):
+- `authorize()` (NextAuth Credentials): `rateLimiters.auth` = **10/min per client IP**, checked before
+  any DB lookup; opaque deny (returns `null`) on limit — no enumeration signal. Blunts login
+  brute-force / credential stuffing.
+- `protectedProcedure`: `rateLimiters.api` = **120/min per userId on MUTATIONS only**.
+  **Authenticated READS are intentionally NOT tRPC-throttled** — a data-dense ERP page fires 10–15
+  parallel reads, so a per-request read limit is prone to false lock-outs; the abuse surface is writes,
+  and 120 mutations/min sits far above any human rate. This mutation-scoping also removed the need for a
+  live read-lock-out test (the design eliminates the risk). The mutation check is guarded off under
+  `NODE_ENV=test` so the shared module-singleton limiter cache can't pollute the vitest suite. Behavior
+  covered by 3 deterministic lib tests. (Tradeoff: a compromised authenticated account could still scrape
+  via reads at machine speed; acceptable given tenant-scoping + the lock-out risk — revisit if a
+  dual-ceiling read limiter is ever warranted.)
+
+**Content max-width container (LOCKED — M6.4 / D-P1a, commit 89f0fa2):** design-defaults Entry 1 —
+readable/dense content sits in a centered `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8` container instead of
+bleeding edge-to-edge on wide monitors. Applied ONCE at `(app)/layout.tsx` via a client
+`ContentContainer` (covers all 89 app pages); immersive point-of-work routes opt OUT via a pathname
+allowlist (currently `/pos/new-sale`, the two-pane register). `<main>` keeps vertical `py-6`; the
+responsive horizontal gutter lives in the container.
+
+**Mobile off-canvas sidebar (LOCKED — M6.5 / D-P1b, commit d2e59e6):** the shared logo/nav/footer is
+extracted into `<SidebarNav>`; `app-sidebar.tsx` is a `hidden ... md:flex` DESKTOP wrapper (unchanged
+above `md`); mobile uses a `md:hidden` header hamburger opening a shadcn `<Sheet side="left">` that renders
+the same `SidebarNav` (sr-only `SheetTitle` for a11y; closes on nav). Fixes the phone layout where the
+fixed `w-56` aside squeezed content to ~150px.
+
+**Validation (M6.2–M6.5):** each step web typecheck 0 + eslint clean; M6.3 web 1066/1066; live Visual QA
+(dev, 1920/1440/375px) of dashboard/invoices/settings/pos-new-sale/users — capped-centering + immersive
+opt-out + off-canvas nav all confirmed; RBAC Users page renders post-migration with 0 console errors.
+All LOCAL on `feat/tenant-rbac-3tier`; HARD HOLD — no push/deploy.
+
+## 2026-07-11 — M7: Zod StatutoryRate typing + STANDING tenant-guard contract + storage accept + numbering deferred
+
+**StatutoryRate config typing (LOCKED, M7.1, commit 75bc162):** `payroll.ts` `StatutoryRate.upsert`'s
+`config` field was `z.record(z.string(), z.unknown())` — a full validation bypass for that input.
+Replaced with a typed `z.discriminatedUnion("type", [...])` covering the four real config shapes
+(`sss` / `philhealth` / `pagibig` / `withholding`), each `.strict()` with `z.number().nonnegative()`
+fields matching the existing `SssConfig`/`PhilhealthConfig`/`PagibigConfig`/`WithholdingConfig`
+interfaces. Grep confirms 0 remaining `z.unknown()`/`z.any()` on server mutation inputs anywhere in the
+codebase.
+
+**⚠ STANDING CONTRACT (LOCKED, M7.2) — explicit tenant validation is now MANDATORY on every tenant-scoped
+query/mutation, with no ORM-level safety net:** M5 (S-P2a, 2026-07-11 earlier this day) deleted the
+dormant L6 auto-tenant-guard Prisma extension (the `$allOperations` interceptor that used to inject
+`tenantId` automatically). That removal was correct — the extension was dead code with a live SQL-
+injection landmine — but it also meant every query written against the assumption of an implicit guard
+became silently unscoped. M7.2 found this had already caused real damage: a SEVERE record-IDOR
+(`inventory.productUpdate` via `findUnique` with no tenant check) and two full list-leaks
+(`inventory.productList`, `purchasing.goodsReceipt.list` — `where` clauses missing `tenantId` entirely,
+returning ALL tenants' rows), plus numerous unguarded user-supplied foreign-key writes across 8 more
+routers. **Going forward: every `findUnique`/`findFirst`/`findMany`/`update`/`delete`/`count` on a
+tenant-scoped model MUST explicitly filter or verify `tenantId` — no exceptions, no assumption that
+"it was probably guarded upstream."** The four accepted idioms (use whichever fits): (a)
+`findFirst({ where: { id, tenantId } })` in place of `findUnique({ where: { id } })`; (b) a
+`loadXForTenant(id, tenantId)` helper for record-existence + ownership checks before a write; (c) for
+batch operations, `count({ where: { id: { in: ids }, tenantId } }) === ids.length` before proceeding;
+(d) for user-membership checks (e.g. assigning another user to a record), `user.tenantId ===
+ctx.tenantId`. Any future removal of an ORM-level tenant guard (or any other cross-cutting Prisma
+extension) MUST be followed by a full grep-the-surface re-audit of every affected query type — this is
+now a mandatory follow-up step, not optional cleanup.
+
+**Storage magic-byte sniff — accepted, not fixed (LOCKED, M7.3):** file-upload validation is
+presigned-direct-to-S3, so the app server never receives the uploaded bytes and cannot sniff magic
+numbers before storage. The XSS vector this would otherwise guard against is already closed by two
+independent controls: SVG/HTML MIME types are blocked outright, and every download is served with a
+forced `Content-Disposition: attachment` (never inline-rendered). **Decision: accept the gap as an
+architectural tradeoff of the presigned-upload design**, not a defect to fix now. A bounded
+download-and-sniff check inside `confirmUpload` (post-upload, before the DB record is finalized) is a
+possible future enhancement if the risk profile changes (e.g. inline preview features are added later)
+— judged disproportionate to build today.
+
+**Document numbering — deferred as a product decision, not a security fix (`D-NUM-1`, M7.2 residual):**
+`generatePoNumber`, `generateGrNumber` (purchasing), and `generateQuotationNumber` (crm) all resolve the
+next sequence number via an unscoped `findFirst`, so PO/GR/quotation numbers currently form ONE global
+sequence across all tenants rather than a per-tenant sequence. This is an information-leak (a tenant can
+infer relative order-volume of other tenants from gaps in its own numbering) but exposes NO actual data
+— unlike the M7.2 IDOR fixes, this is a numbering-SCHEME choice (global vs per-tenant sequences, and
+whether per-tenant numbering should reset or continue on tenant creation), which is a product/business
+call, not a pure security bug. Logged to `PENDING_DECISIONS.md` as `D-NUM-1` for owner input rather than
+auto-fixed.
+
+**Loading states (LOCKED, M7.4, commit 7d5ac4a):** installed shadcn `Skeleton`
+(`apps/web/src/components/ui/skeleton.tsx`) and replaced the ad-hoc `animate-spin` divs in 10 of the 11
+app-shell `loading.tsx` files with layout-matched placeholders (dashboard = stat-card grid + chart
+skeleton; the 9 table-page loaders = a uniform title+toolbar+rows skeleton). `login/loading.tsx` was left
+as a minimal spinner — the auth card is small enough that a skeleton adds no perceptible value. Follows
+ui-rules Rule 11 PATH A (shadcn-composed loading states use `<Skeleton>` inline); zero
+`*Skeleton.tsx` twin files were created, per the hard constraint.
+
+**Validation:** web typecheck 0 errors · web suite 1101/1101 (≈+35 new regression tests from the M7.2
+IDOR remediation) · lint-design PASS · worker typecheck 0 errors · live app smoke PASS. 12 LOCAL commits
+on `feat/tenant-rbac-3tier` (75bc162..418a3c8); HARD HOLD — no push/deploy.
+
+## 2026-07-11 — RBAC Wave C decisions (owner-approved)
+
+**C1 (LOCKED) — Keep tenant-scoped Platform Owner as the fleet `tenant_manager`-equivalent.** Orqafy's
+existing `Platform Owner` role (gated to `/powerbyte-admin` via `platformProcedure`) is retained as the
+documented equivalent of the fleet Tenant-RBAC standard's platform-level `tenant_manager` tier — it is
+NOT migrated to a true cross-tenant, `tenant_id = NULL` platform role. Do NOT migrate `User.tenantId` to
+nullable; do NOT touch the L6 tenant-guard Prisma extension or `middleware.ts` tenant-slug routing.
+Per-tenant `/<slug>` subdirectory access is preserved exactly as-is. Rationale: a true platform-role
+migration would touch the tenant isolation model built and hardened across 30+ Phase 8 batches (L1-L6,
+`tenant_id` scoping, the middleware slug-to-session cross-check) for no functional gain — the
+documented-equivalent mapping satisfies the fleet standard's intent (a designated break-glass/cross-
+tenant-admin tier exists and is named) without an isolation-architecture rewrite.
+
+**C2/C3 (LOCKED) — Implement the full standard §4 custom-role permission-matrix subsystem.** Build:
+(a) a feature registry (typed enum of gateable modules/features), (b) a `role_permissions` table with a
+strict CRUD-split schema (`tenant_id, role_id, feature_key, view, create, update, delete` — `create` and
+`update` as separate columns, never combined into a single "write"), (c) a `hasPermission(role, feature,
+action)` resolver reading the matrix, (d) matrix-driven enforcement wired identically at THREE surfaces:
+tRPC (a `matrixProcedure(feature, action)` factory), route/page-level guards (deny-by-default from the
+matrix), and sidebar nav (menu items filtered by `view`), and (e) a `tenant_superadmin`-only shadcn/ui
+role-builder screen (features down the side, 4 permission columns across the top, checkbox matrix).
+Guardrails carried over from the fleet standard (non-negotiable): a custom role can never exceed the
+`tenant_admin`/Admin capability ceiling; custom roles may NEVER grant Billing or User-Management; only
+`tenant_superadmin` (Tenant Super Admin) and the platform-equivalent (Platform Owner) may create/edit/
+assign custom roles; the fixed system-role tiers stay hard-coded, never data-driven. **CRITICAL
+backfill requirement:** the initial `role_permissions` data MUST be seeded to reproduce today's
+name-based role-gate grants EXACTLY (byte-for-byte equivalent access per existing role), so switching
+enforcement over to the matrix is a day-one no-op — no user's effective permissions change on cutover.
+
+**C4 (LOCKED, DEV/LOCAL only) — Reseed dev accounts to the canonical universal-login-credentials
+scheme.** Dev seed data is updated to match `Server-Setups/secrets/universal-login-credentials.enc.yaml`
+`local_dev` entries: `tenant_superadmin` → `webmaster@localhost.com`; `tenant_admin` →
+`admin@admin.com`; the universal `tenant_manager` account (`tenantadmin@powerbyteitsolutions.com`) is
+seeded as a Platform Owner within the demo tenant (consistent with C1's documented-equivalent mapping,
+since Orqafy's Platform Owner is tenant-scoped, not a true `tenant_id = NULL` role). All passwords are
+sourced ONLY from the vault or environment variables at seed time — never hardcoded in the seed script
+— and gated behind `SEED_DEV_ACCOUNTS=true` (dev-only flag, consistent with the framework's existing
+dev-weak-credential gating pattern). The vault is referenced by PATH ONLY in all governance docs and
+code comments; no credential VALUE is ever pasted into the repo, a commit message, or an AI context.
+
+**PM finding — dead-role-name gates (NEW, tracked as `D-RBAC-DEADGATE`):** a scout sweep found 4
+authorization gates referencing role name strings that do not exist in `STANDARD_ROLES`
+("Administrator" / "Manager") — in `accounting.ts`, `dtr.ts`, `employee.ts`, and `storefront.ts`. Because
+no user can ever hold a role literally named "Administrator" or "Manager", these gates are dead
+code that is accidentally MORE restrictive than intended (they silently deny everyone rather than
+gating a real role). **Decision:** the C2/C3 matrix backfill will PRESERVE the current effective
+(overly-restrictive) behavior of these 4 gates as-is — the backfill's job is byte-for-byte parity with
+today's behavior, not a behavior expansion. Whether to loosen these 4 gates to grant the access to a
+real existing role is an owner product/business call, deferred to `PENDING_DECISIONS.md` as
+`D-RBAC-DEADGATE`. Not auto-fixed.
+
+## 2026-07-11 — RBAC §4 Track C deferred-router rulings + Tracks A/B (owner-approved)
+
+**Context:** `docs/RBAC_S4_ROLLOUT_PLAN.md` deferred 4 routers (`accounting`, `purchasing`,
+`storefront`, `dsr`) pending an owner `[WHAT]` ruling, and left Track A (nav filtering) and
+Track B (role-builder UI) not started. The owner accepted the "recommended" option on every
+open item this session. Rollout moves from 20/35 → 23/35 feature routers on the matrix, plus
+Tracks A and B are DONE.
+
+**Ruling 1 (LOCKED) — `accounting` migrates to the matrix as the deliberate tightening.**
+Reads → `matrix:view`. Writes (`account`/`journalEntry`/`fiscalYear`/`taxRate` create+update,
+JE post/reverse, `settings.update`, `toggleActive`) → `matrix:create`/`matrix:update`, which per
+the ground-truthed seed resolve to **Accountant + bypass roles only**. This NARROWS the
+previously-ungated broad `writeProcedure` writes (chart-of-accounts CRUD, journal creates) down
+to the seed's existing accountant-only grant — closing the pre-existing gap the rollout plan
+flagged as "internally inconsistent," rather than preserving it. It also retires the dead-name
+`accountantWriteProcedure` gate (matched no real role name, so it silently behaved as
+Accountant-only already — the matrix reproduces that outcome by design, not by accident).
+
+**Ruling 2 (LOCKED) — `purchasing` migrates; `approve` maps to `matrix:delete`.** Reads →
+`matrix:view`; vendor/PO creates+updates → `matrix:create`/`matrix:update`. The router's
+`approve`/`reactivate` actions map to `matrix:delete` (seeded to Admin + Purchasing Staff +
+bypass) — the "elevated purchasing action" bucket, since the 4-action CRUD model has no
+`approve` verb. This is a deliberate FIX of the router's pre-existing `po.approve` dead-gate
+(role names `["Administrator","Purchasing Manager","admin"]` matched no real role and 403'd for
+literally everyone, including bypass roles) — `po.approve` now actually functions. No seed
+change was required; the existing `purchasing:delete` grant already covered this action.
+
+**Ruling 3 (LOCKED) — `storefront` migrates; admin actions widen to Tenant Super Admin.**
+Reads → `matrix:view`; `placeOrder` → `matrix:create`. Admin-only actions
+(`listAllOrders`, `updateFulfillment`, `updateOrderStatus`, `createXenditInvoice`) →
+`matrix:update`, seeded to **bypass roles only** (Tenant Super Admin + Platform Owner). This
+is a deliberate WIDENING (owner-approved): the router's prior `requireAdmin` gate
+(`{"Administrator"(dead), "Platform Owner"}`) only ever let Platform Owner through — Tenant
+Super Admin is intentionally added as an order-management admin now. `createXenditInvoice` was
+previously completely ungated; bringing it under the same admin gate is an intended hardening,
+not a side effect. `listAllOrders` is gated on `matrix:update` (not the broader `matrix:view`)
+specifically to avoid over-widening read access to the full cross-customer order list. Guest
+`publicProcedure` catalog/checkout endpoints are unchanged.
+
+**Ruling 4 (LOCKED, no code change) — `dsr` stays on its real-name `requireRole` gate.**
+Confirmed as the correct terminal state, not a deferred item: the self-service DSR endpoints
+(RA 10173 data-subject rights) must remain open to the requesting user regardless of role, and
+the admin queue's `requireRole` gate (`DSR_ADMIN_ROLES` = Tenant Super Admin/Admin/Platform
+Owner) already matches real role names — there is no dead-gate or matrix-migration benefit here.
+Routing it through the matrix would either over-widen the RA-10173 admin queue (seed `view` is
+broad) or lock Admin out of `adminUpdateStatus` (seed `update` is false) without a dedicated
+seed change the owner has not requested. No seed edit, no router edit.
+
+**Track A (DONE) — sidebar nav filtered by the permission matrix.** The existing
+`role.myPermissions` tRPC query resolves the caller's effective `{view,create,update,delete}`
+per feature (bypass roles → all keys granted; deny-by-default while the query is pending, via a
+`Skeleton` placeholder — never a flash of unauthorized items). Every `NAV_ITEM` now carries a
+`FeatureKey`, and the sidebar filters to items whose `view` is `true`. Fixed a latent build
+regression surfaced by live Visual QA during this work: `packages/shared/src/rbac/index.ts` was
+the only shared package index using `.js`-suffixed re-export specifiers (its siblings are
+extensionless, consistent with the repo's `moduleResolution: "bundler"`); this 500'd the Next.js
+dev bundler on `role.ts`'s value import of the RBAC module ("Can't resolve `./features.js`").
+Changed to extensionless re-exports — no functional change, bundler-resolution fix only.
+
+**Track B (DONE) — Tenant Super Admin-only role-builder UI at `/settings/roles`.** Ships on top
+of the `role.ts` backend (list/create/update + guardrails) that already existed from M9. New
+screen renders a feature × action checkbox matrix, prefilled from `role.list`; the `users` and
+`billing` feature rows are rendered disabled with a "Reserved for owner" note (matching the
+non-negotiable guardrail that custom roles may never grant Billing or User-Management);
+guardrail rejections from the backend surface as toasts. The page itself is gated to Tenant
+Super Admin + Platform Owner (`guardPage`), and the "Roles" sidebar entry / settings card is
+conditionally rendered for the same tier.
+
+**Verification (PM ground-truth, not self-report):** web typecheck 0 errors · web vitest suite
+1242/1242 · web eslint 0 warnings · `lint-design.sh --report-only` PASS · `@orqafy/db` 61/61 ·
+`@orqafy/shared` 4/4. Live Visual QA against the dev app (port 42951): logged in as Tenant Super
+Admin — sidebar shows the filtered nav plus the Roles entry, `/settings/roles` renders the
+matrix prefilled per the seed with `users`/`billing` rows locked, 0 console errors; logged in as
+a Staff-tier role — redirected off `/settings/roles` and the Roles card is hidden from settings.
+
+**Commits (LOCAL on `feat/tenant-rbac-3tier`, HARD HOLD — no push/deploy):** `e3d8f1f` (Track C:
+accounting/purchasing/storefront migrated, dsr confirmed no-op), `f5092a6` (Track A: sidebar
+nav filtering + the rbac index `.js`→extensionless bundler fix), `d7e1f5a` (Track B:
+role-builder UI at `/settings/roles`).
+
+**Residual (owner-gated, tracked in `PENDING_DECISIONS.md`):** the feature-router matrix
+rollout is now considered COMPLETE at 23/35 (the remaining ~12 routers are non-feature/utility
+routers outside the matrix's scope, per the rollout plan's router inventory). Two pre-existing
+gaps surfaced but deliberately NOT auto-fixed this session, both owner `[WHAT]` calls:
+`user.ts` (`list`/`byId`/`deactivate`) has no matrix gate at all — any authenticated tenant
+member can currently list/view/deactivate any other user in the tenant, which conflicts with
+the fleet standard reserving User Management to Tenant Super Admin/Platform Owner; and
+`payroll.ts` is fully ungated versus its legacy HR-Manager-only intent. See
+
+---
+
+## Decision — 2026-07-12 — RBAC §4 — user-management + payroll hardening (owner-approved)
+
+**Decision:** Owner approved (2026-07-12) both `D-RBAC-USERS-UNGATED` and
+`D-RBAC-PAYROLL-UNGATED` from `PENDING_DECISIONS.md` — resolved as follows.
+
+**`user.ts` (list/byId/deactivate) — gated to a fixed Tenant Super Admin / Platform Owner
+check, NOT routed through the permission matrix.** User Management is explicitly excluded
+from the custom-role matrix by the fleet Tenant-RBAC standard §4 guardrail ("custom roles may
+NEVER grant Billing or User Management — those stay exclusive to `tenant_superadmin` + platform
+`tenant_manager`"); Users is a guardrail-forbidden/reserved feature in the role-builder UI
+(Track B), so it correctly has no `role_permissions` rows to key off. The fix instead hardens
+the existing `superAdminProcedure` (fixing a gap in that procedure itself) and composes a
+superAdmin-gated write for `deactivate`, applied to `list`/`byId`/`deactivate`. Also added a
+`/settings/users` page redirect gate (non-TSA/PO users bounced) and hid the Users card on the
+settings hub from non-TSA/PO roles. Takes effect immediately — no reseed required.
+
+**`payroll.ts` — tightened at the seed, not the router (router was already matrix-migrated).**
+`payroll.ts` create/update/delete already read the matrix; the gap was in
+`packages/db/src/seed/role-permissions.ts`, which had granted payroll write access to all
+internal staff roles instead of the legacy HR-Manager-only intent. Tightened the seed grant so
+payroll `create`/`update`/`delete` = HR Manager + bypass roles only, mirroring the existing
+`dtr`/`employees` grant pattern. Required a dev reseed (`pnpm db:seed`, idempotent) to take
+effect — verified at the data layer: payroll rows are HR Manager full CUD; Staff/Admin/
+Accountant view-only; Tenant Super Admin/Platform Owner full via bypass.
+
+**Verification (PM ground-truth):** web typecheck 0 · web vitest 1253/1253 · web eslint 0
+warnings · `lint-design.sh --report-only` PASS · `@orqafy/db` 61/61 + typecheck 0. Live QA:
+Staff redirected off `/settings/users`; Users card hidden from non-TSA/PO. `succession.test.ts`
+denies Staff and non-owner Admin on all three `user.ts` endpoints.
+
+**Reversible:** YES — both are seed/router-level authorization tightenings, not schema changes.
+
+**Files affected:**
+- `apps/web/src/server/trpc/routers/user.ts` — list/byId gated; deactivate composed with a
+  superAdmin-gated write
+- `apps/web/src/server/rbac/` — `superAdminProcedure` fix
+- `apps/web/src/app/(tenant)/[slug]/(app)/settings/users/page.tsx` — TSA/PO redirect gate
+- `apps/web/src/components/layout/*` — Users card hidden from non-TSA/PO
+- `packages/db/src/seed/role-permissions.ts` — payroll create/update/delete tightened to HR
+  Manager + bypass
+- `apps/web/src/server/trpc/routers/__tests__/succession.test.ts` — non-owner/Staff denial
+  coverage
+- `docs/PENDING_DECISIONS.md` — both items marked resolved
+
+**Commit (LOCAL on `feat/tenant-rbac-3tier`, HARD HOLD):** `cb0c783`.
+`D-RBAC-USERS-UNGATED` and `D-RBAC-PAYROLL-UNGATED` in `PENDING_DECISIONS.md`.

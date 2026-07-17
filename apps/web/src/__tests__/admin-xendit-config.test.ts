@@ -2,26 +2,44 @@
 import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
 import { TRPCError } from "@trpc/server";
 import type { NextRequest } from "next/server";
+import type * as OrqafyDb from "@orqafy/db";
 
 // Encryption key — set BEFORE any router import so getKey() can read at call time.
 const VALID_KEY = "tjmFm1xJiKHrSIfdoo3pUxg/JmTNuwI1WjVxoTSn0xc=";
 const ORIGINAL_KEY = process.env.APP_ENCRYPTION_KEY;
 process.env.APP_ENCRYPTION_KEY = VALID_KEY;
 
+const TENANT_ID = "ck1234567890123456789012b";
+
 // ── DB Mock ───────────────────────────────────────────────────────────────────
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    tenantXenditConfig: {
-      findUnique: vi.fn(),
-      upsert: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
+// Keep the real `hasPermission` resolver (it takes prisma as an argument) —
+// only mock the prisma client calls it (and this router) make. `role` +
+// `rolePermission` back the `settings` matrix middleware on the write
+// procedures (upsert/testConnection/delete); `tenantXenditConfig` +
+// `ecommerceOrder` back the router's own business logic.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      tenantXenditConfig: {
+        findUnique: vi.fn(),
+        upsert: vi.fn(),
+        update: vi.fn(),
+        delete: vi.fn(),
+      },
+      ecommerceOrder: {
+        count: vi.fn(),
+      },
+      role: {
+        findFirst: vi.fn(),
+      },
+      rolePermission: {
+        findUnique: vi.fn(),
+      },
     },
-    ecommerceOrder: {
-      count: vi.fn(),
-    },
-  },
-}));
+  };
+});
 
 // ── Rate-limit Mock ───────────────────────────────────────────────────────────
 vi.mock("@/server/lib/rate-limit", () => ({
@@ -64,6 +82,8 @@ const mockDb = db as unknown as {
     delete: any;
   };
   ecommerceOrder: { count: any };
+  role: { findFirst: any };
+  rolePermission: { findUnique: any };
 };
 
 function makeReq(): NextRequest {
@@ -72,13 +92,18 @@ function makeReq(): NextRequest {
   } as unknown as NextRequest;
 }
 
-function authenticatedCtx(roles: string[] = ["Administrator"], isDemoTenant = false) {
+function authenticatedCtx(
+  roles: string[] = ["Admin"],
+  isDemoTenant = false,
+  roleId: string | null = "role-admin-1",
+) {
   return {
     req: makeReq(),
     userId: "ck1234567890123456789012a",
     roles,
+    roleId,
     tenantSlug: "test-tenant",
-    tenantId: "ck1234567890123456789012b",
+    tenantId: TENANT_ID,
     securityVersion: 0,
     isDemoTenant,
     session: null,
@@ -90,6 +115,21 @@ const createCaller = createCallerFactory(testRouter);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Default: caller holds the "Admin" role with a full grant on the
+  // "settings" feature — matches the old ADMIN_ROLES happy-path default.
+  // Individual tests override this to exercise deny paths.
+  mockDb.role.findFirst.mockImplementation(async (args: any) => {
+    if (args?.where?.tenantId !== TENANT_ID || args?.where?.id !== "role-admin-1") {
+      return null;
+    }
+    return { id: "role-admin-1", tenantId: TENANT_ID, name: "Admin" };
+  });
+  mockDb.rolePermission.findUnique.mockResolvedValue({
+    view: true,
+    create: true,
+    update: true,
+    delete: true,
+  });
 });
 
 afterAll(() => {
@@ -244,9 +284,24 @@ describe("adminXenditConfig router", () => {
   });
 
   describe("authorization", () => {
-    it("rejects non-admin role on every procedure (FORBIDDEN)", async () => {
+    it("rejects non-admin role on `get` (inline requireRole gate, FORBIDDEN)", async () => {
+      // `get` is deliberately left on the inline requireRole gate, not the
+      // matrix — see the router's Task 5.1 comment. ctx.roles alone decides.
       const caller = createCaller(authenticatedCtx(["User"]));
       await expect(caller.adminXenditConfig.get()).rejects.toThrow(/FORBIDDEN/);
+    });
+
+    it("rejects a role with no matrix grant on every write procedure (FORBIDDEN)", async () => {
+      // Non-bypass role ("User"), resolvable in-tenant, but with no
+      // role_permissions row for the "settings" feature — deny-by-default.
+      mockDb.role.findFirst.mockResolvedValue({
+        id: "role-user-1",
+        tenantId: TENANT_ID,
+        name: "User",
+      });
+      mockDb.rolePermission.findUnique.mockResolvedValue(null);
+
+      const caller = createCaller(authenticatedCtx(["User"], false, "role-user-1"));
       await expect(
         caller.adminXenditConfig.upsert({
           secretKey: "k",
@@ -260,13 +315,27 @@ describe("adminXenditConfig router", () => {
       await expect(caller.adminXenditConfig.delete()).rejects.toThrow(/FORBIDDEN/);
     });
 
+    it("denies a write procedure when ctx.roleId is missing, without querying the matrix", async () => {
+      const caller = createCaller(authenticatedCtx(["Admin"], false, null));
+      await expect(
+        caller.adminXenditConfig.upsert({
+          secretKey: "k",
+          publicKey: "p",
+          webhookToken: "t",
+          isLive: false,
+          enabledMethods: [],
+        }),
+      ).rejects.toThrow(/FORBIDDEN/);
+      expect(mockDb.role.findFirst).not.toHaveBeenCalled();
+    });
+
     it("cross-tenant isolation: every query scoped to ctx.tenantId", async () => {
       mockDb.tenantXenditConfig.findUnique.mockResolvedValue(null);
-      const caller = createCaller(authenticatedCtx(["Administrator"]));
+      const caller = createCaller(authenticatedCtx(["Admin"]));
       await caller.adminXenditConfig.get();
       expect(mockDb.tenantXenditConfig.findUnique).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { tenantId: "ck1234567890123456789012b" },
+          where: { tenantId: TENANT_ID },
         }),
       );
     });

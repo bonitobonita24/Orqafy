@@ -36,11 +36,12 @@
     "db:studio": "prisma studio",
     "lint": "eslint src/ --ext .ts",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"No tests yet\" && exit 0",
+    "test": "vitest run",
     "build": "tsc --project tsconfig.build.json",
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
+    "@orqafy/shared": "workspace:*",
     "@paralleldrive/cuid2": "^2.2.2",
     "@prisma/client": "^6.6.0",
     "bcryptjs": "^2.4.3"
@@ -50,6 +51,7 @@
     "@types/node": "^25.6.0",
     "prisma": "^6.6.0",
     "tsx": "^4.19.4",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.0"
   }
 }

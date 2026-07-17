@@ -11,6 +11,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { NextRequest } from "next/server";
+import type * as OrqafyDb from "@orqafy/db";
 
 // ── DB mock ───────────────────────────────────────────────────────────────────
 const {
@@ -19,33 +20,58 @@ const {
   mockTicketCreate,
   mockTicketUpdate,
   mockCommentCreate,
+  mockUserFindUnique,
+  mockRoleFindFirst,
 } = vi.hoisted(() => ({
   mockTicketFindUnique: vi.fn(),
   mockTicketFindFirst: vi.fn(),
   mockTicketCreate: vi.fn(),
   mockTicketUpdate: vi.fn(),
   mockCommentCreate: vi.fn(),
+  mockUserFindUnique: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    supportTicket: {
-      findUnique: mockTicketFindUnique,
-      findFirst: mockTicketFindFirst,
-      findMany: vi.fn().mockResolvedValue([]),
-      create: mockTicketCreate,
-      update: mockTicketUpdate,
-      count: vi.fn().mockResolvedValue(0),
+// Keep the real `hasPermission` resolver (matrix.ts imports it directly from
+// "@orqafy/db") — only mock the prisma client calls it and the router make.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      supportTicket: {
+        findUnique: mockTicketFindUnique,
+        findFirst: mockTicketFindFirst,
+        findMany: vi.fn().mockResolvedValue([]),
+        create: mockTicketCreate,
+        update: mockTicketUpdate,
+        count: vi.fn().mockResolvedValue(0),
+      },
+      ticketComment: {
+        findMany: vi.fn().mockResolvedValue([]),
+        create: mockCommentCreate,
+      },
+      ticketAttachment: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+      user: {
+        findUnique: mockUserFindUnique,
+      },
+      // Router migrated to the data-driven `role_permissions` matrix
+      // (feature key "support") — matrixMiddleware resolves the caller's
+      // role via role.findFirst. Every ctx below uses roleId "role-1" and
+      // role name "Platform Owner" so the matrix bypasses entirely (this
+      // suite proves tenant-scoping business logic, not matrix grants —
+      // see support-matrix.test.ts for matrix grant/deny coverage).
+      role: {
+        findFirst: mockRoleFindFirst,
+      },
+      rolePermission: {
+        findUnique: vi.fn(),
+      },
     },
-    ticketComment: {
-      findMany: vi.fn().mockResolvedValue([]),
-      create: mockCommentCreate,
-    },
-    ticketAttachment: {
-      findMany: vi.fn().mockResolvedValue([]),
-    },
-  },
-}));
+  };
+});
 
 vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
@@ -66,6 +92,7 @@ function ctxForTenant(tenantId: string, roles: string[] = ["Administrator"]) {
     req: makeReq(),
     userId: "user-1",
     roles,
+    roleId: "role-1",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -98,6 +125,15 @@ const ticketOnTenantB = {
 describe("Support tenant parity (K-prime closure)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Every test's caller resolves to a "Platform Owner" role, which
+    // bypasses the "support" matrix entirely (tenant-rbac-standard.md §4)
+    // — this suite exercises tenant-scoping business logic, not matrix
+    // grant/deny behaviour (see support-matrix.test.ts for that coverage).
+    mockRoleFindFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "tenant-A",
+      name: "Platform Owner",
+    });
   });
 
   it("support.ticket.create injects tenantId from ctx, not from input", async () => {
@@ -151,6 +187,20 @@ describe("Support tenant parity (K-prime closure)", () => {
         content: "Injected comment",
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("support.ticket.assign throws BAD_REQUEST when assignedToId belongs to a different tenant", async () => {
+    const ticketOnTenantA = { ...ticketOnTenantB, id: "ticket-a1", tenantId: "tenant-A" };
+    mockTicketFindUnique.mockResolvedValueOnce(ticketOnTenantA); // loadTicketForTenant
+    mockUserFindUnique.mockResolvedValueOnce({ id: "user-b", tenantId: "tenant-B" });
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+
+    await expect(
+      caller.support.ticket.assign({ id: "ticket-a1", assignedToId: "user-b" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST", message: "Assignee not found." });
+
+    expect(mockTicketUpdate).not.toHaveBeenCalled();
   });
 
   it("support.ticket.close throws NOT_FOUND when ticket belongs to different tenant", async () => {

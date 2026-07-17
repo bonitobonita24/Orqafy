@@ -32,9 +32,16 @@ const {
   mockGoodsReceiptFindFirst,
   mockGoodsReceiptCreate,
   mockGoodsReceiptFindUnique,
+  mockGoodsReceiptFindMany,
+  mockGoodsReceiptCount,
   mockGoodsReceiptItemCreate,
   mockAuditLogCreate,
   mockAccountingSettingsFindUnique,
+  mockProductFindMany,
+  mockProjectFindMany,
+  mockWarehouseFindMany,
+  mockRoleFindFirst,
+  mockRolePermissionFindUnique,
 } = vi.hoisted(() => ({
   mockVendorFindUnique: vi.fn(),
   mockVendorCreate: vi.fn(),
@@ -49,12 +56,26 @@ const {
   mockGoodsReceiptFindFirst: vi.fn(),
   mockGoodsReceiptCreate: vi.fn(),
   mockGoodsReceiptFindUnique: vi.fn(),
+  mockGoodsReceiptFindMany: vi.fn(),
+  mockGoodsReceiptCount: vi.fn(),
   mockGoodsReceiptItemCreate: vi.fn(),
   mockAuditLogCreate: vi.fn(),
   mockAccountingSettingsFindUnique: vi.fn(),
+  mockProductFindMany: vi.fn(),
+  mockProjectFindMany: vi.fn(),
+  mockWarehouseFindMany: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
+  mockRolePermissionFindUnique: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => {
+import type * as OrqafyDb from "@orqafy/db";
+
+// Keep the real `hasPermission` resolver (it takes prisma as an argument) —
+// only mock the prisma client calls it makes. purchasing.ts procedures now
+// run through matrixMiddleware (tenant-rbac-standard.md §4), which calls
+// hasPermission -> prisma.role.findFirst + prisma.rolePermission.findUnique.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
   // mockDb is the object passed INTO the $transaction callback (represents the tx client).
   const mockDb = {
     vendor: {
@@ -79,14 +100,26 @@ vi.mock("@orqafy/db", () => {
       findFirst: mockGoodsReceiptFindFirst,
       create: mockGoodsReceiptCreate,
       findUnique: mockGoodsReceiptFindUnique,
+      findMany: mockGoodsReceiptFindMany,
+      count: mockGoodsReceiptCount,
     },
     goodsReceiptItem: {
       create: mockGoodsReceiptItemCreate,
     },
+    product: { findMany: mockProductFindMany },
+    project: { findMany: mockProjectFindMany },
+    warehouse: { findMany: mockWarehouseFindMany },
     auditLog: { create: mockAuditLogCreate },
     accountingSettings: { findUnique: mockAccountingSettingsFindUnique },
+    // RBAC matrix resolver mocks (tenant-rbac-standard.md §4) — purchasing.ts
+    // procedures now run through matrixMiddleware. Default to a Platform
+    // Owner role (matrix bypass) in beforeEach so cross-tenant IDOR / audit
+    // assertions below are unaffected by the RBAC layer.
+    role: { findFirst: mockRoleFindFirst },
+    rolePermission: { findUnique: mockRolePermissionFindUnique },
   };
   return {
+    ...actual,
     prisma: {
       ...mockDb,
       // $transaction passes mockDb as the "tx" argument so router tx.xxx calls
@@ -124,6 +157,7 @@ function ctxForTenant(tenantId: string, opts: { isDemoTenant?: boolean; roles?: 
     req: makeReq(),
     userId: "user-1",
     roles: opts.roles ?? (["Administrator"] as string[]),
+    roleId: "role-a",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -241,6 +275,10 @@ describe("Purchasing tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolati
   beforeEach(async () => {
     vi.resetAllMocks();
     await rewireTransaction();
+    // RBAC matrix bypass (tenant-rbac-standard.md §4) — Platform Owner
+    // bypasses the matrix entirely, so every test below is unaffected by the
+    // RBAC layer unless it explicitly overrides this (see po.approve below).
+    mockRoleFindFirst.mockResolvedValue({ id: "role-x", tenantId: "tenant-A", name: "Platform Owner" });
   });
 
   // ── vendor.create ─────────────────────────────────────────────────────────────
@@ -464,6 +502,13 @@ describe("Purchasing tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolati
   // ── po.approve ───────────────────────────────────────────────────────────────
   describe("po.approve", () => {
     it("throws FORBIDDEN when caller lacks approver role", async () => {
+      // po.approve is gated on the "purchasing" matrix "delete" action (the
+      // elevated-purchasing-action tier). Override the beforeEach's Platform
+      // Owner bypass with a non-bypass "Staff" role that has delete=false on
+      // the matrix, preserving this test's original "unprivileged role
+      // denied" intent.
+      mockRoleFindFirst.mockResolvedValueOnce({ id: "role-staff", tenantId: "tenant-A", name: "Staff" });
+      mockRolePermissionFindUnique.mockResolvedValueOnce({ view: true, create: true, update: true, delete: false });
       const caller = createCaller(ctxForTenant("tenant-A", { roles: ["Staff"] }));
       await expect(
         caller.po.approve({ id: PO_PENDING.id }),
@@ -631,6 +676,141 @@ describe("Purchasing tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolati
           items: [{ description: "Widget", quantityExpected: 1, quantityReceived: 1 }],
         }),
       ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+
+    it("throws BAD_REQUEST when an item.productId does not belong to this tenant (M7.2)", async () => {
+      mockPurchaseOrderFindUnique
+        .mockResolvedValueOnce(PO_APPROVED) // loadPoForTenant
+        .mockResolvedValueOnce({ ...PO_APPROVED, items: [] }); // full include fetch
+      mockProductFindMany.mockResolvedValueOnce([]); // cross-tenant productId — no match
+
+      const caller = createCaller(ctxForTenant("tenant-A"));
+      await expect(
+        caller.goodsReceipt.create({
+          purchaseOrderId: PO_APPROVED.id,
+          items: [
+            {
+              productId: "product-belongs-to-tenant-B",
+              description: "Widget",
+              quantityExpected: 1,
+              quantityReceived: 1,
+            },
+          ],
+        }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+      expect(mockGoodsReceiptCreate).not.toHaveBeenCalled();
+      const queryArg = mockProductFindMany.mock.calls[0]![0];
+      expect(queryArg.where.tenantId).toBe("tenant-A");
+    });
+  });
+
+  // ── goodsReceipt.list ────────────────────────────────────────────────────────
+  describe("goodsReceipt.list", () => {
+    it("scopes the where clause by ctx.tenantId (M7.2 — was an unscoped list-leak)", async () => {
+      mockGoodsReceiptFindMany.mockResolvedValueOnce([]);
+      mockGoodsReceiptCount.mockResolvedValueOnce(0);
+
+      const caller = createCaller(ctxForTenant("tenant-A"));
+      await caller.goodsReceipt.list({});
+
+      expect(mockGoodsReceiptFindMany).toHaveBeenCalledOnce();
+      const findManyArg = mockGoodsReceiptFindMany.mock.calls[0]![0];
+      expect(findManyArg.where.tenantId).toBe("tenant-A");
+
+      expect(mockGoodsReceiptCount).toHaveBeenCalledOnce();
+      const countArg = mockGoodsReceiptCount.mock.calls[0]![0];
+      expect(countArg.where.tenantId).toBe("tenant-A");
+    });
+  });
+
+  // ── po.create — nested FK injection guard (M7.2) ────────────────────────────
+  describe("po.create — nested FK tenant validation (M7.2)", () => {
+    it("throws BAD_REQUEST when an item.productId does not belong to this tenant", async () => {
+      mockVendorFindUnique.mockResolvedValueOnce(VENDOR_A);
+      mockProductFindMany.mockResolvedValueOnce([]); // cross-tenant productId — no match
+
+      const caller = createCaller(ctxForTenant("tenant-A"));
+      await expect(
+        caller.po.create({
+          vendorId: VENDOR_A.id,
+          items: [
+            {
+              productId: "product-belongs-to-tenant-B",
+              description: "Widget",
+              quantity: 1,
+              unitPrice: 100,
+            },
+          ],
+        }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+      expect(mockPurchaseOrderCreate).not.toHaveBeenCalled();
+      const queryArg = mockProductFindMany.mock.calls[0]![0];
+      expect(queryArg.where.tenantId).toBe("tenant-A");
+    });
+
+    it("throws BAD_REQUEST when an allocation.projectId does not belong to this tenant", async () => {
+      mockVendorFindUnique.mockResolvedValueOnce(VENDOR_A);
+      mockProjectFindMany.mockResolvedValueOnce([]); // cross-tenant projectId — no match
+
+      const caller = createCaller(ctxForTenant("tenant-A"));
+      await expect(
+        caller.po.create({
+          vendorId: VENDOR_A.id,
+          items: [
+            {
+              description: "Widget",
+              quantity: 1,
+              unitPrice: 100,
+              allocations: [
+                { type: "project_expense", quantity: 1, projectId: "project-belongs-to-tenant-B" },
+              ],
+            },
+          ],
+        }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+      expect(mockPurchaseOrderCreate).not.toHaveBeenCalled();
+    });
+
+    it("throws BAD_REQUEST when an allocation.warehouseId does not belong to this tenant", async () => {
+      mockVendorFindUnique.mockResolvedValueOnce(VENDOR_A);
+      mockWarehouseFindMany.mockResolvedValueOnce([]); // cross-tenant warehouseId — no match
+
+      const caller = createCaller(ctxForTenant("tenant-A"));
+      await expect(
+        caller.po.create({
+          vendorId: VENDOR_A.id,
+          items: [
+            {
+              description: "Widget",
+              quantity: 1,
+              unitPrice: 100,
+              allocations: [
+                { type: "stock", quantity: 1, warehouseId: "warehouse-belongs-to-tenant-B" },
+              ],
+            },
+          ],
+        }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+      expect(mockPurchaseOrderCreate).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── po.update — vendor reassignment tenant validation (M7.2) ───────────────
+  describe("po.update — vendorId tenant validation (M7.2)", () => {
+    it("throws NOT_FOUND when reassigning to a vendorId from another tenant", async () => {
+      mockPurchaseOrderFindUnique.mockResolvedValueOnce(PO_DRAFT); // loadPoForTenant
+      mockVendorFindUnique.mockResolvedValueOnce({ ...VENDOR_A, tenantId: "tenant-B" }); // loadVendorForTenant
+
+      const caller = createCaller(ctxForTenant("tenant-A"));
+      await expect(
+        caller.po.update({ id: PO_DRAFT.id, vendorId: "vendor-belongs-to-tenant-B" }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+
+      expect(mockPurchaseOrderUpdate).not.toHaveBeenCalled();
     });
   });
 });

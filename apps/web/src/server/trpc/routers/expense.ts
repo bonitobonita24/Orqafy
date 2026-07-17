@@ -1,7 +1,18 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db } from "@orqafy/db";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key
+// "expenses"). Reads use `matrixProcedure` (protectedProcedure +
+// matrixMiddleware); mutations compose `writeProcedure.use(matrixMiddleware(...))`
+// so the demo-tenant mutation guard survives alongside the matrix grant check.
+// approve/reject both map to "update" (they mutate an existing expense's
+// status, not create or delete it).
+const expensesViewProcedure = matrixProcedure("expenses", "view");
+const expensesCreateProcedure = writeProcedure.use(matrixMiddleware("expenses", "create"));
+const expensesUpdateProcedure = writeProcedure.use(matrixMiddleware("expenses", "update"));
 
 async function loadExpenseForTenant(id: string, ctx: { tenantId: string }) {
   const exp = await db.expense.findUnique({ where: { id } });
@@ -20,10 +31,10 @@ const expenseInput = z.object({
   date: z.date(),
   receiptUrl: z.string().url().optional(),
   notes: z.string().max(2000).optional(),
-});
+}).strict();
 
 export const expenseRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: expensesViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -58,7 +69,7 @@ export const expenseRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: expensesViewProcedure
     .input(z.object({ id: z.string().cuid() }))
     .query(async ({ input, ctx }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
@@ -75,12 +86,19 @@ export const expenseRouter = createTRPCRouter({
       return item;
     }),
 
-  create: writeProcedure
+  create: expensesCreateProcedure
     .input(expenseInput)
     .mutation(async ({ input, ctx }) => {
       const cat = await db.expenseCategory.findUnique({ where: { id: input.expenseCategoryId } });
       if (!cat || cat.tenantId !== ctx.tenantId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Category not found." });
+      }
+      // M7.2 — a user-supplied projectId must belong to the caller's tenant.
+      if (input.projectId !== undefined) {
+        const project = await db.project.findUnique({ where: { id: input.projectId } });
+        if (!project || project.tenantId !== ctx.tenantId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Project not found." });
+        }
       }
       const expenseNumber = `EXP-${Date.now()}`;
       return db.expense.create({
@@ -101,8 +119,8 @@ export const expenseRouter = createTRPCRouter({
       });
     }),
 
-  approve: writeProcedure
-    .input(z.object({ id: z.string().cuid() }))
+  approve: expensesUpdateProcedure
+    .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadExpenseForTenant(input.id, ctx);
       if (existing.status !== "pending") {
@@ -114,8 +132,8 @@ export const expenseRouter = createTRPCRouter({
       });
     }),
 
-  reject: writeProcedure
-    .input(z.object({ id: z.string().cuid(), notes: z.string().max(500).optional() }))
+  reject: expensesUpdateProcedure
+    .input(z.object({ id: z.string().cuid(), notes: z.string().max(500).optional() }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadExpenseForTenant(input.id, ctx);
       if (existing.status !== "pending") {
@@ -127,7 +145,7 @@ export const expenseRouter = createTRPCRouter({
       });
     }),
 
-  categories: protectedProcedure.query(async ({ ctx }) => {
+  categories: expensesViewProcedure.query(async ({ ctx }) => {
     if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
     return db.expenseCategory.findMany({
       where: { tenantId: ctx.tenantId, isActive: true },

@@ -1,9 +1,15 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "../trpc";
+import { createTRPCRouter } from "../trpc";
+import { matrixProcedure } from "../middleware/matrix";
 import { prisma as db } from "@orqafy/db";
 
+// Migrated to the data-driven `role_permissions` matrix (feature key
+// "reports"). This router is read-only — every endpoint is a query, so all
+// procedures map to the "view" action.
+const reportsViewProcedure = matrixProcedure("reports", "view");
+
 export const reportRouter = createTRPCRouter({
-  dashboardKPIs: protectedProcedure
+  dashboardKPIs: reportsViewProcedure
     .input(
       z.object({
         startDate: z.date().optional(),
@@ -67,7 +73,7 @@ export const reportRouter = createTRPCRouter({
       };
     }),
 
-  revenueByPeriod: protectedProcedure
+  revenueByPeriod: reportsViewProcedure
     .input(
       z.object({
         startDate: z.date(),
@@ -87,7 +93,7 @@ export const reportRouter = createTRPCRouter({
       return invoices;
     }),
 
-  invoicesByStatus: protectedProcedure.query(async ({ ctx }) => {
+  invoicesByStatus: reportsViewProcedure.query(async ({ ctx }) => {
     return db.invoice.groupBy({
       by: ["status"],
       where: { tenantId: ctx.tenantId },
@@ -96,7 +102,7 @@ export const reportRouter = createTRPCRouter({
     });
   }),
 
-  expensesByCategory: protectedProcedure
+  expensesByCategory: reportsViewProcedure
     .input(
       z.object({
         startDate: z.date().optional(),
@@ -142,7 +148,7 @@ export const reportRouter = createTRPCRouter({
       }));
     }),
 
-  topClients: protectedProcedure
+  topClients: reportsViewProcedure
     .input(z.object({ limit: z.number().int().min(1).max(20).default(10) }))
     .query(async ({ ctx, input }) => {
       return db.invoice.groupBy({
@@ -155,7 +161,7 @@ export const reportRouter = createTRPCRouter({
       });
     }),
 
-  payrollSummary: protectedProcedure
+  payrollSummary: reportsViewProcedure
     .input(
       z.object({
         startDate: z.date().optional(),

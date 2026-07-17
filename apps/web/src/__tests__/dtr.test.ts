@@ -27,6 +27,14 @@ vi.mock("@orqafy/db", () => {
       findFirst: vi.fn(),
       findUnique: vi.fn(),
     },
+    // RBAC matrix middleware (dtr router migrated to `matrixProcedure` /
+    // `matrixMiddleware("dtr", ...)`). Every test below authenticates as a
+    // "Platform Owner" role name, which `hasPermission` bypasses entirely —
+    // preserves this file's original intent of exercising only the dtr
+    // router's OWN business logic (state machine, tenant scoping, approver
+    // role checks), not the matrix grant itself (covered by dtr-matrix.test.ts).
+    role: { findFirst: vi.fn() },
+    rolePermission: { findUnique: vi.fn() },
     auditLog: { create: vi.fn() },
   };
   return {
@@ -38,6 +46,19 @@ vi.mock("@orqafy/db", () => {
       tx: { auditLog: { create: (args: unknown) => unknown } },
       entry: unknown,
     ) => { await tx.auditLog.create({ data: entry }); },
+    // Minimal stand-in for the real @orqafy/db#hasPermission resolver —
+    // mirrors its Platform Owner / Tenant Super Admin bypass path only
+    // (matrix-row grants are exercised separately in dtr-matrix.test.ts).
+    hasPermission: async (
+      _prisma: unknown,
+      args: { roleId: string; tenantId: string },
+    ): Promise<boolean> => {
+      const role = (await mockPrisma.role.findFirst({
+        where: { id: args.roleId, tenantId: args.tenantId },
+      })) as { name: string } | null;
+      if (!role) return false;
+      return ["Platform Owner", "Tenant Super Admin"].includes(role.name);
+    },
   };
 });
 
@@ -50,6 +71,7 @@ function authenticatedCtx(role = "Administrator") {
     req: makeReq(),
     userId: "user-1",
     roles: [role] as string[],
+    roleId: "role-1",
     tenantSlug: "acme",
     tenantId: "acme-tenant-id",
     securityVersion: 1,
@@ -62,6 +84,7 @@ function unauthenticatedCtx() {
     req: makeReq(),
     userId: null,
     roles: [] as string[],
+    roleId: null,
     tenantSlug: null,
     tenantId: null,
     securityVersion: 0,
@@ -96,10 +119,20 @@ const mockDb = db as unknown as {
   auditLog: {
     create: ReturnType<typeof vi.fn>;
   };
+  role: {
+    findFirst: ReturnType<typeof vi.fn>;
+  };
 };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Default: authenticated caller resolves to a "Platform Owner" DB role,
+  // which bypasses the RBAC matrix entirely (tenant-rbac-standard.md §4).
+  mockDb.role.findFirst.mockResolvedValue({
+    id: "role-1",
+    tenantId: "acme-tenant-id",
+    name: "Platform Owner",
+  });
 });
 
 const fakeAttendance = {

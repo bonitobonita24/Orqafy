@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { createServerCaller } from "@/server/trpc/server";
+import { guardPage } from "@/server/rbac/guard-page";
+import { auth } from "@/server/auth";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -10,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DeactivateButton } from "./deactivate-button";
+import { TransferOwnership } from "./transfer-ownership";
 
 export const metadata: Metadata = { title: "Users" };
 
@@ -20,10 +24,31 @@ export default async function UsersSettingsPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  await params;
+  const { slug } = await params;
+  await guardPage(slug, "users");
+
+  // User Management is Tenant Super Admin / Platform Owner only
+  // (tenant-rbac-standard.md §4 guardrails) — defense-in-depth over the
+  // server mutations (`superAdminProcedure` in the `user` router).
+  const session = await auth();
+  const roles = session?.user?.roles ?? [];
+  if (!roles.includes("Tenant Super Admin") && !roles.includes("Platform Owner")) {
+    redirect(`/${slug}/settings`);
+  }
 
   const api = await createServerCaller();
   const { items: users, total } = await api.user.list({ page: 1, limit: 50 });
+
+  const currentUserId = session?.user?.id;
+  const isCurrentUserOwner = users.some(
+    (u) => u.id === currentUserId && u.isTenantOwner,
+  );
+  const candidates = users
+    .filter((u) => u.isActive && !u.isTenantOwner && u.id !== currentUserId)
+    .map((u) => ({
+      id: u.id,
+      label: u.displayName ?? (`${u.firstName} ${u.lastName}`.trim() || u.email),
+    }));
 
   return (
     <div className="space-y-6">
@@ -36,6 +61,18 @@ export default async function UsersSettingsPage({
           </span>
         </p>
       </div>
+
+      {isCurrentUserOwner && (
+        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <div>
+            <h2 className="text-sm font-medium">Ownership</h2>
+            <p className="text-xs text-muted-foreground">
+              You are the tenant owner. Transfer ownership to another member.
+            </p>
+          </div>
+          <TransferOwnership candidates={candidates} />
+        </div>
+      )}
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <Table>
@@ -61,6 +98,14 @@ export default async function UsersSettingsPage({
                   <span className="text-xs text-muted-foreground">
                     {user.role?.name ?? "—"}
                   </span>
+                  {user.isTenantOwner && (
+                    <Badge
+                      variant="outline"
+                      className="ml-2 border-primary/30 bg-primary/10 text-primary text-xs"
+                    >
+                      Owner
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell>
                   {user.isActive ? (

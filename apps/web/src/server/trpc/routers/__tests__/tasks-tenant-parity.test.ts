@@ -13,6 +13,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as OrqafyDb from "@orqafy/db";
 
 // ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
 const {
@@ -23,6 +24,10 @@ const {
   mockTaskDelete,
   mockProjectFindUnique,
   mockAuditLogCreate,
+  mockUserFindUnique,
+  mockTaskAssignmentFindFirst,
+  mockTaskAssignmentCreate,
+  mockRoleFindFirst,
 } = vi.hoisted(() => ({
   mockTaskFindUnique: vi.fn(),
   mockTaskFindMany: vi.fn(),
@@ -31,9 +36,16 @@ const {
   mockTaskDelete: vi.fn(),
   mockProjectFindUnique: vi.fn(),
   mockAuditLogCreate: vi.fn(),
+  mockUserFindUnique: vi.fn(),
+  mockTaskAssignmentFindFirst: vi.fn(),
+  mockTaskAssignmentCreate: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => {
+vi.mock("@orqafy/db", async () => {
+  // Keep the real `hasPermission` resolver (matrix.ts imports it directly
+  // from "@orqafy/db") — only mock the prisma client calls it and the router make.
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
   // mockDb is the object passed INTO the $transaction callback (represents the tx client).
   // It must include every model the router touches inside a transaction.
   const mockDb = {
@@ -47,9 +59,25 @@ vi.mock("@orqafy/db", () => {
     project: {
       findUnique: mockProjectFindUnique,
     },
+    user: {
+      findUnique: mockUserFindUnique,
+    },
+    taskAssignment: {
+      findFirst: mockTaskAssignmentFindFirst,
+      create: mockTaskAssignmentCreate,
+    },
     auditLog: { create: mockAuditLogCreate },
+    // Router migrated to the data-driven `role_permissions` matrix (feature
+    // key "tasks") — matrixMiddleware resolves the caller's role via
+    // role.findFirst. Every ctx below uses roleId "role-1" and role name
+    // "Platform Owner" so the matrix bypasses entirely (this suite proves
+    // tenant-scoping business logic, not matrix grants — see
+    // tasks-matrix.test.ts for matrix grant/deny coverage).
+    role: { findFirst: mockRoleFindFirst },
+    rolePermission: { findUnique: vi.fn() },
   };
   return {
+    ...actual,
     prisma: {
       ...mockDb,
       // $transaction passes mockDb as the "tx" argument so the router's tx.task.xxx calls
@@ -90,6 +118,7 @@ function ctxForTenant(tenantId: string, isDemoTenant = false) {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-1",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -125,6 +154,14 @@ describe("Tasks tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)",
     // resetAllMocks clears both call history AND mockResolvedValueOnce queues,
     // preventing leftover queued values from leaking into subsequent tests.
     vi.resetAllMocks();
+    // Every test's caller resolves to a "Platform Owner" role, which bypasses
+    // the "tasks" matrix entirely (tenant-rbac-standard.md §4) — this suite
+    // exercises tenant-scoping business logic, not matrix grant/deny behaviour.
+    mockRoleFindFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "tenant-A",
+      name: "Platform Owner",
+    });
     // Re-wire $transaction after reset so it always passes mockDb to the callback.
     const { prisma } = await import("@orqafy/db");
     (prisma as any).$transaction.mockImplementation((fn: any) => {
@@ -224,6 +261,23 @@ describe("Tasks tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)",
     ).rejects.toMatchObject({ code: "NOT_FOUND", message: "Project not found" });
   });
 
+  it("taskCreate throws NOT_FOUND when parentTaskId belongs to a different tenant", async () => {
+    mockProjectFindUnique.mockResolvedValueOnce(PROJECT_A);
+    mockTaskFindUnique.mockResolvedValueOnce({ ...TASK_A, tenantId: "tenant-B" }); // loadTaskForTenant(parentTaskId)
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+
+    await expect(
+      caller.tasks.taskCreate({
+        projectId: PROJECT_A.id,
+        title: "Nested task",
+        parentTaskId: TASK_A.id,
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND", message: "Task not found" });
+
+    expect(mockTaskCreate).not.toHaveBeenCalled();
+  });
+
   // ── 4. taskUpdateStatus state-machine guard ─────────────────────────────────
   it("taskUpdateStatus throws BAD_REQUEST on illegal status transition", async () => {
     mockTaskFindUnique.mockResolvedValueOnce(TASK_A); // status: "todo"
@@ -289,6 +343,20 @@ describe("Tasks tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)",
         data: expect.objectContaining({ action: "DELETE", entity: "Task" }),
       }),
     );
+  });
+
+  // ── taskAssign cross-tenant assignee guard ──────────────────────────────────
+  it("taskAssign throws BAD_REQUEST when userId belongs to a different tenant", async () => {
+    mockTaskFindUnique.mockResolvedValueOnce(TASK_A); // loadTaskForTenant
+    mockUserFindUnique.mockResolvedValueOnce({ id: "user-b", tenantId: "tenant-B" });
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+
+    await expect(
+      caller.tasks.taskAssign({ taskId: TASK_A.id, userId: "user-b" }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST", message: "User not found." });
+
+    expect(mockTaskAssignmentCreate).not.toHaveBeenCalled();
   });
 
   // ── 7. Demo tenant guard ────────────────────────────────────────────────────

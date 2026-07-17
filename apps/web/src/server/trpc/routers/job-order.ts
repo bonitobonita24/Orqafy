@@ -1,10 +1,28 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db } from "@orqafy/db";
 import { rateLimiters } from "@/server/lib/rate-limit";
 import { sanitizePlainText } from "@/server/lib/sanitize";
 import { createNotification } from "@/server/notifications/create";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key
+// "job_orders"). Reads use `matrixProcedure` (protectedProcedure +
+// matrixMiddleware); mutations compose `writeProcedure.use(matrixMiddleware(...))`
+// so the demo-tenant mutation guard survives alongside the matrix grant check.
+// assignTechnician/updateStatus/recordSignature all map to "update" (they
+// mutate an existing job order, never create or delete it). addPart and
+// addServiceLine map to "create"; removePart and removeServiceLine map to
+// "delete".
+const jobOrdersViewProcedure = matrixProcedure("job_orders", "view");
+const jobOrdersCreateProcedure = writeProcedure.use(matrixMiddleware("job_orders", "create"));
+const jobOrdersUpdateProcedure = writeProcedure.use(matrixMiddleware("job_orders", "update"));
+// NOTE: job_orders has NO hard-delete-the-job-order endpoint (seed
+// role-permissions.ts sets delete:false for internal staff). addPart/
+// removePart/removeServiceLine mutate an EXISTING job order's line items →
+// they map to "create"/"update", NOT "delete". Mapping a line-item removal to
+// "delete" would route it through a bypass-only gate and lock out all staff.
 
 const jobOrderStatuses = [
   "received",
@@ -58,7 +76,7 @@ const jobOrderInput = z.object({
   priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
   estimatedCost: z.number().min(0).optional(),
   warranty: z.string().max(200).optional(),
-});
+}).strict();
 
 async function loadJobOrderForTenant(id: string, ctx: { tenantId: string }) {
   const jo = await db.jobOrder.findUnique({ where: { id } });
@@ -69,7 +87,7 @@ async function loadJobOrderForTenant(id: string, ctx: { tenantId: string }) {
 }
 
 export const jobOrderRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: jobOrdersViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -111,7 +129,7 @@ export const jobOrderRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: jobOrdersViewProcedure
     .input(z.object({ id: z.string().cuid() }))
     .query(async ({ input, ctx }) => {
       const ip = ctx.req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -131,7 +149,7 @@ export const jobOrderRouter = createTRPCRouter({
       return item;
     }),
 
-  publicView: protectedProcedure
+  publicView: jobOrdersViewProcedure
     .input(z.object({ id: z.string().cuid(), token: z.string().min(1) }))
     .query(async ({ input, ctx }) => {
       const ip = ctx.req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -160,10 +178,14 @@ export const jobOrderRouter = createTRPCRouter({
       return item;
     }),
 
-  create: writeProcedure
+  create: jobOrdersCreateProcedure
     .input(jobOrderInput)
     .mutation(async ({ input, ctx }) => {
-      const customer = await db.customer.findUnique({ where: { id: input.customerId } });
+      // Tenant-isolation: the customer MUST belong to the caller's tenant —
+      // otherwise a job order could be linked to another tenant's customer record.
+      const customer = await db.customer.findFirst({
+        where: { id: input.customerId, tenantId: ctx.tenantId },
+      });
       if (!customer) throw new TRPCError({ code: "BAD_REQUEST", message: "Customer not found." });
       const jobOrderNumber = `JO-${Date.now()}`;
       return db.jobOrder.create({
@@ -187,7 +209,7 @@ export const jobOrderRouter = createTRPCRouter({
       });
     }),
 
-  updateStatus: writeProcedure
+  updateStatus: jobOrdersUpdateProcedure
     .input(
       z.object({
         id: z.string().cuid(),
@@ -195,7 +217,7 @@ export const jobOrderRouter = createTRPCRouter({
         diagnosis: z.string().max(2000).optional(),
         actualCost: z.number().min(0).optional(),
         laborCost: z.number().min(0).optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const existing = await loadJobOrderForTenant(input.id, ctx);
@@ -242,8 +264,8 @@ export const jobOrderRouter = createTRPCRouter({
       });
     }),
 
-  assignTechnician: writeProcedure
-    .input(z.object({ id: z.string().cuid(), technicianId: z.string().cuid() }))
+  assignTechnician: jobOrdersUpdateProcedure
+    .input(z.object({ id: z.string().cuid(), technicianId: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const jobOrder = await loadJobOrderForTenant(input.id, ctx);
       const technician = await db.user.findUnique({ where: { id: input.technicianId } });
@@ -273,7 +295,7 @@ export const jobOrderRouter = createTRPCRouter({
       return updated;
     }),
 
-  addPart: writeProcedure
+  addPart: jobOrdersCreateProcedure
     .input(
       z.object({
         jobOrderId: z.string().cuid(),
@@ -282,7 +304,7 @@ export const jobOrderRouter = createTRPCRouter({
         quantity: z.number().positive(),
         unitPrice: z.number().min(0),
         isFromInventory: z.boolean().default(false),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const jobOrder = await loadJobOrderForTenant(input.jobOrderId, ctx);
@@ -293,7 +315,11 @@ export const jobOrderRouter = createTRPCRouter({
         });
       }
       if (input.productId !== undefined) {
-        const product = await db.product.findUnique({ where: { id: input.productId } });
+        // Tenant-isolation: the product MUST belong to the caller's tenant —
+        // otherwise a job order part could reference another tenant's product.
+        const product = await db.product.findFirst({
+          where: { id: input.productId, tenantId: ctx.tenantId },
+        });
         if (!product) throw new TRPCError({ code: "BAD_REQUEST", message: "Product not found." });
       }
       const totalPrice = input.quantity * input.unitPrice;
@@ -311,8 +337,8 @@ export const jobOrderRouter = createTRPCRouter({
       });
     }),
 
-  removePart: writeProcedure
-    .input(z.object({ id: z.string().cuid() }))
+  removePart: jobOrdersUpdateProcedure
+    .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const part = await db.jobOrderPart.findUnique({
         where: { id: input.id },
@@ -329,7 +355,7 @@ export const jobOrderRouter = createTRPCRouter({
       return { id: input.id };
     }),
 
-  addServiceLine: writeProcedure
+  addServiceLine: jobOrdersCreateProcedure
     .input(
       z.object({
         jobOrderId: z.string().cuid(),
@@ -338,7 +364,7 @@ export const jobOrderRouter = createTRPCRouter({
         rate: z.number().min(0).optional(),
         amount: z.number().min(0),
         sortOrder: z.number().int().min(0).default(0),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const jobOrder = await loadJobOrderForTenant(input.jobOrderId, ctx);
@@ -361,8 +387,8 @@ export const jobOrderRouter = createTRPCRouter({
       });
     }),
 
-  removeServiceLine: writeProcedure
-    .input(z.object({ id: z.string().cuid() }))
+  removeServiceLine: jobOrdersUpdateProcedure
+    .input(z.object({ id: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const line = await db.jobOrderServiceLine.findUnique({
         where: { id: input.id },
@@ -379,13 +405,13 @@ export const jobOrderRouter = createTRPCRouter({
       return { id: input.id };
     }),
 
-  recordSignature: writeProcedure
+  recordSignature: jobOrdersUpdateProcedure
     .input(
       z.object({
         id: z.string().cuid(),
         role: z.enum(["customer", "technician"]),
         dataUrl: z.string().min(1).max(MAX_SIGNATURE_DATA_URL_LENGTH),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       if (!input.dataUrl.startsWith(SIGNATURE_DATA_URL_PREFIX)) {

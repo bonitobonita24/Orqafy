@@ -1,9 +1,17 @@
 import type { Metadata } from "next";
+import { guardPage } from "@/server/rbac/guard-page";
 import { SmtpConfigForm } from "./smtp-config-form";
 
 export const metadata: Metadata = { title: "SMTP settings" };
 
-export default function SmtpSettingsPage() {
+export default async function SmtpSettingsPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  await guardPage(slug, "settings");
+
   return (
     <div className="space-y-6">
       <div>

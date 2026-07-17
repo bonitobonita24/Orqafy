@@ -19,52 +19,70 @@ const {
   mockProductFindFirst,
   mockWarehouseFindMany,
   mockWarehouseFindFirst,
+  mockWarehouseFindUnique,
   mockWarehouseStockFindMany,
   mockCustomerFindUnique,
+  mockRoleFindFirst,
+  mockRolePermissionFindUnique,
 } = vi.hoisted(() => ({
   mockProductFindMany: vi.fn(),
   mockProductCount: vi.fn(),
   mockProductFindFirst: vi.fn(),
   mockWarehouseFindMany: vi.fn(),
   mockWarehouseFindFirst: vi.fn(),
+  mockWarehouseFindUnique: vi.fn(),
   mockWarehouseStockFindMany: vi.fn(),
   mockCustomerFindUnique: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
+  mockRolePermissionFindUnique: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    product: {
-      findMany: mockProductFindMany,
-      findFirst: mockProductFindFirst,
-      findUnique: vi.fn(),
-      count: mockProductCount,
+import type * as OrqafyDb from "@orqafy/db";
+
+// Keep the real `hasPermission` resolver (it takes prisma as an argument) —
+// only mock the prisma client calls it makes. inventory.* procedures now run
+// through matrixMiddleware (tenant-rbac-standard.md §4); role/rolePermission
+// mocks below default to a Platform Owner bypass in beforeEach.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      product: {
+        findMany: mockProductFindMany,
+        findFirst: mockProductFindFirst,
+        findUnique: vi.fn(),
+        count: mockProductCount,
+      },
+      warehouse: {
+        findMany: mockWarehouseFindMany,
+        findFirst: mockWarehouseFindFirst,
+        findUnique: mockWarehouseFindUnique,
+        create: vi.fn(),
+        update: vi.fn(),
+      },
+      warehouseStock: {
+        findMany: mockWarehouseStockFindMany,
+        update: vi.fn(),
+      },
+      customer: { findUnique: mockCustomerFindUnique, findFirst: vi.fn() },
+      ecommerceOrder: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), count: vi.fn(), create: vi.fn(), update: vi.fn() },
+      ecommerceOrderItem: { create: vi.fn(), createMany: vi.fn() },
+      stockMovement: { findMany: vi.fn(), create: vi.fn() },
+      tenant: { findUnique: vi.fn() },
+      category: { findMany: vi.fn() },
+      role: { findFirst: mockRoleFindFirst },
+      rolePermission: { findUnique: mockRolePermissionFindUnique },
+      $transaction: vi.fn((fn: any) => fn({
+        ecommerceOrder: { create: vi.fn().mockResolvedValue({ id: "order-1", orderNumber: "ORD-001" }) },
+        ecommerceOrderItem: { create: vi.fn() },
+        warehouseStock: { update: vi.fn() },
+        stockMovement: { create: vi.fn() },
+      })),
     },
-    warehouse: {
-      findMany: mockWarehouseFindMany,
-      findFirst: mockWarehouseFindFirst,
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-    },
-    warehouseStock: {
-      findMany: mockWarehouseStockFindMany,
-      update: vi.fn(),
-    },
-    customer: { findUnique: mockCustomerFindUnique, findFirst: vi.fn() },
-    ecommerceOrder: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), count: vi.fn(), create: vi.fn(), update: vi.fn() },
-    ecommerceOrderItem: { create: vi.fn(), createMany: vi.fn() },
-    stockMovement: { findMany: vi.fn(), create: vi.fn() },
-    tenant: { findUnique: vi.fn() },
-    category: { findMany: vi.fn() },
-    $transaction: vi.fn((fn: any) => fn({
-      ecommerceOrder: { create: vi.fn().mockResolvedValue({ id: "order-1", orderNumber: "ORD-001" }) },
-      ecommerceOrderItem: { create: vi.fn() },
-      warehouseStock: { update: vi.fn() },
-      stockMovement: { create: vi.fn() },
-    })),
-  },
-  writeAuditLog: vi.fn(),
-}));
+    writeAuditLog: vi.fn(),
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: {
@@ -103,6 +121,7 @@ function ctxForTenant(tenantId: string) {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-1",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -117,6 +136,9 @@ const WAREHOUSE_CUID = "clwarehousexxxxxxxxxx0";
 describe("Product + Warehouse tenant parity (K-prime Extended Phase 2 Wave B)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // inventory.* procedures run through matrixMiddleware — default to a
+    // Platform Owner bypass so these IDOR/scoping assertions are unaffected.
+    mockRoleFindFirst.mockResolvedValue({ id: "role-1", tenantId: "tenant-A", name: "Platform Owner" });
   });
 
   it("browseProducts scopes findMany by ctx.tenantId", async () => {
@@ -154,6 +176,12 @@ describe("Product + Warehouse tenant parity (K-prime Extended Phase 2 Wave B)", 
       tenantId: "tenant-A",
       isActive: true,
     });
+    // M7.2 — warehouseId is validated before the product check; return a tenant-A
+    // warehouse here so the test proceeds to the product-tenant rejection below.
+    mockWarehouseFindUnique.mockResolvedValueOnce({
+      id: WAREHOUSE_CUID,
+      tenantId: "tenant-A",
+    });
     // product.findMany returns empty because tenantId filter excludes tenant-B products
     mockProductFindMany.mockResolvedValueOnce([]);
 
@@ -175,6 +203,37 @@ describe("Product + Warehouse tenant parity (K-prime Extended Phase 2 Wave B)", 
     expect(mockProductFindMany).toHaveBeenCalledOnce();
     const callArg = mockProductFindMany.mock.calls[0]![0];
     expect(callArg.where).toMatchObject({ tenantId: "tenant-A" });
+  });
+
+  it("placeOrder rejects when warehouseId belongs to a different tenant (M7.2)", async () => {
+    mockCustomerFindUnique.mockResolvedValueOnce({
+      id: "clcustomerxxxxxxxxxxx0",
+      tenantId: "tenant-A",
+      isActive: true,
+    });
+    // Warehouse exists but belongs to tenant-B — must be rejected before any
+    // product/stock lookups run.
+    mockWarehouseFindUnique.mockResolvedValueOnce({
+      id: WAREHOUSE_CUID,
+      tenantId: "tenant-B",
+    });
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+
+    await expect(
+      caller.storefront.placeOrder({
+        customerId: "clcustomerxxxxxxxxxxx0",
+        warehouseId: WAREHOUSE_CUID,
+        items: [{ productId: PRODUCT_CUID, quantity: 1, unitPrice: 100 }],
+        shippingAddress: { line1: "123 Test St" },
+        billingAddress: { line1: "123 Test St" },
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Warehouse not found.",
+    });
+
+    expect(mockProductFindMany).not.toHaveBeenCalled();
   });
 
   it("warehouseList scopes findMany by ctx.tenantId", async () => {

@@ -11,29 +11,57 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { NextRequest } from "next/server";
+import type * as OrqafyDb from "@orqafy/db";
 
-// ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
-const { mockCatFindUnique, mockCatFindFirst, mockCatCreate, mockCatUpdate, mockCatDelete } =
-  vi.hoisted(() => ({
-    mockCatFindUnique: vi.fn(),
-    mockCatFindFirst: vi.fn(),
-    mockCatCreate: vi.fn(),
-    mockCatUpdate: vi.fn(),
-    mockCatDelete: vi.fn(),
-  }));
-
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    expenseCategory: {
-      findUnique: mockCatFindUnique,
-      findFirst: mockCatFindFirst,
-      findMany: vi.fn().mockResolvedValue([]),
-      create: mockCatCreate,
-      update: mockCatUpdate,
-      delete: mockCatDelete,
-    },
+vi.mock("@/server/lib/rate-limit", () => ({
+  rateLimiters: {
+    api: { check: vi.fn() },
+    auth: { check: vi.fn() },
+    upload: { check: vi.fn() },
+    public: { check: vi.fn() },
   },
 }));
+
+// ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
+const {
+  mockCatFindUnique,
+  mockCatFindFirst,
+  mockCatCreate,
+  mockCatUpdate,
+  mockCatDelete,
+  mockRoleFindFirst,
+  mockRolePermFindUnique,
+} = vi.hoisted(() => ({
+  mockCatFindUnique: vi.fn(),
+  mockCatFindFirst: vi.fn(),
+  mockCatCreate: vi.fn(),
+  mockCatUpdate: vi.fn(),
+  mockCatDelete: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
+  mockRolePermFindUnique: vi.fn(),
+}));
+
+// Keep the real `hasPermission` resolver (it takes prisma as an argument) —
+// only mock the prisma client calls it (and the router) make. See the
+// canonical pattern in matrix-procedure.test.ts.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      expenseCategory: {
+        findUnique: mockCatFindUnique,
+        findFirst: mockCatFindFirst,
+        findMany: vi.fn().mockResolvedValue([]),
+        create: mockCatCreate,
+        update: mockCatUpdate,
+        delete: mockCatDelete,
+      },
+      role: { findFirst: mockRoleFindFirst },
+      rolePermission: { findUnique: mockRolePermFindUnique },
+    },
+  };
+});
 
 vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
@@ -46,14 +74,17 @@ const testRouter = createTRPCRouter({ expenseCategory: expenseCategoryRouter });
 const createCaller = createCallerFactory(testRouter);
 
 function makeReq(): NextRequest {
-  return {} as NextRequest;
+  return {
+    headers: { get: (_h: string): string | null => null },
+  } as unknown as NextRequest;
 }
 
 function ctxForTenant(tenantId: string) {
   return {
     req: makeReq(),
     userId: "user-1",
-    roles: ["Administrator"] as string[],
+    roles: ["Admin"] as string[],
+    roleId: "role-1",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -67,6 +98,22 @@ function ctxForTenant(tenantId: string) {
 describe("ExpenseCategory tenant parity (K-prime closure)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Default: the acting "Admin" role resolves within the caller's own
+    // tenant and is granted full create/update/delete on "settings" — these
+    // tests assert tenant ISOLATION, not RBAC denial, so the matrix always
+    // allows by default. "Admin" is NOT a bypass role name (only "Platform
+    // Owner" / "Tenant Super Admin" are) so it must resolve via the matrix.
+    mockRoleFindFirst.mockImplementation(
+      ({ where }: { where: { id: string; tenantId: string } }) =>
+        Promise.resolve({ id: where.id, tenantId: where.tenantId, name: "Admin" }),
+    );
+    mockRolePermFindUnique.mockResolvedValue({
+      view: true,
+      create: true,
+      update: true,
+      delete: true,
+    });
   });
 
   it("expenseCategory.update throws NOT_FOUND when category belongs to tenant-B but ctx is tenant-A", async () => {

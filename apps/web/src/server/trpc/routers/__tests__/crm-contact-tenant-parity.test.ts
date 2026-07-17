@@ -10,34 +10,43 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as OrqafyDb from "@orqafy/db";
 
 // ── DB mock (hoisted so vi.mock factory can reference) ────────────────────────
-const { mockCustomerFindUnique, mockContactFindMany, mockContactCreate, mockContactFindUnique, mockContactUpdate, mockContactDelete } = vi.hoisted(() => ({
+const { mockCustomerFindUnique, mockContactFindMany, mockContactCreate, mockContactFindUnique, mockContactUpdate, mockContactDelete, mockRoleFindFirst, mockRolePermissionFindUnique } = vi.hoisted(() => ({
   mockCustomerFindUnique: vi.fn(),
   mockContactFindMany: vi.fn(),
   mockContactCreate: vi.fn(),
   mockContactFindUnique: vi.fn(),
   mockContactUpdate: vi.fn(),
   mockContactDelete: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
+  mockRolePermissionFindUnique: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    customer: { findUnique: mockCustomerFindUnique, findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
-    customerContact: { findMany: mockContactFindMany, create: mockContactCreate, findUnique: mockContactFindUnique, update: mockContactUpdate, delete: mockContactDelete },
-    customerCreditAccount: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
-    customerCreditTransaction: { findMany: vi.fn(), create: vi.fn() },
-    quotation: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
-    quotationSection: { findMany: vi.fn(), create: vi.fn(), createMany: vi.fn(), deleteMany: vi.fn(), update: vi.fn() },
-    quotationMarkupColumn: { findMany: vi.fn(), create: vi.fn(), createMany: vi.fn(), deleteMany: vi.fn() },
-    quotationLineItem: { findMany: vi.fn(), create: vi.fn(), createMany: vi.fn(), deleteMany: vi.fn() },
-    quotationLineItemMarkup: { findMany: vi.fn(), create: vi.fn(), createMany: vi.fn(), deleteMany: vi.fn() },
-    quotationRevision: { findMany: vi.fn(), create: vi.fn() },
-    contactLog: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
-    invoice: { create: vi.fn() },
-    $transaction: vi.fn(),
-  },
-}));
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      customer: { findUnique: mockCustomerFindUnique, findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
+      customerContact: { findMany: mockContactFindMany, create: mockContactCreate, findUnique: mockContactFindUnique, update: mockContactUpdate, delete: mockContactDelete },
+      customerCreditAccount: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
+      customerCreditTransaction: { findMany: vi.fn(), create: vi.fn() },
+      quotation: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
+      quotationSection: { findMany: vi.fn(), create: vi.fn(), createMany: vi.fn(), deleteMany: vi.fn(), update: vi.fn() },
+      quotationMarkupColumn: { findMany: vi.fn(), create: vi.fn(), createMany: vi.fn(), deleteMany: vi.fn() },
+      quotationLineItem: { findMany: vi.fn(), create: vi.fn(), createMany: vi.fn(), deleteMany: vi.fn() },
+      quotationLineItemMarkup: { findMany: vi.fn(), create: vi.fn(), createMany: vi.fn(), deleteMany: vi.fn() },
+      quotationRevision: { findMany: vi.fn(), create: vi.fn() },
+      contactLog: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
+      invoice: { create: vi.fn() },
+      role: { findFirst: mockRoleFindFirst },
+      rolePermission: { findUnique: mockRolePermissionFindUnique },
+      $transaction: vi.fn(),
+    },
+  };
+});
 
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: { api: { check: vi.fn() }, public: { check: vi.fn() } },
@@ -64,6 +73,7 @@ function ctxForTenant(tenantId: string) {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-1",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -81,7 +91,16 @@ const CONTACT_OF_CUST_A = { id: "contact-a", customerId: "cust-a" };
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("CRM CustomerContact tenant-parity (Direction M-1)", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Matrix middleware bypass by default — these tests assert tenant-isolation
+    // (IDOR) behavior, not RBAC grant/deny (covered by crm-matrix.test.ts).
+    mockRoleFindFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: TENANT_A,
+      name: "Platform Owner",
+    });
+  });
 
   it("contactList rejects cross-tenant customer", async () => {
     mockCustomerFindUnique.mockResolvedValueOnce(CUSTOMER_B);

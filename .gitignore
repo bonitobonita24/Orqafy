@@ -46,6 +46,7 @@ skills-lock.json
 # Auto-generated when agents drive the browser via Playwright MCP
 .playwright-mcp/
 # Ad-hoc audit screenshots captured during dev sweeps
+/screenshots/
 dev-*.png
 
 # ─── Automation Handoff Docs (consumed by framework, not committed) ───

@@ -70,7 +70,7 @@ export const storageRouter = createTRPCRouter({
         sizeBytes: z.number().int().positive().max(MAX_FILE_SIZE_BYTES),
         entityType: z.enum(ENTITY_TYPES),
         entityId: z.string().cuid(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       // Quota check
@@ -108,7 +108,7 @@ export const storageRouter = createTRPCRouter({
         sizeBytes: z.number().int().positive(),
         entityType: z.enum(ENTITY_TYPES),
         entityId: z.string().cuid(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       if (!isKeyOwnedByTenant(input.storageKey, ctx.tenantSlug)) {
@@ -179,7 +179,7 @@ export const storageRouter = createTRPCRouter({
 
   /** Delete an attachment and reclaim storage quota. */
   delete: writeProcedure
-    .input(z.object({ attachmentId: z.string().cuid() }))
+    .input(z.object({ attachmentId: z.string().cuid() }).strict())
     .mutation(async ({ input, ctx }) => {
       const attachment = await db.attachment.findFirst({
         where: { id: input.attachmentId, tenantId: ctx.tenantId },

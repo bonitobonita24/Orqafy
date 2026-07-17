@@ -183,6 +183,7 @@ export function FileUpload({ entityType, entityId, onUploadComplete, maxFileSize
               size="icon"
               className="h-6 w-6 shrink-0"
               onClick={() => setUploads((prev) => prev.filter((_, j) => j !== i))}
+              aria-label={`Remove ${u.file.name}`}
             >
               <X className="h-3 w-3" />
             </Button>

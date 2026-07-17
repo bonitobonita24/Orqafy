@@ -1,12 +1,27 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db, writeAuditLog } from "@orqafy/db";
 import {
   resolveAccountingDefaults,
   postJournalEntryTx,
   type JournalPostLine,
 } from "@/server/lib/journal-posting";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key
+// "purchasing"). Reads use `matrixProcedure` (protectedProcedure +
+// matrixMiddleware); mutations compose `writeProcedure.use(matrixMiddleware(...))`
+// so the demo-tenant mutation guard survives alongside the matrix grant check.
+// The seed grants internal staff view/create/update on "purchasing" (no-op —
+// everyone already had access) and gates "delete" to Admin + Purchasing Staff +
+// bypass roles. There is no 4-action mapping for "approve" in this model, so
+// po.approve and vendor.reactivate — both elevated purchasing actions — map to
+// the "delete" tier, reproducing (and for po.approve, fixing) their real gate.
+const purchasingViewProcedure = matrixProcedure("purchasing", "view");
+const purchasingCreateProcedure = writeProcedure.use(matrixMiddleware("purchasing", "create"));
+const purchasingUpdateProcedure = writeProcedure.use(matrixMiddleware("purchasing", "update"));
+const purchasingDeleteProcedure = writeProcedure.use(matrixMiddleware("purchasing", "delete"));
 
 // ── Finance constants (D-2) ───────────────────────────────────────────────────
 
@@ -112,7 +127,7 @@ const poItemSchema = z.object({
 // ── Vendor sub-router ─────────────────────────────────────────────────────────
 
 export const vendorRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: purchasingViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -149,13 +164,13 @@ export const vendorRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: purchasingViewProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ input, ctx }) => {
       return loadVendorForTenant(input.id, ctx);
     }),
 
-  create: writeProcedure
+  create: purchasingCreateProcedure
     .input(
       z.object({
         type: z.enum(["direct", "ecommerce"]).default("direct"),
@@ -173,7 +188,7 @@ export const vendorRouter = createTRPCRouter({
         platformName: z.string().max(200).optional(),
         paymentTerms: z.string().max(200).optional(),
         notes: z.string().max(2000).optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       return db.$transaction(async (tx) => {
@@ -209,7 +224,7 @@ export const vendorRouter = createTRPCRouter({
       });
     }),
 
-  update: writeProcedure
+  update: purchasingUpdateProcedure
     .input(
       z.object({
         id: z.string().min(1),
@@ -229,7 +244,7 @@ export const vendorRouter = createTRPCRouter({
         paymentTerms: z.string().max(200).optional(),
         notes: z.string().max(2000).optional(),
         isActive: z.boolean().optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ input, ctx }) => {
       const { id, ...rest } = input;
@@ -268,8 +283,8 @@ export const vendorRouter = createTRPCRouter({
       });
     }),
 
-  deactivate: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+  deactivate: purchasingUpdateProcedure
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
       const existing = await loadVendorForTenant(input.id, ctx);
       return db.$transaction(async (tx) => {
@@ -286,24 +301,12 @@ export const vendorRouter = createTRPCRouter({
       });
     }),
 
-  // R6 (D-2): reactivate a deactivated vendor; audited via L5. The allow-list must use
-  // real seeded role NAMES (packages/db/src/seed/roles.ts). The prior list
-  // ["Administrator", "Purchasing Manager", "admin"] matched NO seeded role, so
-  // reactivate 403'd for EVERY user — including the tenant owner ("Tenant Super Admin").
-  // Same stale-role-name class of bug resolved earlier for departments (department.ts /
-  // DECISIONS_LOG 2026-06-19). Seeded admins are "Tenant Super Admin" (the registered
-  // owner) + "Admin"; "Platform Owner" is cross-tenant; the purchasing role is
-  // "Purchasing Staff".
-  reactivate: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+  // R6 (D-2): reactivate a deactivated vendor; audited via L5. Gated on the
+  // "purchasing" matrix "delete" action (the elevated-purchasing-action tier —
+  // matches Admin + Purchasing Staff + bypass roles per the seed).
+  reactivate: purchasingDeleteProcedure
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ input, ctx }) => {
-      const allowedRoles = ["Tenant Super Admin", "Admin", "Platform Owner", "Purchasing Staff"];
-      if (!ctx.roles.some((r) => allowedRoles.includes(r))) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Only a tenant administrator or purchasing staff can reactivate a vendor.",
-        });
-      }
       const existing = await loadVendorForTenant(input.id, ctx);
       return db.$transaction(async (tx) => {
         const updated = await tx.vendor.update({ where: { id: input.id }, data: { isActive: true } });
@@ -323,7 +326,7 @@ export const vendorRouter = createTRPCRouter({
 // ── Purchase Order sub-router ─────────────────────────────────────────────────
 
 export const poRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: purchasingViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -364,7 +367,7 @@ export const poRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: purchasingViewProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const po = await db.purchaseOrder.findUnique({
@@ -390,7 +393,7 @@ export const poRouter = createTRPCRouter({
       return po;
     }),
 
-  create: writeProcedure
+  create: purchasingCreateProcedure
     .input(
       z.object({
         vendorId: z.string().min(1),
@@ -400,7 +403,7 @@ export const poRouter = createTRPCRouter({
         isVatExempt: z.boolean().default(false),
         notes: z.string().max(2000).optional(),
         items: z.array(poItemSchema).min(1),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       const vendor = await db.vendor.findUnique({ where: { id: input.vendorId } });
@@ -412,6 +415,63 @@ export const poRouter = createTRPCRouter({
           code: "BAD_REQUEST",
           message: "Cannot create a purchase order for a deactivated vendor. Reactivate the vendor first.",
         });
+      }
+
+      // M7.2 — validate user-supplied nested FKs belong to this tenant before writing
+      // them into PurchaseOrderItem / PurchaseOrderItemAllocation. Without this, a
+      // client could inject another tenant's productId/projectId/warehouseId into a
+      // PO's line items or allocations (cross-tenant FK injection).
+      const productIds = Array.from(
+        new Set(
+          input.items
+            .map((item) => item.productId)
+            .filter((id): id is string => id !== undefined),
+        ),
+      );
+      if (productIds.length > 0) {
+        const products = await db.product.findMany({
+          where: { id: { in: productIds }, tenantId: ctx.tenantId },
+          select: { id: true },
+        });
+        if (products.length !== productIds.length) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "One or more products do not exist." });
+        }
+      }
+
+      const allAllocations = input.items.flatMap((item) => item.allocations ?? []);
+
+      const projectIds = Array.from(
+        new Set(
+          allAllocations
+            .map((alloc) => alloc.projectId)
+            .filter((id): id is string => id !== undefined),
+        ),
+      );
+      if (projectIds.length > 0) {
+        const projects = await db.project.findMany({
+          where: { id: { in: projectIds }, tenantId: ctx.tenantId },
+          select: { id: true },
+        });
+        if (projects.length !== projectIds.length) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "One or more projects do not exist." });
+        }
+      }
+
+      const warehouseIds = Array.from(
+        new Set(
+          allAllocations
+            .map((alloc) => alloc.warehouseId)
+            .filter((id): id is string => id !== undefined),
+        ),
+      );
+      if (warehouseIds.length > 0) {
+        const warehouses = await db.warehouse.findMany({
+          where: { id: { in: warehouseIds }, tenantId: ctx.tenantId },
+          select: { id: true },
+        });
+        if (warehouses.length !== warehouseIds.length) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "One or more warehouses do not exist." });
+        }
       }
 
       // Validate allocations: sum per item, type-specific ID requirements
@@ -519,7 +579,7 @@ export const poRouter = createTRPCRouter({
       });
     }),
 
-  update: writeProcedure
+  update: purchasingUpdateProcedure
     .input(
       z.object({
         id: z.string().min(1),
@@ -529,12 +589,16 @@ export const poRouter = createTRPCRouter({
         // R1 (D-2): toggling VAT-exempt recomputes taxAmount/totalAmount from the subtotal.
         isVatExempt: z.boolean().optional(),
         notes: z.string().max(2000).optional(),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       const po = await loadPoForTenant(input.id, ctx);
       if (po.status !== "draft") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft POs can be edited" });
+      }
+      // M7.2 — reassigning a PO to a different vendor must stay within this tenant.
+      if (input.vendorId !== undefined) {
+        await loadVendorForTenant(input.vendorId, ctx);
       }
       // Recompute VAT totals from the persisted subtotal when the exempt flag flips.
       const vatRecompute =
@@ -575,8 +639,8 @@ export const poRouter = createTRPCRouter({
       });
     }),
 
-  submit: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+  submit: purchasingUpdateProcedure
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const po = await loadPoForTenant(input.id, ctx);
       if (po.status !== "draft") {
@@ -607,13 +671,13 @@ export const poRouter = createTRPCRouter({
       });
     }),
 
-  approve: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+  // Gated on the "purchasing" matrix "delete" action (the elevated-purchasing-action
+  // tier — matches Admin + Purchasing Staff + bypass roles per the seed). The prior
+  // inline allow-list ["Administrator", "Purchasing Manager", "admin"] matched NO
+  // seeded role name (packages/db/src/seed/roles.ts), so approve 403'd for everyone.
+  approve: purchasingDeleteProcedure
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
-      const allowedRoles = ["Administrator", "Purchasing Manager", "admin"];
-      if (!ctx.roles.some((r) => allowedRoles.includes(r))) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient role to approve POs" });
-      }
       const po = await loadPoForTenant(input.id, ctx);
       if (po.status !== "pending_approval") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only pending_approval POs can be approved" });
@@ -639,8 +703,8 @@ export const poRouter = createTRPCRouter({
       });
     }),
 
-  markOrdered: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+  markOrdered: purchasingUpdateProcedure
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const po = await loadPoForTenant(input.id, ctx);
       if (po.status !== "approved") {
@@ -663,8 +727,8 @@ export const poRouter = createTRPCRouter({
       });
     }),
 
-  cancel: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+  cancel: purchasingUpdateProcedure
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const po = await loadPoForTenant(input.id, ctx);
       // CANCELLED is allowed from any pre-RECEIVED state (spec §B)
@@ -689,8 +753,8 @@ export const poRouter = createTRPCRouter({
       });
     }),
 
-  close: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+  close: purchasingUpdateProcedure
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const po = await loadPoForTenant(input.id, ctx);
       if (po.status !== "received") {
@@ -717,7 +781,7 @@ export const poRouter = createTRPCRouter({
 // ── Goods Receipt sub-router ──────────────────────────────────────────────────
 
 export const goodsReceiptRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: purchasingViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -726,8 +790,9 @@ export const goodsReceiptRouter = createTRPCRouter({
         status: z.string().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const where = {
+        tenantId: ctx.tenantId,
         ...(input.purchaseOrderId !== undefined ? { purchaseOrderId: input.purchaseOrderId } : {}),
         ...(input.status !== undefined ? { status: input.status } : {}),
       };
@@ -747,7 +812,7 @@ export const goodsReceiptRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: purchasingViewProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       await loadGrForTenant(input.id, ctx);
@@ -767,7 +832,7 @@ export const goodsReceiptRouter = createTRPCRouter({
       return gr;
     }),
 
-  create: writeProcedure
+  create: purchasingCreateProcedure
     .input(
       z.object({
         purchaseOrderId: z.string().min(1),
@@ -786,7 +851,7 @@ export const goodsReceiptRouter = createTRPCRouter({
             })
           )
           .min(1),
-      })
+      }).strict()
     )
     .mutation(async ({ ctx, input }) => {
       await loadPoForTenant(input.purchaseOrderId, ctx);
@@ -805,6 +870,25 @@ export const goodsReceiptRouter = createTRPCRouter({
           code: "BAD_REQUEST",
           message: "Purchase order is not in a receivable state",
         });
+      }
+
+      // M7.2 — validate user-supplied productIds belong to this tenant before writing
+      // them into GoodsReceiptItem / StockMovement (cross-tenant FK injection guard).
+      const grProductIds = Array.from(
+        new Set(
+          input.items
+            .map((item) => item.productId)
+            .filter((id): id is string => id !== undefined),
+        ),
+      );
+      if (grProductIds.length > 0) {
+        const grProducts = await db.product.findMany({
+          where: { id: { in: grProductIds }, tenantId: ctx.tenantId },
+          select: { id: true },
+        });
+        if (grProducts.length !== grProductIds.length) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "One or more products do not exist." });
+        }
       }
 
       // ── R3 (D-2): over-receipt tolerance guard ──────────────────────────────

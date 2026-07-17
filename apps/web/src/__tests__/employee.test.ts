@@ -3,8 +3,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { employeeRouter } from "@/server/trpc/routers/employee";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
+import type * as OrqafyDb from "@orqafy/db";
 
-vi.mock("@orqafy/db", () => {
+// Router migrated to the data-driven `role_permissions` matrix (feature key
+// "employees") — matrixMiddleware imports the real `hasPermission` resolver
+// from "@orqafy/db" directly, so this mock spreads the actual module (via
+// vi.importActual) and only overrides the `prisma` client it reads from.
+// This suite defaults every ctx to a "Platform Owner" role, which bypasses
+// the matrix entirely (see employee-matrix.test.ts for grant/deny coverage).
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
   const mockPrisma = {
     employee: {
       findMany: vi.fn(),
@@ -18,10 +26,14 @@ vi.mock("@orqafy/db", () => {
     },
     department: {
       findMany: vi.fn(),
+      findUnique: vi.fn(),
     },
     auditLog: { create: vi.fn() },
+    role: { findFirst: vi.fn() },
+    rolePermission: { findUnique: vi.fn() },
   };
   return {
+    ...actual,
     prisma: {
       ...mockPrisma,
       $transaction: vi.fn(async (fn: any) => fn(mockPrisma)),
@@ -29,6 +41,15 @@ vi.mock("@orqafy/db", () => {
     writeAuditLog: async (tx: any, entry: any) => { await tx.auditLog.create({ data: entry }); },
   };
 });
+
+vi.mock("@/server/lib/rate-limit", () => ({
+  rateLimiters: {
+    api: { check: vi.fn() },
+    auth: { check: vi.fn() },
+    upload: { check: vi.fn() },
+    public: { check: vi.fn() },
+  },
+}));
 
 import type { NextRequest } from "next/server";
 function makeReq(): NextRequest {
@@ -39,6 +60,7 @@ function authenticatedCtx(roles: string[] = ["Administrator"], isDemoTenant = fa
     req: makeReq(),
     userId: "user-1",
     roles,
+    roleId: "role-1",
     tenantSlug: "acme",
     tenantId: "acme-tenant-id",
     securityVersion: 1,
@@ -51,6 +73,7 @@ function unauthenticatedCtx() {
     req: makeReq(),
     userId: null,
     roles: [] as string[],
+    roleId: null,
     tenantSlug: null,
     tenantId: null,
     securityVersion: 0,
@@ -72,8 +95,10 @@ const mockDb = db as unknown as {
     update: any;
   };
   user: { findUnique: any };
-  department: { findMany: any };
+  department: { findMany: any; findUnique: any };
   auditLog: { create: any };
+  role: { findFirst: any };
+  rolePermission: { findUnique: any };
 };
 
 const VALID_CUID = "ck1234567890123456789012a";
@@ -83,6 +108,15 @@ const DEPT_CUID = "ck1234567890123456789012c";
 describe("employee router", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Every test's caller resolves to a "Platform Owner" role by default,
+    // which bypasses the "employees" matrix entirely (tenant-rbac-standard.md
+    // §4) — this suite exercises router business logic, not matrix
+    // grant/deny behaviour (see employee-matrix.test.ts for that coverage).
+    mockDb.role.findFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "acme-tenant-id",
+      name: "Platform Owner",
+    });
   });
 
   describe("list", () => {
@@ -179,7 +213,7 @@ describe("employee router", () => {
 
   describe("create", () => {
     it("creates an employee with auto-generated employeeNumber", async () => {
-      mockDb.user.findUnique.mockResolvedValue({ id: USER_CUID });
+      mockDb.user.findUnique.mockResolvedValue({ id: USER_CUID, tenantId: "acme-tenant-id" });
       mockDb.employee.create.mockResolvedValue({ id: VALID_CUID, employeeNumber: "EMP-123", dateHired: new Date("2026-01-01"), position: null, employmentType: "full_time" });
       const caller = createCaller(authenticatedCtx());
       const result = await caller.employee.create({
@@ -220,7 +254,7 @@ describe("employee router", () => {
     });
 
     it("persists optional government IDs when provided", async () => {
-      mockDb.user.findUnique.mockResolvedValue({ id: USER_CUID });
+      mockDb.user.findUnique.mockResolvedValue({ id: USER_CUID, tenantId: "acme-tenant-id" });
       mockDb.employee.create.mockResolvedValue({ id: VALID_CUID, dateHired: new Date("2026-01-01"), position: null, employmentType: "full_time" });
       const caller = createCaller(authenticatedCtx());
       await caller.employee.create({
@@ -239,6 +273,34 @@ describe("employee router", () => {
       expect(callArgs.data.tinNumber).toBe("TIN-001");
     });
 
+    it("rejects a cross-tenant userId (BAD_REQUEST)", async () => {
+      mockDb.user.findUnique.mockResolvedValue({ id: USER_CUID, tenantId: "other-tenant-id" });
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.employee.create({
+          userId: USER_CUID,
+          dateHired: new Date("2026-01-01"),
+          employmentType: "full_time",
+        })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(mockDb.employee.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects a cross-tenant departmentId (BAD_REQUEST)", async () => {
+      mockDb.user.findUnique.mockResolvedValue({ id: USER_CUID, tenantId: "acme-tenant-id" });
+      mockDb.department.findUnique.mockResolvedValue({ id: DEPT_CUID, tenantId: "other-tenant-id" });
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.employee.create({
+          userId: USER_CUID,
+          departmentId: DEPT_CUID,
+          dateHired: new Date("2026-01-01"),
+          employmentType: "full_time",
+        })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(mockDb.employee.create).not.toHaveBeenCalled();
+    });
+
     it("blocks writes when caller is in a demo tenant", async () => {
       const caller = createCaller(authenticatedCtx(["Administrator"], true));
       await expect(
@@ -251,7 +313,7 @@ describe("employee router", () => {
     });
 
     it("writes an audit log row with action CREATE and entity Employee", async () => {
-      mockDb.user.findUnique.mockResolvedValue({ id: USER_CUID });
+      mockDb.user.findUnique.mockResolvedValue({ id: USER_CUID, tenantId: "acme-tenant-id" });
       mockDb.employee.create.mockResolvedValue({ id: VALID_CUID, employeeNumber: "EMP-999", dateHired: new Date("2026-01-01"), position: null, employmentType: "full_time" });
       const caller = createCaller(authenticatedCtx());
       await caller.employee.create({
@@ -286,6 +348,18 @@ describe("employee router", () => {
       mockDb.employee.findUnique.mockResolvedValue(null);
       const caller = createCaller(authenticatedCtx());
       await expect(caller.employee.update({ id: VALID_CUID, position: "X" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+
+    it("rejects a cross-tenant departmentId (BAD_REQUEST)", async () => {
+      mockDb.employee.findUnique
+        .mockResolvedValueOnce({ id: VALID_CUID, tenantId: "acme-tenant-id" })
+        .mockResolvedValueOnce({ id: VALID_CUID, tenantId: "acme-tenant-id", dateHired: new Date("2026-01-01"), position: null, employmentType: "full_time", departmentId: null });
+      mockDb.department.findUnique.mockResolvedValue({ id: DEPT_CUID, tenantId: "other-tenant-id" });
+      const caller = createCaller(authenticatedCtx());
+      await expect(
+        caller.employee.update({ id: VALID_CUID, departmentId: DEPT_CUID })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(mockDb.employee.update).not.toHaveBeenCalled();
     });
   });
 

@@ -1,8 +1,20 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure, writeProcedure } from "../trpc";
+import { createTRPCRouter, writeProcedure } from "../trpc";
+import { matrixProcedure, matrixMiddleware } from "../middleware/matrix";
 import { prisma as db, writeAuditLog } from "@orqafy/db";
 import { sanitizePlainText } from "@/server/lib/sanitize";
+
+// Migrated to the data-driven `role_permissions` matrix (feature key
+// "projects"). Reads use `matrixProcedure` (protectedProcedure +
+// matrixMiddleware); mutations compose `writeProcedure.use(matrixMiddleware(...))`
+// so the demo-tenant mutation guard survives alongside the matrix grant check.
+// archive/complete both map to "update" (they mutate an existing record's
+// status, not create or delete it).
+const projectsViewProcedure = matrixProcedure("projects", "view");
+const projectsCreateProcedure = writeProcedure.use(matrixMiddleware("projects", "create"));
+const projectsUpdateProcedure = writeProcedure.use(matrixMiddleware("projects", "update"));
+const projectsDeleteProcedure = writeProcedure.use(matrixMiddleware("projects", "delete"));
 
 const REAL_CASH_TYPES = new Set(["cash_on_hand", "bank", "e_wallet"]);
 function isRealCashType(type: string): boolean {
@@ -25,6 +37,14 @@ async function loadProjectForTenant(id: string, ctx: { tenantId: string }) {
   return p;
 }
 
+async function loadFundSourceForTenant(id: string, ctx: { tenantId: string }) {
+  const fs = await db.fundSource.findUnique({ where: { id } });
+  if (!fs || fs.tenantId !== ctx.tenantId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Fund source not found." });
+  }
+  return fs;
+}
+
 const projectInput = z.object({
   name: z.string().min(1).max(200),
   customerId: z.string().cuid().optional(),
@@ -33,10 +53,10 @@ const projectInput = z.object({
   startDate: z.date().optional(),
   targetEndDate: z.date().optional(),
   budget: z.number().positive().optional(),
-});
+}).strict();
 
 const expenseRouter = createTRPCRouter({
-  listByProject: protectedProcedure
+  listByProject: projectsViewProcedure
     .input(
       z.object({
         projectId: z.string().min(1),
@@ -59,7 +79,7 @@ const expenseRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  recordProjectExpense: writeProcedure
+  recordProjectExpense: projectsCreateProcedure
     .input(
       z.object({
         projectId: z.string().min(1),
@@ -75,13 +95,12 @@ const expenseRouter = createTRPCRouter({
         description: z.string().min(1).max(500),
         fundSourceId: z.string().min(1),
         expenseDate: z.string().optional(),
-      }),
+      }).strict(),
     )
     .mutation(async ({ input, ctx }) => {
       await loadProjectForTenant(input.projectId, ctx);
 
-      const fundSource = await db.fundSource.findUnique({ where: { id: input.fundSourceId } });
-      if (!fundSource) throw new TRPCError({ code: "NOT_FOUND", message: "Fund source not found." });
+      const fundSource = await loadFundSourceForTenant(input.fundSourceId, ctx);
 
       const currentBalance = parseFloat(fundSource.currentBalance.toString());
       if (isRealCashType(fundSource.type) && currentBalance < input.amount) {
@@ -153,7 +172,7 @@ const expenseRouter = createTRPCRouter({
 });
 
 const milestoneRouter = createTRPCRouter({
-  listByProject: protectedProcedure
+  listByProject: projectsViewProcedure
     .input(z.object({ projectId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       await loadProjectForTenant(input.projectId, ctx);
@@ -163,7 +182,7 @@ const milestoneRouter = createTRPCRouter({
       });
     }),
 
-  create: writeProcedure
+  create: projectsCreateProcedure
     .input(
       z.object({
         projectId: z.string().min(1),
@@ -171,7 +190,7 @@ const milestoneRouter = createTRPCRouter({
         dueDate: z.date().optional(),
         description: z.string().max(1000).optional(),
         sortOrder: z.number().int().min(0).optional(),
-      }),
+      }).strict(),
     )
     .mutation(async ({ ctx, input }) => {
       await loadProjectForTenant(input.projectId, ctx);
@@ -201,7 +220,7 @@ const milestoneRouter = createTRPCRouter({
       });
     }),
 
-  update: writeProcedure
+  update: projectsUpdateProcedure
     .input(
       z.object({
         milestoneId: z.string().min(1),
@@ -210,7 +229,7 @@ const milestoneRouter = createTRPCRouter({
         description: z.string().max(1000).optional(),
         progress: z.number().int().min(0).max(100).optional(),
         sortOrder: z.number().int().min(0).optional(),
-      }),
+      }).strict(),
     )
     .mutation(async ({ ctx, input }) => {
       const { milestoneId, ...rest } = input;
@@ -241,8 +260,8 @@ const milestoneRouter = createTRPCRouter({
       });
     }),
 
-  complete: writeProcedure
-    .input(z.object({ milestoneId: z.string().min(1) }))
+  complete: projectsUpdateProcedure
+    .input(z.object({ milestoneId: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.milestone.findUnique({ where: { id: input.milestoneId } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
@@ -268,8 +287,8 @@ const milestoneRouter = createTRPCRouter({
       });
     }),
 
-  delete: writeProcedure
-    .input(z.object({ milestoneId: z.string().min(1) }))
+  delete: projectsDeleteProcedure
+    .input(z.object({ milestoneId: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await db.milestone.findUnique({ where: { id: input.milestoneId } });
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
@@ -291,7 +310,7 @@ const milestoneRouter = createTRPCRouter({
 });
 
 export const projectRouter = createTRPCRouter({
-  list: protectedProcedure
+  list: projectsViewProcedure
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -318,7 +337,7 @@ export const projectRouter = createTRPCRouter({
       return { items, total, page: input.page, limit: input.limit };
     }),
 
-  byId: protectedProcedure
+  byId: projectsViewProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       await loadProjectForTenant(input.id, ctx);
@@ -330,7 +349,7 @@ export const projectRouter = createTRPCRouter({
       return item;
     }),
 
-  create: writeProcedure
+  create: projectsCreateProcedure
     .input(projectInput)
     .mutation(async ({ input, ctx }) => {
       if (input.customerId !== undefined) {
@@ -366,7 +385,7 @@ export const projectRouter = createTRPCRouter({
       });
     }),
 
-  update: writeProcedure
+  update: projectsUpdateProcedure
     .input(projectInput.partial().extend({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
@@ -409,8 +428,8 @@ export const projectRouter = createTRPCRouter({
       });
     }),
 
-  archive: writeProcedure
-    .input(z.object({ id: z.string().min(1) }))
+  archive: projectsUpdateProcedure
+    .input(z.object({ id: z.string().min(1) }).strict())
     .mutation(async ({ ctx, input }) => {
       const existing = await loadProjectForTenant(input.id, ctx);
 
@@ -439,7 +458,7 @@ export const projectRouter = createTRPCRouter({
       });
     }),
 
-  budgetSummary: protectedProcedure
+  budgetSummary: projectsViewProcedure
     .input(z.object({ projectId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const project = await loadProjectForTenant(input.projectId, ctx);

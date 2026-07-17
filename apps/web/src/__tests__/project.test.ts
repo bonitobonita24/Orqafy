@@ -4,7 +4,10 @@ import { projectRouter } from "@/server/trpc/routers/project";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 
-vi.mock("@orqafy/db", () => {
+// Keep the real `hasPermission` resolver (matrix.ts imports it directly from
+// "@orqafy/db") — only mock the prisma client calls it and the router make.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<Record<string, unknown>>("@orqafy/db");
   // mockDb is shared between the $transaction pass-through and the named mockDb reference below.
   // $transaction delegates to these same mocks so router code inside a transaction resolves correctly.
   const innerDb = {
@@ -45,8 +48,20 @@ vi.mock("@orqafy/db", () => {
     auditLog: {
       create: vi.fn(),
     },
+    // Router migrated to the data-driven `role_permissions` matrix (feature
+    // key "projects") — matrixMiddleware resolves the caller's role via
+    // role.findFirst. All tests below use roleId "role-1" resolving to
+    // "Platform Owner", which bypasses the matrix entirely (this suite
+    // proves business logic, not matrix grants — see project-matrix.test.ts).
+    role: {
+      findFirst: vi.fn(),
+    },
+    rolePermission: {
+      findUnique: vi.fn(),
+    },
   };
   return {
+    ...actual,
     prisma: {
       ...innerDb,
       // Default pass-through: passes innerDb as the tx argument so router transaction callbacks
@@ -103,6 +118,12 @@ const mockDb = db as unknown as {
   auditLog: {
     create: MockFn;
   };
+  role: {
+    findFirst: MockFn;
+  };
+  rolePermission: {
+    findUnique: MockFn;
+  };
   $transaction: MockFn;
 };
 
@@ -115,6 +136,7 @@ function authenticatedCtx() {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-1",
     tenantSlug: "acme",
     tenantId: "acme-tenant-id",
     securityVersion: 1,
@@ -127,6 +149,7 @@ function unauthenticatedCtx() {
     req: makeReq(),
     userId: null,
     roles: [] as string[],
+    roleId: null,
     tenantSlug: null,
     tenantId: null,
     securityVersion: 0,
@@ -160,6 +183,7 @@ const fakeBankSource = {
   id: "src-1",
   name: "Main Bank",
   type: "bank",
+  tenantId: "acme-tenant-id",
   currentBalance: { toString: () => "5000" },
 };
 
@@ -167,6 +191,7 @@ const fakeCreditSource = {
   id: "src-2",
   name: "Corp Card",
   type: "credit_card",
+  tenantId: "acme-tenant-id",
   currentBalance: { toString: () => "0" },
 };
 
@@ -178,6 +203,13 @@ beforeEach(() => {
   // when they need custom per-call tx sub-mocks (e.g. expense tests with local vi.fn()).
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   mockDb.$transaction.mockImplementation((fn: (tx: typeof mockDb) => Promise<unknown>) => fn(mockDb));
+  // Default: role-1 resolves to Platform Owner, bypassing the "projects" matrix
+  // entirely — this suite proves business logic, not matrix grant/deny behavior.
+  mockDb.role.findFirst.mockResolvedValue({
+    id: "role-1",
+    tenantId: "acme-tenant-id",
+    name: "Platform Owner",
+  });
 });
 
 // ─── project.update ───────────────────────────────────────────────────────────

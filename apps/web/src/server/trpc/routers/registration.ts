@@ -75,7 +75,7 @@ export const registrationRouter = createTRPCRouter({
         ownerEmail: z.string().email(),
         ownerName: z.string().min(1),
         ownerPassword: z.string().min(8),
-      }),
+      }).strict(),
     )
     .mutation(async ({ input }) => {
       const formatResult = validateSlugFormat(input.slug);

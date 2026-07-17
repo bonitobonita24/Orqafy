@@ -38,6 +38,8 @@ const {
   mockFundSourceUpdate,
   mockCustomerFindUnique,
   mockAuditLogCreate,
+  mockRoleFindFirst,
+  mockRolePermissionFindUnique,
 } = vi.hoisted(() => ({
   mockProjectFindUnique: vi.fn(),
   mockProjectFindMany: vi.fn(),
@@ -56,9 +58,14 @@ const {
   mockFundSourceUpdate: vi.fn(),
   mockCustomerFindUnique: vi.fn(),
   mockAuditLogCreate: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
+  mockRolePermissionFindUnique: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => {
+// Keep the real `hasPermission` resolver (matrix.ts imports it directly from
+// "@orqafy/db") — only mock the prisma client calls it and the router make.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<Record<string, unknown>>("@orqafy/db");
   const mockDb = {
     project: {
       findUnique: mockProjectFindUnique,
@@ -92,8 +99,20 @@ vi.mock("@orqafy/db", () => {
       findUnique: mockCustomerFindUnique,
     },
     auditLog: { create: mockAuditLogCreate },
+    // Router migrated to the data-driven `role_permissions` matrix (feature
+    // key "projects") — matrixMiddleware resolves the caller's role via
+    // role.findFirst. beforeEach defaults role-1 to "Platform Owner", which
+    // bypasses the matrix entirely (this suite proves tenant-scoping
+    // business logic, not matrix grants — see project-matrix.test.ts).
+    role: {
+      findFirst: mockRoleFindFirst,
+    },
+    rolePermission: {
+      findUnique: mockRolePermissionFindUnique,
+    },
   };
   return {
+    ...actual,
     prisma: {
       ...mockDb,
       $transaction: vi.fn((fn: any) => fn(mockDb)),
@@ -132,6 +151,7 @@ function ctxForTenant(tenantId: string, isDemoTenant = false) {
     req: makeReq(),
     userId: "user-1",
     roles: ["Administrator"] as string[],
+    roleId: "role-1",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -220,8 +240,22 @@ describe("Project tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)
         findUnique: mockCustomerFindUnique,
       },
       auditLog: { create: mockAuditLogCreate },
+      role: {
+        findFirst: mockRoleFindFirst,
+      },
+      rolePermission: {
+        findUnique: mockRolePermissionFindUnique,
+      },
     };
     (prisma as any).$transaction.mockImplementation((fn: any) => fn(mockDb));
+    // Default: role-1 resolves to Platform Owner, bypassing the "projects"
+    // matrix entirely — this suite proves tenant-scoping business logic, not
+    // matrix grant/deny behavior (see project-matrix.test.ts for that coverage).
+    mockRoleFindFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "tenant-A",
+      name: "Platform Owner",
+    });
   });
 
   // ── 1. project.list scope ──────────────────────────────────────────────────
@@ -397,6 +431,27 @@ describe("Project tenant parity (L3 RBAC + L5 AuditLog + tenant-scope isolation)
         fundSourceId: FUND_SOURCE_A.id,
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND", message: "Project not found" });
+  });
+
+  // ── 11b. expense.recordProjectExpense fund-source IDOR guard ─────────────
+  it("expense.recordProjectExpense throws NOT_FOUND when fundSourceId belongs to a different tenant", async () => {
+    mockProjectFindUnique.mockResolvedValueOnce(PROJECT_A);
+    mockFundSourceFindUnique.mockResolvedValueOnce({ ...FUND_SOURCE_A, tenantId: "tenant-B" });
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+
+    await expect(
+      caller.project.expense.recordProjectExpense({
+        projectId: PROJECT_A.id,
+        amount: 1000,
+        type: "direct",
+        description: "Test expense",
+        fundSourceId: FUND_SOURCE_A.id,
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND", message: "Fund source not found." });
+
+    expect(mockFundSourceUpdate).not.toHaveBeenCalled();
+    expect(mockFundTransactionCreate).not.toHaveBeenCalled();
   });
 
   // ── 12. demo tenant guard ─────────────────────────────────────────────────

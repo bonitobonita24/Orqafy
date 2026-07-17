@@ -1,12 +1,8 @@
-export { prisma, createTenantPrisma } from './client';
+export { prisma } from './client';
 export { writeAuditLog } from './helpers/audit';
 export {
-  createTenantSchema,
-  dropTenantSchema,
-  tenantSchemaExists,
   toSchemaName,
 } from './helpers/tenant-schema';
-export { tenantGuardExtension } from './middleware/tenant-guard';
 export { provisionTenantRolesAndOwner } from './helpers/tenant-owner';
 export type { ProvisionTenantOwnerInput } from './helpers/tenant-owner';
 export {
@@ -21,3 +17,17 @@ export {
   PASSWORD_BCRYPT_COST,
 } from './seed/roles';
 export type { StandardRoleDef } from './seed/roles';
+export { transferTenantOwnership, reassignTenantOwner } from './helpers/succession';
+export type { TransferTenantOwnershipInput, ReassignTenantOwnerInput } from './helpers/succession';
+export {
+  RbacGuardrailError,
+  assertNoForbiddenFeatures,
+  assertWithinAdminCeiling,
+  assertCanManageRoles,
+  assertSystemRoleImmutable,
+} from './rbac/guardrails';
+export type { PermissionMatrix, RbacGuardrailErrorCode } from './rbac/guardrails';
+export { hasPermission } from './rbac/has-permission';
+export type { HasPermissionArgs } from './rbac/has-permission';
+export { backfillRolePermissions } from './seed/role-permissions';
+export type { BackfillRolePermissionsInput } from './seed/role-permissions';

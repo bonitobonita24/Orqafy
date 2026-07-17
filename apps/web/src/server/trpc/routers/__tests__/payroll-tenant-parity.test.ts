@@ -15,9 +15,12 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { NextRequest } from "next/server";
+import type * as OrqafyDb from "@orqafy/db";
 
 // ── DB mock (all vi.fn() inline — no external refs, hoisting-safe) ────────────
 const {
+  mockRoleFindFirst,
+  mockRolePermissionFindUnique,
   mockPayrollFindUnique,
   mockPayrollCreate,
   mockPayrollUpdate,
@@ -30,6 +33,8 @@ const {
   mockWriteAuditLog,
   mockTransaction,
 } = vi.hoisted(() => ({
+  mockRoleFindFirst: vi.fn(),
+  mockRolePermissionFindUnique: vi.fn(),
   mockPayrollFindUnique: vi.fn(),
   mockPayrollCreate: vi.fn(),
   mockPayrollUpdate: vi.fn(),
@@ -43,27 +48,37 @@ const {
   mockTransaction: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    payroll: {
-      findUnique: mockPayrollFindUnique,
-      create: mockPayrollCreate,
-      update: mockPayrollUpdate,
-      count: mockPayrollCount,
+// Keep the real `hasPermission` resolver (matrix.ts imports it directly from
+// "@orqafy/db" — payroll.ts is migrated to the data-driven `role_permissions`
+// matrix, feature key "payroll") — only mock the prisma client calls it and
+// the router make.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      role: { findFirst: mockRoleFindFirst },
+      rolePermission: { findUnique: mockRolePermissionFindUnique },
+      payroll: {
+        findUnique: mockPayrollFindUnique,
+        create: mockPayrollCreate,
+        update: mockPayrollUpdate,
+        count: mockPayrollCount,
+      },
+      payslip: {
+        findUnique: mockPayslipFindUnique,
+        create: mockPayslipCreate,
+        update: mockPayslipUpdate,
+        delete: mockPayslipDelete,
+      },
+      employee: {
+        findUnique: mockEmployeeFindUnique,
+      },
+      $transaction: mockTransaction,
     },
-    payslip: {
-      findUnique: mockPayslipFindUnique,
-      create: mockPayslipCreate,
-      update: mockPayslipUpdate,
-      delete: mockPayslipDelete,
-    },
-    employee: {
-      findUnique: mockEmployeeFindUnique,
-    },
-    $transaction: mockTransaction,
-  },
-  writeAuditLog: mockWriteAuditLog,
-}));
+    writeAuditLog: mockWriteAuditLog,
+  };
+});
 
 import { payrollRouter } from "@/server/trpc/routers/payroll";
 import { createTRPCRouter, createCallerFactory } from "@/server/trpc/trpc";
@@ -77,6 +92,7 @@ function adminCtx(tenantId = "tenant-acme") {
     req: makeReq(),
     userId: "user-admin",
     roles: ["Administrator"],
+    roleId: "role-1",
     tenantSlug: "acme",
     tenantId,
     securityVersion: 1,
@@ -90,6 +106,7 @@ function unauthCtx() {
     req: makeReq(),
     userId: null,
     roles: [] as string[],
+    roleId: null,
     tenantSlug: null,
     tenantId: null,
     securityVersion: 0,
@@ -153,6 +170,11 @@ const fakeEmployee = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Matrix bypass — Platform Owner skips the rolePermission grant lookup
+  // entirely (tenant-rbac-standard.md §4). These tests assert tenant-isolation
+  // business logic, not RBAC grants — the matrix migration itself is covered
+  // by payroll-matrix.test.ts.
+  mockRoleFindFirst.mockResolvedValue({ id: "role-1", tenantId: "tenant-acme", name: "Platform Owner" });
   // Default $transaction passthrough
   mockTransaction.mockImplementation((fn: (tx: any) => Promise<unknown>): unknown =>
     fn({

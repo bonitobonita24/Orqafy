@@ -16,6 +16,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { NextRequest } from "next/server";
+import type * as OrqafyDb from "@orqafy/db";
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 const {
@@ -31,8 +32,12 @@ const {
   mockJobOrderServiceLineCreate,
   mockJobOrderServiceLineDelete,
   mockCustomerFindUnique,
+  mockCustomerFindFirst,
   mockUserFindUnique,
   mockProductFindUnique,
+  mockProductFindFirst,
+  mockRoleFindFirst,
+  mockRolePermissionFindUnique,
 } = vi.hoisted(() => ({
   mockJobOrderFindUnique: vi.fn(),
   mockJobOrderCreate: vi.fn(),
@@ -46,34 +51,48 @@ const {
   mockJobOrderServiceLineCreate: vi.fn(),
   mockJobOrderServiceLineDelete: vi.fn(),
   mockCustomerFindUnique: vi.fn(),
+  mockCustomerFindFirst: vi.fn(),
   mockUserFindUnique: vi.fn(),
   mockProductFindUnique: vi.fn(),
+  mockProductFindFirst: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
+  mockRolePermissionFindUnique: vi.fn(),
 }));
 
-vi.mock("@orqafy/db", () => ({
-  prisma: {
-    jobOrder: {
-      findUnique: mockJobOrderFindUnique,
-      findMany: mockJobOrderFindMany,
-      count: mockJobOrderCount,
-      create: mockJobOrderCreate,
-      update: mockJobOrderUpdate,
+// Keep the real `hasPermission` resolver (it takes prisma as an argument) —
+// only mock the prisma client calls it makes. Every test in this file uses
+// "Platform Owner" (see ctxForTenant below) which bypasses the
+// role_permissions matrix entirely, so no rolePermission fixtures are needed.
+vi.mock("@orqafy/db", async () => {
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
+  return {
+    ...actual,
+    prisma: {
+      jobOrder: {
+        findUnique: mockJobOrderFindUnique,
+        findMany: mockJobOrderFindMany,
+        count: mockJobOrderCount,
+        create: mockJobOrderCreate,
+        update: mockJobOrderUpdate,
+      },
+      jobOrderPart: {
+        findUnique: mockJobOrderPartFindUnique,
+        create: mockJobOrderPartCreate,
+        delete: mockJobOrderPartDelete,
+      },
+      jobOrderServiceLine: {
+        findUnique: mockJobOrderServiceLineFindUnique,
+        create: mockJobOrderServiceLineCreate,
+        delete: mockJobOrderServiceLineDelete,
+      },
+      customer: { findUnique: mockCustomerFindUnique, findFirst: mockCustomerFindFirst },
+      user: { findUnique: mockUserFindUnique },
+      product: { findUnique: mockProductFindUnique, findFirst: mockProductFindFirst },
+      role: { findFirst: mockRoleFindFirst },
+      rolePermission: { findUnique: mockRolePermissionFindUnique },
     },
-    jobOrderPart: {
-      findUnique: mockJobOrderPartFindUnique,
-      create: mockJobOrderPartCreate,
-      delete: mockJobOrderPartDelete,
-    },
-    jobOrderServiceLine: {
-      findUnique: mockJobOrderServiceLineFindUnique,
-      create: mockJobOrderServiceLineCreate,
-      delete: mockJobOrderServiceLineDelete,
-    },
-    customer: { findUnique: mockCustomerFindUnique },
-    user: { findUnique: mockUserFindUnique },
-    product: { findUnique: mockProductFindUnique },
-  },
-}));
+  };
+});
 
 vi.mock("@/server/notifications/create", () => ({
   createNotification: vi.fn().mockResolvedValue({ id: "notif-test" }),
@@ -105,6 +124,7 @@ function ctxForTenant(tenantId: string, roles: string[] = ["Administrator"]) {
     req: makeReq(),
     userId: "user-1",
     roles,
+    roleId: "role-1",
     tenantSlug: "test",
     tenantId,
     securityVersion: 1,
@@ -157,11 +177,20 @@ const jobOrderOnTenantB = {
 describe("Job Order tenant parity (K-prime closure)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default every caller to "Platform Owner", which bypasses the
+    // role_permissions matrix entirely (tenant-rbac-standard.md §4) — these
+    // tests assert cross-tenant IDOR guards, not matrix grants (see
+    // job-order-matrix.test.ts).
+    mockRoleFindFirst.mockResolvedValue({
+      id: "role-1",
+      tenantId: "tenant-A",
+      name: "Platform Owner",
+    });
   });
 
   // ── 1. create: tenantId from ctx ────────────────────────────────────────────
   it("jobOrder.create injects tenantId from ctx, not from input", async () => {
-    mockCustomerFindUnique.mockResolvedValueOnce({ id: "cust-1" });
+    mockCustomerFindFirst.mockResolvedValueOnce({ id: "cust-1" });
     mockJobOrderCreate.mockResolvedValueOnce({
       ...jobOrderOnTenantB,
       tenantId: "tenant-A",
@@ -181,6 +210,26 @@ describe("Job Order tenant parity (K-prime closure)", () => {
     const callArg = (mockJobOrderCreate.mock.calls[0] as unknown[])[0] as any;
     expect(callArg.data.tenantId).toBe("tenant-A");
     expect(callArg.data.createdById).toBe("user-1");
+  });
+
+  // ── 1b. create: cross-tenant customerId rejected (M7.2) ────────────────────
+  it("jobOrder.create rejects a cross-tenant customerId", async () => {
+    // Customer exists but does NOT belong to the caller's tenant — findFirst
+    // scoped by tenantId must return null.
+    mockCustomerFindFirst.mockResolvedValueOnce(null);
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+
+    await expect(
+      caller.jobOrder.create({
+        customerId: "clexample00000000000cust00002",
+        title: "Screen replacement",
+        description: "Customer dropped the phone",
+        reportedIssue: "Screen cracked, backlight failing",
+        priority: "high",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockJobOrderCreate).not.toHaveBeenCalled();
   });
 
   // ── 2. byId: IDOR guard ─────────────────────────────────────────────────────
@@ -250,6 +299,30 @@ describe("Job Order tenant parity (K-prime closure)", () => {
         unitPrice: 1500,
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  // ── 6b. addPart: cross-tenant productId rejected (M7.2) ─────────────────────
+  it("jobOrder.addPart rejects a cross-tenant productId", async () => {
+    mockJobOrderFindUnique.mockResolvedValueOnce({
+      ...jobOrderOnTenantB,
+      tenantId: "tenant-A",
+    });
+    // Product exists but does NOT belong to the caller's tenant — findFirst
+    // scoped by tenantId must return null.
+    mockProductFindFirst.mockResolvedValueOnce(null);
+
+    const caller = createCaller(ctxForTenant("tenant-A"));
+
+    await expect(
+      caller.jobOrder.addPart({
+        jobOrderId: JO_CUID,
+        productId: "clexample00000000000prod00001",
+        description: "Replacement screen",
+        quantity: 1,
+        unitPrice: 1500,
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockJobOrderPartCreate).not.toHaveBeenCalled();
   });
 
   // ── 7. addServiceLine: IDOR guard ───────────────────────────────────────────

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, platformProcedure } from "../trpc";
-import { prisma } from "@orqafy/db";
+import { prisma, reassignTenantOwner as reassignTenantOwnerHelper } from "@orqafy/db";
 
 export const platformRouter = createTRPCRouter({
   listTenants: platformProcedure
@@ -62,7 +62,7 @@ export const platformRouter = createTRPCRouter({
       z.object({
         tenantId: z.string(),
         reason: z.string().min(1),
-      }),
+      }).strict(),
     )
     .mutation(async ({ ctx, input }) => {
       const tenant = await prisma.tenant.findFirst({
@@ -96,7 +96,7 @@ export const platformRouter = createTRPCRouter({
       z.object({
         tenantId: z.string(),
         reason: z.string().min(1),
-      }),
+      }).strict(),
     )
     .mutation(async ({ ctx, input }) => {
       const tenant = await prisma.tenant.findFirst({
@@ -119,6 +119,43 @@ export const platformRouter = createTRPCRouter({
           entity: "Tenant",
           entityId: input.tenantId,
           after: { reason: input.reason },
+        },
+      });
+
+      return { success: true };
+    }),
+
+  reassignTenantOwner: platformProcedure
+    .input(
+      z.object({
+        tenantId: z.string(),
+        newOwnerUserId: z.string(),
+      }).strict(),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await reassignTenantOwnerHelper(prisma, {
+          tenantId: input.tenantId,
+          newOwnerUserId: input.newOwnerUserId,
+        });
+      } catch (e) {
+        if (e instanceof Error && e.message === "NOT_FOUND") {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Tenant not found." });
+        }
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: e instanceof Error ? e.message : "Reassign failed.",
+        });
+      }
+
+      await prisma.tenantAuditLog.create({
+        data: {
+          tenantId: input.tenantId,
+          action: "PLATFORM:REASSIGN_TENANT_OWNER",
+          userId: ctx.userId,
+          entity: "User",
+          entityId: input.newOwnerUserId,
+          after: { newOwnerUserId: input.newOwnerUserId },
         },
       });
 
