@@ -55,8 +55,12 @@ push-to-demo.sh (UPDATE-only — assumes stack exists). VPS empty → FIRST-TIME
   projects+milestones+tasks, POS sales, job orders, support tickets, ecommerce orders, DTR, payroll run)
   with realistic PH-context dummy data, tenant-scoped to demo, idempotent, wired into seed/index.ts.
   Verify: db build + dev seed run green.
-- [ ] **D2 — Build + push images** (push.sh dev → bonitobonita24/orqafy + orqafy-worker; docker login
-  via deploy-api vault token). Includes the enriched seed baked into the worker image.
+- [~] **D2 — Build + push images.** ⚠ FIRST BUILD FAILED (real bug, caught by verify-before-ship):
+  `@orqafy/db` build (tsc Node16) breaks on `@orqafy/shared` source-only ESM barrels using extensionless
+  re-exports (TS2835) + a `def` possibly-undefined in seed/role-permissions.ts. Introduced by the RBAC
+  merge; branch has NEVER imaged successfully (Jun-16 deploy predates RBAC). FIX DISPATCHED (bg worker):
+  add `.js` extensions to shared/src/rbac (+types/schemas barrels) + guard `def`; dual-verify db+jobs+web
+  builds green WITHOUT regressing the M9 web-bundler extensionless fix. Then re-run push.sh dev.
 - [ ] **D3 — First-time orqafy-demo stack** on VPS: /etc/komodo/stacks/orqafy-demo + demo compose +
   .env (demo-tier universal-login creds + MinIO + DB/redis/auth/encryption). Bring up db/cache/storage.
 - [ ] **D4 — Migrate + seed** (first-time seed allowed) + bring up app+worker.
