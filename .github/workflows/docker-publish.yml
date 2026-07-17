@@ -1,5 +1,20 @@
 name: Docker Build & Publish
 
+# ─────────────────────────────────────────────────────────────────────────────
+# This job BUILDS + PUSHES the images only (web + worker; tags: latest,
+# staging-latest, sha-<short>, <branch>). It does NOT auto-deploy any environment.
+#
+# NOTE (staging deploy is GATED — data-first, per ~/.claude/rules/staging-refresh-gate.md):
+#   Staging is deployed ONLY via deploy/staging-refresh-and-deploy.sh so the
+#   prod→staging data refresh always runs BEFORE the new image + migrations.
+#   Keep the staging Komodo stack's auto_update OFF, or Komodo may pull the image
+#   out of order.
+#
+#   DEMO      → manual promotion: deploy/compose/push-to-demo.sh (migrations YES, NEVER reseed).
+#   PRODUCTION→ manual promotion: deploy/compose/push-to-prod.sh (explicit owner word only).
+#   Production is NEVER auto-deployed.
+# ─────────────────────────────────────────────────────────────────────────────
+
 on:
   push:
     branches: [main]
