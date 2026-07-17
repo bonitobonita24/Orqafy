@@ -19,8 +19,14 @@ NEXT (Full-Auto milestone queue — one at a time, reboot between):
               ⚠ VERIFIED: VPS has NO orqafy stacks/containers/volumes → M4/M6/M7 GREENFIELD.
               NEXT ACTIONABLE = DEMO-FIRST (unblocked; MinIO): M5-demo creds + M6 demo seed + M4 demo
                 stack → M7 deploy orqafy-demo.powerbyte.app.
-              M2 — Telegram go-live (PRIORITY) — BLOCKED on chat_id (owner posts in "Orqafy - Assets").
-                Staging+prod deploy DEPEND on this (pinned to Telegram).
+              M2 ✅ chat_id RESOLVED (-1004449537821), stored in vault, bot write proven. Remaining =
+                wire TELEGRAM_* into staging/prod .env at their deploy (M7). No longer blocking.
+              DEMO CHUNK IN PROGRESS: D1 seed enrichment DISPATCHED (bg agent, authoring
+                packages/db/src/seed/demo-showcase.ts + running dev seed). Then D2 build+push images →
+                D3 first-time orqafy-demo Komodo stack (.env.demo demo-tier creds + MinIO) → D4
+                migrate+seed → D5 verify orqafy-demo.powerbyte.app. Demo compose confirmed STORAGE_BACKEND=s3.
+                Demo login cred = universal-login vault demo.tenant_superadmin (admin@demo.com).
+                ⚠ push-to-demo.sh is UPDATE-only (assumes stack exists) — first deploy is manual stack create.
               M4 — CI/CD + Komodo stacks (demo/staging/prod) — groundwork committed Jul-17.
               M5 — default env creds from universal-login-credentials vault.
               M6 — demo full-featured dummy seed (all 18 modules).

@@ -41,6 +41,27 @@ unblock M2 → staging/prod.
   owner sees every feature live on the demo site. Demo = MinIO storage (fleet exception). Owner task #7.
 - [ ] **M7 — Deploys.** demo -> staging -> prod, verify each green + reachable at its subdomain. Owner task #8.
 
+## M2 update — chat_id RESOLVED ✅ 2026-07-18
+Owner posted in channel. Resolved `chat_id = -1004449537821`, stored in vault, bot write-access
+proven (sendMessage ok, msg_id 3). Remaining M2 work = wire STORAGE_BACKEND=telegram +
+TELEGRAM_BOT_TOKEN + TELEGRAM_DEFAULT_CHANNEL_ID into staging/prod `.env` at their deploy (M7).
+No longer a blocker.
+
+## Demo-deploy chunk — sub-plan (executing now; owner said "go ahead")
+Deploy artifacts EXIST: deploy/compose/demo/{db,cache,storage,app,worker,pgadmin}, push.sh (build+push),
+push-to-demo.sh (UPDATE-only — assumes stack exists). VPS empty → FIRST-TIME stack creation needed.
+- [ ] **D1 — M6 seed enrichment (LOCAL, dispatched).** New packages/db/src/seed/demo-showcase.ts
+  populating the empty modules (CRM quotations/contacts, inventory products+stock, purchasing PO chain,
+  projects+milestones+tasks, POS sales, job orders, support tickets, ecommerce orders, DTR, payroll run)
+  with realistic PH-context dummy data, tenant-scoped to demo, idempotent, wired into seed/index.ts.
+  Verify: db build + dev seed run green.
+- [ ] **D2 — Build + push images** (push.sh dev → bonitobonita24/orqafy + orqafy-worker; docker login
+  via deploy-api vault token). Includes the enriched seed baked into the worker image.
+- [ ] **D3 — First-time orqafy-demo stack** on VPS: /etc/komodo/stacks/orqafy-demo + demo compose +
+  .env (demo-tier universal-login creds + MinIO + DB/redis/auth/encryption). Bring up db/cache/storage.
+- [ ] **D4 — Migrate + seed** (first-time seed allowed) + bring up app+worker.
+- [ ] **D5 — Verify** https://orqafy-demo.powerbyte.app health 200 + login admin@demo.com (demo-tier).
+
 ## Owner-action items (surfaced; do not block non-dependent milestones)
 1. Post any message in the "Orqafy - Assets" Telegram channel -> unblocks M2 chat_id resolution.
 2. Dev Telegram channel? Default = dev stays MinIO (per architect note). Say if you want a
