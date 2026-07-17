@@ -1,0 +1,32 @@
+networks:
+  app_network:
+    name: ${COMPOSE_PROJECT_NAME}_network
+    external: true
+
+volumes:
+  minio_data:
+    name: ${COMPOSE_PROJECT_NAME}_minio_data
+
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: ${COMPOSE_PROJECT_NAME}_minio
+    hostname: ${COMPOSE_PROJECT_NAME}_minio
+    env_file: ../../../.env.demo
+    environment:
+      TZ: Asia/Manila
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_KEY}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    ports:
+      - "${STORAGE_PORT}:9000"
+      - "${STORAGE_CONSOLE_PORT}:9001"
+    networks: [app_network]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

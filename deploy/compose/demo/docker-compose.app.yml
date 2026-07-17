@@ -1,0 +1,40 @@
+networks:
+  app_network:
+    name: ${COMPOSE_PROJECT_NAME}_network
+    external: true
+  proxy:
+    name: ${TRAEFIK_NETWORK:-proxy}
+    external: true
+
+services:
+  app:
+    # NO build: key — image pulled from Docker Hub only (demo is a deliberate-push env)
+    image: ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${APP_IMAGE_TAG:-demo-latest}
+    container_name: ${COMPOSE_PROJECT_NAME}_app
+    hostname: ${COMPOSE_PROJECT_NAME}_app
+    env_file: ../../../.env.demo
+    environment:
+      - TZ=Asia/Manila
+      - NODE_ENV=production
+      - PORT=${APP_PORT}
+      # Demo is the ONE env that stays on MinIO/S3 object storage (media-storage-default.md).
+      - STORAGE_BACKEND=s3
+    networks: [app_network, proxy]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:${APP_PORT}/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.entrypoints=websecure"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.tls=true"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.tls.certresolver=letsencrypt"
+      - "traefik.http.services.${COMPOSE_PROJECT_NAME}_app.loadbalancer.server.port=3000"
