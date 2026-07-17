@@ -7,7 +7,7 @@
 
 ## Milestones (sequential — one at a time, checkpoint + reboot between each)
 
-- [ ] **M1 — Plan & Review (local, unblocked).** Finalize + commit the two Jul-17 draft artifacts:
+- [x] **M1 — Plan & Review (local, unblocked). ✅ DONE 2026-07-18.** Independently verified coverage ≈93–94% (17/18 modules built; only Customer Portal §703 ~35% genuinely unbuilt; RBAC ahead-of-spec). Committed mobile plan + audit + governance wrap-up. Finalize + commit the two Jul-17 draft artifacts:
   `docs/MOBILE_UX_PLAN.md` (mobile-first UI/UX approach — "plan first") and
   `docs/PRODUCT_COVERAGE_AUDIT.md` (full PRODUCT.md cross-reference, ~93%). Re-validate the audit
   against current code (branch advanced with Telegram work since Jul 17). ALSO close the interrupted
