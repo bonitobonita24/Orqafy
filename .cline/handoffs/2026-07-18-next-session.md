@@ -1,4 +1,28 @@
-# [FOCUS: Orqafy] NEXT-SESSION HANDOFF — 2026-07-18 (Full-Auto, paused)
+# [FOCUS: Orqafy] NEXT-SESSION HANDOFF — 2026-07-18 (Full-Auto, paused after DEMO went live)
+
+> ⭐ **UPDATE 2026-07-18 (later) — DEMO IS LIVE. D3–D5 DONE. Owner PAUSED before staging/prod.**
+> **https://orqafy-demo.powerbyte.app** — health 200, login works. Branch **feat/telegram-storage**,
+> HEAD **705c051**, UNPUSHED (HARD HOLD, 77 commits local). Nothing pushed; only the DEMO stack deployed.
+> - **Demo stack:** `/etc/komodo/stacks/orqafy-demo/` on 72.62.74.203 (postgres5439·valkey6386·minio9016-17·
+>   app·worker; NO pgbouncer/pgadmin; image `dev-sha-923feb6`; MinIO/S3). Layout mirrors **frms-demo**
+>   (env_file `.env`, app/worker override DATABASE_URL/REDIS_URL/DIRECT_URL → `${INTERNAL_*}`).
+> - **Logins:** `webmaster@orqafy.local` (strong pw in `scratchpad/orqafy-demo-CREDENTIALS.txt` + server `.env`)
+>   + `admin@mail.com`/`admin` (easy viewer). Workspace slug `demo`.
+> - **KEY DIVERGENCES (recorded in CHANGELOG + runbook):** orqafy had NEVER been deployed to the VPS
+>   (runbook aspirational); runbook ports 5435/6435/6382 = **marine-guardian_demo**, not orqafy; the repo
+>   `deploy/compose/demo/*.yml` **would NOT have worked** as committed (cross-file depends_on + wrong env_file
+>   path + missing INTERNAL_DATABASE_URL override).
+> - **OPEN FOLLOW-UPS (un-gated [HOW], do next):** (1) reconcile repo `deploy/compose/demo/*.yml` +
+>   `push-to-demo.sh` to the deployed layout; (2) enrich `demo-showcase` seed → populate invoices/expenses
+>   (dashboard tiles read ₱0); (3) optionally CSP-allowlist `static.cloudflareinsights.com`.
+> - **STAGING/PROD (M4/M5/M7) — GATED on owner word:** "staging" = pushing feat/telegram-storage→origin/main
+>   (first push of 77 commits → CI→staging). Rides with: Telegram-storage cutover for staging/prod, tag
+>   **0.11.0**, and patching `deploy/staging-refresh-and-deploy.sh` with the robustness invariants 1–3.
+> - **Also done this session:** workspace default set to 25/75 lazygit|claude for ALL projects (removed
+>   Orqafy+AIEF `.cockpit` opt-ins) — see memory `workspace-layout-25-75-default`.
+>
+> ---
+> (Original handoff below — D3-D5 now DONE; PENDING TASKS list starts at M4.)
 
 > Comprehensive handoff of ALL pending tasks + decisions. Read `.cline/STATE.md` + `docs/FULL_AUTO_PLAN.md`
 > FIRST (they + this file are the resume source of truth). Branch **feat/telegram-storage**, HEAD **1e0f1f4**,
