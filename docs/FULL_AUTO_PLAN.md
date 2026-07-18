@@ -55,7 +55,10 @@ push-to-demo.sh (UPDATE-only — assumes stack exists). VPS empty → FIRST-TIME
   projects+milestones+tasks, POS sales, job orders, support tickets, ecommerce orders, DTR, payroll run)
   with realistic PH-context dummy data, tenant-scoped to demo, idempotent, wired into seed/index.ts.
   Verify: db build + dev seed run green.
-- [~] **D2 — Build + push images.** ⚠ FIRST BUILD FAILED (real bug, caught by verify-before-ship):
+- [x] **D2 — Build + push images. ✅ DONE 2026-07-18.** After fixing two latent first-build breakages
+  (commits 24a618c shared ESM/Node16 + 923feb6 worker Dockerfile missing shared/zod), push.sh dev built
+  + pushed both images: bonitobonita24/orqafy{,-worker}:dev-latest + :dev-sha-923feb6.
+  ⟨history⟩ FIRST BUILD FAILED (real bug, caught by verify-before-ship):
   `@orqafy/db` build (tsc Node16) breaks on `@orqafy/shared` source-only ESM barrels using extensionless
   re-exports (TS2835) + a `def` possibly-undefined in seed/role-permissions.ts. Introduced by the RBAC
   merge; branch has NEVER imaged successfully (Jun-16 deploy predates RBAC). FIX DISPATCHED (bg worker):

@@ -21,12 +21,15 @@ NEXT (Full-Auto milestone queue — one at a time, reboot between):
                 stack → M7 deploy orqafy-demo.powerbyte.app.
               M2 ✅ chat_id RESOLVED (-1004449537821), stored in vault, bot write proven. Remaining =
                 wire TELEGRAM_* into staging/prod .env at their deploy (M7). No longer blocking.
-              DEMO CHUNK IN PROGRESS: D1 seed enrichment DISPATCHED (bg agent, authoring
-                packages/db/src/seed/demo-showcase.ts + running dev seed). Then D2 build+push images →
-                D3 first-time orqafy-demo Komodo stack (.env.demo demo-tier creds + MinIO) → D4
-                migrate+seed → D5 verify orqafy-demo.powerbyte.app. Demo compose confirmed STORAGE_BACKEND=s3.
-                Demo login cred = universal-login vault demo.tenant_superadmin (admin@demo.com).
-                ⚠ push-to-demo.sh is UPDATE-only (assumes stack exists) — first deploy is manual stack create.
+              ⏸ PAUSED 2026-07-18 (owner request) at a clean milestone boundary. Handoff:
+                .cline/handoffs/2026-07-18-full-auto-pause.md. Nothing running, nothing deployed, tree clean.
+              DEMO CHUNK: D1 seed ✅ (demo-showcase.ts, committed 7590442) · D2 images ✅ built+pushed
+                (dev-latest + dev-sha-923feb6; after 2 real first-build fixes 24a618c + 923feb6).
+              RESUME AT D3 (unblocked): create /etc/komodo/stacks/orqafy-demo (first-time; push-to-demo.sh
+                is UPDATE-only) — copy deploy/compose/demo/*.yml + write .env.demo. Free VPS ports: DB 5439 ·
+                pgbouncer 6439 · redis 6386 · MinIO 9016/9017 · pgAdmin 5451 · app Traefik-routed (proxy net up).
+                STORAGE_BACKEND=s3 (MinIO). Demo cred = vault demo.tenant_superadmin (admin@demo.com).
+                → D4 migrate+seed → D5 verify orqafy-demo.powerbyte.app. Then M2 staging/prod (reuse images).
               M4 — CI/CD + Komodo stacks (demo/staging/prod) — groundwork committed Jul-17.
               M5 — default env creds from universal-login-credentials vault.
               M6 — demo full-featured dummy seed (all 18 modules).
