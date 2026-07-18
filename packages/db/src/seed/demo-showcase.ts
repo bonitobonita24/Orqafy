@@ -29,6 +29,13 @@
  */
 
 import type { PrismaClient } from '@prisma/client';
+import { seedAccounting } from './demo-accounting';
+import { seedBankingExtras } from './demo-banking-extras';
+import { seedHrExtras } from './demo-hr-extras';
+import { seedCrmExtras } from './demo-crm-extras';
+import { seedOpsExtras } from './demo-ops-extras';
+import { seedComplianceSettings } from './demo-compliance-settings';
+import { seedDemoMedia } from './demo-media';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -152,6 +159,18 @@ export async function seedDemoShowcase(
   await seedRepairs(prisma, tenantId, adminId, users, customerIds, productIds);
   await seedBanking(prisma, tenantId, adminId);
   await seedInvoicesExpenses(prisma, tenantId, adminId, customerIds);
+
+  // ── comprehensive gap-fill (every menu + sub-option) — each idempotent + self-resolving ──
+  await seedAccounting(prisma, tenantId);
+  await seedBankingExtras(prisma, tenantId);
+  await seedHrExtras(prisma, tenantId);
+  await seedCrmExtras(prisma, tenantId);
+  await seedOpsExtras(prisma, tenantId);
+  await seedComplianceSettings(prisma, tenantId, users);
+
+  // ── media (images, signatures, file attachments) — run last so entities exist ──
+  const tenantRow = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { slug: true } });
+  await seedDemoMedia(prisma, tenantId, tenantRow?.slug ?? 'demo');
 
   console.log('  ✅ Demo showcase seeding complete.');
 }
