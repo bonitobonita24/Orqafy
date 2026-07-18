@@ -2615,3 +2615,28 @@
                        (3) · Paid Invoices ₱137,760 (2 settled) · Recent invoices/expenses lists both
                        populated. Math cross-checked. Screenshot: screenshots/orqafy-demo-dashboard-enriched.png.
 - Files:               packages/db/src/seed/demo-showcase.ts (typecheck 0, lint-clean). LOCAL (HARD HOLD).
+
+## 2026-07-19 — Comprehensive demo seed: every menu + sub-option + media, applied live
+- Agent:               CLAUDE_CODE (PM + 6 parallel Sonnet workers, plan-first)
+- Why:                 Owner wants every sidebar menu AND its sub-tabs/options filled with realistic
+                       data + image/file upload scenarios, to exercise the whole app.
+- What (code, committed af041a7):
+                       6 domain seed modules (demo-accounting/-banking-extras/-hr-extras/-crm-extras/
+                       -ops-extras/-compliance-settings) + demo-media (images/signatures/attachments)
+                       + shared demo-seed-utils; wired into demo-showcase entry (all idempotent).
+                       Catch-up migration 20260719000000 adds journal_entries.posted_by_id +
+                       reversal_of_id (declared in schema since the init migration but NEVER migrated —
+                       Accounting was BROKEN in every env; any JournalEntry read 500'd).
+- Applied to LIVE demo: migration applied to demo DB (docker exec psql); enriched seed run via SSH
+                       tunnel (demo APP_ENCRYPTION_KEY so SMTP/Xendit ciphertext round-trips); 17
+                       attachment file bytes pushed to MinIO bucket orqafy-demo at the seeded keys.
+                       Also applied to dev (dev leads): migration via prisma migrate deploy + seed.
+- Verified live (browser): Accounting journal-entries (10) + trial-balance (balanced, ₱589,600) NOW
+                       WORK; CRM customer detail (3 contacts + credit + documents + attachments);
+                       storefront 8/8 data-URI product images rendered; DTR pending + Approve; Settings
+                       breach register; invoice payment history. Seed logs confirm banking extras,
+                       3 payroll runs, ops extras, compliance (breach/DSR/SMTP/Xendit), 17 attachments.
+- Files:               packages/db/src/seed/demo-{seed-utils,accounting,banking-extras,hr-extras,
+                       crm-extras,ops-extras,compliance-settings,media,media-assets}.ts,
+                       demo-showcase.ts, migrations/20260719000000_add_journal_entry_posted_reversal.
+                       typecheck 0 / eslint clean. LOCAL (HARD HOLD, unpushed).
