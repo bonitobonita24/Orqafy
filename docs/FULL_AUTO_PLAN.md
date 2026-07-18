@@ -30,10 +30,12 @@ volumes** → M4/M6/M7 are **greenfield deploys**. DNS is ready. Sequencing deci
 most-wanted tangible result. Staging+prod are pinned to Telegram (Jul-17) → they depend on M2's
 chat_id (owner channel post). New order: M5(demo creds)+M6(demo seed)+M4(demo stack)→M7-demo, then
 unblock M2 → staging/prod.
-- [ ] **M4 — CI/CD pipeline (demo/staging/prod).** Groundwork already committed Jul-17
-  (orqafy_demo compose, Telegram pin on stage/prod, staging data-first gate, demo/prod promotion
-  scripts, docker-publish.yml). Wire Komodo stacks + Traefik routers for the 3 subdomains; gate CI
-  staging auto-deploy per staging-refresh-gate. Owner task #5.
+- [~] **M4 — CI/CD pipeline (demo/staging/prod).** DEMO ✅ + **STAGING ✅ LIVE 2026-07-19**
+  (https://orqafy-staging.powerbyte.app, Telegram storage, image dev-sha-e8fbb72; first-ever staging
+  stand-up via manual Komodo stack mirroring demo). PROD stack = owner-gated (not authorized by the
+  staging directive). CI auto-deploy gating (push-to-main → CI) deliberately NOT wired yet — deployed
+  via manual Komodo pattern; wiring the GitHub-main→CI pipeline rides with the (separately-gated) first
+  push of the 77-commit branch to origin/main. Owner task #5 (partially done: demo+staging).
 - [ ] **M5 — Default env credentials.** Seed each env's super_admin/admin from
   Server-Setups/secrets/universal-login-credentials.enc.yaml (staging_prod tier -> staging+prod;
   demo tier -> demo). Reference vault only, never paste. Owner task #6.

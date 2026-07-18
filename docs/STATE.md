@@ -1,7 +1,35 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-07-12 by CLAUDE_CODE (RBAC §4 — owner-transfer UI, two-way succession §2)
+> Last updated: 2026-07-19 by CLAUDE_CODE (Full-Auto M4 — STAGING deployed live + verified)
+
+---
+
+## ⭐ Full-Auto M4 — STAGING LIVE (2026-07-19)
+
+**https://orqafy-staging.powerbyte.app** — health 200, login renders, Telegram media E2E proven.
+Branch `feat/telegram-storage`, HEAD `e8fbb72` (unpushed, HARD HOLD). Manual Komodo-stack deploy
+(mirrors demo pattern) — NOT pushed to GitHub main (that stays separately owner-gated).
+
+- **Stack:** `/etc/komodo/stacks/orqafy-staging/` on 72.62.74.203 — postgres 5440 · valkey 6387 ·
+  minio 9018/9019 · app (Traefik `orqafy_staging_app`, TLS) · worker. Network `orqafy_staging_network`.
+  Image `bonitobonita24/orqafy{,-worker}:dev-sha-e8fbb72` (freshly built from HEAD incl. accounting
+  migration `20260719000000`). No pgbouncer/pgadmin (mirrors demo).
+- **Storage:** `STORAGE_BACKEND=telegram` (chat_id `-1004449537821`, "Orqafy - Assets"). Verified:
+  app container reaches Telegram (`getMe` ok) + real `sendDocument` E2E ok (has_document, 47B).
+  MinIO retained as fallback (seed attachments pushed there).
+- **Creds:** `webmaster@orqafy.local` (workspace slug `demo`), password = vault `staging_prod`
+  tenant_superadmin (`universal-login-credentials.enc.yaml`). Weak dev accounts NOT seeded (APP_ENV=staging).
+  Full `.env` on server; secrets scratchpad `orqafy-staging-CREDENTIALS.txt`.
+- **Verify:** migrate deploy = all applied; seed = all modules populated; ext health 200; /login renders;
+  only benign console errors (CSP-blocked CF Insights beacon + favicon 404).
+- **DIVERGENCE (record):** repo `deploy/compose/stage/*.yml` diverge from the deployed layout (same as
+  demo — deployed stack copied the working demo compose + env_file `.env` + INTERNAL_* overrides +
+  `orqafy_staging_app` Traefik names + `STORAGE_BACKEND: telegram` in app/worker `environment:`).
+  Reconcile repo stage compose + `push.sh staging` to deployed layout = follow-up.
+- **NEXT (owner-gated):** M7 prod (`orqafy.powerbyte.app`) — NOT authorized by the staging directive;
+  needs explicit owner word (deploy-discipline: prod never automatic). Before prod promotion: patch
+  `deploy/staging-refresh-and-deploy.sh` with robustness invariants 1–3; cut tag 0.11.0 (owner-declared).
 
 ---
 
@@ -126,8 +154,13 @@ Previous baseline: 845 tests (Phase 7 Epics 1–2), 1029 after V32.9 compliance 
 
 ## Staging / Prod Deploy State
 
-- **Staging**: Previously validated (2026-06-15). Current main has V32.9 compliance layer merged + ratified values. Requires `prisma migrate deploy` on staging before next redeploy (migration `20260620000000_add_compliance_privacy` + prior parity migrations).
-- **Prod**: Never deployed (owner-gated). Komodo + Traefik target: `orqafy.powerbyteitsolutions.com` (planned).
+- **Demo**: LIVE — https://orqafy-demo.powerbyte.app (MinIO storage). Stack `orqafy-demo`.
+- **Staging**: ✅ LIVE 2026-07-19 — https://orqafy-staging.powerbyte.app (Telegram storage). Stack
+  `orqafy-staging`, image `dev-sha-e8fbb72`. First-ever staging stand-up (greenfield). See "Full-Auto M4"
+  block at top for full detail + verification evidence.
+- **Prod**: Never deployed (OWNER-GATED — the staging directive did NOT authorize prod). Target
+  `orqafy.powerbyte.app`, Telegram storage. Needs explicit owner word + tag 0.11.0 + staging-refresh
+  invariants patch. Staging-refresh data-first gate is moot for first prod stand-up (nothing to refresh from).
 
 ---
 
