@@ -2598,3 +2598,20 @@
                        enrich demo-showcase seed to populate invoices/expenses (dashboard tiles read ₱0);
                        optionally allowlist static.cloudflareinsights.com in CSP. Correct the deploy runbook.
 - Files:               docs/CHANGELOG_AI.md, .gitignore (screenshots/). No app-code change. LOCAL (HARD HOLD).
+
+## 2026-07-18 — Demo seed enrichment: invoices + expenses (dashboard tiles now populate)
+- Agent:               CLAUDE_CODE
+- Why:                 Demo dashboard Outstanding/Paid-Invoices/Pending-Expenses tiles read ₱0 — the
+                       showcase seed had no Invoice/Expense block, and demo-financials.ts (which seeds
+                       paid invoices + approved expenses) is orphaned/never called by index.ts.
+- What:                Added seedInvoicesExpenses() to packages/db/src/seed/demo-showcase.ts (wired into
+                       the entry after seedBanking; idempotent — skips if any invoice exists). Seeds a
+                       realistic MIX: 6 invoices (2 paid, 2 sent, 1 partially_paid, 1 overdue) + 6
+                       expenses (3 pending, 2 approved, 1 reimbursed), PH 12% VAT, money as fixed-2
+                       strings (no float drift), FKs resolved by query (customers, expense categories).
+- Applied to LIVE demo: ran the idempotent seedDemoShowcase against the demo DB via SSH tunnel (image
+                       dev-sha-923feb6 predates the block; no rebuild needed — data-only, app unchanged).
+- Verified:            Dashboard now shows Outstanding ₱204,960 (4 unpaid) · Pending Expenses ₱36,800
+                       (3) · Paid Invoices ₱137,760 (2 settled) · Recent invoices/expenses lists both
+                       populated. Math cross-checked. Screenshot: screenshots/orqafy-demo-dashboard-enriched.png.
+- Files:               packages/db/src/seed/demo-showcase.ts (typecheck 0, lint-clean). LOCAL (HARD HOLD).

@@ -151,6 +151,7 @@ export async function seedDemoShowcase(
   await seedEcommerce(prisma, tenantId, customerIds, productIds);
   await seedRepairs(prisma, tenantId, adminId, users, customerIds, productIds);
   await seedBanking(prisma, tenantId, adminId);
+  await seedInvoicesExpenses(prisma, tenantId, adminId, customerIds);
 
   console.log('  ✅ Demo showcase seeding complete.');
 }
@@ -1278,4 +1279,135 @@ async function seedBanking(
     });
   }
   console.log('  ✅ Banking: 3 fund sources (+4 transactions each)');
+}
+
+// ── Invoicing + Expenses: MIXED statuses so every dashboard tile populates ────
+// Dashboard (dashboard/page.tsx) derives its tiles by status:
+//   • Outstanding      = invoices status sent|partially_paid|overdue  (Σ balance)
+//   • Paid Invoices    = invoices status paid                          (Σ totalAmount)
+//   • Pending Expenses = expenses status pending                       (Σ amount)
+//   • Recent lists     = latest 5 invoices / 5 expenses (any status)
+// So we seed a realistic spread across all of those, not just paid/approved.
+async function seedInvoicesExpenses(
+  prisma: PrismaClient,
+  tenantId: string,
+  adminId: string,
+  customerIds: string[],
+): Promise<void> {
+  if ((await prisma.invoice.count({ where: { tenantId } })) > 0) {
+    console.log('  ⏭  Invoices already seeded. Skipping.');
+    return;
+  }
+
+  const TAX = 0.12; // PH VAT
+  const offsetDate = (offset: number): Date => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset); // +future / -past
+    d.setHours(9, 0, 0, 0);
+    return d;
+  };
+
+  type InvSpec = {
+    status: 'paid' | 'sent' | 'partially_paid' | 'overdue';
+    base: number;
+    dueOffset: number;
+    paidFraction?: number;
+    paidDaysAgo?: number;
+  };
+  const invoiceSpecs: readonly InvSpec[] = [
+    { status: 'paid', base: 45000, dueOffset: -25, paidDaysAgo: 20 },
+    { status: 'paid', base: 78000, dueOffset: -12, paidDaysAgo: 8 },
+    { status: 'sent', base: 32000, dueOffset: 10 },
+    { status: 'sent', base: 56000, dueOffset: 20 },
+    { status: 'partially_paid', base: 90000, dueOffset: 5, paidFraction: 0.4 },
+    { status: 'overdue', base: 41000, dueOffset: -8 },
+  ];
+
+  const round2 = (n: number): number => Math.round(n * 100) / 100;
+
+  let invCount = 0;
+  for (let i = 0; i < invoiceSpecs.length; i++) {
+    const s = at(invoiceSpecs, i);
+    const subtotal = s.base;
+    const tax = round2(s.base * TAX);
+    const total = round2(subtotal + tax);
+    let amountPaid = 0;
+    let paidAt: Date | null = null;
+    if (s.status === 'paid') {
+      amountPaid = total;
+      paidAt = daysAgo(s.paidDaysAgo ?? 10);
+    } else if (s.status === 'partially_paid') {
+      amountPaid = round2(total * (s.paidFraction ?? 0.5));
+    }
+    const balance = round2(total - amountPaid);
+    await prisma.invoice.create({
+      data: {
+        tenantId,
+        invoiceNumber: `DEMO-INV-${num(i + 1)}`,
+        customerId: at(customerIds, i),
+        createdById: adminId,
+        status: s.status,
+        subtotal: money(subtotal),
+        taxAmount: money(tax),
+        totalAmount: money(total),
+        amountPaid: money(amountPaid),
+        balance: money(balance),
+        currency: 'PHP',
+        dueDate: offsetDate(s.dueOffset),
+        issuedAt: offsetDate(s.dueOffset - 15),
+        paidAt,
+        lineItems: [
+          { description: 'Professional services', quantity: 1, unitPrice: money(round2(subtotal * 0.6)), amount: money(round2(subtotal * 0.6)) },
+          { description: 'Materials & supplies', quantity: 1, unitPrice: money(round2(subtotal * 0.4)), amount: money(round2(subtotal * 0.4)) },
+        ],
+        notes: 'Demo invoice — auto-seeded showcase data.',
+      },
+    });
+    invCount++;
+  }
+  console.log(`  ✅ Invoicing: ${invCount} invoices (paid + outstanding mix)`);
+
+  // Expenses — includes 'pending' so the "Pending Expenses" tile lights up.
+  const cats = await prisma.expenseCategory.findMany({
+    where: { tenantId },
+    orderBy: { sortOrder: 'asc' },
+    select: { id: true },
+  });
+  if (cats.length === 0) {
+    console.log('  ⏭  No expense categories — skipping expenses.');
+    return;
+  }
+  const catIds = cats.map((c) => c.id);
+  type ExpSpec = { status: 'pending' | 'approved' | 'reimbursed'; desc: string; amount: number; dateDaysAgo: number };
+  const expenseSpecs: readonly ExpSpec[] = [
+    { status: 'pending', desc: 'Office supplies restock — Q3', amount: 8500, dateDaysAgo: 3 },
+    { status: 'pending', desc: 'Team offsite transportation', amount: 12400, dateDaysAgo: 5 },
+    { status: 'pending', desc: 'Cloud hosting subscription (monthly)', amount: 15900, dateDaysAgo: 2 },
+    { status: 'approved', desc: 'Client meeting meals', amount: 4200, dateDaysAgo: 12 },
+    { status: 'approved', desc: 'Courier & logistics', amount: 6750, dateDaysAgo: 18 },
+    { status: 'reimbursed', desc: 'Conference registration', amount: 9800, dateDaysAgo: 30 },
+  ];
+  let expCount = 0;
+  for (let i = 0; i < expenseSpecs.length; i++) {
+    const e = at(expenseSpecs, i);
+    const approved = e.status === 'approved' || e.status === 'reimbursed';
+    await prisma.expense.create({
+      data: {
+        tenantId,
+        expenseNumber: `DEMO-EXP-${num(i + 1)}`,
+        expenseCategoryId: at(catIds, i),
+        createdById: adminId,
+        approvedById: approved ? adminId : null,
+        approvedAt: approved ? daysAgo(e.dateDaysAgo - 1) : null,
+        description: e.desc,
+        amount: money(e.amount),
+        currency: 'PHP',
+        date: dateAgo(e.dateDaysAgo),
+        status: e.status,
+        notes: 'Demo expense — auto-seeded showcase data.',
+      },
+    });
+    expCount++;
+  }
+  console.log(`  ✅ Expenses: ${expCount} (pending + approved + reimbursed mix)`);
 }
