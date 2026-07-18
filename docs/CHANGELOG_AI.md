@@ -2573,3 +2573,28 @@
 - Verification:        PM ground-truth on resume (2026-07-18) — web typecheck 0 · web vitest 1265/1265 (+7 new /api/media proxy tests) · working tree clean.
 - Credentials:         Bot @orqafy_bot token stored ONLY in Server-Setups/Powerbyte-Hostinger/secrets/orqafy-telegram.enc.yaml (SOPS+age); never in repo. Channel "Orqafy - Assets" = staging/prod assets channel; numeric chat_id PENDING (needs one channel post → getUpdates). Dev stays MinIO unless a dedicated dev channel is provided.
 - HOLD:                LOCAL only on feat/telegram-storage (unpushed). No staging/prod/demo deploy until the owner-authorized Full-Auto deploy milestones (docs/FULL_AUTO_PLAN.md M3–M7).
+
+## 2026-07-18 — Full-Auto D3–D5: Orqafy DEMO deployed live (first-ever orqafy VPS deploy)
+- Agent:               CLAUDE_CODE
+- Why:                 Full-Auto directive — stand up the client-facing demo stack (owner-authorized demo target).
+- What:                Created orqafy-demo Komodo stack on Powerbyte-Hostinger (72.62.74.203) at
+                       /etc/komodo/stacks/orqafy-demo. postgres+valkey+minio+app+worker (no pgbouncer/pgadmin).
+                       Ports DB5439/redis6386/minio9016-17. Image bonitobonita24/orqafy{,-worker}:dev-sha-923feb6.
+                       STORAGE_BACKEND=s3 (MinIO). Migrated (all migrations incl. media_object_ledger) + seeded
+                       (13 roles, 299 role_permissions, webmaster@orqafy.local [strong] + admin@mail.com/admin
+                       [easy viewer, owner-chose "Both"], full demo-showcase across all modules).
+- Verified:            https://orqafy-demo.powerbyte.app/api/health = 200; /login = 200; login admin@mail.com/admin
+                       → /demo/dashboard renders (app shell + 4 seeded customers + v0.9.0 white-label footer);
+                       /demo/inventory lists 8 seeded products w/ SKUs+prices. Console: 2 benign (CF-Insights
+                       beacon blocked by CSP, favicon 404). Screenshot: screenshots/orqafy-demo-dashboard.png.
+- Divergences found:   (1) Orqafy had NEVER been deployed to this VPS (no prod/staging stack exists — runbook was
+                       aspirational). (2) Runbook port table WRONG: 5435/6435/6382 are marine-guardian_demo, not
+                       orqafy. (3) Repo deploy/compose/demo/*.yml would NOT have worked as-committed (used
+                       env_file ../../../.env.demo + cross-file depends_on + missing INTERNAL_DATABASE_URL/REDIS
+                       container override). Deployed stack adapts the working frms-demo pattern (env_file .env,
+                       internal-URL overrides, no cross-file depends_on). Working files: server stack dir +
+                       scratchpad/orqafy-demo-stack/.
+- Follow-ups (open):   Reconcile repo deploy/compose/demo/*.yml + push-to-demo.sh to match the deployed layout;
+                       enrich demo-showcase seed to populate invoices/expenses (dashboard tiles read ₱0);
+                       optionally allowlist static.cloudflareinsights.com in CSP. Correct the deploy runbook.
+- Files:               docs/CHANGELOG_AI.md, .gitignore (screenshots/). No app-code change. LOCAL (HARD HOLD).
