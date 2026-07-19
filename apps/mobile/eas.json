@@ -7,6 +7,10 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "environment": "development",
+      "env": {
+        "APP_ENV": "development"
+      },
       "android": {
         "buildType": "apk"
       },
@@ -16,6 +20,10 @@
     },
     "preview": {
       "distribution": "internal",
+      "environment": "preview",
+      "env": {
+        "APP_ENV": "staging"
+      },
       "android": {
         "buildType": "apk"
       },
@@ -24,6 +32,10 @@
       }
     },
     "production": {
+      "environment": "production",
+      "env": {
+        "APP_ENV": "production"
+      },
       "android": {
         "buildType": "apk"
       },
@@ -33,5 +45,24 @@
       "autoIncrement": true
     }
   },
-  "submit": {}
+  "submit": {
+    "preview": {
+      "android": {
+        "serviceAccountKeyPath": "REPLACE_WITH_PATH_TO_google-service-account.json",
+        "track": "internal"
+      }
+    },
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "REPLACE_WITH_PATH_TO_google-service-account.json",
+        "track": "internal",
+        "releaseStatus": "draft"
+      },
+      "ios": {
+        "appleId": "REPLACE_WITH_APPLE_ID_EMAIL",
+        "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_APP_ID",
+        "appleTeamId": "REPLACE_WITH_APPLE_TEAM_ID"
+      }
+    }
+  }
 }
