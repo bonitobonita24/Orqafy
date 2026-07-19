@@ -9,9 +9,10 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockCreate, mockPublish } = vi.hoisted(() => ({
+const { mockCreate, mockPublish, mockSendPush } = vi.hoisted(() => ({
   mockCreate: vi.fn(),
   mockPublish: vi.fn(),
+  mockSendPush: vi.fn(),
 }));
 
 vi.mock("@orqafy/db", () => ({
@@ -20,6 +21,10 @@ vi.mock("@orqafy/db", () => ({
 
 vi.mock("@/server/notifications/valkey", () => ({
   publishNotification: mockPublish,
+}));
+
+vi.mock("@/server/notifications/push", () => ({
+  sendPushToUser: mockSendPush,
 }));
 
 import { createNotification } from "@/server/notifications/create";
@@ -38,6 +43,7 @@ describe("createNotification (D7)", () => {
     vi.clearAllMocks();
     mockCreate.mockResolvedValue(dbRow);
     mockPublish.mockResolvedValue(true);
+    mockSendPush.mockResolvedValue(undefined);
   });
 
   it("persists with the exact tenantId + recipientUserId (no cross-tenant leak)", async () => {
@@ -71,6 +77,38 @@ describe("createNotification (D7)", () => {
     expect(tenantId).toBe("tenant-A");
     expect(userId).toBe("user-7");
     expect(payload).toMatchObject({ id: "notif-1", category: "task_assigned" });
+  });
+
+  it("fans out to Expo push with the tenantId + recipient + minimal data payload", async () => {
+    await createNotification({
+      tenantId: "tenant-A",
+      recipientUserId: "user-7",
+      category: "task_assigned",
+      title: "New task assigned",
+      body: "body",
+    });
+
+    expect(mockSendPush).toHaveBeenCalledOnce();
+    const arg = mockSendPush.mock.calls[0]![0];
+    expect(arg.tenantId).toBe("tenant-A");
+    expect(arg.userId).toBe("user-7");
+    expect(arg.data).toEqual({ notificationId: "notif-1", category: "task_assigned" });
+  });
+
+  it("is fail-soft: a push fan-out rejection does not throw", async () => {
+    mockSendPush.mockRejectedValueOnce(new Error("expo down"));
+
+    await expect(
+      createNotification({
+        tenantId: "tenant-A",
+        recipientUserId: "user-7",
+        category: "system",
+        title: "t",
+        body: "b",
+      })
+    ).resolves.toEqual({ id: "notif-1" });
+
+    expect(mockCreate).toHaveBeenCalledOnce();
   });
 
   it("is fail-soft: a Valkey publish rejection does not throw", async () => {
