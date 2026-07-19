@@ -34,6 +34,11 @@ const serverSchema = z.object({
 const clientSchema = z.object({
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string(),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+  // Mobile-web "Get the app" interstitial — OPTIONAL. Left unset until the
+  // native apps are published; the component falls back to a "coming soon"
+  // state instead of linking to a dead store listing.
+  NEXT_PUBLIC_ANDROID_APP_URL: z.string().url().optional(),
+  NEXT_PUBLIC_IOS_APP_URL: z.string().url().optional(),
 });
 
 const _serverEnv = serverSchema.safeParse({
@@ -62,6 +67,8 @@ const _serverEnv = serverSchema.safeParse({
 const _clientEnv = clientSchema.safeParse({
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  NEXT_PUBLIC_ANDROID_APP_URL: process.env.NEXT_PUBLIC_ANDROID_APP_URL,
+  NEXT_PUBLIC_IOS_APP_URL: process.env.NEXT_PUBLIC_IOS_APP_URL,
 });
 
 if (process.env.SKIP_ENV_VALIDATION !== "1") {
