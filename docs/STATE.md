@@ -1,35 +1,35 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-07-19 by CLAUDE_CODE (Full-Auto — un-gated local [HOW] cleanup: staging-gate invariants 1-3 + CSP CF-beacon + compose-reconcile plan; commits 7ffbe9c, dc90d7f LOCAL/unpushed. Un-gated queue EXHAUSTED — only owner-gated [WHAT] remains.)
+> Last updated: 2026-07-19 by CLAUDE_CODE (Owner-driven gated-queue ship — STAGING TIER COMPLETE: `main` GREEN+PUSHED @ d3ad765, staging LIVE on CI-built sha-6776198, tag v0.11.0-rc.1, compose model-a reconciled + deploy-model locked, RBAC slug retrofit dev-local (6a9ec94, unpushed). Fixed a real RED CI on main (db lint + latent worker ESM prod bug). REMAINING GATED: PROD M7 (held, irreversible) + RBAC promotion. Handoff: .cline/handoffs/2026-07-19-gated-queue-shipped.md)
 
 ---
 
-## ⭐ Full-Auto M4 — STAGING LIVE (2026-07-19)
+## ⭐ Gated-queue ship — STAGING TIER COMPLETE, main GREEN+PUSHED (2026-07-19)
 
-**https://orqafy-staging.powerbyte.app** — health 200, login renders, Telegram media E2E proven.
-Branch `feat/telegram-storage`, HEAD `e8fbb72` (unpushed, HARD HOLD). Manual Komodo-stack deploy
-(mirrors demo pattern) — NOT pushed to GitHub main (that stays separately owner-gated).
+**https://orqafy-staging.powerbyte.app** — health 200, login 200, Telegram media backend. Now on the
+**CI-built** image (not dev-built) after the first real push→main.
 
+- **`main` @ `d3ad765`** — GREEN (CI all ✓) + PUSHED. Tag `v0.11.0-rc.1` on `6776198` pushed.
+  (FF-merged `feat/telegram-storage` 87 commits → main; then CI-fix `6776198`; then reconciliation `d3ad765`.)
+- **Fixed a real RED CI on main** (`6776198`): 4 db lint errors + a **latent worker ESM production bug**
+  (`ERR_MODULE_NOT_FOUND` on `await import('@orqafy/shared/rbac')` at worker runtime — real .js shim files).
+  Global lesson `esm.source-only-shared-pkg.js-reexport-unresolved-at-runtime`.
 - **Stack:** `/etc/komodo/stacks/orqafy-staging/` on 72.62.74.203 — postgres 5440 · valkey 6387 ·
-  minio 9018/9019 · app (Traefik `orqafy_staging_app`, TLS) · worker. Network `orqafy_staging_network`.
-  Image `bonitobonita24/orqafy{,-worker}:dev-sha-e8fbb72` (freshly built from HEAD incl. accounting
-  migration `20260719000000`). No pgbouncer/pgadmin (mirrors demo).
-- **Storage:** `STORAGE_BACKEND=telegram` (chat_id `-1004449537821`, "Orqafy - Assets"). Verified:
-  app container reaches Telegram (`getMe` ok) + real `sendDocument` E2E ok (has_document, 47B).
-  MinIO retained as fallback (seed attachments pushed there).
-- **Creds:** `webmaster@orqafy.local` (workspace slug `demo`), password = vault `staging_prod`
-  tenant_superadmin (`universal-login-credentials.enc.yaml`). Weak dev accounts NOT seeded (APP_ENV=staging).
-  Full `.env` on server; secrets scratchpad `orqafy-staging-CREDENTIALS.txt`.
-- **Verify:** migrate deploy = all applied; seed = all modules populated; ext health 200; /login renders;
-  only benign console errors (CSP-blocked CF Insights beacon + favicon 404).
-- **DIVERGENCE (record):** repo `deploy/compose/stage/*.yml` diverge from the deployed layout (same as
-  demo — deployed stack copied the working demo compose + env_file `.env` + INTERNAL_* overrides +
-  `orqafy_staging_app` Traefik names + `STORAGE_BACKEND: telegram` in app/worker `environment:`).
-  Reconcile repo stage compose + `push.sh staging` to deployed layout = follow-up.
-- **NEXT (owner-gated):** M7 prod (`orqafy.powerbyte.app`) — NOT authorized by the staging directive;
-  needs explicit owner word (deploy-discipline: prod never automatic). Before prod promotion: patch
-  `deploy/staging-refresh-and-deploy.sh` with robustness invariants 1–3; cut tag 0.11.0 (owner-declared).
+  minio 9018/9019 · app (Traefik `orqafy_staging_app`, TLS) · worker. No pgbouncer/pgadmin.
+  Image now `bonitobonita24/orqafy{,-worker}:sha-6776198` (deployed via hardened
+  `deploy/staging-refresh-and-deploy.sh sha-6776198`, data-first gate; prod-refresh auto-skipped — no prod).
+  Live footgun fixed: app+worker compose default `${APP_IMAGE_TAG:-demo-latest}`→`staging-latest`.
+- **Storage:** `STORAGE_BACKEND=telegram` (chat_id `-1004449537821`). Creds `webmaster@orqafy.local`
+  (slug `demo`), vault `staging_prod` tier. Verify: app healthy, worker logs clean (no ESM crash), /health+/login 200.
+- **Compose reconciliation RESOLVED (model a):** repo `deploy/compose/{stage,demo}` mirrored to the live
+  hand-placed layout; DECISIONS_LOG locks deploy-model (a) (Komodo/gate-script consume hand-placed stacks;
+  repo compose = reference mirror). `docs/DEPLOY_COMPOSE_RECONCILIATION.md` → ✅ RESOLVED.
+- **RBAC slug retrofit** `feat/rbac-slug-standardize` @ `6a9ec94` (tenant_super_admin→tenant_superadmin) —
+  dev-verified, LOCAL only (unpushed). Rebase on main before promoting (inherits the ESM fix → unblocks worker tests).
+- **REMAINING GATED (owner word only):** (1) PROD M7 (`orqafy.powerbyte.app`) — first-time stand-up,
+  IRREVERSIBLE, then promote `v0.11.0-rc.1`→`v0.11.0`; (2) RBAC retrofit promotion. See handoff
+  `.cline/handoffs/2026-07-19-gated-queue-shipped.md`.
 
 ---
 
