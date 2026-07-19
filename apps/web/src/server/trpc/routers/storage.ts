@@ -306,6 +306,126 @@ export const storageRouter = createTRPCRouter({
       };
     }),
 
+  /**
+   * Upload a thumbnail for an already-uploaded attachment (image files only).
+   * Stores the thumbnail as a SECOND MediaObject (variant "thumbnail", parentId
+   * pointing at the original's MediaObject id) rather than a duplicate
+   * user-facing Attachment row — the parent Attachment's thumbnailKey is set
+   * to the thumbnail's storage key so list views can render it directly.
+   * Client-side failure of this mutation is non-fatal: the main upload already
+   * succeeded, and the UI falls back to the full-size storageKey when
+   * thumbnailKey is null.
+   */
+  uploadThumbnail: writeProcedure
+    .input(
+      z.object({
+        filename: z.string().min(1).max(255),
+        contentType: z.string().min(1).max(100),
+        entityType: z.enum(ENTITY_TYPES),
+        entityId: z.string().cuid(),
+        parentAttachmentId: z.string().cuid(),
+        /** Thumbnail bytes, base64-encoded (tRPC transport is JSON). */
+        bodyBase64: z.string().min(1).max(72_000_000),
+      }).strict()
+    )
+    .mutation(async ({ input, ctx }) => {
+      const body = Buffer.from(input.bodyBase64, "base64");
+      if (body.byteLength <= 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Empty file body." });
+      }
+
+      // Parent attachment must belong to this tenant, and must already have a
+      // MediaObject ledger row for its original storageKey (uploadDirect always
+      // creates one) so the thumbnail can be linked via parentId.
+      const parentAttachment = await db.attachment.findFirst({
+        where: { id: input.parentAttachmentId, tenantId: ctx.tenantId },
+      });
+      if (!parentAttachment) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Parent attachment not found." });
+      }
+
+      const parentMediaObject = await db.mediaObject.findUnique({
+        where: {
+          tenantId_storageKey: { tenantId: ctx.tenantId, storageKey: parentAttachment.storageKey },
+        },
+      });
+      if (!parentMediaObject) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Parent media object not found." });
+      }
+
+      // Quota check — thumbnail bytes still count toward the tenant's storage usage.
+      const quota = await getStorageQuota(ctx.tenantId);
+      if (quota.usedBytes + BigInt(body.byteLength) > quota.maxBytes) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `Storage quota exceeded. Used ${(Number(quota.usedBytes) / (1024 * 1024)).toFixed(1)} MB of ${(Number(quota.maxBytes) / (1024 * 1024)).toFixed(0)} MB (${quota.planName} plan).`,
+        });
+      }
+
+      let chatId: string | undefined;
+      if (getStorageBackend() === "telegram") {
+        const tenant = await db.tenant.findUnique({
+          where: { id: ctx.tenantId },
+          select: { telegramChannelId: true },
+        });
+        chatId =
+          tenant?.telegramChannelId ??
+          process.env["TELEGRAM_DEFAULT_CHANNEL_ID"] ??
+          "";
+      }
+
+      let result;
+      try {
+        result = await resolveBackend().upload({
+          tenantId: ctx.tenantId,
+          tenantSlug: ctx.tenantSlug,
+          entityType: input.entityType,
+          entityId: input.entityId,
+          originalFilename: input.filename,
+          mimeType: input.contentType,
+          body,
+          bucket: getStorageBucket(),
+          ...(chatId !== undefined ? { chatId } : {}),
+        });
+      } catch (err) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: err instanceof Error ? err.message : "Thumbnail upload failed.",
+        });
+      }
+
+      await db.$transaction(async (tx) => {
+        await tx.mediaObject.create({
+          data: {
+            tenantId: ctx.tenantId,
+            storageKey: result.storageKey,
+            entityType: input.entityType,
+            backend: result.backend,
+            variant: "thumbnail",
+            parentId: parentMediaObject.id,
+            telegramChatId: result.telegramChatId ?? null,
+            telegramFileId: result.telegramFileId ?? null,
+            telegramMessageId:
+              result.telegramMessageId !== undefined
+                ? BigInt(result.telegramMessageId)
+                : null,
+            sizeBytes: result.sizeBytes,
+            mimeType: result.mimeType,
+          },
+        });
+        await tx.tenant.update({
+          where: { id: ctx.tenantId },
+          data: { storageBytesUsed: { increment: BigInt(result.sizeBytes) } },
+        });
+        await tx.attachment.update({
+          where: { id: input.parentAttachmentId },
+          data: { thumbnailKey: result.storageKey },
+        });
+      });
+
+      return { thumbnailKey: result.storageKey };
+    }),
+
   /** List attachments for a specific entity. */
   list: protectedProcedure
     .input(z.object({

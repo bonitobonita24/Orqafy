@@ -163,14 +163,20 @@ model MediaObject {
   mimeType          String?   @map("mime_type")
   migratedAt        DateTime? @map("migrated_at")
   minioReclaimedAt  DateTime? @map("minio_reclaimed_at")
+  /** "original" (default) | "thumbnail". A thumbnail's parentId points at the original's id. */
+  variant           String    @default("original")
+  parentId          String?   @map("parent_id")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant   Tenant        @relation(fields: [tenantId], references: [id])
+  parent   MediaObject?  @relation("MediaObjectVariants", fields: [parentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  variants MediaObject[] @relation("MediaObjectVariants")
 
   @@unique([tenantId, storageKey])
   @@index([tenantId])
   @@index([tenantId, backend])
+  @@index([tenantId, parentId])
   @@map("media_objects")
   @@schema("public")
 }
@@ -1667,6 +1673,8 @@ model Attachment {
   entityType       String   @map("entity_type") // customer | project | job_order | task | expense
   entityId         String   @map("entity_id")
   storageKey       String   @map("storage_key")
+  /** Storage key of the "thumbnail" variant MediaObject, if one was generated. Null = no thumbnail (list UI falls back to storageKey). */
+  thumbnailKey     String?  @map("thumbnail_key")
   filename         String
   mimeType         String   @map("mime_type")
   sizeBytes        BigInt   @map("size_bytes")

@@ -4,7 +4,7 @@ import { useRef, useState, useCallback } from "react";
 import { Upload, X, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { prepareUploadFile } from "@/lib/upload";
+import { prepareUploadFile, prepareThumbnail } from "@/lib/upload";
 
 type EntityType = "customer" | "project" | "job_order" | "task" | "expense" | "invoice" | "employee" | "purchase_order" | "goods_receipt";
 
@@ -38,6 +38,7 @@ export function FileUpload({ entityType, entityId, onUploadComplete, maxFileSize
   const utils = trpc.useUtils();
 
   const uploadDirect = trpc.storage.uploadDirect.useMutation();
+  const uploadThumbnail = trpc.storage.uploadThumbnail.useMutation();
 
   const processFile = useCallback(
     async (file: File, idx: number) => {
@@ -65,13 +66,35 @@ export function FileUpload({ entityType, entityId, onUploadComplete, maxFileSize
           compressedSize: prepared.compressedSize,
         });
 
-        await uploadDirect.mutateAsync({
+        const uploaded = await uploadDirect.mutateAsync({
           filename: prepared.filename,
           contentType: prepared.contentType,
           entityType,
           entityId,
           bodyBase64: prepared.bodyBase64,
         });
+
+        // Best-effort thumbnail — generated from the ORIGINAL file (not the
+        // already-compressed upload body). Failure here is NON-FATAL: the
+        // main image already uploaded successfully above; the attachment
+        // list simply falls back to the full-size image when thumbnailKey
+        // stays null.
+        try {
+          const thumbnail = await prepareThumbnail(file);
+          if (thumbnail) {
+            await uploadThumbnail.mutateAsync({
+              filename: thumbnail.filename,
+              contentType: thumbnail.contentType,
+              entityType,
+              entityId,
+              parentAttachmentId: uploaded.id,
+              bodyBase64: thumbnail.bodyBase64,
+            });
+          }
+        } catch (thumbErr) {
+          // Swallow — log for diagnostics only, never surface to the user.
+          console.warn("Thumbnail generation/upload failed (non-fatal):", thumbErr);
+        }
 
         updateUpload({ status: "done" });
         await utils.storage.list.invalidate({ entityType, entityId });
