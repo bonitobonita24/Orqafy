@@ -4,6 +4,7 @@ import { useRef, useState, useCallback } from "react";
 import { Upload, X, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
+import { prepareUploadFile } from "@/lib/upload";
 
 type EntityType = "customer" | "project" | "job_order" | "task" | "expense" | "invoice" | "employee" | "purchase_order" | "goods_receipt";
 
@@ -16,9 +17,16 @@ interface Props {
 
 interface UploadState {
   file: File;
-  progress: number;
-  status: "pending" | "uploading" | "confirming" | "done" | "error";
+  status: "pending" | "compressing" | "uploading" | "done" | "error";
   error?: string;
+  originalSize?: number;
+  compressedSize?: number;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${String(bytes)} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function FileUpload({ entityType, entityId, onUploadComplete, maxFileSizeMb = 10 }: Props) {
@@ -29,60 +37,43 @@ export function FileUpload({ entityType, entityId, onUploadComplete, maxFileSize
   uploadsRef.current = uploads;
   const utils = trpc.useUtils();
 
-  const getUploadUrl = trpc.storage.getUploadUrl.useMutation();
-  const confirmUpload = trpc.storage.confirmUpload.useMutation();
+  const uploadDirect = trpc.storage.uploadDirect.useMutation();
 
   const processFile = useCallback(
     async (file: File, idx: number) => {
-      const maxBytes = maxFileSizeMb * 1024 * 1024;
       const updateUpload = (patch: Partial<UploadState>) =>
         setUploads((prev) => prev.map((u, i) => (i === idx ? { ...u, ...patch } : u)));
 
-      if (file.size > maxBytes) {
-        updateUpload({ status: "error", error: `File exceeds ${maxFileSizeMb} MB limit` });
-        return;
-      }
-
       try {
-        const { url, storageKey } = await getUploadUrl.mutateAsync({
-          filename: file.name,
-          contentType: file.type || "application/octet-stream",
-          sizeBytes: file.size,
+        updateUpload({ status: "compressing" });
+
+        const prepared = await prepareUploadFile(file, maxFileSizeMb);
+
+        if (!prepared.ok) {
+          updateUpload({
+            status: "error",
+            error: prepared.error,
+            originalSize: prepared.originalSize,
+            compressedSize: prepared.compressedSize,
+          });
+          return;
+        }
+
+        updateUpload({
+          status: "uploading",
+          originalSize: prepared.originalSize,
+          compressedSize: prepared.compressedSize,
+        });
+
+        await uploadDirect.mutateAsync({
+          filename: prepared.filename,
+          contentType: prepared.contentType,
           entityType,
           entityId,
+          bodyBase64: prepared.bodyBase64,
         });
 
-        updateUpload({ status: "uploading" });
-
-        await new Promise<void>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) {
-              updateUpload({ progress: Math.round((e.loaded / e.total) * 90) });
-            }
-          };
-          xhr.onload = () =>
-            xhr.status >= 200 && xhr.status < 300
-              ? resolve()
-              : reject(new Error(`Upload failed: ${xhr.status}`));
-          xhr.onerror = () => reject(new Error("Network error during upload"));
-          xhr.open("PUT", url);
-          xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
-          xhr.send(file);
-        });
-
-        updateUpload({ status: "confirming", progress: 95 });
-
-        await confirmUpload.mutateAsync({
-          storageKey,
-          filename: file.name,
-          contentType: file.type || "application/octet-stream",
-          sizeBytes: file.size,
-          entityType,
-          entityId,
-        });
-
-        updateUpload({ status: "done", progress: 100 });
+        updateUpload({ status: "done" });
         await utils.storage.list.invalidate({ entityType, entityId });
         onUploadComplete?.();
 
@@ -94,7 +85,7 @@ export function FileUpload({ entityType, entityId, onUploadComplete, maxFileSize
         updateUpload({ status: "error", error: msg });
       }
     },
-    [entityType, entityId, maxFileSizeMb, getUploadUrl, confirmUpload, utils, onUploadComplete],
+    [entityType, entityId, maxFileSizeMb, uploadDirect, utils, onUploadComplete],
   );
 
   const handleFiles = useCallback(
@@ -104,7 +95,6 @@ export function FileUpload({ entityType, entityId, onUploadComplete, maxFileSize
       const startIdx = uploadsRef.current.length;
       const newEntries: UploadState[] = newFiles.map((file) => ({
         file,
-        progress: 0,
         status: "pending",
       }));
       setUploads((prev) => [...prev, ...newEntries]);
@@ -165,16 +155,20 @@ export function FileUpload({ entityType, entityId, onUploadComplete, maxFileSize
               <p className="text-xs text-destructive">{u.error}</p>
             ) : u.status === "done" ? (
               <p className="text-xs text-primary">Uploaded</p>
+            ) : u.status === "compressing" ? (
+              <p className="text-xs text-muted-foreground">Compressing…</p>
             ) : (
-              <div className="h-1 mt-1 rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full bg-primary rounded-full transition-all"
-                  style={{ width: `${u.progress}%` }}
-                />
-              </div>
+              <p className="text-xs text-muted-foreground">Uploading…</p>
             )}
+            {u.originalSize !== undefined &&
+              u.compressedSize !== undefined &&
+              u.compressedSize < u.originalSize && (
+                <p className="text-xs text-muted-foreground">
+                  {formatBytes(u.originalSize)} → {formatBytes(u.compressedSize)}
+                </p>
+              )}
           </div>
-          {(u.status === "uploading" || u.status === "confirming") && (
+          {(u.status === "compressing" || u.status === "uploading") && (
             <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
           )}
           {(u.status === "error" || u.status === "done") && (
