@@ -2730,3 +2730,27 @@ model BreachRecord {
   @@map("breach_records")
   @@schema("public")
 }
+
+// ═══════════════════════════════════════════════════════════════
+// MOBILE SYNC — idempotency ledger for the mobile-app push-sync surface
+// (apps/mobile/src/sync/queue.ts POSTs to /api/sync/{entityType}). One row
+// per successfully-applied client mutation, keyed on the mobile client's
+// stable local-record id (`clientId`) so a network-retry replays safely
+// instead of double-applying.
+// ═══════════════════════════════════════════════════════════════
+
+model MobileSyncOp {
+  id         String   @id @default(cuid())
+  tenantId   String   @map("tenant_id")
+  userId     String   @map("user_id")
+  entityType String   @map("entity_type")
+  clientId   String   @map("client_id")
+  action     String
+  serverId   String   @map("server_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, userId, entityType, clientId, action])
+  @@index([tenantId, entityType, clientId])
+  @@map("mobile_sync_ops")
+  @@schema("public")
+}
