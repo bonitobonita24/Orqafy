@@ -195,8 +195,10 @@ describe("POST /api/sync/[entityType]", () => {
     expect(mockHandler).not.toHaveBeenCalled();
   });
 
-  it("returns 501 for a not-yet-implemented entity handler", async () => {
-    const { req, params } = makeRequest("dtr_entries", { action: "create", entityId: "c1", data: {} });
+  it("returns 501 when a handler throws SyncHandlerNotImplementedError (all 3 entities are implemented as of this route's dispatch table, but the mapping must stay live for any future entity added to SYNC_ENTITY_TYPES ahead of its handler)", async () => {
+    const actual = await vi.importActual<typeof HandlersModule>("@/server/sync/handlers");
+    mockHandler.mockRejectedValueOnce(new actual.SyncHandlerNotImplementedError("tasks"));
+    const { req, params } = makeRequest("tasks", { action: "create", entityId: "c1", data: {} });
     const res = await POST(req, { params });
     expect(res.status).toBe(501);
   });

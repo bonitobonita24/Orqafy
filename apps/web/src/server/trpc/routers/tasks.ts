@@ -23,7 +23,10 @@ const TODO_PRIORITY = z.enum(["low", "medium", "high"]);
 
 // Allowed status transitions for tasks. Keys are current status,
 // values are statuses that can be transitioned to from that current status.
-const TASK_STATUS_TRANSITIONS: Record<string, ReadonlyArray<string>> = {
+// Exported so the mobile-sync `tasks` handler (server/sync/handlers/tasks.ts)
+// reuses the SAME state machine instead of duplicating (and risking drift
+// from) this map.
+export const TASK_STATUS_TRANSITIONS: Record<string, ReadonlyArray<string>> = {
   todo: ["in_progress", "blocked"],
   in_progress: ["review", "blocked", "todo"],
   review: ["done", "in_progress", "blocked"],

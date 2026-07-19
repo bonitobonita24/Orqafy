@@ -1,5 +1,8 @@
 import type { FeatureKey } from "@orqafy/shared/rbac";
 import type { SyncBearerContext } from "@/server/sync/bearer-context";
+import { dtrEntriesHandler } from "@/server/sync/handlers/dtr-entries";
+import { tasksHandler } from "@/server/sync/handlers/tasks";
+import { expensesHandler } from "@/server/sync/handlers/expenses";
 
 /** The mutation actions the mobile-sync route accepts. `delete` is
  * explicitly OUT of scope for v1 (see docs/PRODUCT.md mobile-sync decision
@@ -64,20 +67,16 @@ export type SyncHandler = (args: {
   data: unknown;
 }) => Promise<{ serverId: string }>;
 
-function stubHandler(entityType: SyncEntityType): SyncHandler {
-  return () => {
-    throw new SyncHandlerNotImplementedError(entityType);
-  };
-}
-
 /**
- * Dispatch table — STUBBED. Each per-entity worker (W2: dtr_entries,
- * W3: tasks + expenses, or however the follow-up work is split) replaces
- * its entry here with a real `SyncHandler` implementation. The route never
- * changes when a stub is filled in.
+ * Dispatch table. Kept as a plain `Record` (not a factory) so adding a
+ * FUTURE synced entity is still a two-line change (add to
+ * `SYNC_ENTITY_TYPES` + `ENTITY_FEATURE_MAP` above, add a handler here) and
+ * TypeScript's exhaustiveness on the `Record` type catches a missing entry
+ * at compile time. `SyncHandlerNotImplementedError`/501 stays live in the
+ * route (route.ts) for that in-between state on a newly-added entity type.
  */
 export const syncHandlers: Record<SyncEntityType, SyncHandler> = {
-  dtr_entries: stubHandler("dtr_entries"),
-  tasks: stubHandler("tasks"),
-  expenses: stubHandler("expenses"),
+  dtr_entries: dtrEntriesHandler,
+  tasks: tasksHandler,
+  expenses: expensesHandler,
 };
