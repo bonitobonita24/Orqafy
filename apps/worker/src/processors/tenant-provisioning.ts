@@ -10,8 +10,15 @@ import type { TenantProvisioningJobData } from '@orqafy/jobs';
 export async function processTenantProvisioning(
   job: Job<TenantProvisioningJobData>,
 ): Promise<void> {
-  const { tenantSlug, tenantName, tenantId, traceId, ownerEmail, ownerName, ownerPassword } =
-    job.data;
+  const {
+    tenantSlug,
+    tenantName: _tenantName,
+    tenantId,
+    traceId,
+    ownerEmail,
+    ownerName,
+    ownerPassword,
+  } = job.data;
   const schemaName = toSchemaName(tenantSlug);
 
   console.log(

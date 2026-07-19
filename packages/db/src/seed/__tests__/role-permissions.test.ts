@@ -38,14 +38,14 @@ function makeFakePrisma(): PrismaClient {
 
   return {
     role: {
-      findFirst: async ({ where }: { where: { id: string; tenantId: string } }) => {
+      findFirst: ({ where }: { where: { id: string; tenantId: string } }) => {
         const role = roles.get(where.id);
-        if (!role || role.tenantId !== where.tenantId) return null;
-        return role;
+        if (!role || role.tenantId !== where.tenantId) return Promise.resolve(null);
+        return Promise.resolve(role);
       },
     },
     rolePermission: {
-      upsert: async ({
+      upsert: ({
         where,
         update,
         create,
@@ -62,9 +62,9 @@ function makeFakePrisma(): PrismaClient {
         const existing = matrix.get(k);
         const row = existing ? { ...existing, ...update } : create;
         matrix.set(k, row);
-        return row;
+        return Promise.resolve(row);
       },
-      findUnique: async ({
+      findUnique: ({
         where,
       }: {
         where: { tenantId_roleId_featureKey: { tenantId: string; roleId: string; featureKey: string } };
@@ -74,7 +74,7 @@ function makeFakePrisma(): PrismaClient {
           where.tenantId_roleId_featureKey.roleId,
           where.tenantId_roleId_featureKey.featureKey,
         );
-        return matrix.get(k) ?? null;
+        return Promise.resolve(matrix.get(k) ?? null);
       },
     },
   } as unknown as PrismaClient;

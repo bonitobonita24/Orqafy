@@ -37,6 +37,12 @@ module.exports = {
     '*.mjs',
     // shadcn/ui installed components — auto-generated, not project-authored
     'apps/web/src/components/ui/',
+    // Real-file `.js` shims re-exporting their `.ts` sibling — required so native
+    // Node ESM resolution (no bundler) finds a real file for `@orqafy/shared`'s
+    // Node16-style `.js` relative specifiers. Not part of any tsconfig project
+    // (type-aware linting would fail), and not meant to be authored/linted —
+    // see packages/shared/src/rbac/features.js for the full explanation.
+    'packages/shared/src/rbac/*.js',
   ],
   settings: {},
 };

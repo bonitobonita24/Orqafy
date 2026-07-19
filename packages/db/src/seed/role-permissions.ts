@@ -248,7 +248,7 @@ function resolveRow(roleSlug: string, feature: FeatureKey): CUD {
   const def = FEATURE_DEFAULTS[feature];
   // `feature` is a FeatureKey so FEATURE_DEFAULTS always has an entry; guard
   // for noUncheckedIndexedAccess type-safety (behavior-preserving — never hit).
-  if (!def) return { ...NONE };
+  if (def === undefined) return { ...NONE };
   const override = def.roleOverrides?.[roleSlug];
   return { ...def.internalStaff, ...(override ?? {}) };
 }
