@@ -1,4 +1,8 @@
+import imageCompression from "browser-image-compression";
 import { compressImageFile } from "./image-compression";
+
+/** Image MIME types eligible for a generated thumbnail. Matches image-compression's list. */
+const THUMBNAILABLE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 /**
  * Prepares a File for the `storage.uploadDirect` tRPC mutation:
@@ -74,4 +78,46 @@ export async function prepareUploadFile(
     originalSize,
     compressedSize,
   };
+}
+
+/** True for image types a thumbnail is worth generating for. */
+export function isThumbnailable(file: File): boolean {
+  return THUMBNAILABLE_MIME_TYPES.has(file.type);
+}
+
+export interface PreparedThumbnail {
+  filename: string;
+  contentType: string;
+  bodyBase64: string;
+}
+
+/**
+ * Generates a small (~320px max edge) thumbnail from the ORIGINAL file — never
+ * from the already-compressed upload body, so quality doesn't compound.
+ * Returns `null` on any failure (non-image file, compression error) — the
+ * caller MUST treat that as non-fatal: the main upload already succeeded.
+ */
+export async function prepareThumbnail(file: File): Promise<PreparedThumbnail | null> {
+  if (!isThumbnailable(file)) return null;
+
+  try {
+    const thumbnailFile = await imageCompression(file, {
+      maxWidthOrHeight: 320,
+      initialQuality: 0.7,
+      useWebWorker: true,
+      // maxSizeMB is required by the library's types; a 320px-edge JPEG is
+      // well under 1MB in practice — this is a ceiling, not a target.
+      maxSizeMB: 1,
+    });
+
+    const bodyBase64 = await fileToBase64(thumbnailFile);
+
+    return {
+      filename: thumbnailFile.name,
+      contentType: thumbnailFile.type || "application/octet-stream",
+      bodyBase64,
+    };
+  } catch {
+    return null;
+  }
 }

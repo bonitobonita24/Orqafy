@@ -6,7 +6,7 @@ vi.mock('browser-image-compression', () => ({
   default: imageCompressionMock,
 }));
 
-import { prepareUploadFile, fileToBase64 } from '../upload';
+import { prepareUploadFile, fileToBase64, prepareThumbnail, isThumbnailable } from '../upload';
 
 function makeFile(name: string, type: string, content = 'x'.repeat(100)): File {
   return new File([content], name, { type });
@@ -125,5 +125,61 @@ describe('prepareUploadFile', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('expected ok result');
     expect(result.contentType).toBe('application/octet-stream');
+  });
+});
+
+describe('isThumbnailable', () => {
+  it('is true for jpeg/png/webp', () => {
+    expect(isThumbnailable(makeFile('a.jpg', 'image/jpeg'))).toBe(true);
+    expect(isThumbnailable(makeFile('a.png', 'image/png'))).toBe(true);
+    expect(isThumbnailable(makeFile('a.webp', 'image/webp'))).toBe(true);
+  });
+
+  it('is false for non-image types', () => {
+    expect(isThumbnailable(makeFile('a.pdf', 'application/pdf'))).toBe(false);
+    expect(isThumbnailable(makeFile('a.txt', 'text/plain'))).toBe(false);
+  });
+});
+
+describe('prepareThumbnail', () => {
+  beforeEach(() => {
+    imageCompressionMock.mockReset();
+  });
+
+  it('generates a small thumbnail from an image file and base64-encodes it', async () => {
+    const original = makeFile('photo.jpg', 'image/jpeg', 'x'.repeat(5000));
+    const thumb = makeFile('photo.jpg', 'image/jpeg', 't'.repeat(300));
+    imageCompressionMock.mockResolvedValue(thumb);
+
+    const result = await prepareThumbnail(original);
+
+    expect(imageCompressionMock).toHaveBeenCalledTimes(1);
+    const callArgs = imageCompressionMock.mock.calls[0] as [File, Record<string, unknown>];
+    // Must compress from the ORIGINAL file, not a pre-compressed body.
+    expect(callArgs[0]).toBe(original);
+    expect(callArgs[1]).toMatchObject({ maxWidthOrHeight: 320 });
+
+    expect(result).not.toBeNull();
+    expect(result?.filename).toBe('photo.jpg');
+    expect(result?.contentType).toBe('image/jpeg');
+    expect(decodeBase64ToString(result?.bodyBase64 ?? '')).toBe('t'.repeat(300));
+  });
+
+  it('returns null for a non-image file (never calls the compressor)', async () => {
+    const original = makeFile('invoice.pdf', 'application/pdf', 'x'.repeat(500));
+
+    const result = await prepareThumbnail(original);
+
+    expect(imageCompressionMock).not.toHaveBeenCalled();
+    expect(result).toBeNull();
+  });
+
+  it('returns null (non-fatal) when thumbnail generation throws', async () => {
+    const original = makeFile('photo.jpg', 'image/jpeg', 'x'.repeat(5000));
+    imageCompressionMock.mockRejectedValue(new Error('worker crashed'));
+
+    const result = await prepareThumbnail(original);
+
+    expect(result).toBeNull();
   });
 });

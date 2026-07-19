@@ -31,6 +31,15 @@ function isValidCuid(id: string): boolean {
   return CUID_V1_RE.test(id);
 }
 
+/**
+ * Which storage key to render an image attachment from: prefer the small
+ * thumbnail, fall back to the full-size original when no thumbnail exists
+ * (pre-migration rows, or the thumbnail upload failed — a non-fatal path).
+ */
+export function resolveImageSrcKey(a: { thumbnailKey: string | null; storageKey: string }): string {
+  return a.thumbnailKey ?? a.storageKey;
+}
+
 export function AttachmentsPanel({ entityType, entityId, readOnly = false }: Props) {
   const utils = trpc.useUtils();
   const isCuid = isValidCuid(entityId);
@@ -93,7 +102,17 @@ export function AttachmentsPanel({ entityType, entityId, readOnly = false }: Pro
               key={a.id}
               className="flex items-center gap-3 rounded-lg border border-border bg-card p-3"
             >
-              <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+              {a.mimeType.startsWith("image/") ? (
+                // Plain <img>: /api/media is an authenticated proxy endpoint, not a
+                // static asset Next Image can optimize.
+                <img
+                  src={`/api/media?key=${encodeURIComponent(resolveImageSrcKey(a))}`}
+                  alt={a.filename}
+                  className="h-10 w-10 shrink-0 rounded object-cover"
+                />
+              ) : (
+                <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{a.filename}</p>
                 <p className="text-xs text-muted-foreground">
