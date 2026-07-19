@@ -128,7 +128,7 @@ describe("POST /api/sync/[entityType]", () => {
 
   it("returns a generic 401 when bearer auth fails (resolves null — missing/invalid/expired token, deactivated user, or stale securityVersion)", async () => {
     mockResolveSyncBearerContext.mockResolvedValueOnce(null);
-    const { req, params } = makeRequest("tasks", { action: "create", entityId: "c1", data: {} });
+    const { req, params } = makeRequest("tasks", { action: "update", entityId: "c1", data: {} });
     const res = await POST(req, { params });
     expect(res.status).toBe(401);
     const body = (await res.json()) as { error: string };
@@ -137,7 +137,7 @@ describe("POST /api/sync/[entityType]", () => {
 
   it("returns a generic 500 when bearer resolution throws unexpectedly (never a leaked error)", async () => {
     mockResolveSyncBearerContext.mockRejectedValueOnce(new Error("db exploded: secret detail"));
-    const { req, params } = makeRequest("tasks", { action: "create", entityId: "c1", data: {} });
+    const { req, params } = makeRequest("tasks", { action: "update", entityId: "c1", data: {} });
     const res = await POST(req, { params });
     expect(res.status).toBe(500);
     const body = (await res.json()) as { error: string };
@@ -149,7 +149,7 @@ describe("POST /api/sync/[entityType]", () => {
     mockRateLimitCheck.mockImplementationOnce(() => {
       throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "slow down" });
     });
-    const { req, params } = makeRequest("tasks", { action: "create", entityId: "c1", data: {} });
+    const { req, params } = makeRequest("tasks", { action: "update", entityId: "c1", data: {} });
     const res = await POST(req, { params });
     expect(res.status).toBe(429);
   });
@@ -171,7 +171,7 @@ describe("POST /api/sync/[entityType]", () => {
 
   it("returns 403 for a demo tenant write", async () => {
     mockResolveSyncBearerContext.mockResolvedValueOnce({ ...BEARER_CTX, isDemoTenant: true });
-    const { req, params } = makeRequest("tasks", { action: "create", entityId: "c1", data: {} });
+    const { req, params } = makeRequest("tasks", { action: "update", entityId: "c1", data: {} });
     const res = await POST(req, { params });
     expect(res.status).toBe(403);
     expect(mockCheckMatrixGrant).not.toHaveBeenCalled();
@@ -179,7 +179,7 @@ describe("POST /api/sync/[entityType]", () => {
 
   it("returns 403 when the RBAC matrix denies the grant", async () => {
     mockCheckMatrixGrant.mockResolvedValueOnce(false);
-    const { req, params } = makeRequest("tasks", { action: "create", entityId: "c1", data: {} });
+    const { req, params } = makeRequest("tasks", { action: "update", entityId: "c1", data: {} });
     const res = await POST(req, { params });
     expect(res.status).toBe(403);
     expect(mockFindSyncOp).not.toHaveBeenCalled();
@@ -187,7 +187,7 @@ describe("POST /api/sync/[entityType]", () => {
 
   it("short-circuits on an idempotency hit — returns stored serverId, never calls the handler", async () => {
     mockFindSyncOp.mockResolvedValueOnce("server-already-applied");
-    const { req, params } = makeRequest("tasks", { action: "create", entityId: "c1", data: {} });
+    const { req, params } = makeRequest("tasks", { action: "update", entityId: "c1", data: {} });
     const res = await POST(req, { params });
     expect(res.status).toBe(200);
     const body = (await res.json()) as { serverId: string };
@@ -198,14 +198,14 @@ describe("POST /api/sync/[entityType]", () => {
   it("returns 501 when a handler throws SyncHandlerNotImplementedError (all 3 entities are implemented as of this route's dispatch table, but the mapping must stay live for any future entity added to SYNC_ENTITY_TYPES ahead of its handler)", async () => {
     const actual = await vi.importActual<typeof HandlersModule>("@/server/sync/handlers");
     mockHandler.mockRejectedValueOnce(new actual.SyncHandlerNotImplementedError("tasks"));
-    const { req, params } = makeRequest("tasks", { action: "create", entityId: "c1", data: {} });
+    const { req, params } = makeRequest("tasks", { action: "update", entityId: "c1", data: {} });
     const res = await POST(req, { params });
     expect(res.status).toBe(501);
   });
 
   it("maps an unexpected handler error to a generic 500 and logs it", async () => {
     mockHandler.mockRejectedValueOnce(new Error("db exploded: secret detail"));
-    const { req, params } = makeRequest("tasks", { action: "create", entityId: "c1", data: {} });
+    const { req, params } = makeRequest("tasks", { action: "update", entityId: "c1", data: {} });
     const res = await POST(req, { params });
     expect(res.status).toBe(500);
     const body = (await res.json()) as { error: string };
@@ -228,5 +228,22 @@ describe("POST /api/sync/[entityType]", () => {
       clientId: "c1",
       data: { title: "x" },
     });
+  });
+
+  it("gates DTR clock-out (action=update) with dtr:create, NOT dtr:update (web self-service parity)", async () => {
+    mockCheckMatrixGrant.mockResolvedValueOnce(false); // deny → 403 before the real handler runs
+    const { req, params } = makeRequest("dtr_entries", { action: "update", entityId: "c1", data: {} });
+    const res = await POST(req, { params });
+    expect(res.status).toBe(403);
+    expect(mockCheckMatrixGrant).toHaveBeenCalledWith(
+      expect.objectContaining({ feature: "dtr", action: "create" }),
+    );
+  });
+
+  it("returns 400 for an unsupported (entityType, action) combo (tasks are pull-first — no mobile create)", async () => {
+    const { req, params } = makeRequest("tasks", { action: "create", entityId: "c1", data: {} });
+    const res = await POST(req, { params });
+    expect(res.status).toBe(400);
+    expect(mockCheckMatrixGrant).not.toHaveBeenCalled();
   });
 });

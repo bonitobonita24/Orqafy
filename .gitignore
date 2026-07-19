@@ -88,3 +88,6 @@ CREDENTIALS.md_bak
 tokens/build/
 tests/visual/__snapshots__/
 tests/visual/diff/
+
+# Harness agent worktrees (ephemeral, never commit)
+.claude/worktrees/

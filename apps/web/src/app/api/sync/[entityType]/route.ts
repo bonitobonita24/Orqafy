@@ -33,6 +33,7 @@ import { assertNotDemoTenant, DemoTenantWriteError } from "@/server/sync/demo-gu
 import {
   ENTITY_FEATURE_MAP,
   isSyncEntityType,
+  SYNC_MATRIX_ACTION,
   SyncHandlerNotImplementedError,
   syncHandlers,
   type SyncAction,
@@ -129,13 +130,19 @@ export async function POST(
     throw err;
   }
 
-  // 5. RBAC — same matrix tRPC uses, keyed by entityType's feature.
+  // 5. RBAC — mirror the EXACT web tRPC procedure gating (SYNC_MATRIX_ACTION),
+  //    NOT the raw sync action. DTR clock-out (`update`) is self-service →
+  //    dtr:create (web parity), never dtr:update (approve/reject).
   const feature = ENTITY_FEATURE_MAP[entityType];
+  const matrixAction = SYNC_MATRIX_ACTION[entityType][action];
+  if (matrixAction === undefined) {
+    return jsonError(400, `The ${action} action is not supported for ${entityType}.`);
+  }
   const allowed = await checkMatrixGrant({
     tenantId: bearer.tenantId,
     roleId: bearer.roleId,
     feature,
-    action,
+    action: matrixAction,
   });
   if (!allowed) {
     return jsonError(403, "Access denied.");

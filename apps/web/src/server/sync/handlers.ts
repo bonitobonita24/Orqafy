@@ -31,6 +31,24 @@ export const ENTITY_FEATURE_MAP: Record<SyncEntityType, FeatureKey> = {
   expenses: "expenses",
 };
 
+/**
+ * Maps (entityType, syncAction) → the matrix permission action that mirrors the
+ * EXACT web tRPC procedure gating each op. The matrix verb is NOT always the raw
+ * sync action: notably DTR clock-out (`update`) is self-service on the employee's
+ * OWN record — web gates it with `dtrCreateProcedure` (dtr:create), NOT dtr:update
+ * (which is attendance approve/reject, granted only to HR managers). Using the raw
+ * `update` action here would wrongly 403 every non-HR-manager mobile clock-out.
+ * A missing (entityType, action) entry = an unsupported op for that entity → 400.
+ */
+export const SYNC_MATRIX_ACTION: Record<
+  SyncEntityType,
+  Partial<Record<SyncAction, SyncAction>>
+> = {
+  dtr_entries: { create: "create", update: "create" }, // clock-in AND clock-out → dtr:create (web parity)
+  tasks: { update: "update" }, // status change → tasks:update (web taskUpdateStatus)
+  expenses: { create: "create" }, // expense create → expenses:create
+};
+
 /** Thrown by a stubbed handler. Mapped to HTTP 501 by the route — a
  * deliberate "not built yet" signal, distinct from a genuine server error. */
 export class SyncHandlerNotImplementedError extends Error {
