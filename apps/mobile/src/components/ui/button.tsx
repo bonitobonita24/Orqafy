@@ -44,7 +44,7 @@ export function Button({
       {isLoading ? (
         <ActivityIndicator
           size="small"
-          color={variant === "primary" ? "#050507" : "#00d992"}
+          color={variant === "primary" ? "#171717" : "#fafafa"}
         />
       ) : (
         <Text className={`text-base ${styles.text}`}>{title}</Text>

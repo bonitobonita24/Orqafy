@@ -5,6 +5,7 @@ import {
   saveSession,
   clearSession,
   getStoredToken,
+  getStoredRefreshToken,
   isAuthenticated as checkAuth,
 } from "@/lib/auth";
 import { apiFetch } from "@/api";
@@ -44,9 +45,15 @@ export function useAuth(): UseAuthReturn {
 
   const logout = useCallback(async () => {
     const token = await getStoredToken();
-    if (token !== null) {
+    const refreshToken = await getStoredRefreshToken();
+    if (token !== null && refreshToken !== null) {
       try {
-        await apiFetch("/api/auth/mobile/logout", { method: "POST" });
+        // Body is required: POST /api/auth/mobile/logout revokes THIS
+        // refresh token's jti — see apps/web/.../mobile/logout/route.ts.
+        await apiFetch("/api/auth/mobile/logout", {
+          method: "POST",
+          body: JSON.stringify({ refreshToken }),
+        });
       } catch {
         // Best-effort server logout — clear local state regardless
       }

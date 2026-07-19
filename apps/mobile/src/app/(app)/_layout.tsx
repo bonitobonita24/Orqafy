@@ -24,15 +24,15 @@ export default function AppLayout(): React.JSX.Element {
       <OfflineBanner />
       <Tabs
         screenOptions={{
-          headerStyle: { backgroundColor: "#050507" },
-          headerTintColor: "#E8E8ED",
+          headerStyle: { backgroundColor: "#0a0a0a" },
+          headerTintColor: "#fafafa",
           headerTitleStyle: { fontWeight: "600" },
           tabBarStyle: {
-            backgroundColor: "#0D0D11",
-            borderTopColor: "#2C2C2E",
+            backgroundColor: "#0a0a0a",
+            borderTopColor: "#262626",
           },
-          tabBarActiveTintColor: "#00d992",
-          tabBarInactiveTintColor: "#6B6B70",
+          tabBarActiveTintColor: "#fafafa",
+          tabBarInactiveTintColor: "#a3a3a3",
         }}
       >
         <Tabs.Screen

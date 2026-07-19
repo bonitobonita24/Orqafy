@@ -4,8 +4,8 @@ export default function TasksLayout(): React.JSX.Element {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: "#050507" },
-        headerTintColor: "#E8E8ED",
+        headerStyle: { backgroundColor: "#0a0a0a" },
+        headerTintColor: "#fafafa",
         headerTitleStyle: { fontWeight: "600" },
       }}
     />
