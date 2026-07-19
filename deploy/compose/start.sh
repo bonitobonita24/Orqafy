@@ -19,7 +19,11 @@ DC="docker compose --env-file $ENV_FILE"
 $DC -f $BASE/docker-compose.db.yml $CMD
 $DC -f $BASE/docker-compose.cache.yml $CMD
 $DC -f $BASE/docker-compose.storage.yml $CMD
-$DC -f $BASE/docker-compose.pgadmin.yml $CMD
+# pgadmin is not part of the staging/demo deployed set (matches live — see
+# docs/DEPLOY_COMPOSE_RECONCILIATION.md); only present under dev/prod.
+if [ -f "$BASE/docker-compose.pgadmin.yml" ]; then
+  $DC -f $BASE/docker-compose.pgadmin.yml $CMD
+fi
 if [ "$ENV" = "dev" ]; then
   $DC -f $BASE/docker-compose.infra.yml $CMD
 fi

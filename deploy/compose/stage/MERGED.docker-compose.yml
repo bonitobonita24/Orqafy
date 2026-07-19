@@ -1,29 +1,35 @@
 # =============================================================
 # ORQAFY STAGING — Komodo Stack compose (single-file merge)
 # =============================================================
-# Generated 2026-06-03 by merging the 6 staging compose files:
-#   docker-compose.db.yml      (postgres + pgbouncer)
+# Regenerated 2026-07-19 to match the LIVE stack at
+# /etc/komodo/stacks/orqafy-staging/ (ground-truthed via read-only SSH) —
+# see docs/DEPLOY_COMPOSE_RECONCILIATION.md for the full reconciliation record.
+#
+# Merges the 5 staging compose files actually deployed:
+#   docker-compose.db.yml      (postgres only — NO pgbouncer)
 #   docker-compose.cache.yml   (valkey)
 #   docker-compose.storage.yml (minio)
-#   docker-compose.pgadmin.yml (pgadmin)
 #   docker-compose.worker.yml  (worker)
 #   docker-compose.app.yml     (app, with Traefik labels)
+# pgAdmin is NOT part of the deployed set (matches live).
 #
 # PASTE THIS ENTIRE FILE into:
 #   Komodo UI → Stack orqafy-staging → Compose tab
 #
-# DIFFERENCES vs the individual files:
-#   1. env_file paths changed from ../../../.env.staging → .env
-#      (Komodo writes the Stack Environment to .env in the run directory,
-#      so the compose file references it as a relative ".env")
+# NOTES vs the individual files (same difference the individual files already carry):
+#   1. env_file is co-located `.env` (Komodo writes the Stack Environment to
+#      .env in the run directory, so the compose file references it as a
+#      relative ".env" — not a path back to the repo root).
 #   2. app_network declared ONCE as driver: bridge (instead of one creator
-#      + 5 external references). proxy network still external: true since
+#      + N external references). proxy network still external: true since
 #      Traefik creates it.
-#   3. pgAdmin's pgadmin-servers.json bind-mount REMOVED. If you want
-#      pre-registered server connection, copy pgadmin-servers.json to
-#      /opt/stacks/orqafy-staging/pgadmin-servers.json on the Komodo
-#      server and add the volume mount back manually. Otherwise register
-#      the postgres server in pgAdmin UI once after first deploy.
+#   3. app/worker DATABASE_URL/DIRECT_URL/REDIS_URL are explicit overrides
+#      pointing at INTERNAL_* env vars, so both always talk to the
+#      co-located containers by Docker hostname regardless of what the
+#      .env's public-facing values are.
+#   4. Traefik router/service names are hardcoded to orqafy_staging_app
+#      (not templated via COMPOSE_PROJECT_NAME) — this is the live,
+#      working convention; matches the individual docker-compose.app.yml.
 # =============================================================
 
 networks:
@@ -37,14 +43,10 @@ networks:
 volumes:
   postgres_data:
     name: ${COMPOSE_PROJECT_NAME}_postgres_data
-  pgbouncer_data:
-    name: ${COMPOSE_PROJECT_NAME}_pgbouncer_data
   valkey_data:
     name: ${COMPOSE_PROJECT_NAME}_valkey_data
   minio_data:
     name: ${COMPOSE_PROJECT_NAME}_minio_data
-  pgadmin_data:
-    name: ${COMPOSE_PROJECT_NAME}_pgadmin_data
 
 services:
 
@@ -70,24 +72,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  pgbouncer:
-    image: edoburu/pgbouncer:latest
-    container_name: ${COMPOSE_PROJECT_NAME}_pgbouncer
-    hostname: ${COMPOSE_PROJECT_NAME}_pgbouncer
-    env_file: .env
-    environment:
-      TZ: Asia/Manila
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${COMPOSE_PROJECT_NAME}_postgres:5432/${DB_NAME}
-      POOL_MODE: transaction
-      MAX_CLIENT_CONN: 100
-      DEFAULT_POOL_SIZE: 20
-      AUTH_TYPE: scram-sha-256
-    # No host port published — reachable internally as ${COMPOSE_PROJECT_NAME}_pgbouncer:5432.
-    networks: [app_network]
-    depends_on:
-      postgres: { condition: service_healthy }
-    restart: unless-stopped
 
   # ─── CACHE ───
   valkey:
@@ -132,33 +116,6 @@ services:
       timeout: 10s
       retries: 3
 
-  # ─── DB MANAGEMENT UI ───
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: ${COMPOSE_PROJECT_NAME}_pgadmin
-    hostname: ${COMPOSE_PROJECT_NAME}_pgadmin
-    env_file: .env
-    environment:
-      TZ: Asia/Manila
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
-      PGADMIN_CONFIG_SERVER_MODE: "False"
-      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-      # pgadmin-servers.json bind-mount removed — register postgres server
-      # manually in pgAdmin UI after first deploy. See header comment.
-    # No host port published — reach pgAdmin via an SSH tunnel to ${COMPOSE_PROJECT_NAME}_pgadmin:80.
-    networks: [app_network]
-    depends_on:
-      - postgres
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-O", "-", "http://127.0.0.1:80/misc/ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
   # ─── BACKGROUND WORKER ───
   worker:
     # NO build: key — image pulled from Docker Hub only
@@ -167,21 +124,14 @@ services:
     hostname: ${COMPOSE_PROJECT_NAME}_worker
     env_file: .env
     environment:
-      - TZ=Asia/Manila
-      - NODE_ENV=production
-      - WORKER_PORT=${WORKER_PORT}
+      TZ: Asia/Manila
+      NODE_ENV: production
+      STORAGE_BACKEND: telegram
+      DATABASE_URL: ${INTERNAL_DATABASE_URL}
+      DIRECT_URL: ${INTERNAL_DIRECT_URL}
+      REDIS_URL: ${INTERNAL_REDIS_URL}
     networks: [app_network]
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      valkey:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:${WORKER_PORT}/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   # ─── APP (Traefik-routed, no host port) ───
   app:
@@ -191,25 +141,26 @@ services:
     hostname: ${COMPOSE_PROJECT_NAME}_app
     env_file: .env
     environment:
-      - TZ=Asia/Manila
-      - NODE_ENV=production
-      - PORT=${APP_PORT}
+      TZ: Asia/Manila
+      NODE_ENV: production
+      PORT: "3000"
+      AUTH_TRUST_HOST: "true"
+      STORAGE_BACKEND: telegram
+      DATABASE_URL: ${INTERNAL_DATABASE_URL}
+      DIRECT_URL: ${INTERNAL_DIRECT_URL}
+      REDIS_URL: ${INTERNAL_REDIS_URL}
     networks: [app_network, proxy]
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      valkey:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:${APP_PORT}/api/health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.rule=Host(`${APP_DOMAIN}`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.tls=true"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.tls.certresolver=letsencrypt"
-      - "traefik.http.services.${COMPOSE_PROJECT_NAME}_app.loadbalancer.server.port=3000"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.orqafy_staging_app.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.orqafy_staging_app.entrypoints=websecure"
+      - "traefik.http.routers.orqafy_staging_app.tls=true"
+      - "traefik.http.routers.orqafy_staging_app.tls.certresolver=letsencrypt"
+      - "traefik.http.services.orqafy_staging_app.loadbalancer.server.port=3000"

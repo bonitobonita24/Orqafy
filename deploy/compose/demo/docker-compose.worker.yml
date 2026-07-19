@@ -9,22 +9,18 @@ services:
     image: ${DOCKERHUB_USERNAME}/${WORKER_IMAGE_NAME}:${APP_IMAGE_TAG:-demo-latest}
     container_name: ${COMPOSE_PROJECT_NAME}_worker
     hostname: ${COMPOSE_PROJECT_NAME}_worker
-    env_file: ../../../.env.demo
+    # env_file is co-located in the stack run directory (Komodo writes the Stack
+    # Environment to .env there) — NOT a relative path back to the repo root.
+    env_file: .env
     environment:
-      - TZ=Asia/Manila
-      - NODE_ENV=production
-      - WORKER_PORT=${WORKER_PORT}
+      TZ: Asia/Manila
+      NODE_ENV: production
       # Demo is the ONE env that stays on MinIO/S3 object storage (media-storage-default.md).
-      - STORAGE_BACKEND=s3
+      STORAGE_BACKEND: s3
+      # Internal DB/cache URLs override whatever the .env's public-facing values are,
+      # so the worker always talks to the co-located containers by Docker hostname.
+      DATABASE_URL: ${INTERNAL_DATABASE_URL}
+      DIRECT_URL: ${INTERNAL_DIRECT_URL}
+      REDIS_URL: ${INTERNAL_REDIS_URL}
     networks: [app_network]
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      valkey:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:${WORKER_PORT}/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3

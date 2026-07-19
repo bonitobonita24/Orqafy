@@ -1609,3 +1609,32 @@ denies Staff and non-owner Admin on all three `user.ts` endpoints.
 
 **Commit (LOCAL on `feat/tenant-rbac-3tier`, HARD HOLD):** `cb0c783`.
 `D-RBAC-USERS-UNGATED` and `D-RBAC-PAYROLL-UNGATED` in `PENDING_DECISIONS.md`.
+
+---
+
+## LOCKED: Deploy model (staging/demo) — Komodo hand-placed stacks, repo compose is a mirror
+
+**Decision:** Deploy model = **(a)**: Komodo, via the data-first gate script
+`deploy/staging-refresh-and-deploy.sh`, deploys the hand-placed stack files under
+`/etc/komodo/stacks/orqafy-{staging,demo}/` on the VPS. The repo's `deploy/compose/{stage,demo}`
+files are a **reference mirror** of that live layout — NOT the deploy source. No compose
+templating/generator system is introduced.
+
+**Consequences:**
+- Staging deploys ONLY via `deploy/staging-refresh-and-deploy.sh` (prod-data-first refresh →
+  image pull → `prisma migrate deploy` → schema-status hard gate → bring-up → health-verify).
+- Komodo `auto_update` stays OFF for both staging and demo — deploys are agent-triggered
+  ("validate staging" / "push to demo"), never automatic on image push.
+- Production and demo promotion stay manual, owner-gated steps (never triggered by CI or the
+  staging gate script).
+- The repo `deploy/compose/{stage,demo}` tree is reconciled to be a **verbatim mirror** of the
+  live `/etc/komodo/stacks/*` layout (2026-07-19) — see `docs/DEPLOY_COMPOSE_RECONCILIATION.md`
+  for the full ground-truthed divergence table and what changed. Future drift between the repo
+  mirror and the live stack should be re-reconciled the same way (read-only SSH ground-truth →
+  update repo → re-validate with `docker compose config`), never assumed.
+- `deploy/compose/dev/*` and `deploy/compose/prod/*` are unaffected by this reconciliation —
+  dev uses a different (local build) model, and prod has not yet had a live stack to
+  ground-truth against.
+
+**Reference:** `docs/DEPLOY_COMPOSE_RECONCILIATION.md` (ground-truthed divergence table,
+what changed, verification performed).

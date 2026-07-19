@@ -3,18 +3,20 @@ networks:
     name: ${COMPOSE_PROJECT_NAME}_network
     driver: bridge
 
+# NOTE: pgbouncer is intentionally NOT deployed on this stack (matches live —
+# the app/worker connect directly to postgres via INTERNAL_DATABASE_URL).
 volumes:
   postgres_data:
     name: ${COMPOSE_PROJECT_NAME}_postgres_data
-  pgbouncer_data:
-    name: ${COMPOSE_PROJECT_NAME}_pgbouncer_data
 
 services:
   postgres:
     image: postgres:16-alpine
     container_name: ${COMPOSE_PROJECT_NAME}_postgres
     hostname: ${COMPOSE_PROJECT_NAME}_postgres
-    env_file: ../../../.env.staging
+    # env_file is co-located in the stack run directory (Komodo writes the Stack
+    # Environment to .env there) — NOT a relative path back to the repo root.
+    env_file: .env
     environment:
       TZ: Asia/Manila
       POSTGRES_DB: ${DB_NAME}
@@ -31,22 +33,3 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  pgbouncer:
-    image: edoburu/pgbouncer:latest
-    container_name: ${COMPOSE_PROJECT_NAME}_pgbouncer
-    hostname: ${COMPOSE_PROJECT_NAME}_pgbouncer
-    env_file: ../../../.env.staging
-    environment:
-      TZ: Asia/Manila
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${COMPOSE_PROJECT_NAME}_postgres:5432/${DB_NAME}
-      POOL_MODE: transaction
-      MAX_CLIENT_CONN: 100
-      DEFAULT_POOL_SIZE: 20
-      AUTH_TYPE: scram-sha-256
-    ports:
-      - "${PGBOUNCER_PORT}:5432"
-    networks: [app_network]
-    depends_on:
-      postgres: { condition: service_healthy }
-    restart: unless-stopped

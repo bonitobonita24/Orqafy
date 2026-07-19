@@ -12,7 +12,9 @@ services:
     image: minio/minio:latest
     container_name: ${COMPOSE_PROJECT_NAME}_minio
     hostname: ${COMPOSE_PROJECT_NAME}_minio
-    env_file: ../../../.env.demo
+    # env_file is co-located in the stack run directory (Komodo writes the Stack
+    # Environment to .env there) — NOT a relative path back to the repo root.
+    env_file: .env
     environment:
       TZ: Asia/Manila
       MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY}

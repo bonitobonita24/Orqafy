@@ -9,25 +9,19 @@ services:
     image: ${DOCKERHUB_USERNAME}/${WORKER_IMAGE_NAME}:${APP_IMAGE_TAG:-staging-latest}
     container_name: ${COMPOSE_PROJECT_NAME}_worker
     hostname: ${COMPOSE_PROJECT_NAME}_worker
-    env_file: ../../../.env.staging
+    # env_file is co-located in the stack run directory (Komodo writes the Stack
+    # Environment to .env there) — NOT a relative path back to the repo root.
+    env_file: .env
     environment:
-      - TZ=Asia/Manila
-      - NODE_ENV=production
-      - WORKER_PORT=${WORKER_PORT}
+      TZ: Asia/Manila
+      NODE_ENV: production
       # Persistent media default = Telegram on dev+staging+prod (media-storage-default.md).
-      # TELEGRAM_* real values come from Server-Setups (SOPS+age) via .env.staging at deploy time — never hardcode.
-      - STORAGE_BACKEND=telegram
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - TELEGRAM_DEFAULT_CHANNEL_ID=${TELEGRAM_DEFAULT_CHANNEL_ID}
+      # TELEGRAM_* real values come from Server-Setups (SOPS+age) via the stack .env — never hardcode.
+      STORAGE_BACKEND: telegram
+      # Internal DB/cache URLs override whatever the .env's public-facing values are,
+      # so the worker always talks to the co-located containers by Docker hostname.
+      DATABASE_URL: ${INTERNAL_DATABASE_URL}
+      DIRECT_URL: ${INTERNAL_DIRECT_URL}
+      REDIS_URL: ${INTERNAL_REDIS_URL}
     networks: [app_network]
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      valkey:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:${WORKER_PORT}/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
