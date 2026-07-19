@@ -1,7 +1,7 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-07-19 by CLAUDE_CODE (Full-Auto M4 — STAGING deployed live + verified)
+> Last updated: 2026-07-19 by CLAUDE_CODE (Full-Auto — un-gated local [HOW] cleanup: staging-gate invariants 1-3 + CSP CF-beacon + compose-reconcile plan; commits 7ffbe9c, dc90d7f LOCAL/unpushed. Un-gated queue EXHAUSTED — only owner-gated [WHAT] remains.)
 
 ---
 
