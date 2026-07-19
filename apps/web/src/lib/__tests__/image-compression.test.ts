@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const imageCompressionMock = vi.fn();
+const imageCompressionMock = vi.hoisted(() => vi.fn());
 
 vi.mock('browser-image-compression', () => ({
-  default: (...args: unknown[]) => imageCompressionMock(...args),
+  default: imageCompressionMock,
 }));
 
 import { compressImageFile } from '../image-compression';
