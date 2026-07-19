@@ -5,7 +5,7 @@ export default function AuthLayout(): React.JSX.Element {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: "#050507" },
+        contentStyle: { backgroundColor: "#0a0a0a" },
       }}
     />
   );

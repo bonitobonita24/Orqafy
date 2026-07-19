@@ -5,17 +5,20 @@ export default {
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
+      // Canonical theme: shadcn neutral-dark — mirrors src/constants/colors.ts
+      // (kept as a second source only because NativeWind reads Tailwind config
+      // statically; see that file for the HSL→hex derivation).
       colors: {
-        background: "#050507",
-        foreground: "#E8E8ED",
-        primary: "#00d992",
-        "primary-foreground": "#050507",
-        muted: "#1A1A1F",
-        "muted-foreground": "#8E8E93",
-        destructive: "#FF453A",
-        border: "#2C2C2E",
-        card: "#0D0D11",
-        accent: "#5E5CE6",
+        background: "#0a0a0a",
+        foreground: "#fafafa",
+        primary: "#fafafa",
+        "primary-foreground": "#171717",
+        muted: "#262626",
+        "muted-foreground": "#a3a3a3",
+        destructive: "#7f1d1d",
+        border: "#262626",
+        card: "#0a0a0a",
+        accent: "#262626",
       },
     },
   },

@@ -19,7 +19,7 @@ export function Input({
         className={`rounded-lg border bg-card px-4 py-3 text-base text-foreground ${
           error !== undefined ? "border-destructive" : "border-border"
         }`}
-        placeholderTextColor="#6B6B70"
+        placeholderTextColor="#a3a3a3"
         {...props}
       />
       {error !== undefined && (
