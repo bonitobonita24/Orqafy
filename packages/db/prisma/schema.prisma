@@ -141,6 +141,7 @@ model Tenant {
   dsrRequests                  DataSubjectRequest[]          @relation("TenantDsr")
   breachRecords                BreachRecord[]                @relation("TenantBreach")
   mediaObjects                 MediaObject[]
+  devicePushTokens             DevicePushToken[]
 
   @@map("tenants")
   @@schema("public")
@@ -389,9 +390,32 @@ model User {
   notifications                   Notification[]          @relation("UserNotifications")
   attachmentsUploaded             Attachment[]            @relation("AttachmentUploadedBy")
   dataSubjectRequests             DataSubjectRequest[]    @relation("UserDsr")
+  devicePushTokens                DevicePushToken[]
 
   @@index([tenantId])
   @@map("users")
+  @@schema("public")
+}
+
+// Mobile push-notification device tokens (Expo Push). One row per (user,
+// device-token) pair — a user may hold several tokens across devices.
+// Upserted by POST /api/push-token on app foreground / token-refresh.
+model DevicePushToken {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id])
+  tenantId   String   @map("tenant_id")
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  token      String
+  platform   String
+  lastSeenAt DateTime @default(now()) @map("last_seen_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, token])
+  @@index([tenantId])
+  @@index([token])
+  @@map("device_push_tokens")
   @@schema("public")
 }
 
