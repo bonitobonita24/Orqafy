@@ -5,7 +5,7 @@ import { database } from "@/storage";
 import type { DtrEntry } from "@/storage/models";
 import { Button, Card, CardTitle } from "@/components/ui";
 import { useLocation } from "@/hooks";
-import { enqueueSync } from "@/sync";
+import { prepareSyncQueueItem } from "@/sync";
 import { getStoredTenantId } from "@/lib/auth";
 import { formatDateTime } from "@/lib/date";
 
@@ -50,7 +50,7 @@ export default function DtrScreen(): React.JSX.Element {
 
       await database.write(async () => {
         const collection = database.get<DtrEntry>("dtr_entries");
-        const entry = await collection.create((record) => {
+        const entry = collection.prepareCreate((record) => {
           record.tenantId = tenantId;
           record.clockInAt = new Date();
           record.clockInLat = position.latitude;
@@ -59,7 +59,15 @@ export default function DtrScreen(): React.JSX.Element {
           record.status = "clocked_in";
           record.synced = false;
         });
-        await enqueueSync("dtr_entries", entry.id, "create", {});
+        // Payload must match clockInSchema in
+        // server/sync/handlers/dtr-entries.ts exactly ({ lat, lng }).
+        await database.batch(
+          entry,
+          prepareSyncQueueItem("dtr_entries", entry.id, "create", {
+            lat: position.latitude,
+            lng: position.longitude,
+          }),
+        );
       });
       await loadEntries();
     } catch (error) {
@@ -90,15 +98,22 @@ export default function DtrScreen(): React.JSX.Element {
       }
 
       await database.write(async () => {
-        await openEntry.update((record) => {
-          record.clockOutAt = new Date();
-          record.clockOutLat = position.latitude;
-          record.clockOutLng = position.longitude;
-          record.clockOutAccuracy = position.accuracy;
-          record.status = "clocked_out";
-          record.synced = false;
-        });
-        await enqueueSync("dtr_entries", openEntry.id, "update", {});
+        // Payload must match clockOutSchema in
+        // server/sync/handlers/dtr-entries.ts exactly ({ lat, lng }).
+        await database.batch(
+          openEntry.prepareUpdate((record) => {
+            record.clockOutAt = new Date();
+            record.clockOutLat = position.latitude;
+            record.clockOutLng = position.longitude;
+            record.clockOutAccuracy = position.accuracy;
+            record.status = "clocked_out";
+            record.synced = false;
+          }),
+          prepareSyncQueueItem("dtr_entries", openEntry.id, "update", {
+            lat: position.latitude,
+            lng: position.longitude,
+          }),
+        );
       });
       await loadEntries();
     } catch (error) {

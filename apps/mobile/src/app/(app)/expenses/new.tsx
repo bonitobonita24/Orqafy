@@ -1,18 +1,23 @@
-import { useRef, useState } from "react";
-import { View, Text, ScrollView, Alert, Modal, Image, Pressable } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { View, Text, ScrollView, Alert, Modal, Image, Pressable, FlatList } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { CameraView, useCameraPermissions, type CameraCapturedPicture } from "expo-camera";
 import { database } from "@/storage";
 import type { Expense } from "@/storage/models";
 import { Button, Input } from "@/components/ui";
-import { enqueueSync } from "@/sync";
+import { prepareSyncQueueItem, prepareReceiptUploadQueueItem } from "@/sync";
+import { apiFetch } from "@/api";
 import { getStoredTenantId } from "@/lib/auth";
 import { compressReceiptImage } from "@/lib/receipt-image";
 
+interface ExpenseCategory {
+  id: string;
+  name: string;
+}
+
 export default function NewExpenseScreen(): React.JSX.Element {
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [receiptUri, setReceiptUri] = useState("");
@@ -20,6 +25,38 @@ export default function NewExpenseScreen(): React.JSX.Element {
   const [isCapturing, setIsCapturing] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
+
+  // Owner decision (see server/sync/handlers/expenses.ts): mobile uses a
+  // real category picker sourced from GET /api/sync/expense-categories, not
+  // free text — the server requires a real expenseCategoryId (cuid).
+  const [categories, setCategories] = useState<ExpenseCategory[]>([]);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<ExpenseCategory | null>(null);
+  const [isCategoryPickerOpen, setIsCategoryPickerOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setIsCategoriesLoading(true);
+      setCategoriesError(null);
+      try {
+        const result = await apiFetch<ExpenseCategory[]>("/api/sync/expense-categories");
+        if (!cancelled) setCategories(result);
+      } catch (error) {
+        if (!cancelled) {
+          setCategoriesError(
+            error instanceof Error ? error.message : "Failed to load categories",
+          );
+        }
+      } finally {
+        if (!cancelled) setIsCategoriesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const openCamera = async (): Promise<void> => {
     if (permission?.granted !== true) {
@@ -62,8 +99,12 @@ export default function NewExpenseScreen(): React.JSX.Element {
       Alert.alert("Validation", "Please enter a valid amount.");
       return;
     }
-    if (category.trim() === "") {
-      Alert.alert("Validation", "Please enter a category.");
+    if (selectedCategory === null) {
+      Alert.alert("Validation", "Please select a category.");
+      return;
+    }
+    if (description.trim() === "") {
+      Alert.alert("Validation", "Please enter a description.");
       return;
     }
 
@@ -77,28 +118,46 @@ export default function NewExpenseScreen(): React.JSX.Element {
 
       await database.write(async () => {
         const collection = database.get<Expense>("expenses");
-        const entry = await collection.create((record) => {
+        const entry = collection.prepareCreate((record) => {
           record.tenantId = tenantId;
           record.amount = parsedAmount;
           record.currency = "PHP";
-          record.category = category.trim();
+          // `category` here is the display NAME only (local list/detail
+          // rendering) — the sync payload below carries the real
+          // expenseCategoryId the server needs; it is never re-derived from
+          // this column.
+          record.category = selectedCategory.name;
           record.description = description.trim();
           record.receiptUri = receiptUri;
           record.status = "draft";
           record.synced = false;
         });
-        // NOTE: `receiptUri` here is a LOCAL device file URI, not uploaded bytes.
-        // The generic /api/sync/expenses leg (and a receipt-upload step mirroring
-        // web's trpc.storage.uploadDirect) is not wired yet — see the mobile
-        // camera/compression task report for the flagged gap.
-        await enqueueSync("expenses", entry.id, "create", {
+
+        // Payload must match createExpenseSchema in
+        // server/sync/handlers/expenses.ts exactly. `receiptUri` is a LOCAL
+        // device file path — it is NEVER sent as part of this payload (the
+        // server has nothing to do with it); the receipt's bytes are
+        // uploaded separately, as a SECOND queue item, once this create has
+        // synced and produced a real server expense id (see
+        // prepareReceiptUploadQueueItem + syncReceiptUploadItem in
+        // sync/queue.ts).
+        const createItem = prepareSyncQueueItem("expenses", entry.id, "create", {
+          expenseCategoryId: selectedCategory.id,
+          description: description.trim(),
           amount: parsedAmount,
           currency: "PHP",
-          category: category.trim(),
-          description: description.trim(),
-          receiptUri,
-          status: "draft",
+          date: new Date().toISOString(),
         });
+
+        if (receiptUri !== "") {
+          await database.batch(
+            entry,
+            createItem,
+            prepareReceiptUploadQueueItem(entry.id, receiptUri),
+          );
+        } else {
+          await database.batch(entry, createItem);
+        }
       });
       router.back();
     } catch (error) {
@@ -128,12 +187,34 @@ export default function NewExpenseScreen(): React.JSX.Element {
             keyboardType="decimal-pad"
           />
 
-          <Input
-            label="Category"
-            placeholder="e.g. Transportation, Meals, Supplies"
-            value={category}
-            onChangeText={setCategory}
-          />
+          <View className="gap-1.5">
+            <Text className="text-sm font-medium text-foreground/80">Category</Text>
+            <Pressable
+              onPress={() => setIsCategoryPickerOpen(true)}
+              disabled={isCategoriesLoading || categories.length === 0}
+              className="flex-row items-center justify-between rounded-lg border border-border bg-card px-4 py-3"
+            >
+              <Text
+                className={`text-base ${
+                  selectedCategory !== null ? "text-foreground" : "text-foreground/40"
+                }`}
+              >
+                {isCategoriesLoading
+                  ? "Loading categories..."
+                  : (selectedCategory?.name ?? "Select a category")}
+              </Text>
+            </Pressable>
+            {categoriesError !== null && (
+              <Text className="text-xs text-destructive">
+                Couldn&apos;t load categories: {categoriesError}
+              </Text>
+            )}
+            {!isCategoriesLoading && categories.length === 0 && categoriesError === null && (
+              <Text className="text-xs text-foreground/60">
+                No expense categories are set up for your organization yet.
+              </Text>
+            )}
+          </View>
 
           <Input
             label="Description"
@@ -210,6 +291,51 @@ export default function NewExpenseScreen(): React.JSX.Element {
             </View>
           </SafeAreaView>
         </View>
+      </Modal>
+
+      <Modal
+        visible={isCategoryPickerOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setIsCategoryPickerOpen(false)}
+      >
+        <Pressable
+          className="flex-1 justify-end bg-black/50"
+          onPress={() => setIsCategoryPickerOpen(false)}
+        >
+          <Pressable className="max-h-[70%] rounded-t-2xl bg-background">
+            <SafeAreaView edges={["bottom"]}>
+              <View className="border-b border-border px-4 py-3">
+                <Text className="text-lg font-bold text-foreground">
+                  Select a category
+                </Text>
+              </View>
+              <FlatList
+                data={categories}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <Pressable
+                    onPress={() => {
+                      setSelectedCategory(item);
+                      setIsCategoryPickerOpen(false);
+                    }}
+                    className="border-b border-border/50 px-4 py-3.5"
+                  >
+                    <Text
+                      className={`text-base ${
+                        selectedCategory?.id === item.id
+                          ? "font-semibold text-primary"
+                          : "text-foreground"
+                      }`}
+                    >
+                      {item.name}
+                    </Text>
+                  </Pressable>
+                )}
+              />
+            </SafeAreaView>
+          </Pressable>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );

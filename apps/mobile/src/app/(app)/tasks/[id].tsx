@@ -6,10 +6,16 @@ import { database } from "@/storage";
 import type { Task } from "@/storage/models";
 import { Button, Card, CardTitle, CardDescription } from "@/components/ui";
 import { LoadingScreen } from "@/components/common";
-import { enqueueSync } from "@/sync";
+import { prepareSyncQueueItem } from "@/sync";
 import { formatDate } from "@/lib/date";
 
-const statusFlow = ["todo", "in_progress", "done"] as const;
+// Must be a subsequence of valid direct transitions in
+// TASK_STATUS_TRANSITIONS (server/trpc/routers/tasks.ts) — the server
+// rejects any transition not in that state machine with a 400. Notably,
+// in_progress -> done is NOT a valid direct transition (only "review",
+// "blocked", "todo" are); "review" is included here so the mobile
+// "move to next status" button never produces an invalid jump.
+const statusFlow = ["todo", "in_progress", "review", "done"] as const;
 
 export default function TaskDetailScreen(): React.JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -43,11 +49,19 @@ export default function TaskDetailScreen(): React.JSX.Element {
     setIsUpdating(true);
     try {
       await database.write(async () => {
-        await task.update((record) => {
-          record.status = nextStatus;
-          record.synced = false;
-        });
-        await enqueueSync("tasks", task.id, "update", {});
+        // Tasks are pull-first — server/sync/handlers/tasks.ts treats the
+        // sync `entityId` as the REAL server Task id (`task.serverId`), NOT
+        // the local WatermelonDB `id` (they differ; see storage/schema.ts).
+        // Payload must match updateStatusSchema exactly ({ status }).
+        await database.batch(
+          task.prepareUpdate((record) => {
+            record.status = nextStatus;
+            record.synced = false;
+          }),
+          prepareSyncQueueItem("tasks", task.serverId, "update", {
+            status: nextStatus,
+          }),
+        );
       });
       const collection = database.get<Task>("tasks");
       const results = await collection.query().fetch();
