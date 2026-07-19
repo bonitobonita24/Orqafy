@@ -5,6 +5,10 @@ const serverSchema = z.object({
   DATABASE_URL: z.string().url(),
   DIRECT_URL: z.string().url().optional(),
   AUTH_SECRET: z.string().min(48),
+  // Dedicated signing secret for the mobile JWT auth flow (api/auth/mobile/*).
+  // NEVER reuse AUTH_SECRET here — see server/auth/mobile-jwt.ts for why.
+  // Generate: openssl rand -base64 48
+  MOBILE_JWT_SECRET: z.string().min(48),
   // Master encryption key for *Enc columns (TenantSmtpConfig, TenantXenditConfig, etc.).
   // 32 bytes base64 (44 chars). Generate fresh per env: openssl rand -base64 32
   APP_ENCRYPTION_KEY: z.string().min(44),
@@ -37,6 +41,7 @@ const _serverEnv = serverSchema.safeParse({
   DATABASE_URL: process.env.DATABASE_URL,
   DIRECT_URL: process.env.DIRECT_URL,
   AUTH_SECRET: process.env.AUTH_SECRET,
+  MOBILE_JWT_SECRET: process.env.MOBILE_JWT_SECRET,
   APP_ENCRYPTION_KEY: process.env.APP_ENCRYPTION_KEY,
   NEXTAUTH_URL: process.env.NEXTAUTH_URL,
   REDIS_URL: process.env.REDIS_URL,

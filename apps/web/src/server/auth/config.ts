@@ -1,10 +1,10 @@
 import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma as db } from "@orqafy/db";
 import { env } from "@/env";
 import { rateLimiters } from "@/server/lib/rate-limit";
+import { verifyCredentials } from "@/server/auth/verify-credentials";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -75,50 +75,7 @@ export const authConfig: NextAuthConfig = {
         const parsed = loginSchema.safeParse(rawCredentials);
         if (!parsed.success) return null;
 
-        const { email, password, tenantSlug } = parsed.data;
-
-        // Demo tenant: fast-path auth check
-        const isDemoTenant = tenantSlug === "demo";
-
-        const tenant = await db.tenant.findUnique({
-          where: { slug: tenantSlug },
-          select: { id: true, isActive: true, slug: true },
-        });
-        if (tenant?.isActive !== true) return null;
-
-        const user = await db.user.findFirst({
-          where: { email, tenantId: tenant.id, isActive: true },
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            displayName: true,
-            passwordHash: true,
-            securityVersion: true,
-            roleId: true,
-            role: { select: { name: true } },
-          },
-        });
-        if (user?.passwordHash === undefined || user.passwordHash === "") return null;
-
-        const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) return null;
-
-        const roles = [user.role.name];
-        const displayName = user.displayName ?? `${user.firstName} ${user.lastName}`;
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: displayName,
-          roles,
-          roleId: user.roleId,
-          tenantSlug: tenant.slug,
-          tenantId: tenant.id,
-          securityVersion: user.securityVersion,
-          isDemoTenant,
-        };
+        return verifyCredentials(parsed.data);
       },
     }),
   ],
