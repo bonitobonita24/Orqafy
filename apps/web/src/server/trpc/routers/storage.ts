@@ -14,12 +14,11 @@ import {
   getStorageBackend,
   MAX_FILE_SIZE,
 } from "@orqafy/storage";
-
-function getStorageBucket(): string {
-  const bucket = process.env["STORAGE_BUCKET"];
-  if (bucket == null || bucket === "") throw new Error("STORAGE_BUCKET is not set");
-  return bucket;
-}
+import {
+  getStorageBucket,
+  getStorageQuota,
+  performDirectUpload,
+} from "@/server/storage/direct-upload";
 
 // Lazy singleton — avoids recreating S3Client on every request
 let _storageClient: ReturnType<typeof createStorageClient> | null = null;
@@ -43,24 +42,6 @@ const ENTITY_TYPES = [
   "purchase_order",
   "goods_receipt",
 ] as const;
-
-async function getStorageQuota(tenantId: string): Promise<{ usedBytes: bigint; maxBytes: bigint; planName: string }> {
-  const tenant = await db.tenant.findUnique({
-    where: { id: tenantId },
-    select: {
-      storageBytesUsed: true,
-      plan: { select: { maxStorageMb: true, name: true } },
-    },
-  });
-  if (!tenant) throw new TRPCError({ code: "NOT_FOUND", message: "Tenant not found" });
-  const maxStorageMb = tenant.plan?.maxStorageMb ?? 500;
-  const planName = tenant.plan?.name ?? "Free";
-  return {
-    usedBytes: tenant.storageBytesUsed,
-    maxBytes: BigInt(maxStorageMb) * BigInt(1024 * 1024),
-    planName,
-  };
-}
 
 export const storageRouter = createTRPCRouter({
   /** Presign a PUT URL for direct browser upload. Enforces quota server-side. */
@@ -188,122 +169,22 @@ export const storageRouter = createTRPCRouter({
       }).strict()
     )
     .mutation(async ({ input, ctx }) => {
-      const body = Buffer.from(input.bodyBase64, "base64");
-      if (body.byteLength <= 0) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Empty file body." });
-      }
-
-      // Quota check (same as getUploadUrl).
-      const quota = await getStorageQuota(ctx.tenantId);
-      if (quota.usedBytes + BigInt(body.byteLength) > quota.maxBytes) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: `Storage quota exceeded. Used ${(Number(quota.usedBytes) / (1024 * 1024)).toFixed(1)} MB of ${(Number(quota.maxBytes) / (1024 * 1024)).toFixed(0)} MB (${quota.planName} plan).`,
-        });
-      }
-
-      // Resolve the Telegram channel for this tenant (null => default channel).
-      let chatId: string | undefined;
-      if (getStorageBackend() === "telegram") {
-        const tenant = await db.tenant.findUnique({
-          where: { id: ctx.tenantId },
-          select: { telegramChannelId: true },
-        });
-        chatId =
-          tenant?.telegramChannelId ??
-          process.env["TELEGRAM_DEFAULT_CHANNEL_ID"] ??
-          "";
-      }
-
-      // Upload OUTSIDE the DB transaction (external network I/O: Telegram/S3).
-      let result;
-      try {
-        result = await resolveBackend().upload({
-          tenantId: ctx.tenantId,
-          tenantSlug: ctx.tenantSlug,
-          entityType: input.entityType,
-          entityId: input.entityId,
-          originalFilename: input.filename,
-          mimeType: input.contentType,
-          body,
-          bucket: getStorageBucket(),
-          ...(chatId !== undefined ? { chatId } : {}),
-        });
-      } catch (err) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: err instanceof Error ? err.message : "Upload failed.",
-        });
-      }
-
-      const attachment = await db.$transaction(async (tx) => {
-        const a = await tx.attachment.create({
-          data: {
-            tenantId: ctx.tenantId,
-            entityType: input.entityType,
-            entityId: input.entityId,
-            storageKey: result.storageKey,
-            filename: input.filename,
-            mimeType: input.contentType,
-            sizeBytes: BigInt(result.sizeBytes),
-            uploadedByUserId: ctx.userId,
-          },
-        });
-        await tx.tenant.update({
-          where: { id: ctx.tenantId },
-          data: { storageBytesUsed: { increment: BigInt(result.sizeBytes) } },
-        });
-        await tx.mediaObject.upsert({
-          where: {
-            tenantId_storageKey: { tenantId: ctx.tenantId, storageKey: result.storageKey },
-          },
-          create: {
-            tenantId: ctx.tenantId,
-            storageKey: result.storageKey,
-            entityType: input.entityType,
-            backend: result.backend,
-            telegramChatId: result.telegramChatId ?? null,
-            telegramFileId: result.telegramFileId ?? null,
-            telegramMessageId:
-              result.telegramMessageId !== undefined
-                ? BigInt(result.telegramMessageId)
-                : null,
-            sizeBytes: result.sizeBytes,
-            mimeType: result.mimeType,
-          },
-          update: {
-            backend: result.backend,
-            telegramChatId: result.telegramChatId ?? null,
-            telegramFileId: result.telegramFileId ?? null,
-            telegramMessageId:
-              result.telegramMessageId !== undefined
-                ? BigInt(result.telegramMessageId)
-                : null,
-            sizeBytes: result.sizeBytes,
-            mimeType: result.mimeType,
-          },
-        });
-        await writeAuditLog(tx, {
-          userId: ctx.userId,
-          action: "CREATE",
-          entity: "Attachment",
-          entityId: a.id,
-          after: {
-            filename: input.filename,
-            entityType: input.entityType,
-            entityId: input.entityId,
-            sizeBytes: result.sizeBytes,
-            backend: result.backend,
-          },
-        });
-        return a;
+      // Thin wrapper — the full quota-check / backend-resolve / Attachment +
+      // MediaObject + audit-log write lives in performDirectUpload
+      // (server/storage/direct-upload.ts), shared with the mobile-sync
+      // expense-receipt Route Handler.
+      const result = await performDirectUpload({
+        tenantId: ctx.tenantId,
+        tenantSlug: ctx.tenantSlug,
+        userId: ctx.userId,
+        entityType: input.entityType,
+        entityId: input.entityId,
+        filename: input.filename,
+        contentType: input.contentType,
+        bodyBase64: input.bodyBase64,
       });
 
-      return {
-        id: attachment.id,
-        storageKey: attachment.storageKey,
-        backend: result.backend,
-      };
+      return result;
     }),
 
   /**
