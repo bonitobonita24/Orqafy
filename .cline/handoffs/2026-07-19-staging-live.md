@@ -47,6 +47,31 @@ Workspace `demo` · `webmaster@orqafy.local` · pw = vault `staging_prod.tenant_
 D-DEVCH-CONFIRM (dev channel) · D-RBAC-SPEC (§756 stale) · D-PORTAL (Customer Portal build/descope) ·
 D-TAG (cut 0.11.0) · D-PRIV-1 (RA 10173 DSR) · D-NUM-1 · push-per-tier word.
 
+## ✅ Deploy-workflow model — CONFIRMED with owner this session (2026-07-19)
+Owner restated + I confirmed the fleet 3-tier contract for Orqafy:
+1. **`git push main` = manual, on owner's word** (local dev + dummy data validated FIRST; a plain
+   "commit" only saves locally + rebuilds the local dev container, never pushes).
+2. **Staging = auto on push to `main`**: push main → GitHub Actions BUILDS image + pushes to Docker Hub
+   (`:staging-latest`) → Komodo staging PULLS the pre-built image (never builds from source / clones).
+3. **Prod = ALWAYS manual** — never auto, no matter how much changed; explicit "push to production" only.
+
+**⚠ REALITY GAP (important):** this CI pipeline is NOT wired/active yet. Today's demo + staging were
+deployed via **manual Komodo stacks** because the branch has **never been pushed to `main`**. The
+"auto-staging on push to main" behavior only turns on the FIRST push to main — and that first push
+(making ~79 local commits public) is itself the separately-gated step. Refinement for later: once prod
+exists, staging refreshes its DB from a prod copy before pulling a candidate image (staging-refresh-gate);
+moot now (no prod).
+
+## ⏭ TASK QUEUE (all owner-gated — pick per owner word)
+- [ ] **Wire auto-staging CI/CD = do the FIRST push of `feat/telegram-storage` → origin/main.** Activates
+      docker-publish.yml (build→Docker Hub) + Komodo staging auto-pull. Makes 79 commits public. → owner word.
+- [ ] **M7 PROD** — stand up `orqafy.powerbyte.app` (Telegram storage) via the proven manual Komodo pattern
+      (fresh free ports e.g. postgres 5441/valkey 6388/minio 9020-21 — verify). → explicit "push to production".
+- [ ] **Before prod:** patch `deploy/staging-refresh-and-deploy.sh` w/ robustness invariants 1–3;
+      cut tag **0.11.0** (owner-declared MINOR).
+- [ ] Reconcile repo `deploy/compose/{stage,demo,prod}/*.yml` + push scripts to the deployed layout.
+- [ ] Optionally CSP-allowlist `static.cloudflareinsights.com` (kills the benign console error fleet-wide).
+
 ## Env quick-facts
 VPS root@72.62.74.203 key ~/.ssh/powerbyte_hostinger; Komodo kmd.powerbyte.app; Traefik `proxy` net.
 Docker Hub login via `deploy-api.enc.yaml` (bonitobonita24). Vault: orqafy-telegram, universal-login,
