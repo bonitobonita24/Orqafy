@@ -67,17 +67,46 @@ ssh_vps "cd ${STACK}; \
   docker compose -p ${PROJ} --env-file .env ${CF} pull app worker >/dev/null 2>&1 && echo '  ok'"
 
 echo "▶ 4/6 Migrate staging (prod-data → new schema; drift-resolve fallback)"
+# INVARIANT 4 (staging-refresh-gate.md) — DBURL/DBPORT read from the stack .env, a
+# source available while the app container is stopped (step 2 stops app+worker), so
+# these never depend on a running container.
 DBPORT=$(ssh_vps "grep -oP '(?<=^DB_PORT=)[0-9]+' ${STACK}/.env")
 DBURL=$(ssh_vps "grep -oP '(?<=^DATABASE_URL=).*' ${STACK}/.env")
-# Rewrite the host authority (single '@' — base64 pwd has no '@') to the tunnel; port-agnostic.
-DBURL_LOCAL=$(echo "$DBURL" | sed -E "s#@[^/]+/#@localhost:${DBPORT}/#")
-ssh -i "$KEY" -N -L "${DBPORT}:localhost:${DBPORT}" "$VPS" & TUN=$!; sleep 3
+# INVARIANT 1 — ephemeral LOCAL tunnel port, DECOUPLED from the remote DB_PORT.
+# Binding local==remote collides with any local process already on DB_PORT (e.g.
+# another project's dev DB); the forward then silently fails to bind and migrate
+# would connect to the WRONG database. Scan a free local port instead.
+LPORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')
+# Rewrite the host authority (single '@' — base64 pwd has no '@') to the tunnel.
+DBURL_LOCAL=$(echo "$DBURL" | sed -E "s#@[^/]+/#@localhost:${LPORT}/#")
+ssh -i "$KEY" -N -L "${LPORT}:localhost:${DBPORT}" "$VPS" & TUN=$!
+# INVARIANT 2 — verify the tunnel actually came up before migrating; fail loud.
+# Never run a no-op migrate against a dead forward.
+TUN_UP=""
+for _ in $(seq 1 20); do
+  if (exec 3<>"/dev/tcp/127.0.0.1/${LPORT}") 2>/dev/null; then exec 3>&- 3<&-; TUN_UP=1; break; fi
+  sleep 0.5
+done
+if [ -z "$TUN_UP" ]; then
+  echo "  ✗ SSH tunnel local:${LPORT} → ${VPS}:${DBPORT} never came up — ABORT (no no-op migrate)"
+  kill $TUN 2>/dev/null || true
+  exit 1
+fi
 if ! DATABASE_URL="$DBURL_LOCAL" pnpm --filter @orqafy/db db:migrate:deploy; then
   echo "  ↳ migrate deploy hit drift; resolving pending migrations as applied…"
   for M in $(DATABASE_URL="$DBURL_LOCAL" pnpm --filter @orqafy/db exec prisma migrate status 2>/dev/null | grep -oE '[0-9]{14}_[a-zA-Z0-9_]+'); do
     DATABASE_URL="$DBURL_LOCAL" pnpm --filter @orqafy/db exec prisma migrate resolve --applied "$M" || true
   done
 fi
+# INVARIANT 3 — schema-status HARD GATE before deploy. A shallow /health 200 must
+# NEVER certify a promotable staging on its own: assert the schema is actually up to
+# date BEFORE the app is brought up. If not, abort here (before step 5).
+if ! DATABASE_URL="$DBURL_LOCAL" pnpm --filter @orqafy/db exec prisma migrate status 2>&1 | grep -q "Database schema is up to date"; then
+  echo "  ✗ 'prisma migrate status' is NOT 'up to date' after migrate — ABORT before deploy"
+  kill $TUN 2>/dev/null || true
+  exit 1
+fi
+echo "  ✓ schema up to date"
 kill $TUN 2>/dev/null || true
 
 echo "▶ 5/6 Bring staging up on new images (app + worker)"

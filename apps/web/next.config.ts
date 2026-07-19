@@ -25,11 +25,12 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       // Turnstile requires challenges.cloudflare.com
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
       "font-src 'self'",
-      "connect-src 'self'",
+      // 'self' for tRPC/API; cloudflareinsights.com for the CF Web Analytics RUM beacon
+      "connect-src 'self' https://cloudflareinsights.com",
       // Turnstile iframe
       "frame-src 'self' https://challenges.cloudflare.com",
       "frame-ancestors 'none'",
