@@ -1,18 +1,22 @@
 /**
  * D7 — `createNotification`: the single server helper other code uses to emit an
- * in-app notification. It both PERSISTS (Prisma, durable) and FANS OUT (Valkey,
- * real-time) per the accepted option (b).
+ * in-app notification. It PERSISTS (Prisma, durable), FANS OUT in real-time
+ * (Valkey, D7) and FANS OUT to the recipient's mobile devices (Expo push,
+ * D-push) — all additive to the same durable row.
  *
  * Tenant correctness: the caller MUST pass `tenantId` (always from a trusted
  * server context — `ctx.tenantId`). The row is written with that tenant_id and
- * the real-time event is published to the tenant+user-scoped channel, so a
- * notification can never leak across tenants.
+ * both fan-out paths are scoped to tenant+user, so a notification can never
+ * leak across tenants.
  *
- * Fan-out is best-effort and never blocks the durable write (see valkey.ts).
+ * Both fan-outs are best-effort and never block the durable write (see
+ * valkey.ts and push.ts) — this runs on the request path (no BullMQ worker
+ * hop needed; both transports are already fire-and-forget + fail-soft).
  */
 import { prisma } from "@orqafy/db";
 import type { Prisma } from "@prisma/client";
 import { publishNotification } from "./valkey";
+import { sendPushToUser } from "./push";
 import { type NotificationCategory } from "./categories";
 
 export interface CreateNotificationInput {
@@ -45,6 +49,16 @@ export async function createNotification(input: CreateNotificationInput): Promis
     body: notification.body,
     payload: notification.payload,
     createdAt: notification.createdAt.toISOString(),
+  });
+
+  // Best-effort mobile push fan-out to every device the recipient registered.
+  // Payload is kept minimal (ids only) — the device resolves detail on open.
+  void sendPushToUser({
+    tenantId: input.tenantId,
+    userId: input.recipientUserId,
+    title: notification.title,
+    body: notification.body,
+    data: { notificationId: notification.id, category: notification.category },
   });
 
   return { id: notification.id };
