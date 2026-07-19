@@ -1,7 +1,7 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-07-19 by CLAUDE_CODE (Owner-driven gated-queue ship — STAGING TIER COMPLETE: `main` GREEN+PUSHED @ d3ad765, staging LIVE on CI-built sha-6776198, tag v0.11.0-rc.1, compose model-a reconciled + deploy-model locked, RBAC slug retrofit dev-local (6a9ec94, unpushed). Fixed a real RED CI on main (db lint + latent worker ESM prod bug). REMAINING GATED: PROD M7 (held, irreversible) + RBAC promotion. Handoff: .cline/handoffs/2026-07-19-gated-queue-shipped.md)
+> Last updated: 2026-07-19 by CLAUDE_CODE (2-FEATURE PROGRAM COMPLETE dev-first, LOCAL main @ d0f3969, 20 ahead of origin, UNPUSHED/HARD HOLD. (A) uploads: client image compression + FileUpload Telegram-cutover + thumbnails. (B) mobile: made the existing apps/mobile Expo app real — JWT auth backend + tRPC bearer + client wiring + biometric + shadcn token resync + Expo push (client+backend) + web soft-interstitial + camera receipt compression + EAS prep (v0.1.0). Web 1368 tests green, all typecheck/lint clean. ⚠ KEY GAP: mobile offline-sync has NO server endpoint (/api/sync/* missing) → mobile writes stay LOCAL-only. Manual owner steps: simulator login, `eas init`, store accounts. Detail: memory feature_program_compression_mobile_2026-07-19. Prior gated-queue ship (staging LIVE v0.11.0-rc.1) still stands.)
 
 ---
 
