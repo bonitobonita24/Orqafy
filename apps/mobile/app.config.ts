@@ -1,10 +1,22 @@
 import type { ExpoConfig, ConfigContext } from "expo/config";
 
+// Build-time env vars, set per EAS build profile (see eas.json `build.*.env`)
+// or by the EAS dashboard "Environment variables" (linked via `build.*.environment`).
+// Local `expo start` / `expo run:*` leave these undefined -> src/env.ts falls back
+// to its own development defaults (localhost API, APP_ENV=development).
+const APP_ENV = process.env.APP_ENV;
+const API_URL = process.env.API_URL;
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "Orqafy",
   slug: "orqafy-mobile",
-  version: "1.0.0",
+  // Fleet versioning standard (~/.claude/rules/versioning-standard.md): SemVer X.Y.Z,
+  // pre-1.0 while a component is still in development. This is the mobile app's
+  // FIRST release line -- no prior mobile build has ever shipped to EAS/stores, so
+  // it starts at 0.1.0. This is independent of the root/web fleet track (0.10.0 /
+  // 0.9.0) -- store app versions are per-app, not fleet-wide.
+  version: "0.1.0",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "orqafy",
@@ -85,7 +97,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     typedRoutes: true,
   },
   extra: {
+    // Read by apps/mobile/src/env.ts via Constants.expoConfig?.extra.
+    // Unset in local dev -> env.ts falls back to its own defaults.
+    apiUrl: API_URL,
+    appEnv: APP_ENV,
     eas: {
+      // PLACEHOLDER -- replaced automatically by `eas init` (run by the owner,
+      // requires an Expo account login this agent cannot perform). EAS CLI writes
+      // the real project UUID back into this file on first `eas init` / `eas build`.
+      // See the "Owner commands" section reported at the end of this task.
       projectId: "your-eas-project-id",
     },
   },
