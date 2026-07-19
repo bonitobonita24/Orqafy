@@ -1,7 +1,7 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-07-19 by CLAUDE_CODE (2-FEATURE PROGRAM COMPLETE dev-first, LOCAL main @ d0f3969, 20 ahead of origin, UNPUSHED/HARD HOLD. (A) uploads: client image compression + FileUpload Telegram-cutover + thumbnails. (B) mobile: made the existing apps/mobile Expo app real — JWT auth backend + tRPC bearer + client wiring + biometric + shadcn token resync + Expo push (client+backend) + web soft-interstitial + camera receipt compression + EAS prep (v0.1.0). Web 1368 tests green, all typecheck/lint clean. ⚠ KEY GAP: mobile offline-sync has NO server endpoint (/api/sync/* missing) → mobile writes stay LOCAL-only. Manual owner steps: simulator login, `eas init`, store accounts. Detail: memory feature_program_compression_mobile_2026-07-19. Prior gated-queue ship (staging LIVE v0.11.0-rc.1) still stands.)
+> Last updated: 2026-07-19 by CLAUDE_CODE (SESSION END — saved + rebooting. LOCAL main @ bcb69a4, 26 ahead of origin, UNPUSHED/HARD HOLD. 3 bodies of work this session: (1) gated-queue staging ship (v0.11.0-rc.1 LIVE); (2) 2-feature program uploads-compression+Telegram + mobile-app-made-real; (3) mobile PUSH-sync endpoint built full-stack (server /api/sync/* + mobile client; caught+fixed a WatermelonDB nested-writer runtime deadlock). Web 1418 tests green. GATED QUEUE: push→staging, M7 prod, RBAC slug promotion. OPEN: mobile task-sync needs PULL/down-sync (deferred); tRPC AnyRouter typing; RBAC migration timestamp collision. FULL HANDOFF: .cline/handoffs/2026-07-19-session-end-full.md. Memories: feature_program_compression_mobile_2026-07-19, full_auto_gated_queue_ship_2026-07-19.)
 
 ---
 
