@@ -48,7 +48,7 @@ up-sync op), so a pull must never clobber an unsynced local edit.
 | D5 | **Push before pull** in the auto-sync tick | Pending edits land first, so fewer rows skip and the phone converges in one tick |
 | D6 | Tasks scoped to **assigned-to-me only** | Field-worker model: smallest payload, tightest privacy boundary. *Revisit if supervisors need team visibility on mobile.* |
 | D7 | Payslips restricted to **approved/paid payrolls** | A worker must not see a draft payslip mid-computation |
-| D8 | `payslips.deductions` carries a **JSON breakdown string** | Mobile column is `type: "string"` but the server has 6 discrete deduction columns; a JSON object preserves the detail |
+| D8 | `payslips.deductions` carries a **numeric string** (`totalDeductions.toFixed(2)`) | The existing screen renders `parseFloat(payslip.deductions)`. A JSON breakdown would render `NaN`. No breakdown is displayed anywhere, so per YAGNI the total is the correct payload — and no screen change is needed |
 
 ## 5. Data flow
 
@@ -134,7 +134,7 @@ Serialized to the mobile `payslips` column shape:
 | `period_end` | `payslip.payroll.periodEnd` | → epoch ms (join) |
 | `gross_pay` | `payslip.grossPay` | `Decimal` → `number` |
 | `net_pay` | `payslip.netPay` | `Decimal` → `number` |
-| `deductions` | JSON string (D8) | `{sss, philhealth, pagibig, tax, cashAdvance, other, total}` |
+| `deductions` | `payslip.totalDeductions` | → `.toFixed(2)` numeric string (D8) — the screen calls `parseFloat` on it |
 | `created_at` / `updated_at` | ditto | → epoch ms |
 
 **Decimal handling:** Prisma `Decimal(12,2)` values convert via `.toNumber()`. At payroll magnitudes this is
@@ -242,13 +242,16 @@ always preferable to an empty one.
 - `apps/mobile/src/sync/auto-sync.ts` — push-then-pull
 - `apps/mobile/src/sync/index.ts` — export the pull surface
 - `apps/mobile/src/app/(app)/tasks/index.tsx` — `RefreshControl`
-- `apps/mobile/src/app/(app)/payslips/index.tsx` — `RefreshControl`; align rendering with the `deductions` JSON shape (D8)
+- `apps/mobile/src/app/(app)/payslips/index.tsx` — `RefreshControl` only (no render change — D8 matches the
+  existing `parseFloat(payslip.deductions)` call)
 
 **No schema migration.** No change to `packages/db/prisma/schema.prisma` and no WatermelonDB schema version
 bump — every column this design writes already exists.
 
-## 11. Open items for implementation
+## 11. Resolved during specing
 
-1. Confirm what `payslips/index.tsx` currently renders for `deductions`; align it with the D8 JSON shape. The
-   screen has never received real data, so its current handling is untested.
-2. Confirm the exact matrix feature key for payroll/payslip `view` in `ENTITY_FEATURE_MAP`.
+1. **`deductions` shape** — the screen calls `parseFloat(payslip.deductions)`, so the payload is a numeric
+   string, not JSON (D8 revised accordingly). No screen change required.
+2. **RBAC feature keys** — confirmed in `packages/shared/src/rbac/features.ts`: `"tasks"` and `"payroll"`.
+   `ENTITY_FEATURE_MAP` in `server/sync/handlers.ts` covers only the three *write* entities; these two read
+   routes pass their feature key directly to `checkMatrixGrant`.
