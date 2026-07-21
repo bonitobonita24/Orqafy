@@ -9,6 +9,7 @@ import {
   isAuthenticated as checkAuth,
 } from "@/lib/auth";
 import { apiFetch } from "@/api";
+import { resetLocalDatabaseIfUserChanged } from "@/sync";
 
 interface UseAuthReturn {
   isLoading: boolean;
@@ -35,6 +36,11 @@ export function useAuth(): UseAuthReturn {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
+      // MUST run before saveSession — it reads the PREVIOUSLY signed-in
+      // user (see reset-on-login.ts) to decide whether this login is a
+      // user switch on a shared device, which requires wiping local data
+      // before any of this user's rows can be pulled/rendered.
+      await resetLocalDatabaseIfUserChanged(session.userId);
       await saveSession(session);
       setIsLoggedIn(true);
       router.replace("/(app)/");
