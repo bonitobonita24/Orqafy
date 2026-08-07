@@ -1,7 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ListTodo, Receipt, Milestone as MilestoneIcon } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ProjectActions } from "./project-actions";
 import { MilestoneActions } from "./milestone-actions";
 import { AddMilestoneForm } from "./add-milestone-form";
@@ -261,16 +273,18 @@ export default async function ProjectDetailPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span
-            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs border ${STATUS_COLORS[project.status] ?? "bg-muted border-border"}`}
+          <Badge
+            variant="outline"
+            className={`rounded-full ${STATUS_COLORS[project.status] ?? "bg-muted border-border"}`}
           >
             {STATUS_LABELS[project.status] ?? project.status}
-          </span>
-          <span
-            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs border ${PRIORITY_COLORS[project.priority] ?? "bg-muted border-border"}`}
+          </Badge>
+          <Badge
+            variant="outline"
+            className={`rounded-full ${PRIORITY_COLORS[project.priority] ?? "bg-muted border-border"}`}
           >
             {PRIORITY_LABELS[project.priority] ?? project.priority}
-          </span>
+          </Badge>
           <ProjectActions projectId={project.id} status={project.status} slug={slug} />
         </div>
       </div>
@@ -298,166 +312,169 @@ export default async function ProjectDetailPage({
           {/* 4-card grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             {/* Status & Priority card */}
-            <div className="rounded-lg border border-border p-4 space-y-3">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Status
-              </p>
-              <span
-                className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs border ${STATUS_COLORS[project.status] ?? "bg-muted border-border"}`}
-              >
-                {STATUS_LABELS[project.status] ?? project.status}
-              </span>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-2">
-                Priority
-              </p>
-              <span
-                className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs border ${PRIORITY_COLORS[project.priority] ?? "bg-muted border-border"}`}
-              >
-                {PRIORITY_LABELS[project.priority] ?? project.priority}
-              </span>
-            </div>
+            <Card>
+              <CardContent className="space-y-3 p-4">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Status
+                </p>
+                <Badge
+                  variant="outline"
+                  className={`rounded-full ${STATUS_COLORS[project.status] ?? "bg-muted border-border"}`}
+                >
+                  {STATUS_LABELS[project.status] ?? project.status}
+                </Badge>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-2">
+                  Priority
+                </p>
+                <Badge
+                  variant="outline"
+                  className={`rounded-full ${PRIORITY_COLORS[project.priority] ?? "bg-muted border-border"}`}
+                >
+                  {PRIORITY_LABELS[project.priority] ?? project.priority}
+                </Badge>
+              </CardContent>
+            </Card>
 
             {/* Budget card */}
-            <div className="rounded-lg border border-border p-4 space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Budget
-              </p>
-              <p className="text-xl font-semibold">
-                {project.budget !== null
-                  ? formatAmount(project.budget)
-                  : "—"}
-              </p>
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary rounded-full"
-                  style={{ width: "0%" }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">0% spent</p>
-            </div>
+            <Card>
+              <CardContent className="space-y-2 p-4">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Budget
+                </p>
+                <p className="text-xl font-semibold">
+                  {project.budget !== null
+                    ? formatAmount(project.budget)
+                    : "—"}
+                </p>
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full"
+                    style={{ width: "0%" }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">0% spent</p>
+              </CardContent>
+            </Card>
 
             {/* Dates card */}
-            <div className="rounded-lg border border-border p-4 space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Timeline
-              </p>
-              <div className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Start</span>
-                  <span>{formatDate(project.startDate)}</span>
+            <Card>
+              <CardContent className="space-y-2 p-4">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Timeline
+                </p>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Start</span>
+                    <span>{formatDate(project.startDate)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Target end</span>
+                    <span>{formatDate(project.targetEndDate)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Actual end</span>
+                    <span>{formatDate(project.actualEndDate)}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Target end</span>
-                  <span>{formatDate(project.targetEndDate)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Actual end</span>
-                  <span>{formatDate(project.actualEndDate)}</span>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Customer card */}
-            <div className="rounded-lg border border-border p-4 space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Customer
-              </p>
-              <p className="text-sm font-medium">
-                {getCustomerName(customer)}
-              </p>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-2">
-                Manager
-              </p>
-              <p className="text-sm font-medium">
-                {getManagerName(project.manager)}
-              </p>
-            </div>
+            <Card>
+              <CardContent className="space-y-2 p-4">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Customer
+                </p>
+                <p className="text-sm font-medium">
+                  {getCustomerName(customer)}
+                </p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-2">
+                  Manager
+                </p>
+                <p className="text-sm font-medium">
+                  {getManagerName(project.manager)}
+                </p>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Description */}
           {project.description !== null && project.description !== "" && (
-            <div className="rounded-lg border border-border p-4">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                Description
-              </p>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {project.description}
-              </p>
-            </div>
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                  Description
+                </p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {project.description}
+                </p>
+              </CardContent>
+            </Card>
           )}
 
           {/* Attachments */}
-          <div className="rounded-lg border border-border p-4">
-            <ProjectAttachments projectId={project.id} />
-          </div>
+          <Card>
+            <CardContent className="p-4">
+              <ProjectAttachments projectId={project.id} />
+            </CardContent>
+          </Card>
         </div>
       )}
 
       {/* Tasks tab */}
       {activeTab === "tasks" && tasks !== null && (
-        <div>
-          {tasks.length === 0 ? (
-            <div className="text-center py-16 text-muted-foreground">
-              <p>No tasks yet.</p>
-            </div>
-          ) : (
-            <div className="rounded-md border border-border overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/50">
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                      Title
-                    </th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                      Status
-                    </th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                      Priority
-                    </th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                      Milestone
-                    </th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                      Due
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
+        <Card>
+          <CardContent className="p-0">
+            {tasks.length === 0 ? (
+              <div className="p-6">
+                <EmptyState icon={ListTodo} title="No tasks yet." />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Milestone</TableHead>
+                    <TableHead>Due</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {tasks.map((task) => (
-                    <tr
-                      key={task.id}
-                      className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
-                    >
-                      <td className="px-4 py-3 font-medium">{task.title}</td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs border ${TASK_STATUS_COLORS[task.status] ?? "bg-muted border-border"}`}
+                    <TableRow key={task.id}>
+                      <TableCell className="font-medium">{task.title}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`rounded-full ${TASK_STATUS_COLORS[task.status] ?? "bg-muted border-border"}`}
                         >
                           {TASK_STATUS_LABELS[task.status] ?? task.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs border ${PRIORITY_COLORS[task.priority] ?? "bg-muted border-border"}`}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`rounded-full ${PRIORITY_COLORS[task.priority] ?? "bg-muted border-border"}`}
                         >
                           {PRIORITY_LABELS[task.priority] ?? task.priority}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
                         {task.milestone !== null
                           ? task.milestone.name
                           : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
                         {formatDate(task.dueDate)}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Expenses tab */}
@@ -486,53 +503,47 @@ export default async function ProjectDetailPage({
             </Link>
           </div>
 
-          {expenseSummary.expenses.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
-              <p>No expenses yet.</p>
-            </div>
-          ) : (
-            <div className="rounded-md border border-border overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/50">
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                      Date
-                    </th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                      Type
-                    </th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                      Description
-                    </th>
-                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">
-                      Amount
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {expenseSummary.expenses.map((expense) => (
-                    <tr
-                      key={expense.id}
-                      className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
-                    >
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {formatDate(expense.date)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs border bg-muted border-border text-muted-foreground">
-                          {expense.type.replace("_", " ")}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">{expense.description}</td>
-                      <td className="px-4 py-3 text-right font-mono">
-                        {formatAmount(expense.amount)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <Card>
+            <CardContent className="p-0">
+              {expenseSummary.expenses.length === 0 ? (
+                <div className="p-6">
+                  <EmptyState icon={Receipt} title="No expenses yet." />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {expenseSummary.expenses.map((expense) => (
+                      <TableRow key={expense.id}>
+                        <TableCell className="text-muted-foreground">
+                          {formatDate(expense.date)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className="rounded-full bg-muted border-border text-muted-foreground"
+                          >
+                            {expense.type.replace("_", " ")}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{expense.description}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatAmount(expense.amount)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -546,9 +557,7 @@ export default async function ProjectDetailPage({
           </div>
           <AddMilestoneForm projectId={id} />
           {milestones.length === 0 ? (
-            <div className="text-center py-16 text-muted-foreground">
-              <p>No milestones yet.</p>
-            </div>
+            <EmptyState icon={MilestoneIcon} title="No milestones yet." />
           ) : (
             <div className="space-y-3">
               {milestones.map((milestone) => (

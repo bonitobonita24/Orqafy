@@ -1,7 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { FolderKanban } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const metadata: Metadata = { title: "Projects" };
 export const dynamic = "force-dynamic";
@@ -197,21 +211,15 @@ export default async function ProjectsPage({ params, searchParams }: PageProps) 
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {total} project{total !== 1 ? "s" : ""} total
-          </p>
-        </div>
-        <Link
-          href={`/${slug}/projects/new`}
-          className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-        >
-          New Project
-        </Link>
-      </div>
+      <PageHeader
+        title="Projects"
+        description={`${total} project${total !== 1 ? "s" : ""} total`}
+        actions={
+          <Button asChild>
+            <Link href={`/${slug}/projects/new`}>New Project</Link>
+          </Button>
+        }
+      />
 
       {/* Status counts chips */}
       <div className="flex flex-wrap gap-2">
@@ -242,92 +250,82 @@ export default async function ProjectsPage({ params, searchParams }: PageProps) 
       </div>
 
       {/* Table */}
-      {projects.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <p>No projects yet.</p>
-          <Link
-            href={`/${slug}/projects/new`}
-            className="mt-2 inline-block text-sm text-primary hover:underline"
-          >
-            Create your first project →
-          </Link>
-        </div>
-      ) : (
-        <div className="rounded-md border border-border overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                  Project #
-                </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                  Name
-                </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                  Customer
-                </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                  Status
-                </th>
-                <th className="text-right px-4 py-3 font-medium text-muted-foreground">
-                  Budget
-                </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                  Target End
-                </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                  Manager
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {projects.map((project) => (
-                <tr
-                  key={project.id}
-                  className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
-                >
-                  <td className="px-4 py-3 text-muted-foreground font-mono text-xs">
-                    {project.projectNumber}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/${slug}/projects/${project.id}`}
-                      className="font-medium hover:text-primary transition-colors"
-                    >
-                      {project.name}
+      <Card>
+        <CardContent className="p-0">
+          {projects.length === 0 ? (
+            <div className="p-6">
+              <EmptyState
+                icon={FolderKanban}
+                title="No projects yet."
+                action={
+                  <Button asChild>
+                    <Link href={`/${slug}/projects/new`}>
+                      Create your first project
                     </Link>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {getCustomerName(
-                      project.customerId !== null
-                        ? customerMap.get(project.customerId) ?? null
-                        : null,
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs border ${STATUS_COLORS[project.status] ?? "bg-muted border-border"}`}
-                    >
-                      {STATUS_LABELS[project.status] ?? project.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right text-muted-foreground">
-                    {project.budget !== null
-                      ? formatAmount(project.budget)
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {formatDate(project.targetEndDate)}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {getManagerName(project.manager)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                  </Button>
+                }
+              />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Project #</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Budget</TableHead>
+                  <TableHead>Target End</TableHead>
+                  <TableHead>Manager</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {projects.map((project) => (
+                  <TableRow key={project.id}>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {project.projectNumber}
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/${slug}/projects/${project.id}`}
+                        className="font-medium hover:text-primary transition-colors"
+                      >
+                        {project.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {getCustomerName(
+                        project.customerId !== null
+                          ? customerMap.get(project.customerId) ?? null
+                          : null,
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`rounded-full ${STATUS_COLORS[project.status] ?? "bg-muted border-border"}`}
+                      >
+                        {STATUS_LABELS[project.status] ?? project.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                      {project.budget !== null
+                        ? formatAmount(project.budget)
+                        : "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(project.targetEndDate)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {getManagerName(project.manager)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Pagination */}
       {totalPages > 1 && (

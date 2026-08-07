@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
 import { ProjectEditForm } from "./project-edit-form";
 
 export const metadata: Metadata = { title: "Edit Project" };
@@ -66,7 +67,7 @@ export default async function EditProjectPage({ params }: Props) {
         <span className="text-xs text-muted-foreground">/</span>
         <span className="text-xs text-muted-foreground">Edit</span>
       </div>
-      <h1 className="text-2xl font-bold tracking-tight">Edit Project</h1>
+      <PageHeader title="Edit Project" />
       <ProjectEditForm
         slug={slug}
         projectId={id}

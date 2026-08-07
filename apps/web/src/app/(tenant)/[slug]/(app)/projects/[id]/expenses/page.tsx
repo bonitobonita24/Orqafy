@@ -1,7 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Receipt } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type ExpenseWhere = { projectId: string; tenantId: string; type?: string };
 
@@ -229,62 +241,57 @@ export default async function ProjectExpensesPage({
       </div>
 
       {/* Table */}
-      {expenses.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <p>No expenses{typeFilter !== undefined ? " for this type" : ""} yet.</p>
-        </div>
-      ) : (
-        <div className="rounded-md border border-border overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                  Date
-                </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                  Type
-                </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                  Description
-                </th>
-                <th className="text-right px-4 py-3 font-medium text-muted-foreground">
-                  Amount
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.map((expense) => (
-                <tr
-                  key={expense.id}
-                  className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
-                >
-                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                    {formatDate(expense.date)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs border ${
-                        EXPENSE_TYPE_COLORS[expense.type] ??
-                        "bg-muted border-border"
-                      }`}
-                    >
-                      {EXPENSE_TYPE_LABELS[expense.type] ?? expense.type}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {expense.description !== null ? expense.description : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-sm">
-                    {expense.amount !== null
-                      ? formatAmount(expense.amount)
-                      : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <Card>
+        <CardContent className="p-0">
+          {expenses.length === 0 ? (
+            <div className="p-6">
+              <EmptyState
+                icon={Receipt}
+                title={`No expenses${typeFilter !== undefined ? " for this type" : ""} yet.`}
+              />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {expenses.map((expense) => (
+                  <TableRow key={expense.id}>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {formatDate(expense.date)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`rounded-full ${
+                          EXPENSE_TYPE_COLORS[expense.type] ??
+                          "bg-muted border-border"
+                        }`}
+                      >
+                        {EXPENSE_TYPE_LABELS[expense.type] ?? expense.type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {expense.description !== null ? expense.description : "—"}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm">
+                      {expense.amount !== null
+                        ? formatAmount(expense.amount)
+                        : "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Pagination */}
       {totalPages > 1 && (
