@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { TRPCProvider } from "@/lib/trpc-provider";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const inter = Inter({
@@ -21,12 +22,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://challenges.cloudflare.com" />
       </head>
       <body className="min-h-screen bg-background font-sans antialiased">
-        <TRPCProvider>{children}</TRPCProvider>
+        <ThemeProvider>
+          <TRPCProvider>{children}</TRPCProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { ModeToggle } from "@/components/layout/mode-toggle";
 import { NotificationBell } from "@/components/layout/notification-bell";
 
 interface AppHeaderProps {
@@ -29,6 +30,7 @@ export function AppHeader({ title, tenantSlug }: AppHeaderProps) {
         <span className="hidden text-[11px] text-muted-foreground/60 sm:block">
           Move as one.
         </span>
+        <ModeToggle />
         {/* D7 — durable Prisma notifications + Valkey real-time fan-out. */}
         <NotificationBell />
       </div>
