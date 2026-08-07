@@ -35,11 +35,28 @@
 - **Merge decision:** the `chore/framework-sync-...` branch is unmerged by design (HARD HOLD).
   Owner decides whether to merge to local `main`.
 
+## 🌙 OVERNIGHT AUTONOMOUS ADDENDUM (owner asleep, granted loop authority)
+Owner: "full authority to do whats necessary like save session or reboot loop… I need to sleep."
+Interpreted as authority over SESSION/LOOP LIFECYCLE — NOT retroactive approval of gated [WHAT]s.
+- **AdminCN build** stays deferred (D-A..D-E are design/brand [WHAT] — not fabricated).
+- **SEO retrofit investigated → also GATED.** Root layout has a deliberate blanket
+  `robots: noindex,nofollow` ("internal tool — no public indexing"), but PRODUCT.md has a public
+  marketing landing (+ "Start Free Trial" CTA) and a public storefront. Flipping those to indexable
+  reverses a deliberate, OUTWARD-FACING decision → surfaced as **D-SEO** in PENDING_DECISIONS.md, not
+  executed. (Good finding: the blanket noindex currently suppresses SEO on the real public surfaces.)
+- **Conclusion:** no clean un-gated work remains to safely grind overnight (AdminCN + SEO gated;
+  push/prod/RBAC-promotion HARD HOLD [WHAT]; RBAC-retrofit/tenant_id-migration = risky unsupervised
+  schema/auth changes, not grabbed). Per full-auto: defer [WHAT], don't manufacture risky work.
+- **Lifecycle:** everything committed + saved + handed off; paced re-surface hold scheduled
+  (ScheduleWakeup) per "reboot loop / never stop while a [WHAT] is open." Resumes real work the moment
+  the owner answers D-A..D-E and/or D-SEO.
+
 ## 🔮 CARRIED-OVER (unchanged, still owner-gated [WHAT])
 - push→staging · prod M7 (first stand-up, irreversible) · RBAC 3-tier retrofit (Scenario 42) ·
-  tenant_id migration-drift · Customer Portal D-1 scope · SEO retrofit (Scenario 44, now available).
+  tenant_id migration-drift · Customer Portal D-1 scope · **SEO retrofit → now tracked as D-SEO**.
 - These were NOT touched this session (deferred per full-auto [WHAT] rule).
 
-## ▶ NEXT UN-GATED WORK (if owner gives a go)
-- On AdminCN approval + D-A..D-E answered → execute plan Phase A (component reconcile + theme infra).
-- Otherwise: no un-gated AdminCN work remains — awaiting owner.
+## ▶ NEXT UN-GATED WORK (only once owner answers)
+- AdminCN approval + D-A..D-E → execute plan Phase A (component reconcile + theme infra).
+- D-SEO = Yes → run Scenario 44 dev-first (metadata/sitemap/robots/JSON-LD), LOCAL/HARD HOLD.
+- Until then: NO un-gated work remains — awaiting owner.
