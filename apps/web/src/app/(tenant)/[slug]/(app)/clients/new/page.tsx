@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
 import { ClientForm } from "../client-form";
 
 export const metadata: Metadata = { title: "New Client" };
@@ -32,7 +33,7 @@ export default async function NewClientPage({ params }: Props) {
         <span className="text-xs text-muted-foreground">/</span>
         <span className="text-xs text-muted-foreground">New</span>
       </div>
-      <h1 className="text-2xl font-bold tracking-tight">New Client</h1>
+      <PageHeader title="New Client" />
       <ClientForm slug={slug} mode="create" />
     </div>
   );
