@@ -222,7 +222,6 @@ export default async function DashboardPage({
           showLabel
           labelClassName="text-[9px] font-medium"
           className="shrink-0 text-primary"
-          renderLabel={(p) => `${p}%`}
         />
       ),
     },
