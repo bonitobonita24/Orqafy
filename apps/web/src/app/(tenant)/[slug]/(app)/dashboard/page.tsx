@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 import { prisma } from "@orqafy/db";
 import {
   FileText,
@@ -9,8 +10,8 @@ import {
   Briefcase,
   ArrowRight,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { CircularProgress } from "@/components/ui/circular-progress";
+import { DashboardKpiCard } from "./dashboard-kpi-card";
 import { DashboardNotifications } from "./dashboard-notifications";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -130,6 +131,9 @@ async function getDashboardData(slug: string) {
     activeCustomers,
     paidThisMonth,
     paidCount: invoices.filter((i) => i.status === "paid").length,
+    // Derived from the invoices list already fetched above — no extra query.
+    // Powers the CircularProgress accent on the "Paid Invoices" KPI card.
+    totalInvoiceCount: invoices.length,
     recentInvoices,
     recentExpenses,
   };
@@ -161,38 +165,66 @@ export default async function DashboardPage({
   const data = await getDashboardData(slug);
   if (!data) notFound();
 
-  const kpis = [
+  const paidPercent =
+    data.totalInvoiceCount > 0
+      ? Math.round((data.paidCount / data.totalInvoiceCount) * 100)
+      : 0;
+
+  const kpis: {
+    label: string;
+    valueNumber: number;
+    valuePrefix?: string;
+    decimalPlaces: number;
+    sub: string;
+    icon: typeof FileText;
+    href: string;
+    accent?: ReactNode;
+  }[] = [
     {
       label: "Outstanding",
-      value: formatCurrency(data.outstanding),
+      valueNumber: data.outstanding,
+      valuePrefix: "₱",
+      decimalPlaces: 2,
       sub: `${data.outstandingCount} unpaid invoice${data.outstandingCount === 1 ? "" : "s"}`,
       icon: FileText,
-      accent: "text-foreground",
       href: `/${slug}/invoices`,
     },
     {
       label: "Pending Expenses",
-      value: formatCurrency(data.pendingExpenseTotal),
+      valueNumber: data.pendingExpenseTotal,
+      valuePrefix: "₱",
+      decimalPlaces: 2,
       sub: `${data.pendingExpenseCount} awaiting approval`,
       icon: Receipt,
-      accent: "text-foreground",
       href: `/${slug}/expenses`,
     },
     {
       label: "Active Customers",
-      value: data.activeCustomers.toString(),
+      valueNumber: data.activeCustomers,
+      decimalPlaces: 0,
       sub: "customer accounts",
       icon: Users,
-      accent: "text-foreground",
       href: `/${slug}/crm/customers`,
     },
     {
       label: "Paid Invoices",
-      value: formatCurrency(data.paidThisMonth),
+      valueNumber: data.paidThisMonth,
+      valuePrefix: "₱",
+      decimalPlaces: 2,
       sub: `${data.paidCount} settled`,
       icon: Briefcase,
-      accent: "text-foreground",
       href: `/${slug}/invoices`,
+      accent: (
+        <CircularProgress
+          value={paidPercent}
+          size={36}
+          strokeWidth={4}
+          showLabel
+          labelClassName="text-[9px] font-medium"
+          className="shrink-0 text-primary"
+          renderLabel={(p) => `${p}%`}
+        />
+      ),
     },
   ];
 
@@ -207,34 +239,27 @@ export default async function DashboardPage({
         </p>
       </div>
 
-      {/* Pro KPI cards — genuine shadcn-studio statistics-component-2 pattern:
-          Card/CardContent · label top-left · icon top-right in muted rounded box ·
-          text-3xl font-semibold value · Separator · sub-label · hover lift on card */}
+      {/* AdminCN-style statistic cards — label + icon chip top row, large
+          animated (NumberTicker) value, separator, badge sub-label, and a
+          hover-revealed BorderBeam accent. All values/links are unchanged
+          from the original dashboard — presentation only. */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
-            <Link key={kpi.label} href={kpi.href} className="group">
-              <Card className="transition-all group-hover:border-primary/30 group-hover:shadow-sm">
-                <CardContent className="px-5 py-4">
-                  {/* Pro: label left · icon-in-rounded-box right */}
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      {kpi.label}
-                    </p>
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 transition-colors group-hover:border-primary/20 group-hover:bg-primary/5">
-                      <Icon className="h-3.5 w-3.5 text-muted-foreground transition-colors group-hover:text-primary" />
-                    </div>
-                  </div>
-                  {/* Pro: text-3xl font-semibold (statistics-component-2 value size) */}
-                  <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground">
-                    {kpi.value}
-                  </p>
-                  <Separator className="my-2" />
-                  <p className="text-xs text-muted-foreground">{kpi.sub}</p>
-                </CardContent>
-              </Card>
-            </Link>
+            <DashboardKpiCard
+              key={kpi.label}
+              href={kpi.href}
+              label={kpi.label}
+              icon={
+                <Icon className="h-3.5 w-3.5 text-muted-foreground transition-colors group-hover:text-primary" />
+              }
+              valueNumber={kpi.valueNumber}
+              valuePrefix={kpi.valuePrefix}
+              decimalPlaces={kpi.decimalPlaces}
+              sub={kpi.sub}
+              accent={kpi.accent}
+            />
           );
         })}
       </div>
