@@ -35,3 +35,20 @@ Branches (all off `chore/framework-sync-v32.31-admincn-prereq`, which is off loc
 
 ## Minor follow-ups
 3 skipped components (kanban/combobox/button-group); no default OG image / favicon / logo.png brand assets.
+
+---
+
+## ADDENDUM (later same session) — C1 fixed, C2 verified, C3–E paused for calibration
+- **C1 dashboard** `5c6326a` + fix `14f382a`: shipped a RUNTIME RSC bug (server passed `<CircularProgress
+  renderLabel={fn}/>` as a ReactNode into a client component → "Functions cannot be passed to Client
+  Components"; build/typecheck MISSED it). Found via live verify, fixed (default label identical). Live-verified OK.
+  Lesson → LESSONS_GLOBAL.md `nextjs.rsc.function-prop-to-client-via-reactnode`.
+- **C2 settings roles/users** `37f4b33`: UI-only, all RBAC logic preserved verbatim. Live-verified: dashboard +
+  roles + users render, 0 error boundaries, 0 console errors.
+- **C3–C6 / D / E PAUSED — scope reassessment for owner:** AdminCN slice has NO ERP-CRUD scaffolds, so C3–C6
+  = broad *idiom polish* across ~80 CRUD pages (marginal value, design-subjective, high live-verify overhead —
+  C1 proved UI-only grafts can still add runtime regressions). The high-value adoption (foundation + shell +
+  dashboard + settings/RBAC) is DONE + live-verified. Recommend owner calibrates whether to grind C3–C6 vs.
+  stop before spending it; E (re-baseline) needs owner design sign-off; D = owner's call. Loop paced pending direction.
+- Branches (all unmerged, off framework-sync branch, off local main): feat/seo-foundation, feat/admincn-adoption
+  (A1→A2→B→C1→C2→C1-fix). HARD HOLD — nothing pushed.
