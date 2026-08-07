@@ -1,5 +1,19 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { Receipt } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { NewTransactionButton } from "./transaction-form";
 
 async function getTenantId(slug: string) {
@@ -83,13 +97,13 @@ const TYPE_COLORS: Record<string, string> = {
   transfer_in: "text-primary bg-primary/10 border-primary/30",
   loan_payback: "text-primary bg-primary/10 border-primary/30",
   credit_card_payment: "text-primary bg-primary/10 border-primary/30",
-  withdrawal: "text-red-400 bg-red-400/10 border-red-400/30",
-  expense: "text-red-400 bg-red-400/10 border-red-400/30",
-  transfer_out: "text-orange-400 bg-orange-400/10 border-orange-400/30",
-  loan_disbursement: "text-orange-400 bg-orange-400/10 border-orange-400/30",
-  loan_repayment: "text-yellow-400 bg-yellow-400/10 border-yellow-400/30",
-  credit_card_charge: "text-red-400 bg-red-400/10 border-red-400/30",
-  refund: "text-blue-400 bg-blue-400/10 border-blue-400/30",
+  withdrawal: "text-red-500 bg-red-500/10 border-red-500/30",
+  expense: "text-red-500 bg-red-500/10 border-red-500/30",
+  transfer_out: "text-orange-500 bg-orange-500/10 border-orange-500/30",
+  loan_disbursement: "text-orange-500 bg-orange-500/10 border-orange-500/30",
+  loan_repayment: "text-yellow-500 bg-yellow-500/10 border-yellow-500/30",
+  credit_card_charge: "text-red-500 bg-red-500/10 border-red-500/30",
+  refund: "text-blue-500 bg-blue-500/10 border-blue-500/30",
   adjustment: "text-muted-foreground bg-muted border-border",
 };
 
@@ -142,15 +156,11 @@ export default async function TransactionsLedgerPage({ params: paramsPromise, se
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Transactions Ledger</h1>
-          <p className="text-sm text-muted-foreground">
-            All fund transactions across sources
-          </p>
-        </div>
-        <NewTransactionButton />
-      </div>
+      <PageHeader
+        title="Transactions Ledger"
+        description="All fund transactions across sources"
+        actions={<NewTransactionButton />}
+      />
 
       {/* Filters */}
       <form className="flex flex-wrap gap-3">
@@ -200,113 +210,110 @@ export default async function TransactionsLedgerPage({ params: paramsPromise, se
         </button>
 
         {(typeFilter !== undefined || fundSourceFilter !== undefined) && (
-          <a
+          <Link
             href="?"
             className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
             Clear
-          </a>
+          </Link>
         )}
       </form>
 
       {/* Table */}
-      <div className="rounded-lg border border-border bg-card">
-        {transactions.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No transactions found.
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Date</th>
-                <th className="px-4 py-3 font-medium">Fund Source</th>
-                <th className="px-4 py-3 font-medium">Type</th>
-                <th className="px-4 py-3 font-medium">Description</th>
-                <th className="px-4 py-3 font-medium text-right">Amount</th>
-                <th className="px-4 py-3 font-medium text-right">Running Balance</th>
-                <th className="px-4 py-3 font-medium">By</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.map((tx) => {
-                const typeClass =
-                  TYPE_COLORS[tx.type] ??
-                  "text-muted-foreground bg-muted border-border";
-                const typeLabel = TYPE_LABELS[tx.type] ?? tx.type;
-                const isCredit = CREDIT_TYPES.has(tx.type);
-                return (
-                  <tr
-                    key={tx.id}
-                    className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                  >
-                    <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                      {formatDate(tx.transactionDate)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <a
-                        href={`../banking/${tx.fundSource.id}/transactions`}
-                        className="font-medium hover:underline"
+      <Card>
+        <CardContent className="p-0">
+          {transactions.length === 0 ? (
+            <div className="p-6">
+              <EmptyState icon={Receipt} title="No transactions found." />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Fund Source</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Running Balance</TableHead>
+                  <TableHead>By</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {transactions.map((tx) => {
+                  const typeClass =
+                    TYPE_COLORS[tx.type] ??
+                    "text-muted-foreground bg-muted border-border";
+                  const typeLabel = TYPE_LABELS[tx.type] ?? tx.type;
+                  const isCredit = CREDIT_TYPES.has(tx.type);
+                  return (
+                    <TableRow key={tx.id}>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        {formatDate(tx.transactionDate)}
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          href={`../banking/${tx.fundSource.id}/transactions`}
+                          className="font-medium hover:underline"
+                        >
+                          {tx.fundSource.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={`rounded-full ${typeClass}`}>
+                          {typeLabel}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground max-w-[200px] truncate">
+                        {tx.description ?? (tx.category ?? "—")}
+                      </TableCell>
+                      <TableCell
+                        className={`text-right font-mono text-xs ${
+                          isCredit ? "text-primary" : "text-red-500"
+                        }`}
                       >
-                        {tx.fundSource.name}
-                      </a>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full border px-2 py-0.5 text-xs font-medium ${typeClass}`}
-                      >
-                        {typeLabel}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground max-w-[200px] truncate">
-                      {tx.description ?? (tx.category ?? "—")}
-                    </td>
-                    <td
-                      className={`px-4 py-3 text-right font-mono text-xs ${
-                        isCredit ? "text-primary" : "text-red-400"
-                      }`}
-                    >
-                      {isCredit ? "+" : "-"}
-                      {formatAmount(tx.amount)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
-                      {formatAmount(tx.runningBalance)}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {tx.createdBy.displayName ??
-                        (`${tx.createdBy.firstName} ${tx.createdBy.lastName}`.trim() ||
-                          "—")}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+                        {isCredit ? "+" : "-"}
+                        {formatAmount(tx.amount)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-xs text-muted-foreground">
+                        {formatAmount(tx.runningBalance)}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {tx.createdBy.displayName ??
+                          (`${tx.createdBy.firstName} ${tx.createdBy.lastName}`.trim() ||
+                            "—")}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
             {from}–{to} of {total}
           </span>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             {page > 1 && (
-              <a
+              <Link
                 href={`?page=${page - 1}${typeFilter !== undefined ? `&type=${typeFilter}` : ""}${fundSourceFilter !== undefined ? `&fundSourceId=${fundSourceFilter}` : ""}`}
-                className="rounded-md border border-border px-3 py-1.5 hover:bg-muted/50"
+                className="rounded-md border border-border bg-card px-3 py-1 hover:bg-muted"
               >
                 Previous
-              </a>
+              </Link>
             )}
             {page < totalPages && (
-              <a
+              <Link
                 href={`?page=${page + 1}${typeFilter !== undefined ? `&type=${typeFilter}` : ""}${fundSourceFilter !== undefined ? `&fundSourceId=${fundSourceFilter}` : ""}`}
-                className="rounded-md border border-border px-3 py-1.5 hover:bg-muted/50"
+                className="rounded-md border border-border bg-card px-3 py-1 hover:bg-muted"
               >
                 Next
-              </a>
+              </Link>
             )}
           </div>
         </div>

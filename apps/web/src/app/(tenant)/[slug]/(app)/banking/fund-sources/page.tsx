@@ -1,5 +1,18 @@
 import type { Metadata } from "next";
+import { Wallet } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { AddFundSourceButton, EditFundSourceButton, ToggleFundSourceButton } from "./fund-source-form";
 
 async function getTenantId(slug: string) {
@@ -67,97 +80,94 @@ export default async function FundSourcesPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Fund Sources</h1>
-          <p className="text-sm text-muted-foreground">
-            {active.length} active of {fundSources.length} total
-          </p>
-        </div>
-        <AddFundSourceButton />
-      </div>
+      <PageHeader
+        title="Fund Sources"
+        description={`${active.length} active of ${fundSources.length} total`}
+        actions={<AddFundSourceButton />}
+      />
 
-      <div className="rounded-lg border border-border bg-card">
-        {fundSources.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No fund sources configured yet.
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Type</th>
-                <th className="px-4 py-3 font-medium">Balance</th>
-                <th className="px-4 py-3 font-medium">Account</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fundSources.map((fs) => {
-                const typeClass =
-                  TYPE_COLORS[fs.type] ??
-                  "text-muted-foreground bg-muted border-border";
-                const typeLabel = TYPE_LABELS[fs.type] ?? fs.type;
-                return (
-                  <tr
-                    key={fs.id}
-                    className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="font-medium">{fs.name}</div>
-                      {fs.bankName !== null && (
-                        <div className="text-xs text-muted-foreground">
-                          {fs.bankName}
+      <Card>
+        <CardContent className="p-0">
+          {fundSources.length === 0 ? (
+            <div className="p-6">
+              <EmptyState
+                icon={Wallet}
+                title="No fund sources configured yet."
+                action={<AddFundSourceButton />}
+              />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Balance</TableHead>
+                  <TableHead>Account</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {fundSources.map((fs) => {
+                  const typeClass =
+                    TYPE_COLORS[fs.type] ??
+                    "text-muted-foreground bg-muted border-border";
+                  const typeLabel = TYPE_LABELS[fs.type] ?? fs.type;
+                  return (
+                    <TableRow key={fs.id}>
+                      <TableCell>
+                        <div className="font-medium">{fs.name}</div>
+                        {fs.bankName !== null && (
+                          <div className="text-xs text-muted-foreground">
+                            {fs.bankName}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={`rounded-full ${typeClass}`}>
+                          {typeLabel}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {formatBalance(fs.currentBalance, fs.currency)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {fs.accountNumber ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        {fs.isActive ? (
+                          <Badge variant="outline" className="rounded-full border-primary/30 bg-primary/10 text-primary">
+                            Active
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="rounded-full border-border bg-muted text-muted-foreground">
+                            Inactive
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <EditFundSourceButton
+                            fundSource={{
+                              id: fs.id,
+                              name: fs.name,
+                              type: fs.type,
+                              bankName: fs.bankName,
+                              accountNumber: fs.accountNumber,
+                            }}
+                          />
+                          <ToggleFundSourceButton id={fs.id} isActive={fs.isActive} />
                         </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full border px-2 py-0.5 text-xs font-medium ${typeClass}`}
-                      >
-                        {typeLabel}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs">
-                      {formatBalance(fs.currentBalance, fs.currency)}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {fs.accountNumber ?? "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      {fs.isActive ? (
-                        <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                          Active
-                        </span>
-                      ) : (
-                        <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                          Inactive
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <EditFundSourceButton
-                          fundSource={{
-                            id: fs.id,
-                            name: fs.name,
-                            type: fs.type,
-                            bankName: fs.bankName,
-                            accountNumber: fs.accountNumber,
-                          }}
-                        />
-                        <ToggleFundSourceButton id={fs.id} isActive={fs.isActive} />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

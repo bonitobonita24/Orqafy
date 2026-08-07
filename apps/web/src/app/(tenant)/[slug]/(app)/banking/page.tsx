@@ -1,6 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Landmark } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 async function getTenantId(slug: string) {
   const t = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
@@ -141,6 +155,9 @@ async function getDashboardData(tenantId: string) {
   };
 }
 
+// Static KPI stat card — Card/CardContent + Separator, matching the
+// reports-page Pro statistic-card idiom (no trend badge here — this
+// dashboard's KPIs are point-in-time balances, not period deltas).
 function KPICard({
   label,
   value,
@@ -156,20 +173,25 @@ function KPICard({
     tone === "positive"
       ? "text-primary"
       : tone === "negative"
-        ? "text-red-400"
+        ? "text-red-500"
         : tone === "warning"
-          ? "text-orange-400"
+          ? "text-orange-500"
           : "text-foreground";
   return (
-    <div className="rounded-lg border border-border bg-card p-5">
-      <p className="text-xs uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
-      <p className={`mt-2 text-2xl font-bold ${toneClass}`}>{value}</p>
-      {hint !== undefined && (
-        <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
-      )}
-    </div>
+    <Card>
+      <CardContent className="px-5 py-4">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {label}
+        </p>
+        <p className={`mt-2 text-3xl font-semibold tracking-tight ${toneClass}`}>{value}</p>
+        {hint !== undefined && (
+          <>
+            <Separator className="my-2" />
+            <p className="text-xs text-muted-foreground">{hint}</p>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -189,10 +211,10 @@ export default async function BankingDashboardPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Banking & Finance</h1>
-          <p className="text-sm text-muted-foreground">
+      <PageHeader
+        title="Banking & Finance"
+        description={
+          <>
             {data.activeSources.length} active fund source{data.activeSources.length === 1 ? "" : "s"}
             {" · "}
             <Link
@@ -208,9 +230,9 @@ export default async function BankingDashboardPage({
             >
               All transactions
             </Link>
-          </p>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* KPI cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -241,183 +263,190 @@ export default async function BankingDashboardPage({
       </div>
 
       {/* This month activity */}
-      <section className="rounded-lg border border-border bg-card">
-        <header className="flex items-center justify-between border-b border-border px-6 py-4">
-          <div>
-            <h2 className="text-sm font-semibold">This Month Activity</h2>
-            <p className="text-xs text-muted-foreground">{monthLabel}</p>
+      <Card>
+        <CardContent className="p-0">
+          <div className="flex items-center justify-between border-b border-border px-6 py-4">
+            <div>
+              <h2 className="text-sm font-semibold">This Month Activity</h2>
+              <p className="text-xs text-muted-foreground">{monthLabel}</p>
+            </div>
           </div>
-        </header>
-        <div className="grid grid-cols-1 divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
-          <div className="px-6 py-5">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">
-              Income (incl. refunds)
-            </p>
-            <p className="mt-2 text-xl font-semibold text-primary">
-              {formatPHP(data.thisMonthIncome)}
-            </p>
+          <div className="grid grid-cols-1 divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
+            <div className="px-6 py-5">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                Income (incl. refunds)
+              </p>
+              <p className="mt-2 text-xl font-semibold text-primary">
+                {formatPHP(data.thisMonthIncome)}
+              </p>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                Expense
+              </p>
+              <p className="mt-2 text-xl font-semibold text-red-500">
+                {formatPHP(data.thisMonthExpense)}
+              </p>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                Net (Income − Expense)
+              </p>
+              <p
+                className={`mt-2 text-xl font-semibold ${
+                  data.thisMonthIncome - data.thisMonthExpense >= 0
+                    ? "text-primary"
+                    : "text-red-500"
+                }`}
+              >
+                {formatPHP(data.thisMonthIncome - data.thisMonthExpense)}
+              </p>
+            </div>
           </div>
-          <div className="px-6 py-5">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">
-              Expense
-            </p>
-            <p className="mt-2 text-xl font-semibold text-red-400">
-              {formatPHP(data.thisMonthExpense)}
-            </p>
-          </div>
-          <div className="px-6 py-5">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">
-              Net (Income − Expense)
-            </p>
-            <p
-              className={`mt-2 text-xl font-semibold ${
-                data.thisMonthIncome - data.thisMonthExpense >= 0
-                  ? "text-primary"
-                  : "text-red-400"
-              }`}
-            >
-              {formatPHP(data.thisMonthIncome - data.thisMonthExpense)}
-            </p>
-          </div>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
       {/* Active fund sources quick view */}
-      <section className="rounded-lg border border-border bg-card">
-        <header className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 className="text-sm font-semibold">Active Fund Sources</h2>
-          <Link
-            href={`/${slug}/banking/fund-sources`}
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
-            All →
-          </Link>
-        </header>
-        {data.activeSources.length === 0 ? (
-          <div className="px-6 py-10 text-center text-sm text-muted-foreground">
-            No active fund sources. Add one in{" "}
+      <Card>
+        <CardContent className="p-0">
+          <div className="flex items-center justify-between border-b border-border px-6 py-4">
+            <h2 className="text-sm font-semibold">Active Fund Sources</h2>
             <Link
               href={`/${slug}/banking/fund-sources`}
-              className="text-primary hover:underline"
+              className="text-xs text-muted-foreground hover:text-foreground"
             >
-              fund sources
+              All →
             </Link>
-            .
           </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-2 font-medium">Name</th>
-                <th className="px-4 py-2 font-medium">Type</th>
-                <th className="px-4 py-2 text-right font-medium">Balance</th>
-                <th className="px-4 py-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.activeSources.map((s) => {
-                const isLiability = s.type === "credit_card" || s.type === "loan";
-                const displayBalance = isLiability
-                  ? s.type === "credit_card"
-                    ? s.outstandingBalance ?? 0
-                    : s.loanBalance ?? s.loanPrincipal ?? 0
-                  : s.currentBalance;
-                return (
-                  <tr
-                    key={s.id}
-                    className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
+          {data.activeSources.length === 0 ? (
+            <div className="p-6">
+              <EmptyState
+                icon={Landmark}
+                title="No active fund sources."
+                description="Add one in fund sources to start tracking balances."
+                action={
+                  <Link
+                    href={`/${slug}/banking/fund-sources`}
+                    className="text-sm text-primary hover:underline"
                   >
-                    <td className="px-4 py-2 font-medium">{s.name}</td>
-                    <td className="px-4 py-2 text-xs text-muted-foreground">
-                      {TYPE_LABELS[s.type] ?? s.type}
-                    </td>
-                    <td
-                      className={`px-4 py-2 text-right font-mono text-xs ${
-                        isLiability ? "text-orange-400" : "text-primary"
-                      }`}
-                    >
-                      {formatPHP(displayBalance)}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      <Link
-                        href={`/${slug}/banking/${s.id}/transactions`}
-                        className="text-xs text-muted-foreground hover:text-foreground"
+                    Fund sources →
+                  </Link>
+                }
+              />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Balance</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.activeSources.map((s) => {
+                  const isLiability = s.type === "credit_card" || s.type === "loan";
+                  const displayBalance = isLiability
+                    ? s.type === "credit_card"
+                      ? s.outstandingBalance ?? 0
+                      : s.loanBalance ?? s.loanPrincipal ?? 0
+                    : s.currentBalance;
+                  return (
+                    <TableRow key={s.id}>
+                      <TableCell className="font-medium">{s.name}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {TYPE_LABELS[s.type] ?? s.type}
+                      </TableCell>
+                      <TableCell
+                        className={`text-right font-mono text-xs ${
+                          isLiability ? "text-orange-500" : "text-primary"
+                        }`}
                       >
-                        Transactions →
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </section>
+                        {formatPHP(displayBalance)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link
+                          href={`/${slug}/banking/${s.id}/transactions`}
+                          className="text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          Transactions →
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Recent transactions */}
-      <section className="rounded-lg border border-border bg-card">
-        <header className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 className="text-sm font-semibold">Recent Transactions</h2>
-          <Link
-            href={`/${slug}/banking/transactions`}
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
-            All →
-          </Link>
-        </header>
-        {data.recentTxs.length === 0 ? (
-          <div className="px-6 py-10 text-center text-sm text-muted-foreground">
-            No transactions yet.
+      <Card>
+        <CardContent className="p-0">
+          <div className="flex items-center justify-between border-b border-border px-6 py-4">
+            <h2 className="text-sm font-semibold">Recent Transactions</h2>
+            <Link
+              href={`/${slug}/banking/transactions`}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              All →
+            </Link>
           </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-2 font-medium">Date</th>
-                <th className="px-4 py-2 font-medium">Source</th>
-                <th className="px-4 py-2 font-medium">Type</th>
-                <th className="px-4 py-2 font-medium">Description</th>
-                <th className="px-4 py-2 text-right font-medium">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.recentTxs.map((tx) => {
-                const dir = TX_TYPE_DIR[tx.type] ?? "neutral";
-                const sign = dir === "in" ? "+" : dir === "out" ? "−" : "";
-                const amtColor =
-                  dir === "in"
-                    ? "text-primary"
-                    : dir === "out"
-                      ? "text-red-400"
-                      : "text-muted-foreground";
-                return (
-                  <tr
-                    key={tx.id}
-                    className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                  >
-                    <td className="px-4 py-2 text-xs text-muted-foreground">
-                      {formatDate(tx.transactionDate)}
-                    </td>
-                    <td className="px-4 py-2 text-xs">{tx.fundSource.name}</td>
-                    <td className="px-4 py-2 text-xs text-muted-foreground">
-                      {TX_TYPE_LABELS[tx.type] ?? tx.type}
-                    </td>
-                    <td className="px-4 py-2 text-xs">
-                      {tx.description ?? (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className={`px-4 py-2 text-right font-mono text-xs ${amtColor}`}>
-                      {sign}
-                      {formatPHP(tx.amount)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </section>
+          {data.recentTxs.length === 0 ? (
+            <div className="px-6 py-10 text-center text-sm text-muted-foreground">
+              No transactions yet.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Source</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.recentTxs.map((tx) => {
+                  const dir = TX_TYPE_DIR[tx.type] ?? "neutral";
+                  const sign = dir === "in" ? "+" : dir === "out" ? "−" : "";
+                  const amtColor =
+                    dir === "in"
+                      ? "text-primary"
+                      : dir === "out"
+                        ? "text-red-500"
+                        : "text-muted-foreground";
+                  return (
+                    <TableRow key={tx.id}>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {formatDate(tx.transactionDate)}
+                      </TableCell>
+                      <TableCell className="text-xs">{tx.fundSource.name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="rounded-full">
+                          {TX_TYPE_LABELS[tx.type] ?? tx.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {tx.description ?? (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className={`text-right font-mono text-xs ${amtColor}`}>
+                        {sign}
+                        {formatPHP(tx.amount)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
