@@ -1,7 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { MessageSquare } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const metadata: Metadata = { title: "Contact logs" };
 
@@ -120,26 +134,32 @@ export default async function ContactLogsPage({ params, searchParams }: PageProp
   const totalPages = Math.max(1, Math.ceil(total / DEFAULT_LIMIT));
   const customerFilterLabel = customerForFilter !== null ? customerLabel(customerForFilter) : null;
 
+  const prevHref = `${buildFilterHref(slug, { customerId, type })}${
+    buildFilterHref(slug, { customerId, type }).includes("?") ? "&" : "?"
+  }page=${page - 1}`;
+  const nextHref = `${buildFilterHref(slug, { customerId, type })}${
+    buildFilterHref(slug, { customerId, type }).includes("?") ? "&" : "?"
+  }page=${page + 1}`;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Contact logs</h1>
-          <p className="text-sm text-muted-foreground">
+      <PageHeader
+        title="Contact logs"
+        description={
+          <>
             {items.length} of {total} {total === 1 ? "entry" : "entries"}
             {type !== undefined ? ` filtered by "${TYPE_LABELS[type]}"` : ""}
             {customerFilterLabel !== null ? ` for ${customerFilterLabel}` : ""}
-          </p>
-        </div>
-        {customerId !== undefined ? (
-          <Link
-            href={`/${slug}/crm/customers/${customerId}`}
-            className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-muted"
-          >
-            View customer
-          </Link>
-        ) : null}
-      </div>
+          </>
+        }
+        actions={
+          customerId !== undefined ? (
+            <Button variant="outline" asChild>
+              <Link href={`/${slug}/crm/customers/${customerId}`}>View customer</Link>
+            </Button>
+          ) : undefined
+        }
+      />
 
       <div className="flex flex-wrap gap-2">
         <Link
@@ -175,66 +195,66 @@ export default async function ContactLogsPage({ params, searchParams }: PageProp
         ) : null}
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
-        {items.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No contact log entries
-            {type !== undefined ? ` of type "${TYPE_LABELS[type]}"` : ""}
-            {customerFilterLabel !== null ? ` for ${customerFilterLabel}` : ""} yet.
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Date</th>
-                <th className="px-4 py-3 font-medium">Type</th>
-                <th className="px-4 py-3 font-medium">Customer</th>
-                <th className="px-4 py-3 font-medium">Subject</th>
-                <th className="px-4 py-3 font-medium">By</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((log) => {
-                const typeKey = isType(log.type) ? log.type : "note";
-                const typeClass = TYPE_COLORS[typeKey];
-                return (
-                  <tr
-                    key={log.id}
-                    className="border-b border-border last:border-0 hover:bg-muted/50"
-                  >
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {log.occurredAt.toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex rounded-full border px-2 py-0.5 text-xs ${typeClass}`}
-                      >
-                        {TYPE_LABELS[typeKey]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {log.customer !== null ? (
-                        <Link
-                          href={`/${slug}/crm/customers/${log.customer.id}`}
-                          className="text-primary hover:underline"
-                        >
-                          {customerLabel(log.customer)}
-                        </Link>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="px-4 py-3">{log.subject}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {userLabel(log.createdBy)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          {items.length === 0 ? (
+            <div className="p-6">
+              <EmptyState
+                icon={MessageSquare}
+                title={`No contact log entries${
+                  type !== undefined ? ` of type "${TYPE_LABELS[type]}"` : ""
+                }${customerFilterLabel !== null ? ` for ${customerFilterLabel}` : ""} yet.`}
+              />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Subject</TableHead>
+                  <TableHead>By</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((log) => {
+                  const typeKey = isType(log.type) ? log.type : "note";
+                  const typeClass = TYPE_COLORS[typeKey];
+                  return (
+                    <TableRow key={log.id}>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {log.occurredAt.toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={`rounded-full ${typeClass}`}>
+                          {TYPE_LABELS[typeKey]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {log.customer !== null ? (
+                          <Link
+                            href={`/${slug}/crm/customers/${log.customer.id}`}
+                            className="text-primary hover:underline"
+                          >
+                            {customerLabel(log.customer)}
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell>{log.subject}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {userLabel(log.createdBy)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       {totalPages > 1 ? (
         <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -244,9 +264,7 @@ export default async function ContactLogsPage({ params, searchParams }: PageProp
           <div className="flex items-center gap-2">
             {page > 1 ? (
               <Link
-                href={`${buildFilterHref(slug, { customerId, type })}${
-                  buildFilterHref(slug, { customerId, type }).includes("?") ? "&" : "?"
-                }page=${page - 1}`}
+                href={prevHref}
                 className="rounded-md border border-border bg-card px-3 py-1 hover:bg-muted"
               >
                 Previous
@@ -254,9 +272,7 @@ export default async function ContactLogsPage({ params, searchParams }: PageProp
             ) : null}
             {page < totalPages ? (
               <Link
-                href={`${buildFilterHref(slug, { customerId, type })}${
-                  buildFilterHref(slug, { customerId, type }).includes("?") ? "&" : "?"
-                }page=${page + 1}`}
+                href={nextHref}
                 className="rounded-md border border-border bg-card px-3 py-1 hover:bg-muted"
               >
                 Next
