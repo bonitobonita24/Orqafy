@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { Card } from "@/components/ui/card";
 import { TaskBoard } from "./task-board";
 
 export const metadata: Metadata = { title: "Tasks" };
@@ -84,9 +85,9 @@ export default async function TasksPage({ params, searchParams }: Props) {
       </div>
 
       {currentView === "calendar" ? (
-        <div className="rounded-lg border border-border bg-card px-6 py-12 text-center text-sm text-muted-foreground">
+        <Card className="px-6 py-12 text-center text-sm text-muted-foreground">
           Calendar view coming in Phase 2.
-        </div>
+        </Card>
       ) : (
         <TaskBoard
           slug={slug}

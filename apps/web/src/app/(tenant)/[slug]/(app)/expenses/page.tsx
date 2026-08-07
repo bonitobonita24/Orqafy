@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Card, CardContent } from "@/components/ui/card";
 import { ExpenseListClient } from "./expense-list-client";
 
 export const metadata: Metadata = { title: "Expenses" };
@@ -60,21 +62,23 @@ export default async function ExpensesPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Expenses</h1>
-          <p className="text-sm text-muted-foreground">
+      <PageHeader
+        title="Expenses"
+        description={
+          <>
             {expenses.length} total · {approvedCount} approved ·{" "}
             <span className="text-foreground">
               {pending.length} pending ({formatCurrency(pendingTotal, "PHP")})
             </span>
-          </p>
-        </div>
-      </div>
+          </>
+        }
+      />
 
-      <div className="rounded-lg border border-border bg-card">
-        <ExpenseListClient expenses={expenses} />
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          <ExpenseListClient expenses={expenses} />
+        </CardContent>
+      </Card>
     </div>
   );
 }
