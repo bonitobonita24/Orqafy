@@ -1,7 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Calculator } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const metadata: Metadata = { title: "Trial Balance" };
 export const dynamic = "force-dynamic";
@@ -82,22 +96,15 @@ export default async function TrialBalancePage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Trial Balance</h1>
-          <p className="text-sm text-muted-foreground">
-            Aggregated posted journal lines by account.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/${slug}/accounting`}
-            className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
-          >
-            ← Accounting
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="Trial Balance"
+        description="Aggregated posted journal lines by account."
+        actions={
+          <Button variant="outline" asChild>
+            <Link href={`/${slug}/accounting`}>← Accounting</Link>
+          </Button>
+        }
+      />
 
       {/* Fiscal year filter */}
       {fiscalYears.length > 0 && (
@@ -140,58 +147,64 @@ export default async function TrialBalancePage({
         {isBalanced ? "✓ Balanced" : "⚠ Unbalanced — debits and credits do not match"}
       </div>
 
-      {rows.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card px-6 py-12 text-center text-sm text-muted-foreground">
-          No posted journal lines found. Post journal entries to see the trial balance.
-        </div>
-      ) : (
-        <div className="rounded-lg border border-border bg-card">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Code</th>
-                <th className="px-4 py-3 font-medium">Account Name</th>
-                <th className="px-4 py-3 font-medium">Type</th>
-                <th className="px-4 py-3 font-medium text-right">Debit</th>
-                <th className="px-4 py-3 font-medium text-right">Credit</th>
-                <th className="px-4 py-3 font-medium text-right">Balance</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.account.id} className="border-b border-border last:border-0 hover:bg-muted/10">
-                  <td className="px-4 py-3 font-mono text-xs">{row.account.code}</td>
-                  <td className="px-4 py-3">{row.account.name}</td>
-                  <td className={`px-4 py-3 capitalize text-xs font-medium ${TYPE_BADGE[row.account.type] ?? ""}`}>
-                    {row.account.type}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">{fmt(row.debit)}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">{fmt(row.credit)}</td>
-                  <td className={`px-4 py-3 text-right font-mono text-xs font-semibold ${row.balance < 0 ? "text-red-400" : ""}`}>
-                    {fmt(Math.abs(row.balance))}{row.balance < 0 ? " Cr" : row.balance > 0 ? " Dr" : ""}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-border bg-muted/20">
-                <td colSpan={3} className="px-4 py-3 text-xs font-semibold text-muted-foreground">
-                  Totals
-                </td>
-                <td className="px-4 py-3 text-right font-mono text-xs font-semibold">
-                  {fmt(totalDebit)}
-                </td>
-                <td className="px-4 py-3 text-right font-mono text-xs font-semibold">
-                  {fmt(totalCredit)}
-                </td>
-                <td className={`px-4 py-3 text-right font-mono text-xs font-bold ${isBalanced ? "text-emerald-400" : "text-red-400"}`}>
-                  {isBalanced ? "✓" : fmt(Math.abs(totalDebit - totalCredit))}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      )}
+      <Card>
+        <CardContent className="p-0">
+          {rows.length === 0 ? (
+            <div className="p-6">
+              <EmptyState
+                icon={Calculator}
+                title="No posted journal lines found."
+                description="Post journal entries to see the trial balance."
+              />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Account Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Debit</TableHead>
+                  <TableHead className="text-right">Credit</TableHead>
+                  <TableHead className="text-right">Balance</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row) => (
+                  <TableRow key={row.account.id}>
+                    <TableCell className="font-mono text-xs">{row.account.code}</TableCell>
+                    <TableCell>{row.account.name}</TableCell>
+                    <TableCell className={`capitalize text-xs font-medium ${TYPE_BADGE[row.account.type] ?? ""}`}>
+                      {row.account.type}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">{fmt(row.debit)}</TableCell>
+                    <TableCell className="text-right font-mono text-xs">{fmt(row.credit)}</TableCell>
+                    <TableCell className={`text-right font-mono text-xs font-semibold ${row.balance < 0 ? "text-red-400" : ""}`}>
+                      {fmt(Math.abs(row.balance))}{row.balance < 0 ? " Cr" : row.balance > 0 ? " Dr" : ""}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell colSpan={3} className="text-xs font-semibold text-muted-foreground">
+                    Totals
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-xs font-semibold">
+                    {fmt(totalDebit)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-xs font-semibold">
+                    {fmt(totalCredit)}
+                  </TableCell>
+                  <TableCell className={`text-right font-mono text-xs font-bold ${isBalanced ? "text-emerald-400" : "text-red-400"}`}>
+                    {isBalanced ? "✓" : fmt(Math.abs(totalDebit - totalCredit))}
+                  </TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
