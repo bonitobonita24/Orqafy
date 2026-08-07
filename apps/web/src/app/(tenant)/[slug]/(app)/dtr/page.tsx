@@ -1,6 +1,19 @@
 import type { Metadata } from "next";
+import { Clock3, CalendarClock } from "lucide-react";
 import { prisma } from "@orqafy/db";
 import { auth } from "@/server/auth";
+import { PageHeader } from "@/components/layout/page-header";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { LeaveRequestForm } from "./leave-request-form";
 import { LeaveRequestActions } from "./leave-request-actions";
 import { AttendanceActions } from "./attendance-actions";
@@ -109,7 +122,7 @@ export default async function DtrPage() {
   if (tenantId === null || tenantId.length === 0) {
     return (
       <div className="space-y-8">
-        <h1 className="text-2xl font-bold tracking-tight">Daily Time Record</h1>
+        <PageHeader title="Daily Time Record" />
         <p className="text-sm text-muted-foreground">
           No tenant context on this session.
         </p>
@@ -129,12 +142,10 @@ export default async function DtrPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Daily Time Record</h1>
-        <p className="text-sm text-muted-foreground">
-          Recent attendance and leave requests across the organization.
-        </p>
-      </div>
+      <PageHeader
+        title="Daily Time Record"
+        description="Recent attendance and leave requests across the organization."
+      />
 
       {/* ── My Attendance Today (self-service clock-in / clock-out) ──────── */}
       {myEmployee !== null && (
@@ -142,50 +153,52 @@ export default async function DtrPage() {
           <h2 className="text-sm font-medium text-muted-foreground">
             My Attendance Today
           </h2>
-          <div className="flex items-center gap-4 rounded-lg border border-border bg-card px-5 py-4">
-            {myTodayRecord !== null ? (
-              <>
-                <div className="flex-1 space-y-0.5">
-                  <p className="text-sm font-medium">
-                    Clocked in at{" "}
-                    {myTodayRecord.clockIn?.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }) ?? "—"}
-                  </p>
-                  {myTodayRecord.clockOut !== null ? (
-                    <p className="text-xs text-muted-foreground">
-                      Clocked out at{" "}
-                      {myTodayRecord.clockOut.toLocaleTimeString([], {
+          <Card>
+            <CardContent className="flex items-center gap-4 py-4">
+              {myTodayRecord !== null ? (
+                <>
+                  <div className="flex-1 space-y-0.5">
+                    <p className="text-sm font-medium">
+                      Clocked in at{" "}
+                      {myTodayRecord.clockIn?.toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
-                      })}
+                      }) ?? "—"}
                     </p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      Not yet clocked out
-                    </p>
-                  )}
-                </div>
-                <ClockActions
-                  attendanceId={myTodayRecord.id}
-                  employeeId={myEmployee.id}
-                  hasClockedOut={myTodayRecord.clockOut !== null}
-                />
-              </>
-            ) : (
-              <>
-                <p className="flex-1 text-sm text-muted-foreground">
-                  You have not clocked in today.
-                </p>
-                <ClockActions
-                  attendanceId={null}
-                  employeeId={myEmployee.id}
-                  hasClockedOut={false}
-                />
-              </>
-            )}
-          </div>
+                    {myTodayRecord.clockOut !== null ? (
+                      <p className="text-xs text-muted-foreground">
+                        Clocked out at{" "}
+                        {myTodayRecord.clockOut.toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Not yet clocked out
+                      </p>
+                    )}
+                  </div>
+                  <ClockActions
+                    attendanceId={myTodayRecord.id}
+                    employeeId={myEmployee.id}
+                    hasClockedOut={myTodayRecord.clockOut !== null}
+                  />
+                </>
+              ) : (
+                <>
+                  <p className="flex-1 text-sm text-muted-foreground">
+                    You have not clocked in today.
+                  </p>
+                  <ClockActions
+                    attendanceId={null}
+                    employeeId={myEmployee.id}
+                    hasClockedOut={false}
+                  />
+                </>
+              )}
+            </CardContent>
+          </Card>
         </section>
       )}
 
@@ -193,88 +206,86 @@ export default async function DtrPage() {
         <h2 className="text-sm font-medium text-muted-foreground">
           Attendance · last 7 days
         </h2>
-        <div className="rounded-lg border border-border bg-card">
-          {attendance.length === 0 ? (
-            <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-              No attendance records in the last 7 days.
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                  <th className="px-4 py-3 font-medium">Employee</th>
-                  <th className="px-4 py-3 font-medium">Date</th>
-                  <th className="px-4 py-3 font-medium">Clock In</th>
-                  <th className="px-4 py-3 font-medium">Clock Out</th>
-                  <th className="px-4 py-3 font-medium">OT (min)</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attendance.map((a) => (
-                  <tr
-                    key={a.id}
-                    className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="font-medium">
-                        {a.employee.user.displayName ?? `${a.employee.user.firstName} ${a.employee.user.lastName}`}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {a.employee.employeeNumber}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {a.date.toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {a.clockIn !== null
-                        ? a.clockIn.toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {a.clockOut !== null
-                        ? a.clockOut.toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {a.overtimeMinutes > 0 ? a.overtimeMinutes : "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full border px-2 py-0.5 text-xs font-medium ${statusBadge(
-                          a.status,
-                        )}`}
-                      >
-                        {a.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col gap-1">
-                        <AttendanceActions attendanceId={a.id} status={a.status} />
-                        {currentUserId !== null &&
-                          a.employee.userId === currentUserId && (
-                            <ClockActions
-                              attendanceId={a.id}
-                              employeeId={a.employee.id}
-                              hasClockedOut={a.clockOut !== null}
-                            />
-                          )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <Card>
+          <CardContent className="p-0">
+            {attendance.length === 0 ? (
+              <div className="p-6">
+                <EmptyState icon={Clock3} title="No attendance records in the last 7 days." />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Clock In</TableHead>
+                    <TableHead>Clock Out</TableHead>
+                    <TableHead>OT (min)</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {attendance.map((a) => (
+                    <TableRow key={a.id}>
+                      <TableCell>
+                        <div className="font-medium">
+                          {a.employee.user.displayName ?? `${a.employee.user.firstName} ${a.employee.user.lastName}`}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {a.employee.employeeNumber}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {a.date.toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {a.clockIn !== null
+                          ? a.clockIn.toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {a.clockOut !== null
+                          ? a.clockOut.toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {a.overtimeMinutes > 0 ? a.overtimeMinutes : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`rounded-full ${statusBadge(a.status)}`}
+                        >
+                          {a.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <AttendanceActions attendanceId={a.id} status={a.status} />
+                          {currentUserId !== null &&
+                            a.employee.userId === currentUserId && (
+                              <ClockActions
+                                attendanceId={a.id}
+                                employeeId={a.employee.id}
+                                hasClockedOut={a.clockOut !== null}
+                              />
+                            )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       </section>
 
       <section className="space-y-3">
@@ -282,73 +293,71 @@ export default async function DtrPage() {
           <h2 className="text-sm font-medium text-muted-foreground">Leave Requests</h2>
           <LeaveRequestForm />
         </div>
-        <div className="rounded-lg border border-border bg-card">
-          {leaves.length === 0 ? (
-            <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-              No leave requests yet.
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                  <th className="px-4 py-3 font-medium">Employee</th>
-                  <th className="px-4 py-3 font-medium">Type</th>
-                  <th className="px-4 py-3 font-medium">Dates</th>
-                  <th className="px-4 py-3 font-medium">Days</th>
-                  <th className="px-4 py-3 font-medium">Reason</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leaves.map((l) => (
-                  <tr
-                    key={l.id}
-                    className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="font-medium">
-                        {l.employee.user.displayName ?? `${l.employee.user.firstName} ${l.employee.user.lastName}`}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {l.employee.employeeNumber}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground capitalize">
-                      {l.type}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {l.startDate.toLocaleDateString()} →{" "}
-                      {l.endDate.toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {Number(l.totalDays)}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {l.reason !== null ? l.reason : "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full border px-2 py-0.5 text-xs font-medium ${statusBadge(
-                          l.status,
-                        )}`}
-                      >
-                        {l.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <LeaveRequestActions
-                        leaveRequestId={l.id}
-                        status={l.status}
-                        isOwn={currentUserId !== null && l.employee.userId === currentUserId}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <Card>
+          <CardContent className="p-0">
+            {leaves.length === 0 ? (
+              <div className="p-6">
+                <EmptyState icon={CalendarClock} title="No leave requests yet." />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Dates</TableHead>
+                    <TableHead>Days</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {leaves.map((l) => (
+                    <TableRow key={l.id}>
+                      <TableCell>
+                        <div className="font-medium">
+                          {l.employee.user.displayName ?? `${l.employee.user.firstName} ${l.employee.user.lastName}`}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {l.employee.employeeNumber}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground capitalize">
+                        {l.type}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {l.startDate.toLocaleDateString()} →{" "}
+                        {l.endDate.toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {Number(l.totalDays)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {l.reason !== null ? l.reason : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`rounded-full ${statusBadge(l.status)}`}
+                        >
+                          {l.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <LeaveRequestActions
+                          leaveRequestId={l.id}
+                          status={l.status}
+                          isOwn={currentUserId !== null && l.employee.userId === currentUserId}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       </section>
     </div>
   );

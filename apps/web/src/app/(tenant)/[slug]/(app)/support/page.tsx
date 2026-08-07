@@ -1,7 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LifeBuoy } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const metadata: Metadata = { title: "Support Tickets" };
 export const dynamic = "force-dynamic";
@@ -92,21 +106,17 @@ export default async function SupportTicketsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Support Tickets</h1>
-          <p className="text-sm text-muted-foreground">
-            {tickets.length} ticket{tickets.length === 1 ? "" : "s"}
-            {activeStatus !== "all" ? ` — ${STATUS_LABELS[activeStatus] ?? activeStatus}` : ""}
-          </p>
-        </div>
-        <Link
-          href={`/${slug}/support/new`}
-          className="rounded-md border border-primary bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
-        >
-          + New Ticket
-        </Link>
-      </div>
+      <PageHeader
+        title="Support Tickets"
+        description={`${tickets.length} ticket${tickets.length === 1 ? "" : "s"}${
+          activeStatus !== "all" ? ` — ${STATUS_LABELS[activeStatus] ?? activeStatus}` : ""
+        }`}
+        actions={
+          <Button asChild>
+            <Link href={`/${slug}/support/new`}>+ New Ticket</Link>
+          </Button>
+        }
+      />
 
       <div className="flex flex-wrap gap-1 rounded-md border border-border bg-card p-1">
         {STATUS_TABS.map((tab) => (
@@ -124,72 +134,73 @@ export default async function SupportTicketsPage({
         ))}
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
-        {tickets.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No tickets found.
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Ticket #</th>
-                <th className="px-4 py-3 font-medium">Title</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Priority</th>
-                <th className="px-4 py-3 font-medium">Reporter</th>
-                <th className="px-4 py-3 font-medium">Created</th>
-                <th className="px-4 py-3 font-medium">Comments</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tickets.map((t) => (
-                <tr
-                  key={t.id}
-                  className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`support/${t.id}`}
-                      className="font-mono text-xs font-medium text-primary hover:underline"
-                    >
-                      {t.ticketNumber}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 max-w-xs truncate">{t.title}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
-                        STATUS_BADGE[t.status] ?? STATUS_BADGE["open"]
-                      }`}
-                    >
-                      {STATUS_LABELS[t.status] ?? t.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
-                        PRIORITY_BADGE[t.priority] ?? PRIORITY_BADGE["medium"]
-                      }`}
-                    >
-                      {t.priority}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {userDisplayName(t.createdBy)}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {t.createdAt.toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {t._count.comments}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          {tickets.length === 0 ? (
+            <div className="p-6">
+              <EmptyState icon={LifeBuoy} title="No tickets found." />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Ticket #</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Reporter</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Comments</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tickets.map((t) => (
+                  <TableRow key={t.id}>
+                    <TableCell>
+                      <Link
+                        href={`support/${t.id}`}
+                        className="font-mono text-xs font-medium text-primary hover:underline"
+                      >
+                        {t.ticketNumber}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate">{t.title}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`rounded-full ${
+                          STATUS_BADGE[t.status] ?? STATUS_BADGE["open"]
+                        }`}
+                      >
+                        {STATUS_LABELS[t.status] ?? t.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`rounded-full ${
+                          PRIORITY_BADGE[t.priority] ?? PRIORITY_BADGE["medium"]
+                        }`}
+                      >
+                        {t.priority}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {userDisplayName(t.createdBy)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {t.createdAt.toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {t._count.comments}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
