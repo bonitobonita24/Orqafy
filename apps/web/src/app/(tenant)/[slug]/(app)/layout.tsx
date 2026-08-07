@@ -4,7 +4,10 @@ import { AppHeader } from "@/components/layout/app-header";
 import { ContentContainer } from "@/components/layout/content-container";
 import { AppDownloadInterstitial } from "@/components/app-download-interstitial";
 
-export const metadata: Metadata = { title: "Orqafy" };
+export const metadata: Metadata = {
+  title: "Orqafy",
+  robots: { index: false, follow: false },
+};
 
 interface AppLayoutProps {
   children: React.ReactNode;

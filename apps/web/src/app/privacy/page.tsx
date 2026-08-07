@@ -5,7 +5,17 @@
 import type { Metadata } from "next";
 import { ComplianceFooter } from "@/components/compliance-footer";
 
-export const metadata: Metadata = { title: "Privacy Policy" };
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description: "Orqafy Privacy Policy — how we handle your data under RA 10173.",
+  robots: { index: true, follow: true },
+  alternates: { canonical: "/privacy" },
+  openGraph: {
+    title: "Privacy Policy — Orqafy",
+    description: "Orqafy Privacy Policy — how we handle your data under RA 10173.",
+    url: "/privacy",
+  },
+};
 
 export default function PrivacyPage() {
   return (

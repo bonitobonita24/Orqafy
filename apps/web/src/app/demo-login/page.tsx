@@ -4,7 +4,10 @@ import { AuthError } from "next-auth";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Try the demo — Orqafy" };
+export const metadata: Metadata = {
+  title: "Try the demo — Orqafy",
+  robots: { index: false, follow: true },
+};
 
 async function enterDemo() {
   "use server";

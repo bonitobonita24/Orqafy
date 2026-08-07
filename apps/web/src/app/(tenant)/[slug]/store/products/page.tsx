@@ -3,8 +3,6 @@ import Link from "next/link";
 import { prisma } from "@orqafy/db";
 import { formatCurrency } from "@/lib/quotation-build";
 
-export const metadata: Metadata = { title: "Shop" };
-
 export const dynamic = "force-dynamic";
 
 const DEFAULT_TAKE = 24;
@@ -13,6 +11,23 @@ const MAX_TAKE = 96;
 interface PageProps {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ q?: string; page?: string; category?: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  return {
+    title: "Shop",
+    description: "Browse products available for order.",
+    robots: { index: true, follow: true },
+    alternates: { canonical: `/${slug}/store/products` },
+    openGraph: {
+      title: "Shop",
+      description: "Browse products available for order.",
+      url: `/${slug}/store/products`,
+    },
+  };
 }
 
 function firstImageUrl(images: unknown): string | null {

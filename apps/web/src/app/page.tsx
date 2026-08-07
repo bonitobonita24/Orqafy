@@ -1,8 +1,41 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@orqafy/db";
 import { ComplianceFooter } from "@/components/compliance-footer";
 
 export const dynamic = "force-dynamic";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+export const metadata: Metadata = {
+  title: "Orqafy — Move as one",
+  description:
+    "Move as one — the all-in-one project & business operations platform for growing businesses.",
+  robots: { index: true, follow: true },
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "Orqafy — Move as one",
+    description:
+      "Move as one — the all-in-one project & business operations platform for growing businesses.",
+    url: "/",
+  },
+};
+
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Orqafy",
+    url: SITE_URL,
+    logo: `${SITE_URL}/logo.png`, // TODO(seo): add default OG image asset (also usable as logo)
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Orqafy",
+    url: SITE_URL,
+  },
+];
 
 async function getPlans() {
   return prisma.plan.findMany({
@@ -16,6 +49,10 @@ export default async function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Nav */}
       <header className="flex items-center justify-between px-6 py-4 border-b border-border">
         <div className="flex items-center gap-2">

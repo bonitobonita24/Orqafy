@@ -1,7 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = { title: "Workspace created — Orqafy" };
+export const metadata: Metadata = {
+  title: "Workspace created — Orqafy",
+  description: "Your Orqafy workspace is being provisioned.",
+  robots: { index: true, follow: true },
+  alternates: { canonical: "/register/success" },
+  openGraph: {
+    title: "Workspace created — Orqafy",
+    description: "Your Orqafy workspace is being provisioned.",
+    url: "/register/success",
+  },
+};
 
 export default async function RegisterSuccessPage({
   searchParams,

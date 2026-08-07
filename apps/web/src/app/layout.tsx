@@ -10,13 +10,28 @@ const inter = Inter({
   preload: true,
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Orqafy",
     template: "%s | Orqafy",
   },
-  description: "Multi-tenant ERP platform for field operations, HR, inventory, and finance.",
-  robots: { index: false, follow: false }, // internal tool — no public indexing
+  description:
+    "Move as one — the all-in-one project & business operations platform for growing businesses.",
+  // Fail-closed default: private/authed and utility routes inherit this unless
+  // a route explicitly opts in to indexing (Scenario 44 / SEO Foundation).
+  robots: { index: false, follow: false },
+  openGraph: {
+    siteName: "Orqafy",
+    type: "website",
+    locale: "en_US",
+    title: "Orqafy",
+    description:
+      "Move as one — the all-in-one project & business operations platform for growing businesses.",
+    // TODO(seo): add default OG image asset
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
