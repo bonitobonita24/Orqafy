@@ -1,7 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Users } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const metadata: Metadata = { title: "Employees" };
 export const dynamic = "force-dynamic";
@@ -79,20 +93,15 @@ export default async function EmployeesPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Employees</h1>
-          <p className="text-sm text-muted-foreground">
-            {employees.length} employee{employees.length === 1 ? "" : "s"}
-          </p>
-        </div>
-        <Link
-          href={`/${slug}/employees/new`}
-          className="rounded-md bg-primary/10 border border-primary/30 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
-        >
-          + New Employee
-        </Link>
-      </div>
+      <PageHeader
+        title="Employees"
+        description={`${employees.length} employee${employees.length === 1 ? "" : "s"}`}
+        actions={
+          <Button asChild>
+            <Link href={`/${slug}/employees/new`}>+ New Employee</Link>
+          </Button>
+        }
+      />
 
       <div className="flex flex-wrap gap-1 rounded-md border border-border bg-card p-1">
         {TABS.map((tab) => (
@@ -110,74 +119,82 @@ export default async function EmployeesPage({
         ))}
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
-        {employees.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No employees found.
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Employee #</th>
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Position</th>
-                <th className="px-4 py-3 font-medium">Department</th>
-                <th className="px-4 py-3 font-medium">Type</th>
-                <th className="px-4 py-3 font-medium">Hired</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map((e) => (
-                <tr
-                  key={e.id}
-                  className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`employees/${e.id}`}
-                      className="font-mono text-xs font-medium text-primary hover:underline"
-                    >
-                      {e.employeeNumber}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 font-medium">{userDisplayName(e.user)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {e.position ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {e.department?.name ?? "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
-                        TYPE_BADGE[e.employmentType] ?? TYPE_BADGE["full_time"]
-                      }`}
-                    >
-                      {EMPLOYMENT_TYPE_LABELS[e.employmentType] ?? e.employmentType}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {e.dateHired.toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3">
-                    {e.dateTerminated !== null ? (
-                      <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-400">
-                        Terminated
-                      </span>
-                    ) : (
-                      <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                        Active
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          {employees.length === 0 ? (
+            <div className="p-6">
+              <EmptyState
+                icon={Users}
+                title="No employees found."
+                action={
+                  <Button asChild>
+                    <Link href={`/${slug}/employees/new`}>Create your first employee</Link>
+                  </Button>
+                }
+              />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Employee #</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Position</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Hired</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {employees.map((e) => (
+                  <TableRow key={e.id}>
+                    <TableCell>
+                      <Link
+                        href={`employees/${e.id}`}
+                        className="font-mono text-xs font-medium text-primary hover:underline"
+                      >
+                        {e.employeeNumber}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="font-medium">{userDisplayName(e.user)}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {e.position ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {e.department?.name ?? "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`rounded-full ${
+                          TYPE_BADGE[e.employmentType] ?? TYPE_BADGE["full_time"]
+                        }`}
+                      >
+                        {EMPLOYMENT_TYPE_LABELS[e.employmentType] ?? e.employmentType}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {e.dateHired.toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      {e.dateTerminated !== null ? (
+                        <Badge variant="outline" className="rounded-full border-red-500/30 bg-red-500/10 text-red-400">
+                          Terminated
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="rounded-full border-primary/30 bg-primary/10 text-primary">
+                          Active
+                        </Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

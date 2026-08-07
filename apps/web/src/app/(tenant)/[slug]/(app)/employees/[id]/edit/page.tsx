@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
 import { EmployeeForm } from "../../employee-form";
 
 export const metadata: Metadata = { title: "Edit Employee" };
@@ -88,7 +89,7 @@ export default async function EditEmployeePage({ params }: Props) {
         >
           ← Back to Employee
         </Link>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">Edit Employee</h1>
+        <PageHeader className="mt-1" title="Edit Employee" />
       </div>
 
       <EmployeeForm

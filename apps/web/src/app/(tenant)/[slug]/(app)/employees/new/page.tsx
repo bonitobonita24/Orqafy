@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
 import { EmployeeForm } from "../employee-form";
 
 export const metadata: Metadata = { title: "New Employee" };
@@ -48,10 +49,11 @@ export default async function NewEmployeePage({ params }: Props) {
         >
           ← Employees
         </Link>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">New Employee</h1>
-        <p className="text-sm text-muted-foreground">
-          Link an existing user account and fill in employment details.
-        </p>
+        <PageHeader
+          className="mt-1"
+          title="New Employee"
+          description="Link an existing user account and fill in employment details."
+        />
       </div>
 
       <EmployeeForm
