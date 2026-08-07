@@ -1,7 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ShoppingBag } from "lucide-react";
 import { prisma } from "@orqafy/db";
 import { formatCurrency } from "@/lib/quotation-build";
+import { PageHeader } from "@/components/layout/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const metadata: Metadata = { title: "Ecommerce orders" };
 
@@ -158,23 +172,22 @@ export default async function EcommerceOrdersPage({ params, searchParams }: Page
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Ecommerce orders</h1>
-          <p className="text-sm text-muted-foreground">
+      <PageHeader
+        title="Ecommerce orders"
+        description={
+          <>
             {items.length} of {total} {total === 1 ? "order" : "orders"}
             {status ? ` · status "${STATUS_LABELS[status]}"` : ""}
             {paymentStatus ? ` · payment "${PAYMENT_STATUS_LABELS[paymentStatus]}"` : ""}
             {paymentMethod ? ` · method "${PAYMENT_METHOD_LABELS[paymentMethod]}"` : ""}
-          </p>
-        </div>
-        <Link
-          href={`/${slug}/ecommerce/orders/new`}
-          className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
-        >
-          + Place order
-        </Link>
-      </div>
+          </>
+        }
+        actions={
+          <Button asChild>
+            <Link href={`/${slug}/ecommerce/orders/new`}>+ Place order</Link>
+          </Button>
+        }
+      />
 
       {/* Order status filter */}
       <div className="flex flex-wrap gap-2">
@@ -259,66 +272,76 @@ export default async function EcommerceOrdersPage({ params, searchParams }: Page
         ))}
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
-        {items.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No orders
-            {status ? ` with status "${STATUS_LABELS[status]}"` : ""}
-            {paymentStatus ? ` / payment "${PAYMENT_STATUS_LABELS[paymentStatus]}"` : ""}
-            {paymentMethod ? ` / method "${PAYMENT_METHOD_LABELS[paymentMethod]}"` : ""} yet.
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Order #</th>
-                <th className="px-4 py-3 font-medium">Customer</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Payment</th>
-                <th className="px-4 py-3 text-right font-medium">Total</th>
-                <th className="px-4 py-3 font-medium">Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((order) => {
-                const statusKey = isStatus(order.status) ? order.status : "pending";
-                return (
-                  <tr
-                    key={order.id}
-                    className="border-b border-border last:border-0 hover:bg-muted/50"
-                  >
-                    <td className="px-4 py-3 font-mono text-xs">
-                      <Link
-                        href={`/${slug}/ecommerce/orders/${order.id}`}
-                        className="text-primary hover:underline"
-                      >
-                        {order.orderNumber}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">{customerLabel(order.customer)}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex rounded-full border px-2 py-0.5 text-xs ${STATUS_COLORS[statusKey]}`}
-                      >
-                        {STATUS_LABELS[statusKey]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {order.paymentStatus}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono">
-                      {formatCurrency(Number(order.totalAmount), order.currency)}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {order.createdAt.toLocaleDateString()}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          {items.length === 0 ? (
+            <div className="p-6">
+              <EmptyState
+                icon={ShoppingBag}
+                title={`No orders${
+                  status ? ` with status "${STATUS_LABELS[status]}"` : ""
+                }${
+                  paymentStatus
+                    ? ` / payment "${PAYMENT_STATUS_LABELS[paymentStatus]}"`
+                    : ""
+                }${
+                  paymentMethod
+                    ? ` / method "${PAYMENT_METHOD_LABELS[paymentMethod]}"`
+                    : ""
+                } yet.`}
+              />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Order #</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Payment</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead>Created</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((order) => {
+                  const statusKey = isStatus(order.status) ? order.status : "pending";
+                  return (
+                    <TableRow key={order.id}>
+                      <TableCell className="font-mono text-xs">
+                        <Link
+                          href={`/${slug}/ecommerce/orders/${order.id}`}
+                          className="text-primary hover:underline"
+                        >
+                          {order.orderNumber}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{customerLabel(order.customer)}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`rounded-full ${STATUS_COLORS[statusKey]}`}
+                        >
+                          {STATUS_LABELS[statusKey]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {order.paymentStatus}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {formatCurrency(Number(order.totalAmount), order.currency)}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {order.createdAt.toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       {totalPages > 1 ? (
         <div className="flex items-center justify-between text-xs text-muted-foreground">

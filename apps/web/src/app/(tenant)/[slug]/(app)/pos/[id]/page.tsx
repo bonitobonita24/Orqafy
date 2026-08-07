@@ -1,7 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Receipt } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { CloseSessionDialog } from "./close-session-dialog";
 import { VoidSaleAction } from "./void-sale-action";
 
@@ -99,13 +111,16 @@ export default async function POSSessionDetailPage({
               {session.sessionNumber}
             </h1>
             {isOpen ? (
-              <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              <Badge
+                variant="outline"
+                className="rounded-full border-primary/30 bg-primary/10 text-primary"
+              >
                 Open
-              </span>
+              </Badge>
             ) : (
-              <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              <Badge variant="outline" className="rounded-full bg-muted text-muted-foreground">
                 Closed
-              </span>
+              </Badge>
             )}
           </div>
           {isOpen && <CloseSessionDialog sessionId={session.id} />}
@@ -171,7 +186,7 @@ export default async function POSSessionDetailPage({
       </section>
 
       {/* Sales table */}
-      <section className="rounded-lg border border-border bg-card">
+      <Card>
         <header className="flex items-center justify-between border-b border-border px-6 py-4">
           <h2 className="text-sm font-semibold">Sales</h2>
           {voidedCount > 0 && (
@@ -180,75 +195,75 @@ export default async function POSSessionDetailPage({
             </span>
           )}
         </header>
-        {session.sales.length === 0 ? (
-          <div className="px-6 py-10 text-center text-sm text-muted-foreground">
-            No sales recorded in this session yet.
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-2 font-medium">Sale #</th>
-                <th className="px-4 py-2 font-medium">Time</th>
-                <th className="px-4 py-2 text-right font-medium">Items</th>
-                <th className="px-4 py-2 text-right font-medium">Subtotal</th>
-                <th className="px-4 py-2 text-right font-medium">Tax</th>
-                <th className="px-4 py-2 text-right font-medium">Discount</th>
-                <th className="px-4 py-2 text-right font-medium">Total</th>
-                <th className="px-4 py-2 font-medium">Method</th>
-                <th className="px-4 py-2 font-medium">Status</th>
-                <th className="px-4 py-2 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {session.sales.map((s) => (
-                <tr
-                  key={s.id}
-                  className={`border-b border-border last:border-0 transition-colors hover:bg-muted/30 ${
-                    s.status !== "completed" ? "opacity-60" : ""
-                  }`}
-                >
-                  <td className="px-4 py-2 font-mono text-xs font-medium">
-                    {s.saleNumber}
-                  </td>
-                  <td className="px-4 py-2 text-xs text-muted-foreground">
-                    {formatDateTime(s.createdAt)}
-                  </td>
-                  <td className="px-4 py-2 text-right text-muted-foreground">
-                    {s._count.items}
-                  </td>
-                  <td className="px-4 py-2 text-right font-mono text-xs">
-                    {formatAmount(s.subtotal)}
-                  </td>
-                  <td className="px-4 py-2 text-right font-mono text-xs text-muted-foreground">
-                    {formatAmount(s.taxAmount)}
-                  </td>
-                  <td className="px-4 py-2 text-right font-mono text-xs text-muted-foreground">
-                    {formatAmount(s.discountAmount)}
-                  </td>
-                  <td className="px-4 py-2 text-right font-mono text-xs font-medium">
-                    {formatAmount(s.totalAmount)}
-                  </td>
-                  <td className="px-4 py-2 text-xs">
-                    {PAYMENT_LABELS[s.paymentMethod] ?? s.paymentMethod}
-                  </td>
-                  <td className="px-4 py-2">
-                    <SaleStatus status={s.status} />
-                  </td>
-                  <td className="px-4 py-2">
-                    {s.status === "completed" && isOpen && (
-                      <VoidSaleAction
-                        saleId={s.id}
-                        saleNumber={s.saleNumber}
-                      />
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+        <CardContent className="p-0">
+          {session.sales.length === 0 ? (
+            <div className="p-6">
+              <EmptyState icon={Receipt} title="No sales recorded in this session yet." />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Sale #</TableHead>
+                  <TableHead>Time</TableHead>
+                  <TableHead className="text-right">Items</TableHead>
+                  <TableHead className="text-right">Subtotal</TableHead>
+                  <TableHead className="text-right">Tax</TableHead>
+                  <TableHead className="text-right">Discount</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead>Method</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {session.sales.map((s) => (
+                  <TableRow
+                    key={s.id}
+                    className={s.status !== "completed" ? "opacity-60" : ""}
+                  >
+                    <TableCell className="font-mono text-xs font-medium">
+                      {s.saleNumber}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {formatDateTime(s.createdAt)}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {s._count.items}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {formatAmount(s.subtotal)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs text-muted-foreground">
+                      {formatAmount(s.taxAmount)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs text-muted-foreground">
+                      {formatAmount(s.discountAmount)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs font-medium">
+                      {formatAmount(s.totalAmount)}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {PAYMENT_LABELS[s.paymentMethod] ?? s.paymentMethod}
+                    </TableCell>
+                    <TableCell>
+                      <SaleStatus status={s.status} />
+                    </TableCell>
+                    <TableCell>
+                      {s.status === "completed" && isOpen && (
+                        <VoidSaleAction
+                          saleId={s.id}
+                          saleNumber={s.saleNumber}
+                        />
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       {session.notes !== null && (
         <section className="rounded-lg border border-border bg-card px-6 py-4">
@@ -302,21 +317,27 @@ function DrawerStat({
 function SaleStatus({ status }: { status: string }) {
   if (status === "completed") {
     return (
-      <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+      <Badge
+        variant="outline"
+        className="rounded-full border-primary/30 bg-primary/10 text-primary"
+      >
         Completed
-      </span>
+      </Badge>
     );
   }
   if (status === "voided") {
     return (
-      <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-500">
+      <Badge
+        variant="outline"
+        className="rounded-full border-red-500/30 bg-red-500/10 text-red-500"
+      >
         Voided
-      </span>
+      </Badge>
     );
   }
   return (
-    <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+    <Badge variant="outline" className="rounded-full bg-muted text-muted-foreground">
       {status}
-    </span>
+    </Badge>
   );
 }

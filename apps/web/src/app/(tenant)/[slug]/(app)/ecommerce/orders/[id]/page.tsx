@@ -1,8 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PackageSearch } from "lucide-react";
 import { prisma } from "@orqafy/db";
 import { formatCurrency } from "@/lib/quotation-build";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { OrderStatusActions } from "./order-status-actions";
 import { FulfillmentForm } from "./fulfillment-form";
 import { PayWithXendit } from "./pay-with-xendit";
@@ -132,11 +144,12 @@ export default async function EcommerceOrderDetailPage({ params }: PageProps) {
           </p>
         </div>
         <div className="flex flex-col items-end gap-3">
-          <span
-            className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${STATUS_COLORS[statusKey]}`}
+          <Badge
+            variant="outline"
+            className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLORS[statusKey]}`}
           >
             {STATUS_LABELS[statusKey]}
-          </span>
+          </Badge>
           <OrderStatusActions orderId={order.id} status={order.status} />
         </div>
       </div>
@@ -218,47 +231,49 @@ export default async function EcommerceOrderDetailPage({ params }: PageProps) {
         initialPaymentMethod={order.paymentMethod}
       />
 
-      <div className="rounded-lg border border-border bg-card">
+      <Card>
         <div className="border-b border-border px-4 py-3">
           <h2 className="text-sm font-medium">Line items</h2>
         </div>
-        {order.items.length === 0 ? (
-          <div className="px-6 py-8 text-center text-sm text-muted-foreground">
-            No items on this order.
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Product</th>
-                <th className="px-4 py-3 font-medium">SKU</th>
-                <th className="px-4 py-3 text-right font-medium">Qty</th>
-                <th className="px-4 py-3 text-right font-medium">Unit price</th>
-                <th className="px-4 py-3 text-right font-medium">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {order.items.map((item) => (
-                <tr key={item.id} className="border-b border-border last:border-0">
-                  <td className="px-4 py-3">{item.description}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {item.product.sku ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono">
-                    {Number(item.quantity)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono">
-                    {formatCurrency(Number(item.unitPrice), currency)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono">
-                    {formatCurrency(Number(item.totalPrice), currency)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+        <CardContent className="p-0">
+          {order.items.length === 0 ? (
+            <div className="p-6">
+              <EmptyState icon={PackageSearch} title="No items on this order." />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Product</TableHead>
+                  <TableHead>SKU</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead className="text-right">Unit price</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {order.items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.description}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {item.product.sku ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {Number(item.quantity)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {formatCurrency(Number(item.unitPrice), currency)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {formatCurrency(Number(item.totalPrice), currency)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="ml-auto w-full max-w-sm space-y-1 rounded-lg border border-border bg-card p-4 text-sm">
         <div className="flex justify-between">

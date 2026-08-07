@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
 import { StaffOrderForm } from "./staff-order-form";
 
 export const metadata: Metadata = { title: "Place order on behalf" };
@@ -23,20 +25,15 @@ export default async function PlaceOrderPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Place order on behalf</h1>
-          <p className="text-sm text-muted-foreground">
-            Create an ecommerce order for an existing CRM customer.
-          </p>
-        </div>
-        <Link
-          href={`/${slug}/ecommerce/orders`}
-          className="rounded-md border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
-        >
-          ← Back to orders
-        </Link>
-      </div>
+      <PageHeader
+        title="Place order on behalf"
+        description="Create an ecommerce order for an existing CRM customer."
+        actions={
+          <Button variant="outline" asChild>
+            <Link href={`/${slug}/ecommerce/orders`}>← Back to orders</Link>
+          </Button>
+        }
+      />
 
       <StaffOrderForm slug={slug} />
     </div>

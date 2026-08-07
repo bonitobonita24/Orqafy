@@ -1,6 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ShoppingCart } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { OpenSessionDialog } from "./open-session-dialog";
 
 export const metadata: Metadata = { title: "POS Sessions" };
@@ -70,23 +84,18 @@ export default async function POSSessionsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">POS Sessions</h1>
-          <p className="text-sm text-muted-foreground">
-            Point-of-sale cash drawer sessions. Last 50 sessions shown.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <OpenSessionDialog slug={slug} />
-          <Link
-            href={`/${slug}/pos/new-sale`}
-            className="rounded-md border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
-          >
-            New Sale →
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="POS Sessions"
+        description="Point-of-sale cash drawer sessions. Last 50 sessions shown."
+        actions={
+          <>
+            <OpenSessionDialog slug={slug} />
+            <Button variant="outline" asChild>
+              <Link href={`/${slug}/pos/new-sale`}>New Sale →</Link>
+            </Button>
+          </>
+        }
+      />
 
       {/* Status filter tabs */}
       <div className="flex gap-2 border-b border-border">
@@ -103,60 +112,59 @@ export default async function POSSessionsPage({
         />
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
-        {sessions.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No sessions yet.
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Session #</th>
-                <th className="px-4 py-3 font-medium">Cashier</th>
-                <th className="px-4 py-3 font-medium">Opened</th>
-                <th className="px-4 py-3 font-medium">Closed</th>
-                <th className="px-4 py-3 text-right font-medium">Opening</th>
-                <th className="px-4 py-3 text-right font-medium">Sales</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sessions.map((s) => (
-                <tr
-                  key={s.id}
-                  className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                >
-                  <td className="px-4 py-3 font-mono text-xs">
-                    <Link
-                      href={`/${slug}/pos/${s.id}`}
-                      className="font-medium text-primary hover:underline"
-                    >
-                      {s.sessionNumber}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">{userDisplayName(s.user)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {formatDateTime(s.openedAt)}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {formatDateTime(s.closedAt)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">
-                    {formatAmount(s.openingBalance)}
-                  </td>
-                  <td className="px-4 py-3 text-right text-muted-foreground">
-                    {s._count.sales}
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={s.status} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          {sessions.length === 0 ? (
+            <div className="p-6">
+              <EmptyState icon={ShoppingCart} title="No sessions yet." />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Session #</TableHead>
+                  <TableHead>Cashier</TableHead>
+                  <TableHead>Opened</TableHead>
+                  <TableHead>Closed</TableHead>
+                  <TableHead className="text-right">Opening</TableHead>
+                  <TableHead className="text-right">Sales</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sessions.map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-mono text-xs">
+                      <Link
+                        href={`/${slug}/pos/${s.id}`}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {s.sessionNumber}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{userDisplayName(s.user)}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDateTime(s.openedAt)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDateTime(s.closedAt)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {formatAmount(s.openingBalance)}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {s._count.sales}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={s.status} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -187,14 +195,17 @@ function FilterTab({
 function StatusBadge({ status }: { status: string }) {
   if (status === "open") {
     return (
-      <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+      <Badge
+        variant="outline"
+        className="rounded-full border-primary/30 bg-primary/10 text-primary"
+      >
         Open
-      </span>
+      </Badge>
     );
   }
   return (
-    <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+    <Badge variant="outline" className="rounded-full bg-muted text-muted-foreground">
       Closed
-    </span>
+    </Badge>
   );
 }
