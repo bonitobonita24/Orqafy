@@ -52,3 +52,15 @@ Branches (all off `chore/framework-sync-v32.31-admincn-prereq`, which is off loc
   stop before spending it; E (re-baseline) needs owner design sign-off; D = owner's call. Loop paced pending direction.
 - Branches (all unmerged, off framework-sync branch, off local main): feat/seo-foundation, feat/admincn-adoption
   (A1→A2→B→C1→C2→C1-fix). HARD HOLD — nothing pushed.
+
+---
+
+## FINAL ADDENDUM (2026-08-08 ~05:57) — AdminCN adoption autonomously COMPLETE + verified
+Full Phase C (23 authed modules) + D platform-admin done. Comprehensive live-verify PASSED (~15 pages, 0 errors,
+no RSC errors). DECISIONS_LOG record `e761e4c`. Branch feat/admincn-adoption = 33 commits, unmerged, HARD HOLD.
+**No autonomous work remains — all pending items need the owner:**
+1. Storefront `store/*` — public customer shop, NOT restyled (different design language; AdminCN has no shop scaffold) → owner shop-design call.
+2. E re-baseline — update docs/DESIGN.md + docs/MOCKUP.jsx + capture design:fidelity baseline → owner design sign-off (Scenario 49 §6 / Rule 31).
+3. Merge feat/admincn-adoption (+ feat/seo-foundation + framework-sync branch) → local main → owner's call (HARD HOLD).
+4. Pre-existing (NOT AdminCN): notifications realtime — /api/sse Valkey "Stream isn't writeable" + notification.list conn errors → separate triage.
+Reminders: restart Claude Code (V32.45.1 hooks); repo carries paid AdminCN slice → keep private.
