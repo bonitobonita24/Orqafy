@@ -25,14 +25,22 @@
 
 set -euo pipefail
 
-STATE_FILE="docs/STATE.md"
+# Canonical running-state file is docs/STATE.md (V32.33). A not-yet-migrated app
+# (still on the legacy .cline/STATE.md, pre-V32.33) is read as an ADDITIVE FALLBACK
+# so its Rule-32 gate is enforced correctly instead of failing open. docs-first
+# ordering means a migrated app never consults the fallback. The fallback is retired
+# per-app only after that app opts into migration (Scenario 46) — never globally.
+STATE_FILE=""
+for _state_cand in "docs/STATE.md" ".cline/STATE.md"; do
+  if [[ -f "${_state_cand}" ]]; then STATE_FILE="${_state_cand}"; break; fi
+done
 BLOCK_MSG="Done-claim blocked: evidence field is empty or captured_output is missing.
 Run the acceptance check, capture the real terminal output, and populate
 evidence.contract + evidence.check_command + evidence.captured_output
 before claiming done. See templates.md §V32.8 Verification."
 
-# ── 0. Guard: no STATE.md → nothing to check, allow ─────────────────────────
-if [[ ! -f "${STATE_FILE}" ]]; then
+# ── 0. Guard: no STATE.md (neither docs/ nor .cline/) → nothing to check, allow ──
+if [[ -z "${STATE_FILE}" ]]; then
   exit 0
 fi
 
@@ -75,9 +83,31 @@ fi
 #     captured_output: (empty, |, null, {}, or ~)
 #   which indicates the field was not actually filled in.
 
-empty_evidence_pattern='captured_output:[[:space:]]*(|[|]|null|\{\}|~)[[:space:]]*$'
-
-if grep -qE "${empty_evidence_pattern}" "${STATE_FILE}"; then
+#   captured_output is EMPTY only if: the inline value is blank / null / {} / ~, OR it
+#   uses a YAML block scalar (| or >) with NO indented content following. A block scalar
+#   WITH indented content is FILLED — the prior single-line regex wrongly matched the
+#   documented `captured_output: |` block form (its own schema, line 21) as empty and
+#   false-positive-blocked correct done-claims (V32.33.1 fix). BLOCK if ANY block is empty.
+if ! awk '
+  function indent_of(s,   i){ i=0; while (substr(s,i+1,1)==" ") i++; return i }
+  $0 ~ /captured_output:/ {
+    if (in_block && !filled) empty=1
+    in_block=0
+    key_indent=indent_of($0)
+    rest=$0; sub(/^.*captured_output:[ \t]*/,"",rest); gsub(/[ \t\r]+$/,"",rest)
+    if (rest=="|"||rest=="|-"||rest=="|+"||rest==">"||rest==">-"||rest==">+"){ in_block=1; filled=0; next }
+    if (rest==""||rest=="null"||rest=="~"||rest=="{}") empty=1
+    next
+  }
+  in_block {
+    if ($0 ~ /[^ \t\r]/){
+      if (indent_of($0) > key_indent) filled=1
+      else { if(!filled) empty=1; in_block=0 }
+    }
+    next
+  }
+  END { if (in_block && !filled) empty=1; exit (empty?1:0) }
+' "${STATE_FILE}"; then
   echo "[design-stop-hook] BLOCKED: ${BLOCK_MSG}" >&2
   exit 1
 fi

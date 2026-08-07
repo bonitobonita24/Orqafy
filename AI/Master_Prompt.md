@@ -1,6 +1,622 @@
 # SPEC-DRIVEN PLATFORM — V32
 
 <!-- ═══════════ SYNC IMPACT REPORT — auto-maintained on every version bump ═══════════
+Version:  V32.44 → V32.45
+Bump:     MINOR (additive: button-affordance UI standard — extends ui-rules Rule 3 in place + a new
+          lint-design P1j advisory check; no new Rule/Scenario/Prompt/deliverable, NO count change.
+          Rules 39 · Scenarios 49 · Prompts 62 · deliverables 39 — all UNCHANGED.)
+Summary:  A fleet-wide button-affordance standard so clients reliably read a button AS a button. Every
+          primary/secondary/CTA button must carry a subtle `shadow-xs/sm` emboss (or an outline border);
+          flat/shadowless styling is reserved for ghost/link TERTIARY actions only. The emboss adds
+          ELEVATION only — a button's colours ALWAYS follow the current theme accent; the shadow never
+          changes, tints, or introduces a colour. Extends `ui-rules.md` Rule 3 in place (no new UI rule)
+          + `design-principles.md` (the interactive-state contract + DO/DO-NOT) + a new `lint-design.sh`
+          **P1j** advisory check (tested pos+neg, shellcheck-clean); `CLAUDE.md` #26 advisory list
+          P1a-P1i → P1a-P1j. **Zero-disruption** — P1j is advisory (`--report-only`, exit 0); nothing new
+          auto-blocks a build. **HARD HOLD** — local commits only.
+Dependent files reviewed (propagation checklist):
+  [x] ui-rules.md                  — Rule 3 gains the button-affordance standard (emboss/outline; colour = theme accent)
+  [x] design-principles.md         — interactive-state contract + button emboss DO/DO-NOT
+  [x] lint-design.sh               — new P1j advisory check (button flat-vs-embossed)
+  [x] CLAUDE.md (root)             — deliverable #26 lint-design advisory list P1a-P1i → P1a-P1j
+  [x] Master_Prompt.md             — this Sync Impact Report block; V32.45 changelog entry; active-version marker → V32.45
+  [x] CLAUDE_compact.md            — H1 version → V32.45
+  [x] Framework_Feature_Index.md   — new V32.45 row; Current framework version + footer → V32.45
+  [x] scenarios.md · documentation-hub.html · README.md · Prompt_References.html (×2) — current-version markers → V32.45
+  Canonical counts:                UNCHANGED — 39 Rules · 49 Scenarios · 62 Prompts (39 NEW ✨) ·
+                                   39 deliverable files · 14 UI Rules · 147 Checklist items/21 sections ·
+                                   18 Phase Hooks · 6 agents · 5 MCP servers · 20 Bootstrap Steps.
+Ratified: 2026-08-07
+─────────────────────────────────────────────────────────────────────────────────────
+Version:  V32.43 → V32.44
+Bump:     MINOR (additive: 1 NEW Scenario 49 — Existing-App AdminCN Design Adoption / Retrofit; no new
+          Rule/Prompt/deliverable. Scenarios 48→49; Rules 39 · Prompts 62 · deliverables 39 — all UNCHANGED.)
+Summary:  Companion to V32.43 (AdminCN fleet-default design starter). V32.43 made AdminCN the default for NEW
+          apps at Phase 0 + documented the `fake-db`→tRPC graft procedure, but had no first-class NAMED
+          retrofit flow for the EXISTING fleet — the gap the owner flagged 2026-08-07. Adds Scenario 49, the
+          existing-app AdminCN adoption path, consistent with the other retrofit scenarios (42 RBAC / 44 SEO /
+          45 CI-CD / 48 Audit): UI/design-layer ONLY under INHERIT-not-REPLACE (keep tRPC/Prisma/Auth.js;
+          re-wire every adopted view off `fake-db`/`zustand`/`nuqs` via the deliverable-#39 graft), incremental
+          strangler-style app-shell adoption, theme-preset reconciled INTO tokens.json (Rule 12), per-view
+          graft with the 5-state + RBAC contract, and a Rule-31 baseline update. Runs PER-SEAT on the target
+          app (global-feature-broadcast — never from the AIEF seat); the AIEF seat authors the standard + the
+          rollout tracker (`docs/planning/V32.44_ADMINCN_FLEET_ROLLOUT_TRACKER.md`) listing target apps +
+          per-app effort. **Zero-disruption** — nothing new auto-blocks a build; adoption is opt-in per app.
+          **HARD HOLD** — local commits only.
+Dependent files reviewed (propagation checklist):
+  [x] scenarios.md                 — NEW Scenario 49 (Existing-App AdminCN Design Adoption / Retrofit); title → V32.44 · Scenarios 1-49
+  [x] docs/planning/V32.44_ADMINCN_FLEET_ROLLOUT_TRACKER.md — NEW rollout tracker (target apps + effort)
+  [x] Master_Prompt.md             — this Sync Impact Report block; V32.44 changelog entry; Scenarios 48→49; active-version marker → V32.44
+  [x] CLAUDE_compact.md            — H1 version → V32.44
+  [x] Framework_Feature_Index.md   — new V32.44 row; Current framework version + footer → V32.44 · 49 scenarios
+  [x] root CLAUDE.md               — canonical counts 48→49 Scenarios (×2 lines)
+  [x] public/documentation-hub.html — sd-counts 48→49 scenarios; version markers → V32.44
+  [x] README.md · Prompt_References.html (×2) — 48→49 scenarios; current-version markers → V32.44
+  Canonical counts:                CHANGED — Scenarios 48→49. UNCHANGED — 39 Rules · 62 Prompts (39 NEW ✨) ·
+                                   39 deliverable files · 14 UI Rules · 147 Checklist items/21 sections ·
+                                   18 Phase Hooks · 6 agents · 5 MCP servers · 20 Bootstrap Steps.
+Ratified: 2026-08-07
+─────────────────────────────────────────────────────────────────────────────────────
+Version:  V32.42 → V32.43
+Bump:     MINOR (additive: 1 NEW deliverable #39 `admincn-starter.md` + a vendored curated slice
+          `specdrivenprompt/starter/admincn/`; establishes a fleet-DEFAULT design starter. No new
+          Rule/Scenario/Prompt; nothing removed or redefined. Deliverables 38→39; Rules 39 ·
+          Scenarios 48 · Prompts 62 — all UNCHANGED.)
+Summary:  Makes AdminCN — Shadcn Admin Dashboard Template (shadcn/studio Pro, v1.0.0) the fleet-DEFAULT
+          UI/UX design starter for every framework-built app, WITHOUT changing the locked backend stack.
+          The *template* expression of the "shadcn/studio Pro is the priority design asset" rule (the
+          V32.11 Pro generator is the *generation* expression). Adoption is UI/design-layer ONLY under
+          INHERIT-not-REPLACE: adopt the `default-layout` left-sidebar app-shell (Rule 8), the theme-preset
+          system, the 50 shadcn/ui components (incl. Pro extras), and the dashboard/RBAC/settings/auth view
+          scaffolds; KEEP tRPC + Prisma + Auth.js v5 and re-wire every adopted view off AdminCN's
+          `fake-db`/`zustand`/`nuqs` data layer via the documented `fake-db`→tRPC graft procedure. New
+          deliverable #39 `admincn-starter.md` is the authority (curated-slice manifest, layout menu with
+          default-layout = default + 5 opt-in, theme-preset catalogue, graft procedure, license/provenance,
+          INHERIT-not-REPLACE contract). A curated slice (~222 files: theme + shell + 50 ui + data-decoupled
+          view scaffolds + PROVENANCE.md) is vendored to `specdrivenprompt/starter/admincn/` and seeded at
+          bootstrap (Step 20d, nested — bootstrap total stays 20). License: paid template, no bundled EULA
+          (underlying shadcn components MIT) — use-in-own/client-projects ONLY, NO redistribution; AIEF repo
+          stays PRIVATE. Per-app rollout to existing apps is DEFERRED (per-seat broadcast). **Zero-disruption**
+          — new apps get the baseline at Phase 0; nothing new auto-blocks a build. **HARD HOLD** — local commits only.
+Dependent files reviewed (propagation checklist):
+  [x] specdrivenprompt/admincn-starter.md (#39) — NEW deliverable authored (design-baseline authority)
+  [x] specdrivenprompt/starter/admincn/       — NEW vendored curated slice (~222 files + PROVENANCE.md)
+  [x] ui-rules.md                  — Rule 8 LAYOUT ARCHETYPE: default-layout = concrete default impl; points at slice + #39
+  [x] phases.md                    — new V32.43 MODEL HOOK (Phase 2.8/3.3/Parts 5-6 start FROM AdminCN baseline); not a new phase hook (18 unchanged)
+  [x] bootstrap.md                 — new Step 20d AdminCN design-starter seed (nested; bootstrap total stays 20); header enumerates 20b/20c/20d
+  [x] Planning_Assistant.md        — Step 7 design picker defaults to the AdminCN baseline
+  [x] templates.md                 — globals.css three-layer bridge note: AdminCN presets reconcile INTO tokens.json, never replace
+  [x] deploy.sh                    — new GROUP copies admincn-starter.md → .ai_prompt/ + starter/admincn/ slice → target
+  [x] Master_Prompt.md             — this Sync Impact Report block; V32.43 changelog entry; Current totals 38→39
+  [x] CLAUDE_compact.md            — H1 version → V32.43; deliverable count 38→39
+  [x] Framework_Feature_Index.md   — new V32.43 row; Current framework version + footer → V32.43
+  [x] root CLAUDE.md               — #39 deliverable entry added; canonical counts 38→39 deliverable files
+  [x] public/documentation-hub.html — "The 38 deliverable files" + sd-counts callout → 39; version marker → V32.43
+  [x] ~/.claude/rules/skill-loadout-card.md — design pipeline ④ adds AdminCN as the default starter (global surface; broadcast note)
+  Canonical counts:                CHANGED — deliverables 38→39. UNCHANGED — 39 Rules · 48 Scenarios ·
+                                   62 Prompts (39 NEW ✨) · 14 UI Rules · 147 Checklist items/21 sections ·
+                                   18 Phase Hooks · 6 agents · 5 MCP servers · 20 Bootstrap Steps.
+Ratified: 2026-08-07
+─────────────────────────────────────────────────────────────────────────────────────
+Version:  V32.41 → V32.42
+Bump:     MINOR (additive: extends Rule 36 CI/CD Pipeline Standard with a Komodo Stack Registration
+          Audit gate + a Phase-6 phase-hook + a new generator artifact `komodo-verify.sh`
+          (cicd-gen --audit); extends Scenarios 45 + 32. No new Rule/Scenario/Prompt/deliverable —
+          Rules 39 · Scenarios 48 · Prompts 62 · deliverables 38 all UNCHANGED.)
+Summary:  Closes the Production-in-Komodo registration gap (verified 2026-08-06 from the Marine-Guardian
+          hand-installed-prod incident). The generated pipeline ASSUMED every env stack already existed
+          at /etc/komodo/stacks/<slug> and never verified it was a Komodo-TRACKED resource — so a prod
+          installed directly on the server was invisible to Komodo's stack list, un-promotable through
+          the pipeline, and silently drifting. Rule 36 now mandates every non-dev environment
+          (Production included) exist as a REGISTERED Komodo Stack; the cicd-gen generator emits a Stack
+          Registration Audit (`komodo-verify.sh` / `cicd-gen --audit`) that confirms each env stack
+          (prod first & loudest) is Komodo-tracked (`km list stacks` / ListStacks API), scripted-registers
+          an untracked stack via a ResourceSync TOML stanza (manual Scenario-32 UI fallback), and is
+          fail-open on tooling / fail-closed on a real untracked-prod finding. Wired as an advisory
+          Phase-6 backstop + a Scenario-45 retrofit step + a scripted-register path in Scenario 32.
+          Also reconciles cicd.md §8's inaccurate "DeployStack API" claim with the real SSH+compose-on-
+          Komodo-tracked-stacks mechanism, and formalizes per-env secure credentials (Server-Setups SOPS
+          vault) + the domain/subdomain pattern + a thin pluggable deploy-platform seam. Production stays
+          MANUAL-trigger — never auto-deployed by merge-to-main. **Zero-disruption** — the audit defaults
+          to advisory/report-only; nothing new auto-blocks a build. **HARD HOLD** — local commits only.
+Dependent files reviewed (propagation checklist):
+  [x] Master_Prompt.md             — this Sync Impact Report block; Rule 36 registration paragraph; V32.42 changelog entry; line-anchor note bumped
+  [x] specdrivenprompt/cicd.md (#32) — §8 reconciled; new §8.1 Stack Registration Audit; §9 per-env creds; §10 emits komodo-verify.sh; Hard rules
+  [x] cicd-gen/ (generator)         — new komodo-verify.sh.template; cicd-gen wires --audit + emits the artifact; README.md documents it
+  [x] scenarios.md                 — Scenario 45 gains a Komodo Stack Registration Audit step; Scenario 32 gains the scripted ResourceSync register path
+  [x] phases.md                    — Phase 6 advisory MODEL HOOK runs komodo-verify.sh (report-only)
+  [x] CLAUDE_compact.md            — Rule 36 one-liner notes the registration audit; H1 title version → V32.42
+  [x] Framework_Feature_Index.md   — new V32.42 row; "Current framework version" + footer → V32.42
+  [x] README.md · documentation-hub.html · Prompt_References.html (×2) — current-version markers bumped V32.41→V32.42
+  Canonical counts:                UNCHANGED — 39 Rules · 48 Scenarios · 62 Prompts (39 NEW ✨) ·
+                                   38 deliverables · 14 UI Rules · 147 Checklist items/21 sections ·
+                                   18 Phase Hooks · 6 agents · 5 MCP servers · 20 Bootstrap Steps.
+Ratified: 2026-08-06
+─────────────────────────────────────────────────────────────────────────────────────
+Version:  V32.40 → V32.41
+Bump:     MINOR (additive: extends deliverable #28 `spec-gap-check.sh` with DESYNC CLASS 5 +
+          wires a Phase 7 self-refresh response; no new Rule, Scenario, Prompt, or deliverable;
+          NO count change. Rules 39 · Scenarios 48 · Prompts 62 · deliverables 38 — all UNCHANGED.)
+Summary:  Closes the staleness gap in V32.40. The Capability Primer is a DERIVED artifact, so as an
+          app grows (new modules/integrations) it goes stale until regenerated. `spec-gap-check.sh`
+          (#28) gains CLASS 5 — Capability-Primer staleness: flags PRIMER MISSING (spec'd app, no
+          docs/primer.yml), PRIMER INCOMPLETE (unfilled `?` fields), PRIMER DRIFT (a known-integration
+          keyword in PRODUCT.md absent from primer.yml INTEGRATIONS). It already runs at the Phase 7
+          Feature-Update pre-flight, so growth is caught automatically. phases.md Phase 7 hook gains the
+          self-refresh RESPONSE: on a primer finding, (a) refresh docs/primer.yml + rerun build-primer.sh,
+          and (b) fire exactly ONE targeted `search-skill <integration>` per drift item — NEVER a full
+          scan-project (token-cost discipline). Advisory + graceful-degrade; fires ONLY at a Feature
+          Update — ordinary daily bugfix/tweak tasks never trigger it. **Zero-disruption** — nothing new
+          auto-blocks a build. **HARD HOLD** — local commits only.
+Dependent files reviewed (propagation checklist):
+  [x] specdrivenprompt/spec-gap-check.sh (#28) — CLASS 5 added (5a MISSING / 5b INCOMPLETE / 5c DRIFT);
+                                     editable PRIMER_INTEGRATION_SIGNALS list; render + header updated;
+                                     shellcheck-clean + functional-tested
+  [x] phases.md                    — Phase 7 pre-flight MODEL HOOK: CLASS-5 in the class list + the
+                                     (a) refresh + (b) targeted-search-skill self-refresh response
+  [x] Framework_Feature_Index.md   — new V32.41 row; "Current framework version" + "Last updated:" → V32.41
+  [x] ~/.claude/templates/capability-primer.md — Maintenance section documents the continuous-refresh loop
+  [x] documentation-hub.html / Prompt_References.html — current-version markers bumped V32.40→V32.41
+  [x] CLAUDE_compact.md            — version marker → V32.41 + changelog clause appended
+  [x] root CLAUDE.md               — #28 deliverable entry notes CLASS 5 (no count change)
+  [x] Master_Prompt.md             — this Sync Impact Report block; V32.41 changelog entry
+  Canonical counts:                UNCHANGED — 39 Rules · 48 Scenarios · 62 Prompts (39 NEW ✨) ·
+                                   38 deliverables · 14 UI Rules · 147 Checklist items/21 sections ·
+                                   18 Phase Hooks · 6 agents · 5 MCP servers · 20 Bootstrap Steps.
+Ratified: 2026-08-02
+─────────────────────────────────────────────────────────────────────────────────────
+Version:  V32.39.1 → V32.40
+Bump:     MINOR (additive: 1 new deliverable #38 `scripts/build-primer.sh`; no new Rule, Scenario, or
+          Prompt; nothing removed or redefined. Deliverables 37→38; Rules 39 · Scenarios 48 · Prompts 62
+          — all UNCHANGED.)
+Summary:  Mechanizes the per-project Capability Primer as a framework deliverable — the sibling of
+          `sync-context.sh` (#27). `scripts/build-primer.sh` regenerates the marker-delimited
+          `<!-- AIEF:PRIMER -->` region of CLAUDE.md — the always-on, loadout-deciding FLAGS slice
+          (stack/realtime · tenancy+RBAC · gov-LGU · public-facing · mobile · data-sensitivity ·
+          integrations) — from `docs/primer.yml`, a flat KEY: value spec the agent authors once from
+          docs/PRODUCT.md. The FLAGS slice makes the skill/plugin loadout PROJECT-aware instead of
+          task-shape-generic; it is consumed by the global `~/.claude/rules/skill-loadout-card.md`
+          STEP 0 + `analyze-confirm-gate.md` HAND-2. Rendered from a structured source (NOT grepped
+          from prose) so loadout-deciding semantics (RBAC=custom-roles-not-3-tier, mobile=responsive-
+          web-not-Expo) are the agent's authored judgement, never a fragile guess; unknown fields stay
+          `?`. Scaffolds `docs/primer.yml` + the on-demand DETAIL slice `docs/CAPABILITY_PRIMER.md` on
+          first run; idempotent pure-function render (no timestamps), atomic write, `--check` (exit 3
+          on drift) + `--file` (path-hardened) — same machinery as sync-context.sh. Proven on CueLane
+          (`docs/planning/CAPABILITY_PRIMER_PROTOTYPE.md`). Per-app rollout is a per-seat broadcast.
+          **Zero-disruption** — nothing new auto-blocks a build; the primer is advisory routing input.
+          **HARD HOLD** — local commits only.
+Dependent files reviewed (propagation checklist):
+  [x] specdrivenprompt/build-primer.sh (#38) — new deliverable (sibling of sync-context.sh #27);
+                                     shellcheck-clean + functional-tested (scaffold/render/idempotent/--check)
+  [x] deploy.sh                    — GROUP 15 cp block + chmod +x; header manifest / tree-diagram /
+                                     DEPLOYED-TARGET / both summary echo blocks list #38 (38-file set);
+                                     docs/primer.yml + docs/CAPABILITY_PRIMER.md added to NEVER-TOUCH
+  [x] Framework_Feature_Index.md   — new V32.40 row; "Current framework version" + "Last updated:" footer
+                                     → V32.40 / 38-file deliverable set
+  [x] root CLAUDE.md               — deliverable list #38 added + canonical counts bumped (38 deliverable
+                                     files, 4 spots)
+  [x] public/documentation-hub.html — hero + sd-counts callout 37→38 files; reconcile-version marker → V32.40
+  [x] Master_Prompt.md             — this Sync Impact Report block; Current totals 37→38; V32.40 changelog entry
+  Canonical counts:                deliverables 37→38; all others UNCHANGED — 39 Rules · 48 Scenarios ·
+                                   62 Prompts (39 NEW ✨) · 14 UI Rules · 147 Checklist items/21 sections ·
+                                   18 Phase Hooks · 6 agents · 5 MCP servers · 20 Bootstrap Steps.
+Ratified: 2026-08-02
+─────────────────────────────────────────────────────────────────────────────────────
+Version:  V32.39 → V32.39.1
+Bump:     PATCH (wiring-only — no new Rule, Scenario, Prompt, or deliverable; no behavioral rule
+          change; NO count change. Wires the already-documented V32.38 Rule 38 Tier-2 Phase-5
+          opt-in gate that had no phases.md conditional. Rules 39 · Scenarios 48 · Prompts 62 ·
+          deliverables 37 — all UNCHANGED.)
+Summary:  Activates the V32.38 Rule 38 Tier-2 Phase-5 blocking gate that was documented but unwired.
+          Adds the `audit: { tier2: { enforce: false } }` stanza to the example inputs.yml (phases.md
+          Phase 3 §5e + this file's Phase 3 block, default OFF) and a conditional □ AUDIT TOOLKIT T2
+          GATE block to phases.md Phase 5 pre-flight: when `audit.tier2.enforce: true`, Phase 5 runs
+          `bash scripts/audit-app.sh --tier=2` as a HARD gate (CRITICAL/HIGH → exit 1 → blocks Phase 6);
+          default OFF → gate skipped, Tier-2 stays manual/on-demand. The Gitleaks pre-commit/lefthook
+          path is DEFERRED — documented-only, not wired. HARD HOLD — local only.
+Dependent files reviewed (propagation checklist):
+  [x] Master_Prompt.md             — this Sync Impact Report block; Rule 38 T2 bullet reconciled to name
+                                     the now-wired phases.md Phase 5 conditional; V32.39.1 changelog entry
+  [x] phases.md                    — inputs.yml §5e audit stanza (Phase 3) + □ AUDIT TOOLKIT T2 GATE
+                                     conditional block (Phase 5 pre-flight) + output-contract section list
+  [x] audit.md                     — §1 T2 opt-in bullet marked WIRED (Phase 5) + T1 pre-commit marked
+                                     DEFERRED/documented-only; banner + tier-table cells reconciled
+  [x] CLAUDE_compact.md            — version-discipline sentence appended (V32.39.1); H1 V32.39→V32.39.1
+  [x] Framework_Feature_Index.md   — new V32.39.1 row; "Current framework version" + "Last updated:" → V32.39.1
+  [x] root CLAUDE.md               — deliverable #35/#36 prose reconciled (T2 Phase-5 gate now wired, default OFF)
+  [x] documentation-hub.html / Prompt_References.html — current-version markers bumped V32.39→V32.39.1
+  [x] scripts/check-framework-alignment.sh — C4 version-capture regex accepts an optional patch segment
+  Canonical counts:                UNCHANGED — 39 Rules · 48 Scenarios · 62 Prompts (39 NEW ✨) ·
+                                   37 deliverables · 14 UI Rules · 147 Checklist items/21 sections ·
+                                   18 Phase Hooks · 6 agents · 5 MCP servers · 20 Bootstrap Steps.
+Ratified: 2026-07-28
+─────────────────────────────────────────────────────────────────────────────────────
+Version:  V32.38 → V32.39
+Bump:     MINOR (additive: new constitutional **Rule 39 — Dev-Freshness (Dev Leads Every Environment)**
+          + 1 new deliverable (#37 `scripts/dev-freshness-check.sh`); nothing removed or redefined.
+          Rules 38→39, deliverables 36→37; Scenarios UNCHANGED at 48.)
+Summary:  Promotes the always-on global discipline `~/.claude/rules/deploy-discipline.md` ("Dev leads
+          every env" invariant) into a first-class framework Rule + deliverable. Local dev must never
+          serve staler code than any environment you ship: a staging/prod/demo deploy is NOT complete
+          until the local dev container has been rebuilt off the same `main`/sha — app AND worker (an
+          app-only `--build` leaves the worker stale). Root cause prevented: a dev stack serves a
+          prebuilt image with NO source bind-mount, so code only appears on REBUILD; shipping to another
+          env recreates THAT env but never touches dev, so dev silently serves stale code while `main`
+          is already current. Detection backstop: `bash scripts/dev-freshness-check.sh [--report-only]
+          [TARGET_DIR]` — checks only CODE services (app/worker/web/api; infra skipped), prefers a
+          stamped git-sha image label, falls back to image-build/container-recreate time vs the `main`
+          commit; exit 2 if any dev code container is behind `main`. Run after any ship + at session/
+          loop start. Fail-open on tooling, fail-closed on drift — same graceful-degrade posture as
+          `lint-deploy.sh`. Wired as an ADVISORY `--report-only` backstop at Phase 6 (never a hard
+          Phase-6 blocker). **Zero-disruption** — nothing new auto-blocks a build. **HARD HOLD** — local
+          only; never authorizes a push/deploy.
+Dependent files reviewed (propagation checklist — the machine-readable Cross-Alignment map):
+  [x] Master_Prompt.md             — Sync Impact Report V32.38→V32.39 (this block); new Rule 39 added
+                                     after Rule 38; V32.39 changelog entry
+  [x] CLAUDE_compact.md            — Rule 39 one-liner added; version-discipline clause appended;
+                                     "all 38 rules" reference bumped 38→39
+  [x] specdrivenprompt/dev-freshness-check.sh (#37) — new deliverable copied from the global fleet
+                                     helper `~/.local/bin/dev-freshness-check.sh` (logic unchanged)
+  [x] deploy.sh                    — Group 14 cp block + chmod +x; header manifest / tree-diagram /
+                                     both summary echo blocks list deliverable #37 (37-file set)
+  [x] Framework_Feature_Index.md   — new V32.39 version row added; "Last updated:" footer bumped to
+                                     V32.39 / 37-file deliverable set
+  [x] phases.md                    — Phase 6 DEV-FRESHNESS BACKSTOP advisory note (Rule 39, --report-only)
+  [x] public/documentation-hub.html — sd-counts callout bumped 38→39 rules / 36→37 files; version markers
+  [x] Prompt_References.html       — hero-eyebrow version marker bumped V32.38→V32.39 (source + public/)
+  [x] root CLAUDE.md               — canonical counts block bumped (39 Rules / 37 deliverable files) +
+                                     deliverable list #37 added + section heading + current-state refs
+  Canonical counts:                Rules 38→39 · deliverables 36→37; all others UNCHANGED — 48 Scenarios ·
+                                   62 Prompts (39 NEW ✨) · 14 UI Rules · 147 Checklist items/21 sections ·
+                                   18 Phase Hooks · 6 agents · 5 MCP servers · 20 Bootstrap Steps.
+Ratified: 2026-07-28
+─────────────────────────────────────────────────────────────────────────────────────
+Version:  V32.37 → V32.38
+Bump:     MINOR (additive: new constitutional **Rule 38 — App Audit Toolkit** + 2 new on-demand
+          deliverables (#35 `.ai_prompt/audit.md`, #36 `scripts/audit-app.sh`) + new **Scenario 48**;
+          nothing removed or redefined. Rules 37→38, Scenarios 47→48, deliverables 34→36.)
+Summary:  Adds a **tiered, Compose-native audit toolkit run MANUAL / ON-DEMAND by default**
+          (owner-set 2026-07-28 — nothing auto-runs; one-shot `audit-app.sh <target>`, trigger
+          "audit this app"): tiers are COST bands — T1 cheap (Gitleaks · Semgrep · tsc · ESLint),
+          T2 moderate (Trivy image+config · OSV-Scanner · Syft SBOM · BackstopJS, alongside the
+          already-wired Playwright/Lighthouse/axe-Pa11y/k6), T3 expensive & never wired
+          (ZAP DAST · Stryker mutation · manual pentest). Blocking gates (pre-commit for Gitleaks;
+          T2 Phase-5 via `inputs.yml`) are explicit per-app OPT-INS, off by default. Rule 38 is the AUTOMATED
+          layer beneath `security.md` L1-L6 and `Security_Checklist.md` (147 items) —
+          INHERIT-not-REPLACE, never an override of the existing human/AI review layers. Closes a
+          confirmed phantom-gate defect (F2): `security.md` claimed "existing Trivy image gates" that
+          `phases.md`/`lint-deploy.sh`/CI never actually implemented — that false claim is replaced
+          with a pointer to the now-real Rule 38 gate. Fail-closed on findings (a CRITICAL finding
+          blocks), fail-open on tooling (a missing/broken scanner warns, never breaks the build) —
+          the same graceful-degrade posture as `lint-deploy.sh` C8. **Zero-disruption**: the
+          manual/on-demand default means no gate lands on any app without an explicit opt-in, so every
+          already-deployed app keeps building unchanged, same spirit as V32.33/34. Two tools (Kubescape, Polaris) are
+          explicitly OUT — the framework's default deploy topology is Compose + Komodo + Traefik, not
+          Kubernetes (Rule 6's K8s scaffold is opt-in only). Runtime/infra scanning (image CVE in CI,
+          registry posture, Falco) and offensive/manual testing (ZAP campaigns, threat modeling) are
+          OUT OF SCOPE for this repo — broadcast notes to Server-Setups and Hacking-Framework,
+          respectively, per the existing pillar boundaries. **HARD HOLD** — local commits only, no
+          push/merge/deploy.
+Dependent files reviewed (propagation checklist — the machine-readable Cross-Alignment map):
+  [x] Master_Prompt.md             — Sync Impact Report V32.37→V32.38 (this block); new Rule 38 added
+                                     after Rule 37; V32.38 changelog entry
+  [x] CLAUDE_compact.md            — counts propagated (37→38 Rules, 47→48 Scenarios, 34→36
+                                     deliverables); version marker bumped V32.37→V32.38 (count
+                                     propagation pass; Rule 38 one-liner body owned by an earlier pass)
+  [ ] scenarios.md                 — new Scenario 48 added after Scenario 47 (this pass); Scenario
+                                     COUNT line propagation OWNED BY A LATER WORKER
+  [ ] security.md                  — F2 fix: replace the false "existing Trivy image gates" claim with
+                                     a pointer to the real Rule 38 / `audit-app.sh` gate — PENDING,
+                                     not touched this pass
+  [ ] .ai_prompt/audit.md (#35)    — PENDING, not authored this pass (tool matrix, tier table,
+                                     per-tool invocation, triage/severity policy, T3 runbooks)
+  [ ] scripts/audit-app.sh (#36)   — PENDING, not authored this pass (T1/T2 gate runner)
+  [x] Framework_Feature_Index.md   — new V32.38 version row added; "Last updated:" footer bumped to
+                                     V32.38 / 38 rules · 48 scenarios / 36-file deliverable set
+  [x] Prompt_References.html      — hero stats "Framework Files" 34→36 (source + synced public/ copy)
+  [x] public/documentation-hub.html — sd-counts callout bumped to 38/48/36
+  [x] root CLAUDE.md               — canonical counts block bumped + deliverable list #35/#36 added
+                                     (Part 2 summary line + all current-state 37/34 references)
+  [ ] LESSONS_REGISTRY.md / ~/.claude/LESSONS_GLOBAL.md — phantom-gate (F2) lesson append — PENDING
+  Canonical counts:                Rules 37→38 · Scenarios 47→48 · deliverables 34→36; all others
+                                   UNCHANGED — 62 Prompts (39 NEW ✨) · 14 UI Rules · 147 Checklist
+                                   items/21 sections · 18 Phase Hooks · 6 agents · 5 MCP servers ·
+                                   20 Bootstrap Steps.
+Ratified: 2026-07-28
+─────────────────────────────────────────────────────────────────────────────────────
+Version:  V32.36 → V32.37
+Bump:     MINOR (purely additive — Design-Fidelity Completion: extends Rule 31 "Design-as-Contract"
+          further, closing the remaining RCA seams around the V32.36 keystone gate. No Rule added or
+          removed — Rule 31 EXTENDED in place; Rules stay 37, Scenarios stay 47, deliverables stay 34.)
+Summary:  Completes the deferred remediations from `docs/planning/DESIGN_DRIFT_RCA_AND_PLAN.md` §5
+          (V32.36 shipped keystone R1+R4 only). **R2** closes the token-derivation seam — the Planning
+          Assistant now actually emits `docs/tokens.json` (DTCG v2025.10), derived from the same
+          color/spacing/radius values as `docs/DESIGN.md`/`docs/MOCKUP.jsx`, so Style Dictionary compiles
+          the mockup's OWN palette rather than a coincidentally-matching seed; `templates.md` gains
+          token-pipeline CONTRACT 5 (token-value-equivalence) asserting a compiled `--sd-color-*` value
+          equals the corresponding `tokens.json` `$value`. **R3** makes Phase 4 Part 5 inherit the
+          prototype's component/markup structure mechanically (copy-then-wire, carrying `data-fdl`
+          anchors) instead of re-authoring screens from prose, lowering the drift the R1 gate has to
+          catch. **R5** closes the compounding bypass: when `docs/MOCKUP.jsx` exists, Phase 3.3's
+          baseline-capture + the Parts-5-6/Phase-5 `design:fidelity` gate become NON-SKIPPABLE — only a
+          genuinely mockup-less app may still skip 3.3. **R6** enforces baseline-update discipline (the
+          Marine-Guardian tail): an intentional design change is valid ONLY via re-approve
+          `docs/MOCKUP.jsx` → `design:fidelity --update-baseline` → commit the new baseline; a design
+          change that leaves the old baseline in place is now an explicit Rule-31 violation. Rule 31 text
+          extended with the R2 (derived token-source) and R6 (baseline-update discipline) clauses.
+          NON-DISRUPTIVE — no existing app is retro-gated; the gate only tightens for apps that already
+          have a `docs/MOCKUP.jsx`. **HARD HOLD** — local only, no push/merge/deploy.
+Dependent files reviewed (propagation checklist — the machine-readable Cross-Alignment map):
+  [x] Master_Prompt.md             — Sync Impact Report V32.36→V32.37 (this block); Rule 31 extended
+                                     with R2 + R6 clauses; V32.37 changelog entry; version marker bumped
+                                     V32.36→V32.37; Canonical counts line UNCHANGED (37/47/34)
+  [x] Planning_Assistant.md        — Step 5/7 PA emits `docs/tokens.json` (DTCG) derived from the same
+                                     values as DESIGN.md/MOCKUP.jsx (R2)
+  [x] templates.md                 — token-pipeline.spec.ts CONTRACT 5 token-value-equivalence +
+                                     `design:validate` derived-vs-seed tokens.json check (R2)
+  [x] phases.md                    — Phase 4 Part 5 mechanical prototype→production inheritance (R3);
+                                     Phase 3.3 skip qualifier — non-skippable when MOCKUP.jsx exists (R5);
+                                     Phase 7 design-change baseline-update discipline (R6)
+  [x] CLAUDE_compact.md            — version marker bumped V32.36→V32.37; Rule 31 one-liner touch-up;
+                                     no count change
+  [x] Framework_Feature_Index.md   — new V32.37 version row added + header latest-version marker bumped
+                                     to V32.37; no count change
+  [x] Prompt_References.html       — hero eyebrow V32.36 → V32.37 (source + synced public/ copy); the
+                                     "Framework Files" stat stays 34 (no deliverable added)
+  [N/A] scenarios.md                — Scenario count unchanged (this bump extends Rule 31 text only,
+                                     no new Scenario)
+  [N/A] ChatGPT_Cross_Audit.md     — RETIRED 2026-07-05, no longer maintained; skip
+  Canonical counts:                UNCHANGED from V32.36 — 37 Rules · 47 Scenarios · 62 Prompts
+                                   (39 NEW ✨) · 14 UI Rules · 34 deliverables · 147 Checklist/21
+                                   sections · 18 hooks
+Ratified: 2026-07-27
+─────────────────────────────────────────────────────────────────────────────────────
+Version:  V32.35 → V32.36
+Bump:     MINOR (purely additive — Design-Fidelity Enforcement: extends Rule 31 "Design-as-Contract"
+          with a second enforced layer — a mockup-anchored LAYOUT-fidelity gate, closing the gap the
+          rule's own problem statement names (verify function never form; baselines captured from the
+          build's own render). Adds on-demand deliverable #34 `scripts/design-fidelity.mjs`. No Rule
+          added or removed — Rule 31 EXTENDED in place; Rules stay 37, Scenarios stay 47.)
+Summary:  The visual contract now has TWO enforced layers: (i) TOKEN fidelity (existing — compiled
+          tokens + the disabled default Tailwind palette prevent primitive drift) and (ii) LAYOUT
+          fidelity against the human-approved `docs/MOCKUP.jsx` (new — a blocking gate detects
+          structural drift against the mockup itself, not a baseline re-derived from the build).
+          `scripts/design-fidelity.mjs` (#34, DEPLOYED like `lint-design.sh`/`design-stop-hook.sh` —
+          NOT a `templates.md` template, so it cannot be dropped under the ≤80K context budget) tags
+          structural landmarks with a stable `data-fdl="<name>"` anchor in both MOCKUP.jsx and the
+          scaffolded build, records each anchor's normalized bounding box + document order + display
+          facts (content-agnostic — never colors/text/pixels, so placeholder-vs-real data never trips
+          it), captures the baseline from the approved mockup/prototype at Phase 3.3 sign-off, and
+          gates the built screens against that mockup baseline at Phase 4 Parts 5-6 + Phase 5 (exit
+          non-zero on MOVED/RESIZED/MISSING/EXTRA/REORDERED). Rule 32(b)'s "Rule 31 visual gate"
+          cross-ref now names both gates. NON-DISRUPTIVE — syncing V32.36 into an existing app drops
+          an inert deployed script + empty baseline scaffolding; no app is retro-gated until it
+          captures a baseline (same posture as V32.35).
+Dependent files reviewed (propagation checklist — the machine-readable Cross-Alignment map):
+  [x] Master_Prompt.md             — Sync Impact Report V32.35→V32.36 (this block); Rule 31 extended
+                                     with the two-layer text; Rule 32(b) cross-ref updated; V32.36
+                                     changelog entry; Current totals/Canonical counts (33→34)
+  [x] design-fidelity.mjs          — NEW deliverable #34 (`scripts/`, deployed, chmod +x) — the
+                                     mockup-anchored layout-fidelity gate script (self-test 5/5 +
+                                     node:test suite green; baseUrl/viewport config honored)
+  [x] CLAUDE_compact.md            — deliverable #34 load-table row added; Rule 31 one-liner extended
+                                     to the two-layer (token + layout) text; stale "36 Rules" → 37
+                                     fixed; version marker bumped V32.35→V32.36 (also closed
+                                     pre-existing drift: "STRICTEST" narrative was stuck at V32.34)
+  [x] phases.md                    — Phase 3.3 Step 8c baseline-capture (manifest authored first, then
+                                     --update-baseline) + Phase 4 Parts 5-6 HARD gate + Phase 5
+                                     blocking gate; `data-fdl` authoring cue
+  [x] bootstrap.md                 — Step 20c anti-drop existence check + config seed (posTol/sizeTol/
+                                     baseUrl/viewport) + empty `{}` manifest seed + DECISIONS_LOG lock
+  [x] deploy.sh                    — GROUP 12 design-fidelity.mjs copy (chmod +x) mirroring #26; config/
+                                     baseline noted as bootstrap-seeded, not deploy-copied
+  [x] templates.md                 — `design:fidelity` package.json script + config/manifest/anchor
+                                     docs (`data-fdl` vocabulary, config shape, manifest shape)
+  [x] ui-rules.md                  — Rule 12/31 cross-ref, `data-fdl` anchor requirement + vocabulary
+  [x] Planning_Assistant.md        — MOCKUP.jsx `data-fdl` anchor-tagging instruction + fidelity
+                                     checklist item
+  [x] vite.config.js               — scoped Vitest `include` to tests/ so the framework `node:test`
+                                     self-test does not break root `npm test`
+  [x] Framework_Feature_Index.md   — new V32.36 version row added + header latest-version marker
+                                     bumped to V32.36 (also flagged, not backfilled, a pre-existing
+                                     gap: the header narrative was already stale since ~V32.29)
+  [x] documentation-hub.html       — #sd-counts (34) + h2 (34) + deliverable table row #34 added
+  [x] Prompt_References.html       — hero "Framework Files" tile 33 → 34 + eyebrow V32.34 → V32.36
+                                     (source + synced public/ copy)
+  [x] CLAUDE.md (root)             — deliverable list #34 added; Canonical Counts + line-6 count → 34
+  [N/A] scenarios.md                — Scenario count unchanged (keystone R1+R4 only; R2/R3/R5/R6
+                                     deferred per the RCA — no new Scenario this bump)
+  [N/A] ChatGPT_Cross_Audit.md     — RETIRED 2026-07-05, no longer maintained; skip
+  Canonical counts:                37 Rules · 47 Scenarios · 62 Prompts (39 NEW ✨) · 14 UI Rules ·
+                                   34 deliverables · 147 Checklist/21 sections · 18 hooks — all
+                                   other counts unchanged from V32.35
+Ratified: 2026-07-27
+─────────────────────────────────────────────────────────────────────────────────────
+Version:  V32.34 → V32.35
+Bump:     MINOR (purely additive — Architecture Posture: the modular monolith is now the EXPLICIT
+          default architecture, paired with a forward-looking microservices ESCALATION standard for
+          the rare app that outgrows it. Adds Rule 37, Scenario 47, and on-demand deliverable #33
+          `microservices.md`. No Rule/Phase/Scenario/security-level removed or redefined.)
+Summary:  Names the architecture posture the framework already builds by default — monolithic
+          DEPLOYMENT (one app · one DB · one Compose stack · one migration history) with modular
+          INTERNALS (tRPC routers + the RBAC feature registry as boundaries; a separated BullMQ
+          worker does not change this). Rule 37 makes it explicit and pairs it with an owner-gated
+          microservices escalation gate. `microservices.md` (#33) is the decompose-the-locked-stack
+          design architecture (bounded contexts · database-per-service · typed cross-service
+          contracts · Valkey/NATS eventing + outbox/saga · Traefik gateway + Komodo per-service ·
+          Auth.js edge→JWT with tenant_id · OpenTelemetry · strangler migration), read ON-DEMAND
+          only when an app clears the escalation gate. NON-DISRUPTIVE — syncing V32.35 into an
+          existing app only drops the inert reference file; NO app is auto-decomposed; the default
+          stays the modular monolith; escalation is an owner-gated [WHAT].
+Dependent files reviewed (propagation checklist — the machine-readable Cross-Alignment map):
+  [x] Master_Prompt.md             — Sync Impact Report V32.34→V32.35 (this block); Rule 37 added
+                                     after Rule 36; V32.35 changelog entry; mega version-anchor
+                                     clause; Current totals + version marker (36→37 / 46→47 / 32→33)
+  [x] microservices.md             — NEW deliverable #33 (.ai_prompt/, on-demand) — the escalation
+                                     standard + decompose-the-locked-stack reference architecture
+  [x] CLAUDE_compact.md            — Rule 37 one-liner after Rule 36; on-demand load-table row;
+                                     Scenario 47 in the scenario menu; version marker
+  [x] scenarios.md                 — Scenario 47 added; line-1 header 1-46 → 1-47
+  [x] phases.md                    — Phase 3 pre-lock architecture-posture decision hook; Phase 6
+                                     CI/CD-authority deploy-topology pointer to Rule 37/microservices.md
+  [x] deploy.sh                    — Group 8: microservices.md copy line + 5 comment mirrors (#33)
+  [x] Framework_Feature_Index.md   — footer counts (37/47/33, V32.35) + new V32.35 version row
+  [x] documentation-hub.html       — #sd-counts (37/47/33) + hero-sub + h2 + deliverable table row #33
+  [x] Prompt_References.html       — hero "Framework Files" tile 32 → 33 (prompts/rules/scenarios n/c)
+  [x] CLAUDE.md (root)             — deliverable list #33; Canonical Counts (37/47/33); line-6 count
+  [N/A] templates.md               — no new template required (microservices.md self-contains its patterns)
+  [N/A] bootstrap.md               — 20 steps unchanged; posture decision lives at Phase 3, not bootstrap
+  [N/A] ChatGPT_Cross_Audit.md     — RETIRED 2026-07-05, no longer maintained; skip
+  Canonical counts:                37 Rules · 47 Scenarios · 62 Prompts (39 NEW ✨) · 14 UI Rules ·
+                                   33 deliverables · 147 Checklist/21 sections · 18 hooks — all
+                                   other counts unchanged from V32.34
+Ratified: 2026-07-27
+─────────────────────────────────────────────────────────────────────────────────────
+Version:  V32.33 → V32.34
+Bump:     MINOR (tombstone-in-place — SpecStory retirement, completing the V32.7 multi-agent
+          retirement (Copilot/Cline gone). Claude Code is the sole agent. Rule 19 slot RETAINED,
+          body replaced with a tombstone — Rules stay 36. Scenario 17 + 18 slots RETAINED,
+          tombstoned in-place — Scenarios stay 46. No Rule/Phase/Scenario/security-level removed
+          or redefined.)
+Summary:  Retires SpecStory (`.specstory/history/` passive capture) — a Copilot-era leftover from
+          when Claude Code was one of several agents needing cross-agent attribution reconciliation.
+          Claude Code is now the sole agent and self-attributes at commit time (Rule 15 +
+          CHANGELOG_AI + Smart Checkpoint), so the passive capture layer is redundant. Governance
+          Sync now sources diffs from GIT instead — two mandatory sources: (A) `git log --since=<last
+          CHANGELOG_AI.md commit>` for committed drift (self-attributed CLAUDE_CODE), and (B)
+          `git status --porcelain` + `git diff HEAD` for uncommitted working-tree edits (the
+          manual-edit case SpecStory used to catch — attributed HUMAN or in-flight Claude).
+          Attribution table collapses from 4 rows (CLAUDE_CODE/COPILOT/HUMAN/UNKNOWN) to 2
+          (CLAUDE_CODE/HUMAN) — no more COPILOT/UNKNOWN inference. ZERO-DISRUPTION for already-
+          deployed apps — their `.specstory/history/` is left in place, untouched, as a frozen
+          legacy audit trail; only NEW apps are born without it. `deploy.sh` is purely additive.
+Dependent files reviewed (propagation checklist — the machine-readable Cross-Alignment map):
+  [x] Master_Prompt.md             — Sync Impact Report V32.33→V32.34 (this block); Rule 19
+                                     tombstoned in-place; Gov-Sync prose → git two-source block
+                                     (tool stack, Rule 3 attribution, Governance Sync section,
+                                     Scenario 12/13, Scenario 17+18 tombstoned in-place, Tool
+                                     Setup Guide, File Ownership table, agent-mode block); Bootstrap-
+                                     in-MP mirror (mkdir line, Step 11 tombstoned); V32.34 changelog
+                                     entry; Current totals + version marker bumped (36/46 unchanged)
+  [x] scenarios.md                 — Scenario 17 + 18 tombstoned in-place; Scenario 12 git-rebase;
+                                     Scenario 13 wording (owned by a companion worker)
+  [x] templates.md                 — Rule 19 mirror tombstone; `.specstory/config.json` write
+                                     steps stopped; attribution collapsed to 2-row (owned by a
+                                     companion worker)
+  [x] bootstrap.md                 — Step 11 tombstoned (step number kept, 20 steps stays);
+                                     mkdir/gitignore updates (owned by a companion worker)
+  [x] phases.md                    — Gov-Sync / "SpecStory Change History" block → git core;
+                                     context budget note (owned by a companion worker)
+  [x] Framework_Feature_Index.md   — SpecStory agent entry marked RETIRED but kept listed (6
+                                     agents holds); footer version (owned by a companion worker)
+  [x] CLAUDE_compact.md            — Rule 19 one-liner RETIRED; agent rows retired; version marker
+                                     (owned by a companion worker)
+  [x] AI_Tools_Reference.md        — SpecStory row RETIRED (6-agent count kept); install-step
+                                     tombstoned (owned by a companion worker)
+  [x] Prompt_References.md/.html   — Gov-Sync → git; bootstrap-desc drop; gitignore line LEFT
+                                     (owned by a companion worker)
+  [x] Planning_Assistant.md        — SpecStory/Gov-Sync mentions updated; agent list marked
+                                     retired (owned by a companion worker)
+  [N/A] memory-governance.md       — Gov-Sync mentions are benign (Gov Sync survives) — verify only
+  [x] deploy.sh                    — additive-only annotation (owned by a companion worker)
+  [N/A] ChatGPT_Cross_Audit.md     — RETIRED 2026-07-05, no longer maintained; skip
+  Canonical counts:                36 Rules · 46 Scenarios · 62 Prompts (39 NEW ✨) · 14 UI Rules ·
+                                   32 deliverables · 147 Checklist/21 sections · 18 hooks — all
+                                   other counts unchanged from V32.33
+Ratified: 2026-07-26
+─────────────────────────────────────────────────────────────────────────────────────
+Version:  V32.32 → V32.33
+Bump:     MINOR (purely additive — Cline `docs/STATE.md` split-brain retirement: `.cline/` is no
+          longer generated for new apps; canonical running state is `docs/STATE.md` +
+          `docs/memory/{lessons.md,agent-log.md}` + `docs/handoffs/` + `docs/tasks/`; `.clinerules`
+          RETIRED — Bootstrap Step 3 stops generating it; an ADDITIVE `.cline/STATE.md` read-fallback
+          closes the Rule-32 gate fail-open in `design-stop-hook.sh` + `spec-gap-check.sh`
+          (`sync-context.sh` already had the fallback). ZERO-DISRUPTION for already-deployed apps —
+          their `.cline/` data is left in place, untouched; `deploy.sh` NEVER_TOUCH/dir-protect list
+          is purely additive (keeps every existing `.cline/`+`.specstory/history` entry, adds
+          `docs/memory`, `docs/handoffs`, `docs/tasks` + the two memory files). New Scenario 46 —
+          per-app `.cline/` → `docs/` migration walkthrough. No Rule/Phase/security-level
+          removed or redefined.)
+Summary:  Retires the `.cline/` vs `docs/` split-brain identified in the V32.33 scope audit
+          (`docs/planning/V32.33_SCOPE.md`) — a Cline-era leftover (Cline deprecated V31) that left
+          two parallel "where does session state live" answers in the framework. `docs/STATE.md` is
+          now the sole canonical path a NEW app is born on; `.clinerules` is retired outright since
+          nothing reads it and its operational rules already live natively as numbered Rules in this
+          Master Prompt. Gate scripts gain an additive `.cline/STATE.md` fallback (never removes a
+          read path) so an old-shape app's Rule-32 evidence gate does not silently fail open.
+Dependent files reviewed (propagation checklist — the machine-readable Cross-Alignment map):
+  [x] Master_Prompt.md             — Sync Impact Report V32.32→V32.33 (this block); literal-moved
+                                     all live `.cline/*` references to `docs/*`; `.clinerules`
+                                     generation stopped (Bootstrap Step 3 tombstone); R8 Write
+                                     Allow-List retargeted to `docs/STATE.md`; V32.33 changelog
+                                     entry; Current totals + version marker bumped
+  [x] bootstrap.md                 — read-first/rewrite/read-order/tasks/memory/handoffs → docs/;
+                                     STATE.md initializer (Step 16) → docs/STATE.md WITH evidence:
+                                     block; .clinerules stop-gen; gitignore comment block
+  [x] worker-playbook.md           — reconciled both the `docs/lessons.md` line AND the
+                                     `.cline/memory/lessons.md` line → docs/memory/lessons.md
+  [x] phases.md                    — all 6 R8 allow-list occurrences → docs/STATE.md
+  [x] scenarios.md                 — NEW Scenario 46 — per-app `.cline/` → `docs/` migration
+  [x] templates.md                 — STATE/evidence template → docs/ WITH evidence: block; stripped
+                                     embedded `.clinerules` block
+  [x] security.md                  — .cline/ → docs/ path references
+  [x] Security_Checklist.md        — .cline/ → docs/ path references
+  [x] scripts/deploy.sh             — additive NEVER_TOUCH/dir-protect entries (docs/memory,
+                                     docs/handoffs, docs/tasks + the two memory files)
+  [x] scripts/design-stop-hook.sh   — additive .cline/STATE.md read-fallback (docs-first) — gate regression verified
+  [x] scripts/spec-gap-check.sh     — additive .cline/STATE.md read-fallback (one line, :94)
+  [N/A] scripts/sync-context.sh     — already has the fallback (retire last, untouched here)
+  [x] CLAUDE_compact.md            — loading-map behavioral rows + Scenario count 45→46
+  [x] AI_Tools_Reference.md        — .cline/ → docs/ path references
+  [x] memory-governance.md         — allow-list entry (annotated legacy .cline/STATE.md) + STATE path → docs/STATE.md
+  [x] Prompt_References.md/.html   — Scenario 46 card + counts
+  [x] Framework_Feature_Index.md   — V32.33 row + footer + 45→46 scenarios
+  [x] public/documentation-hub.html — sd-counts callout 45→46 + stale 34/43→36/46 fix
+  [N/A] ChatGPT_Cross_Audit.md     — RETIRED 2026-07-05, no longer maintained; skip
+  Canonical counts:                36 Rules · 46 Scenarios · 62 Prompts (39 NEW ✨) · 14 UI Rules ·
+                                   32 deliverables · 147 Checklist/21 sections · 18 hooks — all
+                                   other counts unchanged from V32.32
+Ratified: 2026-07-26
+─────────────────────────────────────────────────────────────────────────────────────
+Version:  V32.31 → V32.32
+Bump:     MINOR (additive: new constitutional Rule 36 "CI/CD Pipeline Standard" + new on-demand
+          deliverable #32 `.ai_prompt/cicd.md` + Scenario 45 (CI/CD setup/retrofit) + a Phase 6
+          wiring step + the repo-root `cicd-gen/` generator. No Rule/Phase/security-level removed
+          or redefined)
+Summary:  CI/CD Pipeline Standard (owner-set 2026-07-22) — every app ships via the canonical
+          build-once-promote-forward pipeline: build the image ONCE (dev → staging → prod by
+          promoting the SAME bytes; demo by retag). CI (`ci.yml` governance→quality→security +
+          `docker-publish.yml` build+tag+push) gates and publishes but NEVER auto-deploys an
+          environment. Staging rehearses on a fresh production-data copy (data-first gate, per
+          `staging-refresh-gate.md`). Production migrations are a deliberate manual
+          `prisma migrate deploy` step, rehearsed on staging first, never auto-run on container
+          boot; production DATA is never wiped/reloaded/reseeded. Demo = migrate-YES/reseed-NEVER
+          + a 6-hour golden self-heal (`demo-reset.sh`). Rollback couples the image tag with its
+          matching schema version (or guardrails the mismatch); fix-forward is preferred over
+          rollback. `.ai_prompt/cicd.md` (#32) is the on-demand authority; generated per app by the
+          repo-root `cicd-gen/` generator (staging-refresh delegated to the existing `staging-gate/`
+          generator). HARD HOLD — wiring/deploy stays owner-gated exactly like every other deploy
+          surface.
+Dependent files reviewed (propagation checklist — the machine-readable Cross-Alignment map):
+  [x] Master_Prompt.md             — Sync Impact Report V32.31→V32.32 (this block); new Rule 36
+                                     inserted after Rule 35; V32.32 changelog entry; Current
+                                     totals + version marker bumped
+  [ ] CLAUDE_compact.md            — Rule 36 one-liner; counts (35→36 Rules, 44→45 Scenarios,
+                                     31→32 deliverables); V32.32 segment (owned by a companion worker)
+  [ ] scenarios.md                 — Scenario 45 — CI/CD Setup/Retrofit (owned by a companion worker)
+  [ ] phases.md                    — Phase 6 CI/CD wiring MODEL HOOK (owned by a companion worker)
+  [ ] deploy.sh                    — deliverable #32 `cicd.md` added to the copy list (owned by a
+                                     companion worker)
+  [ ] cicd.md (.ai_prompt)         — NEW deliverable #32 (owned by a companion worker)
+  [ ] Framework_Feature_Index.md   — V32.32 row + footer version (owned by a companion worker)
+  [ ] public/documentation-hub.html — sd-counts callout bump (owned by a companion worker)
+  [ ] CLAUDE.md (project)          — version references, if any (owned by a companion worker)
+  [N/A] ChatGPT_Cross_Audit.md     — RETIRED 2026-07-05, no longer maintained; skip
+  Canonical counts:                36 Rules · 45 Scenarios · 62 Prompts (39 NEW ✨) · 14 UI Rules ·
+                                   32 deliverables · 147 Checklist/21 sections · 18 hooks — all
+                                   other counts unchanged from V32.31
+Ratified: 2026-07-22
+─────────────────────────────────────────────────────────────────────────────────────
 Version:  V32.30 → V32.31
 Bump:     MINOR (extends the existing constitutional Rule 35 "SEO Foundation (Adaptive Baseline)"
           upstream into the design/content phases + extends Scenario 44's retrofit with a
@@ -315,7 +931,7 @@ Ratified: 2026-07-10
 >   on explicit human trigger. No auto-chaining between phases.
 > - For **Cline** (⚠ DEPRECATED V31 — do not use):
 >   Cline was the fallback builder in V30 but is deprecated as of V31 in-place update.
->   `.clinerules` is still generated by Bootstrap for historical parity but nothing reads it.
+>   `.clinerules` is RETIRED (V32.33) — Bootstrap no longer generates it.
 >   Claude Code handles everything Cline used to handle.
 > - For **Copilot chat** (emergency fallback only): paste this entire file as your first message each session.
 > - For **Claude.ai chat** (Planning Assistant only): paste this entire file as your first message. (A Claude Code PA session can instead read it from the project folder.)
@@ -339,7 +955,7 @@ Ratified: 2026-07-10
 > permitted to change what an existing Rule/Phase/security-level MEANS.
 >
 > **VERSION + FILENAME POLICY (added V32.1.2 — 2026-05-28)**
-> The framework's active behavior version is **V32.31**. Filenames and body labels retain `V31` as the base-version anchor for two reasons: (1) deploy.sh and target-project file paths depend on the existing names for backward compatibility, and (2) V31 is the architectural baseline that all V32.x patches build on additively. When you read "V31 primary" or "V31 STRICTEST" in body text, interpret it as "the base-V31 role/discipline, with V32 dispatch patches and the V32.1–V32.6.1 layers, the V32.7 detail-file relocation, the V32.7.1 PA dual-host docs patch, the V32.7.2 dispatch retargeting + deliverable count expansion, the V32.7.3 design baseline back-port surface check, the V32.7.4 lint-deploy.sh Phase 5/6 gate wiring, the V32.7.5 lint-deploy.sh promotion to deliverable #20, the V32.12 design-principles.md on-demand reference (deliverable #24), the V32.13 CI→Docker Hub→Komodo-API auto-deploy pipeline (Phase-6 scaffold templates, no count change), the V32.14 Motion Layer (motion.md on-demand reference deliverable #25 + ui-rules.md Rule 14 — UI rules 13→14), and the V32.16 storage-default decision (MinIO stays the staging/prod default; Cloudflare R2 is a documented, budget-gated OPT-IN — V32.15's R2-default was reverted before any rollout because R2's free tier is account-pooled and cannot be capped/attributed per-app; zero count change), and the V32.17 Design Anti-Slop Gate + Sharpened Craft Rules (scripts/lint-design.sh deliverable #26 — D1–D7 seven cardinal sins + P1a advisory warning; design-principles.md Pillar 8 Anti-AI-Slop + letter-spacing table + five-state render contract; deliverable count 25→26), and the V32.18 App-Hardening Harvest (security.md gains AI/LLM/MCP Security + API-Authorization-Depth + Injection-Family blocks; Security_Checklist.md §15+§16 → 98→114 items / 14→16 sections; harvested from the curated Anthropic-Cybersecurity-Skills bundle — OWASP LLM/API Top 10 + MITRE ATLAS mapped; no other count change), and the V32.19 Anti-Slop Gate Expansion (lint-design.sh #26 gains D8 gradient/clip-to-text P0 + P1b–P1i advisory; design-principles.md #24 Pillar 8 extended tells; designer-skill MIT harvest; deliverable count unchanged 26), and the V32.20 Managed-Context Region (new deliverable **`scripts/sync-context.sh`** #27 — an idempotent regenerator for a marker-delimited `AIEF:MANAGED` region in CLAUDE.md, rendered from `docs/STATE.md` + `docs/DECISIONS_LOG.md`/`docs/PRODUCT.md` + `docs/CHANGELOG_AI.md`, invoked by the Smart Checkpoint POST hook; deliverable count 26→27), and the V32.21 Spec-Persistence Taxonomy + Cross-Artifact Gap-Check (Rule 1 gains a named Spec-Persistence Model addendum — Flow-Forward / **LIVING-SPEC (AIEF default)** / Flow-Back, no new rule number; new deliverable **`scripts/spec-gap-check.sh`** #28 — an advisory, non-blocking scan of `docs/PRODUCT.md` ↔ `inputs.yml` ↔ the Prisma schema ↔ `docs/IMPLEMENTATION_MAP.md` ↔ `docs/STATE.md`, wired at the Phase 7 pre-flight MODEL HOOK + Prompt 2.9; new Scenario 40, the Flow-Back 5-step reconcile loop; deliverable count 27→28, scenario count 39→40), and the V32.22 Attack-Informed Security Hardening (Claude-Red offense→defense harvest; `security.md` gains 10 new hardening blocks — JWT alg-pinning, OAuth/SSO safety, open-redirect, RCE/command-injection prohibition, race/TOCTOU generalization, prototype-pollution, cloud-credential safety, mobile-app safety (conditional), request-smuggling note, clickjacking; `Security_Checklist.md` gains SECTION 17 Auth-Token/OAuth, SECTION 18 Command/Code-Execution, SECTION 19 Cloud-Credential, SECTION 20 Mobile-conditional; Security Checklist 114→135 items / 16→20 sections; no rule/scenario/prompt/deliverable/phase-hook/MCP count change), and the V32.23 Constitution as Versioned Contract (H3 — Spec-Kit harvest; adds the Sync Impact Report machine-readable header at the top of this file (records version delta + bump type + dependent-file propagation checklist on every future bump, replacing the retired `ChatGPT_Cross_Audit.md` propagation-verification role), a SemVer-for-rules subsection (MAJOR = remove/redefine a Rule/Phase/security-level, MINOR = additively introduce a Rule/Scenario/Prompt/gate/phase-hook/deliverable, PATCH = non-behavioral clarification), and a plan-time Constitution-Check gate in `phases.md`'s Universal Pre-Flight (before executing a planned task, confirm it does not violate any of the 33 Rules or the L1-L6 security model; a violation is resolved as [HOW] if technical or escalated as [WHAT] if a product/scope tradeoff); COUNT-NEUTRAL — no rule/scenario/prompt/deliverable/phase-hook/MCP/security-checklist count change), and the V32.24 Spec Expert Panel (A2 — SuperClaude harvest; new Prompt 3.24 dispatches 5 expert-lens Sonnet subagents in parallel — `secure-code-guardian`, `architecture-designer`, `api-designer`, `test-master`, `database-optimizer` — against `docs/PRODUCT.md` at Phase 2.8 design pre-handoff and Phase 3 spec pre-lock; the PM (Opus) synthesizes, dedups, and prioritizes the 5 findings lists then feeds them into the Flow-Back/LIVING-SPEC reconcile (Rule 1 addendum, Scenario 40's loop); CRITICAL findings gate both Phase 2.8 handoff and Phase 3 spec-lock; new Scenario 41 documents the reconcile loop; Prompt count 61→62 (38→39 NEW ✨), Scenario count 40→41, all other counts unchanged), and the V32.25 Tenant-RBAC Standard (new **Rule 34** — the 3-tier backbone `tenant_manager`/`tenant_superadmin`/`tenant_admin` + one-owner-per-tenant partial-unique index + two-way succession + sub-role capability presets + a tenant-scoped custom-role permission-matrix system, referencing new deliverable **`.ai_prompt/rbac.md`** #29; new **Scenario 42** Existing-App RBAC 3-Tier Retrofit; **Security_Checklist SECTION 21** +12 items; Rules 33→34, Scenarios 41→42, deliverables 28→29, Security Checklist 135→147/20→21 sections; UI rules stay 14, prompts stay 62), and the V32.26 Sidebar-Footer White-Label Standard (fleet-wide UI convention — every app-shell `SidebarFooter` renders a muted app version tag `v{X.Y.Z}` (versioning-standard.md; `-rc.N` on staging, clean on prod) plus a "Developed by Powerbyte IT Solutions" credit whose whole label is one link opening a new tab to `https://www.powerbyteitsolutions.com/` (`target="_blank" rel="noopener noreferrer"`), wired as a Phase 4 Parts 5-6 output-contract/gate-closure item rather than a new numbered UI rule; mirrors global `~/.claude/rules/design-defaults.md` Entry 3; UI rules stay 14, zero Rule/Scenario/Prompt/deliverable count change), on top." V32 = Zero Opus Execution. V32.1 = Sonnet subagent context-overhead note. V32.2 = Dispatch Discipline (R6–R9). V32.3 = Smart Governance Hydration (R6 size qualifier + Governance Extraction Schema). V32.4 = react-doctor per-phase integration. V32.4.1 = post-ship consistency sweep. V32.5 = Designer-Skills Phase Integration — designer-skills bundle prescribed at Phase 2.8 / Phase 4 Parts 5-6 / Phase 7 with **INHERIT-not-REPLACE** contract over PA's `docs/DESIGN.md` + `docs/MOCKUP.jsx`. V32.5.1 = Designer-Skills Gate-Closure Enforcement + Governance Hook Repair — gate-closure language ("phase cannot close until `/design-review` returns green") added to all three V32.5 MODEL HOOKs in `phases.md`; `memory-governance.md §3` hook template bumped (V32)→(V32.3); §3 injection points enumerated as 13 (was 10 with Phase 4 collapsed); Output Equivalence Guarantee and Prompt 3.19 mid-session-rescue pointer documented in §3; Prompt_References.md/.html gain "How the Spec-Driven AI Mega Prompt Works" overview section with the three-window contract + Opus/Sonnet/gate-keeper/memory roles table; HTML hero eyebrow bumped v31→v32.5.1 (no count/rule change). V32.5.2 = Prompt_References HTML Parity Fix — the HTML "How the Mega Prompt Works" section brought to full content parity with the markdown (Gate-keepers/Memory Model cells regain phase+version annotations; "Why this prevents thrashing" callout restored to 4-bullet structure); no behavior change. V32.5.3 = Clean-Slate Rebuild Scenario — adds Prompt 3.23 (Clean-Slate Rebuild from Preserved Spec) to Prompt_References as a three-stage recovery flow (preserve docs/ + CREDENTIALS.md → nuke generated app → re-scaffold from PRODUCT.md); count bump 60→61 prompts / 37→38 NEW ✨ (scenarios count unchanged — this is a Prompt addition only, not a new named framework scenario). V32.5.4 = Cosmetic Sweep + Changelog Reorder — closes 3 minor findings from V32.5.3 5-Scout audit: (1) Prompt_References.html warning #4 in 3.23 card uses `callout warning` class for visual parity with the other three warnings; (2) ChatGPT cross-audit `### V32.5 verified counts` heading bumped to `### V32.5.3 verified counts` to match the version that last set the canonical counts; (3) Master_Prompt.md V32.4.1 changelog entry reordered above V32.5 (was below) — chronologically correct position after V32.4 and before any V32.5.x. Zero count/behavior change. V32.5.5 = DECISIONS_LOG ↔ PRODUCT.md Back-Port Surface Check — adds a non-blocking pre-flight MODEL HOOK at Phase 7 and Phase 8 that dispatches a Sonnet Scout to compare every locked decision in `docs/DECISIONS_LOG.md` against `docs/PRODUCT.md` and surfaces a "📋 Back-Port Candidates" report (decisions answered in the log but never written back into the spec). Surface-and-inform only — Rule 1 unchanged (PRODUCT.md stays human-only); the human back-ports, defers, or logs `spec-divergent: <reason>` to suppress. Zero count/rule/scenario/prompt change. V32.6 = Interactive Prototype & Simulation Phase — adds **Phase 3.3** (runs in Claude Code) between Phase 3 and Phase 3.5: builds a **durable, client-validated interactive prototype with a project-defined simulated backend** (browser-storage / in-memory mock service / static fixtures — chosen per app, always mirroring the Phase 3 schema shape) from the PA baseline (`docs/DESIGN.md` + `docs/MOCKUP.jsx`) + spec; the validated prototype becomes the behavioral blueprint Phase 4 wires the production backend to (swap simulated→real behind the same interface boundary). Born from the Orqafy lesson — spec completion ≠ a working app; wiring breakage discovered at Phase 8 is the most expensive to fix, so behavior/wiring validation is pulled forward before scaffolding. Design-system finalization (designer-skills `/design-tokens` EXPAND, `/design-review`, `/design-refine`) **MOVES from Phase 4 Parts 5-6 to Phase 3.3**; Parts 5-6 becomes wire-to-production-backend + a regression `/design-review`. New outputs: `docs/PROTOTYPE.md` (durable blueprint) + `prototype/` + client sign-off to `docs/DECISIONS_LOG.md`. Hard gate-closure (mirrors V32.5.1): `/design-review` green + every Core User Flow walked + client sign-off before Phase 3.5 begins. Rule 1 unchanged (PRODUCT.md stays human-only); top-level phases stay 0–8 (3.3 is a sub-phase). Phase 3.3's governance pre-flight makes `memory-governance.md §3` enumerate 14 phase hooks (was 13); rule/scenario/prompt/bootstrap counts unchanged. V32.6.1 = Prompt 3.23.C Semantic Shift — replaces the original V32.5.3 paste-able "3.23.C — Full Rebuild from PRODUCT.md" mega-prompt with a "3.23.C — Resume the rebuild manually" handoff card that points the human at Prompt 1.3.1 (Phase 0 Bootstrap) with an optional Prompt 2.9 (Validate Spec Consistency) pre-check. Rationale: a single paste-prompt driving Phase 0 → 6.5 recreates the autopilot/thrashing surface the framework exists to prevent AND routes around the V32.6 Phase 3.3 hard gate; manual phase-by-phase rebuild gets fresh context + explicit human authorization at every boundary, which is faster AND safer. Zero count/rule/scenario/prompt/bootstrap/phase-hook change — Prompt 3.23 still occupies its catalog slot; only stage C's body shape changed (paste-able prompt → resume-card). V32.7 = Detail-File Relocation — all 7 detail files relocated from always-on `.claude/rules/` to on-demand `.ai_prompt/`; root cause = subagent baseline-context inheritance ~100–130K tokens injected before task prompt, consuming 50–65% of Sonnet's 200K window; CLAUDE.md is now the ONLY auto-loaded file; ~24 pre-flight Read-hardening edits in phases.md + memory-governance.md; Levers 2 (spec-executor subagent) and 3 (settings.json skill budget) deferred; counts unchanged: 17 deliverable files (relocated, not added), 30 rules, 35 scenarios, 61 prompts, 14 phase hooks. V32.7.1 = Planning Assistant Dual-Host — PA interviewer role may run in a dedicated Claude Code PA session (preferred) or a Claude.ai chat; role distinction preserved (PA ≠ Phase 3+ build session); additive docs-only, counts unchanged. V32.7.2 = TODO-7a Levers 2-3 (dispatch restoration complete) — adds spec-executor.md (custom Sonnet executor subagent deployed to .claude/agents/, tools: Read/Write/Edit/Bash/Grep/Glob, model sonnet, mcpServers: []) + settings.json (skillListingBudgetFraction 0.01 + maxSkillDescriptionChars 1024); executor dispatch (R1/R5/R7) retargeted to Agent(subagent_type: "spec-executor") with Agent(model:"sonnet") fallback for out-of-allow-list tasks; deliverable count 17→19; other counts unchanged. V32.7.3 = Design Baseline Back-Port Surface Check — the design analogue of V32.5.5, same posture. V32.5/V32.6 prevent mockup→app design drift DURING the build (INHERIT-not-REPLACE + the Phase 3.3 hard gate), but no rule covered an owner-approved design change (palette/theme/layout) landing AFTER the Phase 3.3 gate closes — during Phase 4 Parts 5-6, Phase 7, or Phase 8 — so the baseline goes stale and the app diverges (the Marine-Guardian failure mode: Meta-Dark mockup frozen 2026-05-05, shadcn-neutral re-skin shipped 2026-06-15, baseline never updated). Adds a non-blocking pre-flight MODEL HOOK at Phase 7 and Phase 8 that dispatches a Sonnet Scout to diff the app's live theme tokens (`apps/[web]/src/app/globals.css` CSS variables + the Tailwind theme config) against the baseline tokens in `docs/DESIGN.md` / `docs/MOCKUP.jsx` and surfaces a "🎨 Design Back-Port Candidates" report — **this token-diff is also the detection mechanism that closes framework TODO-21 (per-wave `globals.css` ↔ `MOCKUP.jsx` token diff).** On an owner-approved divergence the requirement is INHERIT-not-REPLACE back-port: update `docs/DESIGN.md` token values AND annotate/expand `docs/MOCKUP.jsx` to match (annotate/expand the existing mockup — full regenerate ONLY on a wholesale design change; the mockup stays the UI source of truth). `docs/DESIGN.md`/`docs/MOCKUP.jsx` are NOT human-only — Claude Code MAY write the back-port, but only to mirror an already-approved change, never to invent design intent (Rule 1 preserved — the design *decision* stays the human's). To leave a divergence un-mirrored, the human logs `design-divergent: <reason>` in DECISIONS_LOG.md to suppress it. Surface-and-inform only — NEVER gates phase closure. Zero count/rule/scenario/prompt/bootstrap/phase-hook change (mirrors V32.5.5: a non-blocking pre-flight MODEL HOOK is not a new §3 phase-hook injection point). V32.7.4 = lint-deploy.sh Phase 5/6 Gate Wiring — `scripts/lint-deploy.sh` named as the pre-deploy footgun gate in `phases.md` Phase 5 OUTPUT CONTRACT (`□ lint-deploy.sh: exit 0`) + Phase 6 PRE-DEPLOY FOOTGUN GATE block (C1–C8: compose parse, certresolver case, tls=true label, 127.0.0.1 healthcheck, no build: in stage/prod, push.sh login guard, start.sh project-name, shellcheck); tooling-gate reference, not a new rule/scenario/prompt; deliverable count unchanged at 19 (the script was referenced but not yet shipped by deploy.sh). V32.7.5 = lint-deploy.sh Promoted to Deliverable #20 — `lint-deploy.sh` added as a framework deliverable; `deploy.sh` now copies it to target `scripts/lint-deploy.sh` (overwrite-with-backup + chmod +x) so the Phase 5/6 gate referenced at V32.7.4 actually exists in target apps; **deliverable count 19 → 20.** All other canonical counts unchanged: 30 Rules · 35 Scenarios · 19 Bootstrap Steps · 61 Prompts (38 NEW ✨) · 11 UI Rules · 9 V32 Dispatch Rules · 14 Phase Hooks. The Framework_Feature_Index.md footer always reflects the current canonical version. V32.8 = Design-as-Contract + Verifiable-Done & Learning Loop — adds **Rule 31 "Design-as-Contract"** (the approved design system compiles via Style Dictionary v5 from `docs/tokens.json` into `globals.css` + `tokens.d.ts` at Phase 3.3 through the mandatory three-layer bridge `--sd-color-* → --primary → --color-primary`; compiled tokens PREVENT primitive drift via explicit Tailwind-palette disable, a Playwright `toHaveScreenshot` gate against a two-stage fixture-deterministic baseline DETECTS structural drift and blocks phase completion; new Phase-7 surfaces need a mockup update first) + **Rule 32 "Verifiable-Done + Learning Loop"** (contract-first acceptance, machine-check-default with labeled human-attestation exception, proportional; every done-claim carries `{contract, check_command, captured_output}` enforced by a real `settings.json` Stop hook; one `LESSONS_REGISTRY.md` consulted at work-start / done-claim / failure-time, scope-routed promotion to deliverable / hook / memory with framework-scope inheriting via `deploy.sh`). **Rule count 30 → 32** (Spec A = Rule 31, Spec B+C = Rule 32). Chain spike-proven GREEN at commit `14a1813` on next 16.2.9 / tailwindcss 4.3.1 / style-dictionary 5.4.4 / Playwright 1.61. Canonical counts after V32.8: **32 Rules** · 39 Scenarios · 20 Bootstrap Steps · 61 Prompts (38 NEW ✨) · **12 UI Rules** (bumped by Rule 31 token rules) · 9 V32 Dispatch Rules · **17 Phase Hooks** (bumped by Rule 32 registry consult hooks) · **22 deliverable files** · **6 memory-governance sections**. V32.9 = Compliance & Data Privacy Layer — adds **Rule 33 "Compliance & Data Privacy"** + a new on-demand deliverable **`.ai_prompt/privacy.md`** (read-on-demand like `security.md`, NOT auto-loaded). PH Data Privacy Act (RA 10173 / NPC IRR) is the PRIMARY regime; GDPR (EU) + CCPA/CPRA (US-CA) are SECONDARY deltas; the model is organized on ISO/IEC 27701 (PIMS). The 9 sub-items, delivered across the framework: (1) privacy.md as the on-demand compliance authority; (2) PH DPA primary / GDPR-CCPA secondary / ISO 27701 organizing; (3) PA captures a gov/LGU client flag + DPO + data jurisdictions in PRODUCT.md; (4) gov/LGU flag → WCAG 2.2 AA HARD GATE at Phase 5 (WARN otherwise); (5) the 6 data-subject rights implemented as app features via a tRPC DSR endpoint contract; (6) Prisma ConsentLog / DataSubjectRequest / retention models + BullMQ retention/erasure jobs; (7) breach notification to NPC + data subjects within 72h (NPC Circular 16-03); (8) honest configurable compliance-footer (design-claim badges ON, third-party cert badges OFF unless held); (9) STANDING gap-reminder — PA + build phases actively flag missing privacy/protection items. **Rule count 32 → 33** (Rule 33 = Compliance & Data Privacy). Canonical counts after V32.9: **33 Rules** · 39 Scenarios · 20 Bootstrap Steps · 61 Prompts (38 NEW ✨) · **13 UI Rules** (bumped by the gov/LGU WCAG-AA accessibility rule) · 9 V32 Dispatch Rules · **18 Phase Hooks** (bumped by the privacy gap-reminder pre-flight consult) · **23 deliverable files** (privacy.md added) · 6 memory-governance sections · **12 PRODUCT.md sections** (Compliance added) · Planning Assistant **12 rules** (privacy-capture rule added). *(The Post-Generation security-checklist item count is finalized in V32.9 S3 — not set here.)* V32.10 = Mandatory Docker Resource Limits on Stage/Prod Compose — `templates.md` now mandates that every framework app's stage/prod compose services declare top-level `mem_limit` / `mem_reservation` / `cpus` keys (NOT a `deploy:` block — Komodo / `docker compose up` run non-swarm where `deploy.resources` is silently ignored). A per-service-role default table is provided (e.g. app 640m/192m/1.0, worker 512m/128m/1.0, postgres 512m/128m/1.0). Critical caveat: a DB's `mem_limit` MUST exceed its buffer-pool size (e.g. `innodb_buffer_pool_size=512M` → cap ≥ 768m) or the container OOM-kills under load. Dev compose is exempt. **Zero count change — templates.md behavior addition only; no new rule/scenario/prompt/deliverable/file.** V32.12 = Design-Principles On-Demand Reference — adds new on-demand deliverable `.ai_prompt/design-principles.md` (library-agnostic UI/UX principles: hierarchy & layout, spacing, typography, the 9-state control contract, UX laws, WCAG by success-criterion + a QA checklist), condensed from typeui.sh fundamentals (MIT). Read at the design phases (2.8 / 3.3 / Parts 5-6 / 7) when `docs/DESIGN.md` / `ui-rules.md` are silent on a pattern, component state, or accessibility approach. INHERIT-not-REPLACE — principles win for structural decisions, the design system wins for token values; conflicts logged to DECISIONS_LOG.md. Also hardens the PA's `docs/DESIGN.md` QA gate (required states + interactive patterns + anti-patterns + QA checklist). Deliverable count 23→24; ALL other canonical counts unchanged (33 Rules · 39 Scenarios · 20 Bootstrap · 61 Prompts · 13 UI Rules · 18 Phase Hooks · 5 MCP servers). V32.11 = shadcn/studio Pro as Default Design Generator — the owner's licensed shadcn/studio Pro MCP (user-global, build-time generator; output = plain shadcn/ui) becomes the framework's DEFAULT design-generation path, phase-routed (Phase 3.3 = `/cui`→`/iui`→`/rui` trio; Phase 4 Parts 5-6 = `/cui`+`/rui`, design frozen; Phase 7 = `/cui` + `/iui` new-sections-only + `/rui`; `/ftc` conditional on a Figma MCP + Figma source). INHERIT-not-REPLACE: generated blocks reconcile to compiled tokens (Rule 12), never override `docs/DESIGN.md`; fallback when unreachable = plain shadcn/ui MCP + Blocks. New MCP doc `AI_Tools_Reference.md §2.5`; the two stale "shadcn-studio = not recommended (paid)" notes reconciled. **MCP servers 4 → 5 (3 project-wired + 1 user-global + 1 plugin); all other canonical counts unchanged (33 Rules · 39 Scenarios · 13 UI Rules · 61 Prompts).** V32.13 = CI → Docker Hub → Komodo-API Auto-Deploy (fleet Watchtower-free standard) — every framework-scaffolded app's Docker/deploy phase now emits a **push-to-main → build+push image → call the Komodo API to redeploy staging with the exact SHA** pipeline, replacing the V27 Komodo registry-poll (hourly, too slow) and Watchtower for app deploys. Komodo's git-listener webhook does NOT fire for `files_on_host` stacks, so CI drives the deploy via the API (`UpdateVariableValue` pins `<APP>_STAGING_TAG` to the SHA → `DeployStack` → poll `GetUpdate`); proven in production by the `fmo-fisherfolk` stack. Two app-side files are scaffolded at the deploy phase (vendored from the canonical Server-Setups sources, NOT new framework deliverables): `deploy/komodo-deploy.sh` (the portable CI helper — sends the Cloudflare-required browser `User-Agent` to `kmd.powerbyte.app`) and the V32.13 `.github/workflows/docker-publish.yml` (build → push `sha-XXXXXXX` + `staging-latest` multi-arch → `Deploy to Komodo` step). Staging compose service image = `${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${STAGING_IMAGE_TAG:-staging-latest}`; Komodo staging stack env `STAGING_IMAGE_TAG = [[<APP>_STAGING_TAG]]`. Repo Actions secrets: `DOCKERHUB_USERNAME/TOKEN` + `KOMODO_API_KEY/SECRET` (the dedicated `github-actions-ci` key, never the master key). **Production is NEVER auto-deployed — manual promotion only** (fleet prod-gating policy; no prod step in the push-to-main workflow). Canonical source of truth: `Server-Setups/Powerbyte-Hostinger/runbooks/komodo-ci-deploy.md` + `komodo/ci-deploy/{komodo-deploy.sh,docker-publish.template.yml}`. Framework files changed: `templates.md` (new Rule 5c with the full templates + per-app enable checklist), `phases.md` (Phase 4 Part 8 docker-publish.yml V32.13 variant + `.env.staging` tag-variable note + Phase 6 staging-auto-deploy enable checklist). **The app-side workflow + helper are Phase-6 scaffold templates (like the existing start.sh/push.sh), NOT new deploy.sh deliverables — ZERO count change: 33 Rules · 39 Scenarios · 20 Bootstrap Steps · 61 Prompts (38 NEW ✨) · 13 UI Rules · 18 Phase Hooks · 24 deliverable files · 5 MCP servers all unchanged.**
+> The framework's active behavior version is **V32.45**. Filenames and body labels retain `V31` as the base-version anchor for two reasons: (1) deploy.sh and target-project file paths depend on the existing names for backward compatibility, and (2) V31 is the architectural baseline that all V32.x patches build on additively. When you read "V31 primary" or "V31 STRICTEST" in body text, interpret it as "the base-V31 role/discipline, with V32 dispatch patches and the V32.1–V32.6.1 layers, the V32.7 detail-file relocation, the V32.7.1 PA dual-host docs patch, the V32.7.2 dispatch retargeting + deliverable count expansion, the V32.7.3 design baseline back-port surface check, the V32.7.4 lint-deploy.sh Phase 5/6 gate wiring, the V32.7.5 lint-deploy.sh promotion to deliverable #20, the V32.12 design-principles.md on-demand reference (deliverable #24), the V32.13 CI→Docker Hub→Komodo-API auto-deploy pipeline (Phase-6 scaffold templates, no count change), the V32.14 Motion Layer (motion.md on-demand reference deliverable #25 + ui-rules.md Rule 14 — UI rules 13→14), and the V32.16 storage-default decision (MinIO stays the staging/prod default; Cloudflare R2 is a documented, budget-gated OPT-IN — V32.15's R2-default was reverted before any rollout because R2's free tier is account-pooled and cannot be capped/attributed per-app; zero count change), and the V32.17 Design Anti-Slop Gate + Sharpened Craft Rules (scripts/lint-design.sh deliverable #26 — D1–D7 seven cardinal sins + P1a advisory warning; design-principles.md Pillar 8 Anti-AI-Slop + letter-spacing table + five-state render contract; deliverable count 25→26), and the V32.18 App-Hardening Harvest (security.md gains AI/LLM/MCP Security + API-Authorization-Depth + Injection-Family blocks; Security_Checklist.md §15+§16 → 98→114 items / 14→16 sections; harvested from the curated Anthropic-Cybersecurity-Skills bundle — OWASP LLM/API Top 10 + MITRE ATLAS mapped; no other count change), and the V32.19 Anti-Slop Gate Expansion (lint-design.sh #26 gains D8 gradient/clip-to-text P0 + P1b–P1i advisory; design-principles.md #24 Pillar 8 extended tells; designer-skill MIT harvest; deliverable count unchanged 26), and the V32.20 Managed-Context Region (new deliverable **`scripts/sync-context.sh`** #27 — an idempotent regenerator for a marker-delimited `AIEF:MANAGED` region in CLAUDE.md, rendered from `docs/STATE.md` + `docs/DECISIONS_LOG.md`/`docs/PRODUCT.md` + `docs/CHANGELOG_AI.md`, invoked by the Smart Checkpoint POST hook; deliverable count 26→27), and the V32.21 Spec-Persistence Taxonomy + Cross-Artifact Gap-Check (Rule 1 gains a named Spec-Persistence Model addendum — Flow-Forward / **LIVING-SPEC (AIEF default)** / Flow-Back, no new rule number; new deliverable **`scripts/spec-gap-check.sh`** #28 — an advisory, non-blocking scan of `docs/PRODUCT.md` ↔ `inputs.yml` ↔ the Prisma schema ↔ `docs/IMPLEMENTATION_MAP.md` ↔ `docs/STATE.md`, wired at the Phase 7 pre-flight MODEL HOOK + Prompt 2.9; new Scenario 40, the Flow-Back 5-step reconcile loop; deliverable count 27→28, scenario count 39→40), and the V32.22 Attack-Informed Security Hardening (Claude-Red offense→defense harvest; `security.md` gains 10 new hardening blocks — JWT alg-pinning, OAuth/SSO safety, open-redirect, RCE/command-injection prohibition, race/TOCTOU generalization, prototype-pollution, cloud-credential safety, mobile-app safety (conditional), request-smuggling note, clickjacking; `Security_Checklist.md` gains SECTION 17 Auth-Token/OAuth, SECTION 18 Command/Code-Execution, SECTION 19 Cloud-Credential, SECTION 20 Mobile-conditional; Security Checklist 114→135 items / 16→20 sections; no rule/scenario/prompt/deliverable/phase-hook/MCP count change), and the V32.23 Constitution as Versioned Contract (H3 — Spec-Kit harvest; adds the Sync Impact Report machine-readable header at the top of this file (records version delta + bump type + dependent-file propagation checklist on every future bump, replacing the retired `ChatGPT_Cross_Audit.md` propagation-verification role), a SemVer-for-rules subsection (MAJOR = remove/redefine a Rule/Phase/security-level, MINOR = additively introduce a Rule/Scenario/Prompt/gate/phase-hook/deliverable, PATCH = non-behavioral clarification), and a plan-time Constitution-Check gate in `phases.md`'s Universal Pre-Flight (before executing a planned task, confirm it does not violate any of the 33 Rules or the L1-L6 security model; a violation is resolved as [HOW] if technical or escalated as [WHAT] if a product/scope tradeoff); COUNT-NEUTRAL — no rule/scenario/prompt/deliverable/phase-hook/MCP/security-checklist count change), and the V32.24 Spec Expert Panel (A2 — SuperClaude harvest; new Prompt 3.24 dispatches 5 expert-lens Sonnet subagents in parallel — `secure-code-guardian`, `architecture-designer`, `api-designer`, `test-master`, `database-optimizer` — against `docs/PRODUCT.md` at Phase 2.8 design pre-handoff and Phase 3 spec pre-lock; the PM (Opus) synthesizes, dedups, and prioritizes the 5 findings lists then feeds them into the Flow-Back/LIVING-SPEC reconcile (Rule 1 addendum, Scenario 40's loop); CRITICAL findings gate both Phase 2.8 handoff and Phase 3 spec-lock; new Scenario 41 documents the reconcile loop; Prompt count 61→62 (38→39 NEW ✨), Scenario count 40→41, all other counts unchanged), and the V32.25 Tenant-RBAC Standard (new **Rule 34** — the 3-tier backbone `tenant_manager`/`tenant_superadmin`/`tenant_admin` + one-owner-per-tenant partial-unique index + two-way succession + sub-role capability presets + a tenant-scoped custom-role permission-matrix system, referencing new deliverable **`.ai_prompt/rbac.md`** #29; new **Scenario 42** Existing-App RBAC 3-Tier Retrofit; **Security_Checklist SECTION 21** +12 items; Rules 33→34, Scenarios 41→42, deliverables 28→29, Security Checklist 135→147/20→21 sections; UI rules stay 14, prompts stay 62), and the V32.26 Sidebar-Footer White-Label Standard (fleet-wide UI convention — every app-shell `SidebarFooter` renders a muted app version tag `v{X.Y.Z}` (versioning-standard.md; `-rc.N` on staging, clean on prod) plus a "Developed by Powerbyte IT Solutions" credit whose whole label is one link opening a new tab to `https://www.powerbyteitsolutions.com/` (`target="_blank" rel="noopener noreferrer"`), wired as a Phase 4 Parts 5-6 output-contract/gate-closure item rather than a new numbered UI rule; mirrors global `~/.claude/rules/design-defaults.md` Entry 3; UI rules stay 14, zero Rule/Scenario/Prompt/deliverable count change), and the V32.32 CI/CD Pipeline Standard (Rule 36, build-once-promote-forward pipeline, deliverable #32 `cicd.md`, Scenario 45), and the V32.33 Cline `.cline/` Split-Brain Retirement (`.clinerules` retired outright — Bootstrap Step 3 stops generating it; canonical running-state path is `docs/STATE.md` + `docs/memory/` + `docs/handoffs/` + `docs/tasks/`; an additive `.cline/STATE.md` read-fallback in `design-stop-hook.sh` + `spec-gap-check.sh` closes the Rule-32 gate fail-open for pre-V32.33 apps; zero-disruption — already-deployed apps' `.cline/` data is untouched; new Scenario 46; Scenarios 45→46, all other counts unchanged), and the V32.34 SpecStory Retirement (Rule 19 tombstoned in-place — SpecStory passive `.specstory/history/` capture retired, completing the V32.7 multi-agent retirement; Governance Sync now sources diffs from git via two mandatory sources — committed since last CHANGELOG_AI.md commit + uncommitted `git diff HEAD`; Scenario 17+18 tombstoned in-place; attribution collapses to CLAUDE_CODE/HUMAN; zero-disruption — already-deployed apps' `.specstory/history/` is untouched as a frozen legacy audit trail; Rules stay 36, Scenarios stay 46, all other counts unchanged), and the V32.35 Architecture Posture (**Rule 37** — the modular monolith is the explicit DEFAULT architecture, microservices an owner-gated ESCALATION triggered only by a real need; on-demand deliverable **#33 `microservices.md`** = the decompose-the-locked-stack design architecture — bounded contexts, database-per-service, typed cross-service contracts, Valkey/NATS eventing + outbox/saga, Traefik gateway + Komodo per-service, Auth.js edge→JWT with tenant_id, OpenTelemetry, strangler migration; **Scenario 47**; NON-DISRUPTIVE — no existing app is re-architected, default stays the modular monolith; Rules 36→37, Scenarios 46→47, deliverables 32→33, all other counts unchanged), and the V32.36 Design-Fidelity Enforcement (EXTENDS **Rule 31 — Design-as-Contract** in place with a second enforced layer — mockup-anchored LAYOUT fidelity alongside the existing TOKEN fidelity; new on-demand deliverable **#34 `scripts/design-fidelity.mjs`**, DEPLOYED not templated — a `data-fdl`-anchored, normalized-bounding-box, content-agnostic Playwright gate that diffs the built screens against a baseline captured from the approved `docs/MOCKUP.jsx`/prototype at Phase 3.3 sign-off, gated blocking at Phase 4 Parts 5-6 + Phase 5; closes the "verify function never form / baseline captured from the build itself" gap named in Rule 31's own problem statement; Rule 32(b)'s "Rule 31 visual gate" cross-ref now names both gates; keystone-first R1+R4 only, R2/R3/R5/R6 deferred per the RCA; no new Rule — Rules stay 37, Scenarios stay 47, deliverables 33→34, all other counts unchanged), and the V32.37 Design-Fidelity Completion (closes the deferred R2/R3/R5/R6 RCA seams: R2 the Planning Assistant now emits `docs/tokens.json` DTCG derived from the same values as DESIGN.md/MOCKUP.jsx + `templates.md` CONTRACT 5 token-value-equivalence; R3 `phases.md` Phase 4 Part 5 mechanically inherits the prototype's markup instead of re-authoring; R5 the Phase 3.3 skip is disallowed whenever `docs/MOCKUP.jsx` exists; R6 Rule 31 + Phase 7 make baseline-update discipline explicit — an intentional design change without a re-approved MOCKUP.jsx + `design:fidelity --update-baseline` + committed new baseline is a Rule-31 violation; EXTENDS Rule 31 in place (clause (d)), no new Rule — Rules stay 37, Scenarios stay 47, deliverables stay 34, all other counts unchanged), on top." V32 = Zero Opus Execution. V32.1 = Sonnet subagent context-overhead note. V32.2 = Dispatch Discipline (R6–R9). V32.3 = Smart Governance Hydration (R6 size qualifier + Governance Extraction Schema). V32.4 = react-doctor per-phase integration. V32.4.1 = post-ship consistency sweep. V32.5 = Designer-Skills Phase Integration — designer-skills bundle prescribed at Phase 2.8 / Phase 4 Parts 5-6 / Phase 7 with **INHERIT-not-REPLACE** contract over PA's `docs/DESIGN.md` + `docs/MOCKUP.jsx`. V32.5.1 = Designer-Skills Gate-Closure Enforcement + Governance Hook Repair — gate-closure language ("phase cannot close until `/design-review` returns green") added to all three V32.5 MODEL HOOKs in `phases.md`; `memory-governance.md §3` hook template bumped (V32)→(V32.3); §3 injection points enumerated as 13 (was 10 with Phase 4 collapsed); Output Equivalence Guarantee and Prompt 3.19 mid-session-rescue pointer documented in §3; Prompt_References.md/.html gain "How the Spec-Driven AI Mega Prompt Works" overview section with the three-window contract + Opus/Sonnet/gate-keeper/memory roles table; HTML hero eyebrow bumped v31→v32.5.1 (no count/rule change). V32.5.2 = Prompt_References HTML Parity Fix — the HTML "How the Mega Prompt Works" section brought to full content parity with the markdown (Gate-keepers/Memory Model cells regain phase+version annotations; "Why this prevents thrashing" callout restored to 4-bullet structure); no behavior change. V32.5.3 = Clean-Slate Rebuild Scenario — adds Prompt 3.23 (Clean-Slate Rebuild from Preserved Spec) to Prompt_References as a three-stage recovery flow (preserve docs/ + CREDENTIALS.md → nuke generated app → re-scaffold from PRODUCT.md); count bump 60→61 prompts / 37→38 NEW ✨ (scenarios count unchanged — this is a Prompt addition only, not a new named framework scenario). V32.5.4 = Cosmetic Sweep + Changelog Reorder — closes 3 minor findings from V32.5.3 5-Scout audit: (1) Prompt_References.html warning #4 in 3.23 card uses `callout warning` class for visual parity with the other three warnings; (2) ChatGPT cross-audit `### V32.5 verified counts` heading bumped to `### V32.5.3 verified counts` to match the version that last set the canonical counts; (3) Master_Prompt.md V32.4.1 changelog entry reordered above V32.5 (was below) — chronologically correct position after V32.4 and before any V32.5.x. Zero count/behavior change. V32.5.5 = DECISIONS_LOG ↔ PRODUCT.md Back-Port Surface Check — adds a non-blocking pre-flight MODEL HOOK at Phase 7 and Phase 8 that dispatches a Sonnet Scout to compare every locked decision in `docs/DECISIONS_LOG.md` against `docs/PRODUCT.md` and surfaces a "📋 Back-Port Candidates" report (decisions answered in the log but never written back into the spec). Surface-and-inform only — Rule 1 unchanged (PRODUCT.md stays human-only); the human back-ports, defers, or logs `spec-divergent: <reason>` to suppress. Zero count/rule/scenario/prompt change. V32.6 = Interactive Prototype & Simulation Phase — adds **Phase 3.3** (runs in Claude Code) between Phase 3 and Phase 3.5: builds a **durable, client-validated interactive prototype with a project-defined simulated backend** (browser-storage / in-memory mock service / static fixtures — chosen per app, always mirroring the Phase 3 schema shape) from the PA baseline (`docs/DESIGN.md` + `docs/MOCKUP.jsx`) + spec; the validated prototype becomes the behavioral blueprint Phase 4 wires the production backend to (swap simulated→real behind the same interface boundary). Born from the Orqafy lesson — spec completion ≠ a working app; wiring breakage discovered at Phase 8 is the most expensive to fix, so behavior/wiring validation is pulled forward before scaffolding. Design-system finalization (designer-skills `/design-tokens` EXPAND, `/design-review`, `/design-refine`) **MOVES from Phase 4 Parts 5-6 to Phase 3.3**; Parts 5-6 becomes wire-to-production-backend + a regression `/design-review`. New outputs: `docs/PROTOTYPE.md` (durable blueprint) + `prototype/` + client sign-off to `docs/DECISIONS_LOG.md`. Hard gate-closure (mirrors V32.5.1): `/design-review` green + every Core User Flow walked + client sign-off before Phase 3.5 begins. Rule 1 unchanged (PRODUCT.md stays human-only); top-level phases stay 0–8 (3.3 is a sub-phase). Phase 3.3's governance pre-flight makes `memory-governance.md §3` enumerate 14 phase hooks (was 13); rule/scenario/prompt/bootstrap counts unchanged. V32.6.1 = Prompt 3.23.C Semantic Shift — replaces the original V32.5.3 paste-able "3.23.C — Full Rebuild from PRODUCT.md" mega-prompt with a "3.23.C — Resume the rebuild manually" handoff card that points the human at Prompt 1.3.1 (Phase 0 Bootstrap) with an optional Prompt 2.9 (Validate Spec Consistency) pre-check. Rationale: a single paste-prompt driving Phase 0 → 6.5 recreates the autopilot/thrashing surface the framework exists to prevent AND routes around the V32.6 Phase 3.3 hard gate; manual phase-by-phase rebuild gets fresh context + explicit human authorization at every boundary, which is faster AND safer. Zero count/rule/scenario/prompt/bootstrap/phase-hook change — Prompt 3.23 still occupies its catalog slot; only stage C's body shape changed (paste-able prompt → resume-card). V32.7 = Detail-File Relocation — all 7 detail files relocated from always-on `.claude/rules/` to on-demand `.ai_prompt/`; root cause = subagent baseline-context inheritance ~100–130K tokens injected before task prompt, consuming 50–65% of Sonnet's 200K window; CLAUDE.md is now the ONLY auto-loaded file; ~24 pre-flight Read-hardening edits in phases.md + memory-governance.md; Levers 2 (spec-executor subagent) and 3 (settings.json skill budget) deferred; counts unchanged: 17 deliverable files (relocated, not added), 30 rules, 35 scenarios, 61 prompts, 14 phase hooks. V32.7.1 = Planning Assistant Dual-Host — PA interviewer role may run in a dedicated Claude Code PA session (preferred) or a Claude.ai chat; role distinction preserved (PA ≠ Phase 3+ build session); additive docs-only, counts unchanged. V32.7.2 = TODO-7a Levers 2-3 (dispatch restoration complete) — adds spec-executor.md (custom Sonnet executor subagent deployed to .claude/agents/, tools: Read/Write/Edit/Bash/Grep/Glob, model sonnet, mcpServers: []) + settings.json (skillListingBudgetFraction 0.01 + maxSkillDescriptionChars 1024); executor dispatch (R1/R5/R7) retargeted to Agent(subagent_type: "spec-executor") with Agent(model:"sonnet") fallback for out-of-allow-list tasks; deliverable count 17→19; other counts unchanged. V32.7.3 = Design Baseline Back-Port Surface Check — the design analogue of V32.5.5, same posture. V32.5/V32.6 prevent mockup→app design drift DURING the build (INHERIT-not-REPLACE + the Phase 3.3 hard gate), but no rule covered an owner-approved design change (palette/theme/layout) landing AFTER the Phase 3.3 gate closes — during Phase 4 Parts 5-6, Phase 7, or Phase 8 — so the baseline goes stale and the app diverges (the Marine-Guardian failure mode: Meta-Dark mockup frozen 2026-05-05, shadcn-neutral re-skin shipped 2026-06-15, baseline never updated). Adds a non-blocking pre-flight MODEL HOOK at Phase 7 and Phase 8 that dispatches a Sonnet Scout to diff the app's live theme tokens (`apps/[web]/src/app/globals.css` CSS variables + the Tailwind theme config) against the baseline tokens in `docs/DESIGN.md` / `docs/MOCKUP.jsx` and surfaces a "🎨 Design Back-Port Candidates" report — **this token-diff is also the detection mechanism that closes framework TODO-21 (per-wave `globals.css` ↔ `MOCKUP.jsx` token diff).** On an owner-approved divergence the requirement is INHERIT-not-REPLACE back-port: update `docs/DESIGN.md` token values AND annotate/expand `docs/MOCKUP.jsx` to match (annotate/expand the existing mockup — full regenerate ONLY on a wholesale design change; the mockup stays the UI source of truth). `docs/DESIGN.md`/`docs/MOCKUP.jsx` are NOT human-only — Claude Code MAY write the back-port, but only to mirror an already-approved change, never to invent design intent (Rule 1 preserved — the design *decision* stays the human's). To leave a divergence un-mirrored, the human logs `design-divergent: <reason>` in DECISIONS_LOG.md to suppress it. Surface-and-inform only — NEVER gates phase closure. Zero count/rule/scenario/prompt/bootstrap/phase-hook change (mirrors V32.5.5: a non-blocking pre-flight MODEL HOOK is not a new §3 phase-hook injection point). V32.7.4 = lint-deploy.sh Phase 5/6 Gate Wiring — `scripts/lint-deploy.sh` named as the pre-deploy footgun gate in `phases.md` Phase 5 OUTPUT CONTRACT (`□ lint-deploy.sh: exit 0`) + Phase 6 PRE-DEPLOY FOOTGUN GATE block (C1–C8: compose parse, certresolver case, tls=true label, 127.0.0.1 healthcheck, no build: in stage/prod, push.sh login guard, start.sh project-name, shellcheck); tooling-gate reference, not a new rule/scenario/prompt; deliverable count unchanged at 19 (the script was referenced but not yet shipped by deploy.sh). V32.7.5 = lint-deploy.sh Promoted to Deliverable #20 — `lint-deploy.sh` added as a framework deliverable; `deploy.sh` now copies it to target `scripts/lint-deploy.sh` (overwrite-with-backup + chmod +x) so the Phase 5/6 gate referenced at V32.7.4 actually exists in target apps; **deliverable count 19 → 20.** All other canonical counts unchanged: 30 Rules · 35 Scenarios · 19 Bootstrap Steps · 61 Prompts (38 NEW ✨) · 11 UI Rules · 9 V32 Dispatch Rules · 14 Phase Hooks. The Framework_Feature_Index.md footer always reflects the current canonical version. V32.8 = Design-as-Contract + Verifiable-Done & Learning Loop — adds **Rule 31 "Design-as-Contract"** (the approved design system compiles via Style Dictionary v5 from `docs/tokens.json` into `globals.css` + `tokens.d.ts` at Phase 3.3 through the mandatory three-layer bridge `--sd-color-* → --primary → --color-primary`; compiled tokens PREVENT primitive drift via explicit Tailwind-palette disable, a Playwright `toHaveScreenshot` gate against a two-stage fixture-deterministic baseline DETECTS structural drift and blocks phase completion; new Phase-7 surfaces need a mockup update first) + **Rule 32 "Verifiable-Done + Learning Loop"** (contract-first acceptance, machine-check-default with labeled human-attestation exception, proportional; every done-claim carries `{contract, check_command, captured_output}` enforced by a real `settings.json` Stop hook; one `LESSONS_REGISTRY.md` consulted at work-start / done-claim / failure-time, scope-routed promotion to deliverable / hook / memory with framework-scope inheriting via `deploy.sh`). **Rule count 30 → 32** (Spec A = Rule 31, Spec B+C = Rule 32). Chain spike-proven GREEN at commit `14a1813` on next 16.2.9 / tailwindcss 4.3.1 / style-dictionary 5.4.4 / Playwright 1.61. Canonical counts after V32.8: **32 Rules** · 39 Scenarios · 20 Bootstrap Steps · 61 Prompts (38 NEW ✨) · **12 UI Rules** (bumped by Rule 31 token rules) · 9 V32 Dispatch Rules · **17 Phase Hooks** (bumped by Rule 32 registry consult hooks) · **22 deliverable files** · **6 memory-governance sections**. V32.9 = Compliance & Data Privacy Layer — adds **Rule 33 "Compliance & Data Privacy"** + a new on-demand deliverable **`.ai_prompt/privacy.md`** (read-on-demand like `security.md`, NOT auto-loaded). PH Data Privacy Act (RA 10173 / NPC IRR) is the PRIMARY regime; GDPR (EU) + CCPA/CPRA (US-CA) are SECONDARY deltas; the model is organized on ISO/IEC 27701 (PIMS). The 9 sub-items, delivered across the framework: (1) privacy.md as the on-demand compliance authority; (2) PH DPA primary / GDPR-CCPA secondary / ISO 27701 organizing; (3) PA captures a gov/LGU client flag + DPO + data jurisdictions in PRODUCT.md; (4) gov/LGU flag → WCAG 2.2 AA HARD GATE at Phase 5 (WARN otherwise); (5) the 6 data-subject rights implemented as app features via a tRPC DSR endpoint contract; (6) Prisma ConsentLog / DataSubjectRequest / retention models + BullMQ retention/erasure jobs; (7) breach notification to NPC + data subjects within 72h (NPC Circular 16-03); (8) honest configurable compliance-footer (design-claim badges ON, third-party cert badges OFF unless held); (9) STANDING gap-reminder — PA + build phases actively flag missing privacy/protection items. **Rule count 32 → 33** (Rule 33 = Compliance & Data Privacy). Canonical counts after V32.9: **33 Rules** · 39 Scenarios · 20 Bootstrap Steps · 61 Prompts (38 NEW ✨) · **13 UI Rules** (bumped by the gov/LGU WCAG-AA accessibility rule) · 9 V32 Dispatch Rules · **18 Phase Hooks** (bumped by the privacy gap-reminder pre-flight consult) · **23 deliverable files** (privacy.md added) · 6 memory-governance sections · **12 PRODUCT.md sections** (Compliance added) · Planning Assistant **12 rules** (privacy-capture rule added). *(The Post-Generation security-checklist item count is finalized in V32.9 S3 — not set here.)* V32.10 = Mandatory Docker Resource Limits on Stage/Prod Compose — `templates.md` now mandates that every framework app's stage/prod compose services declare top-level `mem_limit` / `mem_reservation` / `cpus` keys (NOT a `deploy:` block — Komodo / `docker compose up` run non-swarm where `deploy.resources` is silently ignored). A per-service-role default table is provided (e.g. app 640m/192m/1.0, worker 512m/128m/1.0, postgres 512m/128m/1.0). Critical caveat: a DB's `mem_limit` MUST exceed its buffer-pool size (e.g. `innodb_buffer_pool_size=512M` → cap ≥ 768m) or the container OOM-kills under load. Dev compose is exempt. **Zero count change — templates.md behavior addition only; no new rule/scenario/prompt/deliverable/file.** V32.12 = Design-Principles On-Demand Reference — adds new on-demand deliverable `.ai_prompt/design-principles.md` (library-agnostic UI/UX principles: hierarchy & layout, spacing, typography, the 9-state control contract, UX laws, WCAG by success-criterion + a QA checklist), condensed from typeui.sh fundamentals (MIT). Read at the design phases (2.8 / 3.3 / Parts 5-6 / 7) when `docs/DESIGN.md` / `ui-rules.md` are silent on a pattern, component state, or accessibility approach. INHERIT-not-REPLACE — principles win for structural decisions, the design system wins for token values; conflicts logged to DECISIONS_LOG.md. Also hardens the PA's `docs/DESIGN.md` QA gate (required states + interactive patterns + anti-patterns + QA checklist). Deliverable count 23→24; ALL other canonical counts unchanged (33 Rules · 39 Scenarios · 20 Bootstrap · 61 Prompts · 13 UI Rules · 18 Phase Hooks · 5 MCP servers). V32.11 = shadcn/studio Pro as Default Design Generator — the owner's licensed shadcn/studio Pro MCP (user-global, build-time generator; output = plain shadcn/ui) becomes the framework's DEFAULT design-generation path, phase-routed (Phase 3.3 = `/cui`→`/iui`→`/rui` trio; Phase 4 Parts 5-6 = `/cui`+`/rui`, design frozen; Phase 7 = `/cui` + `/iui` new-sections-only + `/rui`; `/ftc` conditional on a Figma MCP + Figma source). INHERIT-not-REPLACE: generated blocks reconcile to compiled tokens (Rule 12), never override `docs/DESIGN.md`; fallback when unreachable = plain shadcn/ui MCP + Blocks. New MCP doc `AI_Tools_Reference.md §2.5`; the two stale "shadcn-studio = not recommended (paid)" notes reconciled. **MCP servers 4 → 5 (3 project-wired + 1 user-global + 1 plugin); all other canonical counts unchanged (33 Rules · 39 Scenarios · 13 UI Rules · 61 Prompts).** V32.13 = CI → Docker Hub → Komodo-API Auto-Deploy (fleet Watchtower-free standard) — every framework-scaffolded app's Docker/deploy phase now emits a **push-to-main → build+push image → call the Komodo API to redeploy staging with the exact SHA** pipeline, replacing the V27 Komodo registry-poll (hourly, too slow) and Watchtower for app deploys. Komodo's git-listener webhook does NOT fire for `files_on_host` stacks, so CI drives the deploy via the API (`UpdateVariableValue` pins `<APP>_STAGING_TAG` to the SHA → `DeployStack` → poll `GetUpdate`); proven in production by the `fmo-fisherfolk` stack. Two app-side files are scaffolded at the deploy phase (vendored from the canonical Server-Setups sources, NOT new framework deliverables): `deploy/komodo-deploy.sh` (the portable CI helper — sends the Cloudflare-required browser `User-Agent` to `kmd.powerbyte.app`) and the V32.13 `.github/workflows/docker-publish.yml` (build → push `sha-XXXXXXX` + `staging-latest` multi-arch → `Deploy to Komodo` step). Staging compose service image = `${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${STAGING_IMAGE_TAG:-staging-latest}`; Komodo staging stack env `STAGING_IMAGE_TAG = [[<APP>_STAGING_TAG]]`. Repo Actions secrets: `DOCKERHUB_USERNAME/TOKEN` + `KOMODO_API_KEY/SECRET` (the dedicated `github-actions-ci` key, never the master key). **Production is NEVER auto-deployed — manual promotion only** (fleet prod-gating policy; no prod step in the push-to-main workflow). Canonical source of truth: `Server-Setups/Powerbyte-Hostinger/runbooks/komodo-ci-deploy.md` + `komodo/ci-deploy/{komodo-deploy.sh,docker-publish.template.yml}`. Framework files changed: `templates.md` (new Rule 5c with the full templates + per-app enable checklist), `phases.md` (Phase 4 Part 8 docker-publish.yml V32.13 variant + `.env.staging` tag-variable note + Phase 6 staging-auto-deploy enable checklist). **The app-side workflow + helper are Phase-6 scaffold templates (like the existing start.sh/push.sh), NOT new deploy.sh deliverables — ZERO count change: 33 Rules · 39 Scenarios · 20 Bootstrap Steps · 61 Prompts (38 NEW ✨) · 13 UI Rules · 18 Phase Hooks · 24 deliverable files · 5 MCP servers all unchanged.**
 > Both contain identical rules and behavior. The compact version just loads details on demand.
 > `.claude/rules/` is intentionally empty (V32.7) — no framework file deploys there.
 > `.ai_prompt/` contains all 7 detail files (load-on-demand): `phases.md`, `memory-governance.md`, `security.md`, `ui-rules.md`, `bootstrap.md`, `scenarios.md`, `templates.md`.
@@ -364,20 +980,20 @@ Ratified: 2026-07-10
                         spec-executor's allow-list (Read/Write/Edit/Bash/Grep/Glob).
 >
 > Cline              → ⚠ DEPRECATED — do not use. Kept in framework for historical reference only.
->                      .clinerules is still generated by Bootstrap Step 3 but nothing reads it in active use.
+>                      .clinerules is RETIRED (V32.33) — Bootstrap Step 3 no longer generates it.
 >                      Claude Code handles everything Cline used to handle (Phase 4 Part-by-Part, fallback,
 >                      Phase 5+ execution, Feature Updates). If any instruction references Cline as the agent,
 >                      treat it as referring to Claude Code.
 >
 > Copilot            → Inline autocomplete while you type (always on).
 >                      Fallback if Claude Code hits an error it cannot resolve.
->                      PR reviews on GitHub. Changes attributed via SpecStory capture.
+>                      PR reviews on GitHub. Changes attributed via git (Governance Sync, Scenario 12).
 >
-> SpecStory          → Passive change capture layer (V11+).
->                      Auto-saves every Claude Code session to .specstory/history/.
->                      Captures Copilot inline edits and manual changes too.
->                      Powers Governance Sync reconciliation and cross-agent attribution.
->                      Install once: SpecStory VS Code extension. Zero config needed.
+> SpecStory          → ⚠ RETIRED (V32.34) — do not use. Kept in framework for historical reference only.
+>                      Passive `.specstory/history/` capture is retired — Claude Code is the sole
+>                      agent and self-attributes (Rule 15 + CHANGELOG_AI). Governance Sync now
+>                      sources diffs from git (Scenario 12). Deployed apps keep `.specstory/history/`
+>                      as a frozen legacy audit trail — never migrated/deleted.
 >
 > SocratiCode        → Semantic codebase intelligence MCP server (V10).
 >                      Hybrid semantic + keyword search across the entire codebase.
@@ -410,7 +1026,7 @@ PRIORITY  SOURCE                        ROLE
 ────────  ────────────────────────────  ──────────────────────────────────────
 1         Safety constraints            Never expose credentials, never delete
                                         without confirm, never harm user data
-2         CLAUDE.md rules               This file — all 34 rules
+2         CLAUDE.md rules               This file — all 37 rules
 3         Active phase rules            The numbered steps of the current phase
 4         docs/PRODUCT.md               Feature intent — what to build
 5         docs/DECISIONS_LOG.md         Locked decisions — never re-decide
@@ -473,7 +1089,7 @@ See `.ai_prompt/memory-governance.md` §4 for full protocol. This eliminates thr
 **If thrashing occurs mid-session:**
 1. STOP immediately — do NOT read more files
 2. Run `/clear` if available
-3. Save progress to STATE.md + `.cline/handoffs/`
+3. Save progress to STATE.md + `docs/handoffs/`
 4. Commit all work so far
 5. STOP — human opens a new session with narrower scope
 6. **NEW:** Follow memory-governance.md §5 Thrashing Recovery — open Opus session to decompose
@@ -492,7 +1108,7 @@ Your non-negotiable behaviors:
 - Every `docs/CHANGELOG_AI.md` entry must include which agent made the change.
 - **Search before reading (Rule 17)**: use `codebase_search` before opening files.
 - **Typed lessons (Rule 18)**: read 🔴 gotchas and 🟤 decisions in lessons.md first.
-- **SpecStory is the passive memory layer (Rule 19)**: Governance Sync reads it for unattributed changes.
+- **Rule 19 RETIRED (V32.34)**: SpecStory passive capture is retired. Governance Sync now reads git (`git log --since` + `git diff HEAD`, Scenario 12) for committed + uncommitted drift.
 - **Private tags (Rule 20)**: never store or propagate `<private>` tag content.
 - **Design system (Rule 21)**: read `design-system/MASTER.md` before generating any UI.
   IF design-system/MASTER.md does not exist:
@@ -574,11 +1190,10 @@ Every change must update:
 
 **Agent attribution values (detection priority order):**
 ```
-CLAUDE_CODE → self-reported: Claude Code writes its own entries. (Cline deprecated V31; .clinerules still generated by Bootstrap but unused.)
-COPILOT      → inferred: SpecStory diff present, no Claude Code session active
-HUMAN        → inferred: SpecStory diff present, no agent session active, manual edit
-UNKNOWN      → SpecStory diff exists but source cannot be determined
+CLAUDE_CODE → committed since last CHANGELOG_AI.md commit (`git log --since=<$LAST>`), self-attributed (Rule 15)
+HUMAN        → uncommitted working-tree edit (`git status --porcelain` + `git diff HEAD`), manual or in-flight Claude
 ```
+(SpecStory/COPILOT/UNKNOWN attribution RETIRED V32.34 — Claude Code is sole agent, git is sole source. Cline deprecated V31; .clinerules retired V32.33.)
 
 **Governance writes are non-blocking.** Never hold up implementation waiting for a
 CHANGELOG_AI or agent-log write. Append governance docs after the implementation step,
@@ -590,7 +1205,7 @@ not before or during.
 
 Hydrate these 9 files in this order before taking ANY action. **V32.3 Smart Governance Hydration:** files > 200 lines route through Scout-Sonnet with the **Governance Extraction Schema** (see `memory-governance.md §4 — Governance Extraction Schema`). Opus consumes the hydration brief, not the full file. Files ≤ 200 lines may be read directly under the R6 architect-read allow-list.
 
-1. `.cline/memory/lessons.md` — READ FIRST. Read ALL 🔴 gotcha entries in full. Then ALL 🟤 decision entries in full. For remaining entries: read ONLY entries whose title contains a keyword matching the current task domain. Skip all others. **(V32.3: this keyword-filtered pattern is the prototype Scout-Sonnet generalizes for all 9 docs.)**
+1. `docs/memory/lessons.md` — READ FIRST. Read ALL 🔴 gotcha entries in full. Then ALL 🟤 decision entries in full. For remaining entries: read ONLY entries whose title contains a keyword matching the current task domain. Skip all others. **(V32.3: this keyword-filtered pattern is the prototype Scout-Sonnet generalizes for all 9 docs.)**
 2. `docs/PRODUCT.md` — feature spec. Hydration: sections matching the current task domain only.
 3. `inputs.yml` — locked tech stack. Direct read (small + structural; always full).
 4. `inputs.schema.json` — validation schema. Direct read (structural).
@@ -598,7 +1213,7 @@ Hydrate these 9 files in this order before taking ANY action. **V32.3 Smart Gove
 6. `docs/DECISIONS_LOG.md` — locked decisions. Hydration: decisions matching task keywords + ALL unresolved entries. Never re-ask about anything hydrated.
 7. `docs/IMPLEMENTATION_MAP.md` — current build state. Hydration: status of areas touched by current task + any area in BLOCKED/PARTIAL state regardless of domain.
 8. `project.memory.md` — active rules + agent stack. Direct read (small + ambient).
-9. `.cline/memory/agent-log.md` — running action log. Hydration: action entries from current session + task-keyword hits from prior sessions.
+9. `docs/memory/agent-log.md` — running action log. Hydration: action entries from current session + task-keyword hits from prior sessions.
 
 **Rule: Do not write a single line of code until all 9 files are hydrated (Scout brief or direct read).**
 **Rule: If any file does not exist yet — note it as missing and continue hydrating the rest.**
@@ -805,7 +1420,7 @@ Non-OSS choice: accept, note tradeoff, document in DECISIONS_LOG.md.
 
 ```markdown
 ## YYYY-MM-DD — [Phase or Feature Name]
-- Agent:               CLINE | CLAUDE_CODE | COPILOT | HUMAN | UNKNOWN
+- Agent:               CLAUDE_CODE | HUMAN   (retired legacy values CLINE/COPILOT/SpecStory/UNKNOWN no longer emitted — V32.34)
 - Why:                 reason for the change
 - Files added:         list or "none"
 - Files modified:      list or "none"
@@ -815,9 +1430,10 @@ Non-OSS choice: accept, note tradeoff, document in DECISIONS_LOG.md.
 - Errors resolved:     how each was fixed, or "none"
 ```
 
-Attribution detection priority: CLAUDE_CODE (self-reported) → COPILOT (inferred from SpecStory,
-no agent session) → HUMAN (inferred, manual edit) → UNKNOWN (SpecStory diff, source unclear).
-(Cline deprecated V31 — no longer part of active attribution chain.) See Rule 3 for full detection logic.
+Attribution detection priority (V32.34 — git-sourced, Rule 19 RETIRED): CLAUDE_CODE (committed
+since last CHANGELOG_AI.md commit, self-reported) → HUMAN (uncommitted working-tree edit via
+`git diff HEAD`, manual or in-flight Claude).
+(Cline deprecated V31; SpecStory/COPILOT/UNKNOWN retired V32.34 — no longer part of the attribution chain.) See Rule 3 for full detection logic.
 
 ### Rule 16 — Visual QA after every Phase 6 and major Phase 7
 
@@ -838,9 +1454,9 @@ Example: if ports.dev.app = 43827 then QA runs against http://localhost:43827
 - Any new form renders and accepts input
 - API endpoints added by the feature return expected responses
 
-If a check fails: Claude Code logs the failure to `.cline/memory/lessons.md` (typed as 🔴 gotcha),
+If a check fails: Claude Code logs the failure to `docs/memory/lessons.md` (typed as 🔴 gotcha),
 attempts one auto-fix, and retries. If still failing after retry → writes
-a handoff file in `.cline/handoffs/` describing the visual failure.
+a handoff file in `docs/handoffs/` describing the visual failure.
 
 ### Rule 17 — Search before reading (SocratiCode — V10)
 
@@ -882,7 +1498,7 @@ codebase_status         → check index is up to date (run after large refactors
 
 ### Rule 18 — Structured lessons.md with typed entries (NEW V11)
 
-Every entry in `.cline/memory/lessons.md` must use one of these 5 types:
+Every entry in `docs/memory/lessons.md` must use one of these 5 types:
 
 ```
 🔴 gotcha          — critical edge case, pitfall, or blocker. ALWAYS read first.
@@ -911,39 +1527,13 @@ Every entry in `.cline/memory/lessons.md` must use one of these 5 types:
 **Claude Code writes a new entry in this format after every error resolved, every locked decision made.**
 **Never write free-form text to lessons.md — always use the typed entry format.**
 
-### Rule 19 — SpecStory is the passive change capture layer (NEW V11)
+### Rule 19 — SpecStory passive capture — RETIRED (V32.34)
 
-SpecStory is not just autocomplete fallback. It is the **unified change capture system**
-that bridges attribution gaps between all agents and manual edits.
-
-**What SpecStory captures automatically (zero config):**
-- Every Claude Code session conversation → `.specstory/history/YYYY-MM-DD_HH-mm_[session].md`
-- Every Claude Code session conversation → `.specstory/history/`
-- Every file change regardless of which agent or human made it → git-tracked diff
-
-**How this powers Governance Sync (Rule 19 + Scenario 17):**
-When Governance Sync runs, it reads `.specstory/history/` for diffs not already attributed
-in `CHANGELOG_AI.md`. It then:
-1. Matches diffs to active agent sessions (Claude Code log entries; Cline deprecated V31)
-2. If no session match → infers COPILOT (if Copilot was active) or HUMAN (manual edit)
-3. Writes reconciliation entry to CHANGELOG_AI.md with correct attribution
-
-**Bootstrap writes `.specstory/specs/v31-master-prompt.md`** — copy of the master prompt
-that SpecStory uses for automatic context injection into every session.
-
-**SpecStory config written by Bootstrap:**
-```json
-// .specstory/config.json
-{
-  "captureHistory": true,
-  "historyDir": ".specstory/history",
-  "specsDir": ".specstory/specs",
-  "autoInjectSpec": "v31-master-prompt.md"
-}
-```
-
-**Never delete `.specstory/history/` contents.** This is the passive audit trail of
-everything every agent and human has done. Treat it as append-only.
+SpecStory + `.specstory/history/` are retired, completing the V32.7 multi-agent retirement
+(Copilot/Cline gone). Claude Code is the sole agent and self-attributes (Rule 15 + CHANGELOG_AI
++ Smart Checkpoint). Governance Sync now sources diffs from git (Scenario 12). Rule number
+retained; no behavior. Deployed apps keep `.specstory/history/` as a frozen legacy audit trail —
+never migrated/deleted.
 
 ### Rule 20 — Private tag support in PRODUCT.md (NEW V11)
 
@@ -1132,7 +1722,7 @@ This prevents Part N's incomplete scaffold from breaking Part N+1's validation.
 **Memory Governance integration (V32):** Rule 24's fresh-context principle is now reinforced by the Memory Governance Layer (`.ai_prompt/memory-governance.md`). The Tiered Decomposition Engine (§1) runs at each Part's pre-flight to classify complexity. **500-Line Dispatch Gate (V32 §1 Step 4):** before dispatching ANY Sonnet task, run `wc -l` on every file in scope. Total ≤ 500 lines per task. Files > 300 lines need explicit line ranges. NO Opus executor escalation — that path is REMOVED in V32. **THRASHING status:** Opus monitors for Sonnet agents re-reading files, producing partial output, or contradicting prior edits — stop and re-decompose via Step 2.5. The Smart Checkpoint (§2) persists progress to Claude Code memory after each Part, enabling zero-cost resume. The Architect-Execute Model (§4) uses Opus 4.6 to plan Part decomposition and dispatch Sonnet 4.6 subagents for execution via `Agent(subagent_type: "spec-executor")` (fall back to `Agent(model: "sonnet")` only for tasks requiring tools outside the allow-list). This extends Rule 24 from "fresh context per Part" to "intelligently scoped context per task."
 
 **STATE.md — the quick-read session file (NEW V14):**
-Bootstrap Step 16 creates `.cline/STATE.md`. Every agent reads this FIRST (before the 9 governance docs) to orient instantly.
+Bootstrap Step 16 creates `docs/STATE.md`. Every agent reads this FIRST (before the 9 governance docs) to orient instantly.
 
 STATE.md format (Claude Code rewrites after every task):
 ```
@@ -1161,7 +1751,7 @@ MODELS:
 **Fresh context for Phase 4 Parts:**
 Each Part runs as a separate Claude Code task invocation. Bootstrap Step 4 generates 8 task files (not 1):
 ```
-.cline/tasks/
+docs/tasks/
   phase4-part1.md    ← scaffold/part-1 branch
   phase4-part2.md    ← scaffold/part-2 branch
   ...
@@ -1430,7 +2020,7 @@ Valkey           Use Redis docs (compatible): /redis/redis
 **Context7 is MCP — already in `.vscode/mcp.json` (Bootstrap Step 10).**
 No separate installation needed per project. Zero API key required.
 
-**Rule 30 in .clinerules:** See `CONTEXT7 LIVE DOCS — MANDATORY` section.
+**Rule 30** (formerly also mirrored in the now-retired `.clinerules`, V32.33): See `CONTEXT7 LIVE DOCS — MANDATORY` section.
 
 ### Rule 31 — Design-as-Contract — the design system is a compiled constraint, not a prose nudge (NEW V32.8)
 
@@ -1473,6 +2063,10 @@ Import order matters: `@import "tailwindcss"` → `tw-animate-css` → `shadcn/t
 
 New Phase-7 surfaces require a DESIGN/mockup update FIRST — no ad-hoc UI invention. `/design-refine` runs BEFORE baseline capture at Phase 3.3 (a refine after capture would instantly register as drift). This rule STRENGTHENS the INHERIT-not-REPLACE contract (designer-skills, V32.5/V32.6) — it does not replace it.
 
+**(c) V32.36 — a mockup-anchored LAYOUT-FIDELITY gate closes the residual gap: every layer above still baselines against the BUILD's own render.** The problem statement above names two of its own five drift-causes as still-open even with (a)/(b) in place: "(4) late phases verify *function* ..., never *form* (screen matches mockup)" and the structural fact that the Phase-4 "production baseline" is *re-captured from the build itself* — so a screen that quietly re-authors away from the human-approved `docs/MOCKUP.jsx` can re-baseline itself into "passing" the very gate meant to catch it. The visual contract is therefore now **TWO enforced layers**, not one: **TOKEN fidelity** ((a) above — compiled tokens + the disabled default Tailwind palette prevent primitive drift) and **LAYOUT fidelity** (this layer — a gate that detects structural drift against the *approved mockup*, never against a baseline the build itself supplied). The mechanism: structural landmarks in both `docs/MOCKUP.jsx` and the scaffolded components carry a stable `data-fdl="<name>"` anchor — content-agnostic region names, never data (`app-shell`, `sidebar`, `topbar`, `page-header`, `primary-content`, `kpi-row`, `data-table`, `detail-panel`, `footer`) — so the mockup's placeholder data and the app's real data can never trip the check; a Playwright harness records each anchor's **normalized bounding box** `{x,y,w,h}` (0..1 of viewport), its document-order index, and structural display facts (flex/grid presence) — never colors, text, or pixels. The baseline is captured from the **approved mockup/prototype render at Phase 3.3 sign-off** (`design:fidelity --update-baseline` → `docs/design-baseline/<screen>.layout.json`, committed) — the re-anchoring that makes this a mockup-anchored gate rather than a self-referential one. At Phase 4 Parts 5-6 and Phase 5, `design:fidelity` renders the built screens and diffs each anchored region against that same mockup baseline within tolerance — MOVED / RESIZED / MISSING / EXTRA / REORDERED — and **exits non-zero on any violation, a HARD gate** (contrast: `lint-design.sh` stays `--report-only`/exit-0). `scripts/design-fidelity.mjs` (deliverable #34) ships **DEPLOYED** — like `lint-design.sh` / `design-stop-hook.sh`, not a `templates.md` template the model must instantiate — so it cannot be silently dropped under the ≤80K anti-thrashing context budget. INHERIT-not-REPLACE holds here too: the gate never dictates token *values* (the design system still owns those) — only structural placement versus the approved mockup.
+
+**(d) V32.37 — closing the remaining RCA seams: the derived token source (R2) and baseline-update discipline (R6).** Two seams named in the RCA (`docs/planning/DESIGN_DRIFT_RCA_AND_PLAN.md` §5) let drift back in even with (a)–(c) enforced. **R2 — `docs/tokens.json` is the DERIVED, authoritative token source, not an unowned translation.** The Planning Assistant emits `docs/tokens.json` (DTCG v2025.10) derived from the SAME color/spacing/radius values it puts in `docs/DESIGN.md` + `docs/MOCKUP.jsx` — there is no separate hand-translation step where the compiled palette can quietly diverge from the approved mockup. Style Dictionary at Phase 3.3 compiles THIS derived file, never a generic seed; `templates.md`'s token-pipeline.spec.ts CONTRACT 5 (token-value-equivalence) asserts a compiled `--sd-color-*` value equals the corresponding `tokens.json` `$value`, proving the built palette IS the mockup's palette, not a coincidental match. **R6 — baseline-update discipline is mandatory when design intentionally changes (the Marine-Guardian tail).** A stale baseline riding along silently is itself a Rule-31 violation: when the design intentionally changes, the ONLY valid flow is re-approve `docs/MOCKUP.jsx` → run `design:fidelity --update-baseline` → commit the new baseline as a reviewed human commit → the gate then passes against the NEW baseline. A design change that ships while the old `docs/design-baseline/*.layout.json` is left in place — the gate silently comparing new UI against a baseline that no longer represents the approved design — is a Rule-31 violation, not a passing build (tightens/cross-refs the V32.7.3 Design Baseline Back-Port surface check, which surfaces the divergence; R6 makes leaving it un-reconciled an explicit violation rather than a silent gap). Companion completions R3 (Phase 4 Part 5 inherits the prototype's markup mechanically, lowering re-authoring drift at its source) and R5 (the Phase 3.3 skip is disallowed whenever `docs/MOCKUP.jsx` exists, so the whole compile+gate chain cannot be bypassed on "small app" grounds) live in `phases.md`. No new Rule — Rule 31 stays the single home for design fidelity; Rules stay 37.
+
 ### Rule 32 — Verifiable-Done + Learning Loop — a claim is malformed without evidence; lessons promote to standing checks (NEW V32.8)
 
 A task or issue is **"done" ONLY when its acceptance check has been run and its output captured.** "Done", "fixed", and "no work left" are claims, and a claim without evidence is not a status — it is a hope. Rule 32 makes *done* and *learning* enforced artifacts instead of prose habits dropped under context pressure. The loop: **define DONE (contract-first) → VERIFY (evidence) → if it breaks or recurs → PROMOTE to a permanent standing check.**
@@ -1483,7 +2077,7 @@ A task or issue is **"done" ONLY when its acceptance check has been run and its 
 
 **(a) Contract-first acceptance.** The acceptance check is written **BEFORE** work starts. A **machine-executable check is the DEFAULT** (`curl`, test, `grep`, lint, build-passes, `toHaveScreenshot` — Rule 31's visual gate is one instance). **Human-attestation is a LABELED exception** reserved for what a machine genuinely cannot judge (design sign-off, UX feel, product intent); the label keeps it auditable and stops attestation from silently becoming the lazy default. **Proportionality rule:** trivial tasks get a one-line check; substantial or risky tasks get a full criteria block — the discipline scales to the stakes. The same contract shape applies at both levels: an app-build task and a fleet-conductor claim.
 
-**(b) Evidence-required claim — with real teeth.** Every done-claim carries an evidence field `{ contract, check_command, captured_output }` in `STATE.md` / the Smart Checkpoint (memory-governance.md §2). A claim with an empty evidence field is a **structurally malformed artifact.** Enforcement is layered, honest about what prose can and cannot do: the schema-required evidence field is the universal backbone; machine pipeline gates fail the build wherever the check is mechanizable (CI, `lint-deploy.sh`, the Rule 31 visual gate, Trivy); the prose phase-hook plus `superpowers:verification-before-completion` is the **driver, not the teeth**; and ONE real Claude Code `settings.json` **Stop hook** at the single highest-value chokepoint **blocks a done-claim whose evidence field is empty.** Harness-executed, it binds even when the model "decides" otherwise, and it deploys into target-app `.claude/` (extends deliverable #19) so it binds build sessions too. We deliberately do not hook every action — one Stop hook + schema + machine gates is the 80/20 of *enforce, not nudge*.
+**(b) Evidence-required claim — with real teeth.** Every done-claim carries an evidence field `{ contract, check_command, captured_output }` in `STATE.md` / the Smart Checkpoint (memory-governance.md §2). A claim with an empty evidence field is a **structurally malformed artifact.** Enforcement is layered, honest about what prose can and cannot do: the schema-required evidence field is the universal backbone; machine pipeline gates fail the build wherever the check is mechanizable (CI, `lint-deploy.sh`, the Rule 31 visual gates — `toHaveScreenshot` token/structural drift plus the V32.36 mockup-anchored `design-fidelity.mjs` layout-fidelity gate — Trivy); the prose phase-hook plus `superpowers:verification-before-completion` is the **driver, not the teeth**; and ONE real Claude Code `settings.json` **Stop hook** at the single highest-value chokepoint **blocks a done-claim whose evidence field is empty.** Harness-executed, it binds even when the model "decides" otherwise, and it deploys into target-app `.claude/` (extends deliverable #19) so it binds build sessions too. We deliberately do not hook every action — one Stop hook + schema + machine gates is the 80/20 of *enforce, not nudge*.
 
 **(c) The learning registry — one index, scope-routed enforcement.** A single append-only `LESSONS_REGISTRY.md` (framework repo, canonical, mirrored to a `/memory` index entry for cheap conductor consult) is the single consult surface and recurrence-scan target. Entry shape: `{ fingerprint, scope, failure, standing_check, check_location }`. **Scope routes the *check*, not the index:**
 
@@ -1600,6 +2194,72 @@ The public/private split is detected from the app's existing route-group / middl
 Full implementation detail — the Next.js primitive checklist with code shape, the config-sourcing rules, the JSON-LD type list, and the Phase 4/Phase 5 checklists — lives in `.ai_prompt/seo.md`.
 
 **Extended to the design/content phases (NEW V32.31) — SEO is not only a scaffold concern.** For a PUBLIC-facing surface — especially a marketing/landing page — being Google-friendly is a design + content-time decision, not something bolted on after the frontend is built. SEO is therefore ALSO planned at the **Planning Assistant's DESIGN.md/MOCKUP.jsx generation step**, **Phase 2.8** (mockup), and **Phase 3.3** (prototype): SEO-informed content structure and copy — a single clear H1 per page, a logical H2/H3 heading hierarchy, keyword-informed headline and body copy, descriptive link text, meaningful `alt` text planned alongside the imagery, and a Core-Web-Vitals-aware layout (LCP-friendly hero, CLS-stable dimensions) — are decided IN the mockup, the same way Rule 35's technical baseline is decided at scaffold time. This is a design GATE for public marketing/landing surfaces (a lighter touch applies to internal/authed screens, which stay `noindex,nofollow` per §1). No new PRODUCT.md section and no new interview question are added — this is automatic, the same posture as the rest of Rule 35. Full checklist: `.ai_prompt/seo.md` §"Design & content-time SEO."
+
+### Rule 36 — CI/CD Pipeline Standard — build the image ONCE, promote the SAME bytes forward through every environment; CI gates and publishes, it never deploys (NEW V32.32)
+
+Every framework-built app ships via the canonical CI/CD pipeline: **build once, promote forward.** A single image is built and tagged at CI time; that identical image is then PROMOTED — never rebuilt — from dev → staging → prod, and to demo by retagging the same verified bytes. Rebuilding per environment is prohibited: it breaks the guarantee that what passed staging is byte-identical to what reaches prod.
+
+**CI gates and publishes — it never deploys.** `ci.yml` runs governance → quality → security checks; `docker-publish.yml` builds, tags, and pushes the image to the registry. Neither workflow auto-deploys ANY environment. Deployment is always a separate, deliberate step (agent-triggered or a manual promotion), per the existing 3-tier deploy contract (`deploy-discipline.md`): staging deploys on the push-to-`main` line (auto stays ON), prod and demo are explicit manual promotions.
+
+**Staging rehearses on a fresh production-data copy — data-first, before the image.** Before the candidate image is deployed to staging, staging's database is refreshed FROM a production copy (per the standing `staging-refresh-gate.md` pattern: backup staging → prod→staging data refresh → pull candidate image → `prisma migrate deploy` (+ drift-resolve fallback) → bring staging up → health-verify). This rehearses the SAME migration against real prod-shaped data before the same image is ever considered for promotion to prod. Production stays READ-ONLY throughout (`pg_dump` only).
+
+**Production migrations are a deliberate manual step — never automatic, never destructive.** `prisma migrate deploy` against production runs ONLY as an explicit, human-triggered step — never automatically on container boot, never bundled silently into a deploy script. It is rehearsed on staging FIRST (see above) so a migration that would fail or drift is caught before it ever touches production. **Production DATA is never wiped, reloaded, or reseeded** by any part of this pipeline — the data-refresh direction is always prod → staging, never the reverse, and prod's own data is touched only by its own deliberate migration step.
+
+**Demo: migrate-YES, reseed-NEVER, with a 6-hour golden self-heal.** Demo stacks (`*-demo`) receive schema migrations on promotion (`prisma migrate deploy` + drift-resolve, same as staging/prod) but are **NEVER reseeded** — the curated demo dataset is preserved across promotions, consistent with the existing demo deploy tier. In addition, a scheduled `demo-reset.sh` runs on a **6-hour cadence** to restore the demo stack to its last-known-good ("golden") state — undoing any data mutation a client demo session may have introduced — without touching the schema or requiring a redeploy.
+
+**Rollback couples the image with its matching schema — or guardrails the mismatch.** Because forward promotion carries a schema migration alongside the image, a rollback that reverts the IMAGE without also reverting the SCHEMA can leave code and database out of sync. The pipeline either (a) rolls back image + schema together as a coupled unit, or (b) where a schema rollback is unsafe/irreversible, guardrails the mismatch explicitly (documented incompatible-rollback warning, blocked rollback path, or a forward-fix requirement) rather than allowing a silent version-skew deploy. **Fix-forward is the preferred remedy** — rolling forward with a corrective release is safer than rolling back a coupled image+schema pair, and is attempted first wherever practical.
+
+**Every environment runs as a REGISTERED Komodo Stack — Production included; a hand-installed stack is a defect the pipeline must catch.** The three deployment environments (Local Dev · Staging · Production) — with Demo as the added client-facing tier — are all first-class, and each non-dev environment must exist as a **registered Komodo Stack resource**, never a container hand-installed directly on the server. A hand-installed stack is invisible to Komodo's stack list, cannot be promoted or rolled back through the pipeline, and drifts silently — the exact failure mode that left one app's production untracked. The generator therefore emits a **Stack Registration Audit** (`deploy/komodo-verify.sh` / `cicd-gen --audit`): for each env stack — **Production first and loudest** — it confirms the stack is Komodo-tracked (`km list stacks` / the `ListStacks` read API); an on-host stack directory that is absent from Komodo's list is flagged and **scripted-registered via a ResourceSync TOML stanza** (a declarative `[[stack]]` synced from git), falling back to the manual Komodo-UI procedure (Scenario 32) only when the CLI/API is unavailable. The audit is **fail-open on tooling** (no Komodo CLI/creds → warn, never block) and **fail-closed on a real untracked-prod finding**, and runs advisory/report-only by default (a Phase-6 backstop, never a hard blocker — same posture as `dev-freshness-check.sh` #37). **Production stays a MANUAL-trigger promotion in Komodo — never auto-deployed by a merge to `main`** (staging keeps Model-A auto-on-`main`; prod is the Tier-3 manual promotion, per `deploy-discipline.md`). Per-environment access is provisioned with **secure per-env credentials** generated into the Server-Setups SOPS vault (never the app repo), and every app follows the fleet **domain/subdomain pattern** — `<app>.<domain>` (prod) · a `<app>-staging` stack/subdomain · `<app>-demo.<domain>` — declared once at scaffold. The pipeline drives Komodo through a thin **deploy-platform seam** (register-stack · deploy-stack · verify-stack) so a future non-Komodo platform can slot in without rewriting the promotion scripts. The deploy mechanic itself remains SSH + `docker compose` against the file-on-host Komodo stack — the DeployStack/ResourceSync API is used for stack REGISTRATION and verification, not to replace the proven promotion path.
+
+**Authority + generator.** Full implementation detail — the `ci.yml`/`docker-publish.yml` shape, the promote-by-retag mechanics, the staging data-first sequence, the production manual-migration procedure, the demo migrate-never-reseed + 6-hour self-heal job, and the coupled-rollback guardrail — lives in the on-demand deliverable **`.ai_prompt/cicd.md` (#32)**, read at Phase 6 (Docker + CI/CD wiring) and on the Scenario 45 retrofit. Each app's pipeline is generated (not hand-authored) by the repo-root **`cicd-gen/`** generator, which delegates the staging data-refresh step to the existing `staging-gate/` generator rather than duplicating it. **HARD HOLD** — wiring or changing an app's CI/CD pipeline lands as LOCAL commits only; no staging/prod/demo deploy without the owner's explicit word (`deploy-discipline.md`).
+
+---
+
+### Rule 37 — Architecture Posture — the modular monolith is the DEFAULT; microservices is an owner-gated ESCALATION, never the baseline (NEW V32.35)
+
+Every framework-built app is a **modular monolith by default** — existing apps and future apps alike. This is a deliberate architectural choice, not an omission, and it is the right answer for ~95% of this fleet (tenant-based SaaS for SMB / LGU clients). "Modular monolith" means **monolithic DEPLOYMENT with modular INTERNALS**:
+
+- **Monolithic deployment** — one Next.js application, one PostgreSQL database (shared-schema + `tenant_id`, or separate-schema for payroll/banking-grade isolation), one deployable Docker Compose stack, one Prisma migration history. One thing to build, one thing to deploy, one source of truth.
+- **Modular internals** — clean internal boundaries via tRPC routers, feature modules, and the RBAC **feature registry** (which already *is* the app's module map). Separation of concerns is achieved in-process, at zero network cost, with tRPC's end-to-end type safety fully intact.
+- **A separated BullMQ worker process does NOT make this microservices.** The async worker is the same codebase against the same database — a second *runtime* for background jobs, not a decomposed business service. The app remains one logical monolith.
+
+**Microservices is an owner-gated ESCALATION, triggered only by a real need — never a default.** Service decomposition buys independent scaling and deployment at the cost of distributed-systems complexity (network failure modes, eventual consistency, distributed transactions, per-service ops, harder local dev). An app leaves the monolith ONLY when the owner approves it against a genuine trigger: (a) a workload that must scale/deploy on a wholly different curve than the rest of the app; (b) a hard compliance/data-isolation boundary that shared-schema + `tenant_id` cannot satisfy; (c) a heavy or license-isolated runtime that must not share the app's process/lifecycle (render pipeline, ML inference, an AGPL-isolated process); (d) org/team scaling where independent deploy cadence is the true bottleneck; (e) a divergent availability SLA between modules. None of these is automatic — each is an owner-gated `[WHAT]` recorded in `docs/PRODUCT.md` + `docs/DECISIONS_LOG.md`. "It'll scale someday," "it feels big," or "microservices are best practice" are NOT triggers — a modularity problem is fixed *inside* the monolith first.
+
+**NON-DISRUPTION GUARANTEE.** Adopting V32.35 does not re-architect any existing app. Syncing the framework (`deploy.sh`) only drops the inert on-demand reference `microservices.md` into `.ai_prompt/`; it does not run, execute, or convert a monolith into services. No existing app is auto-decomposed — the default stays the modular monolith. When escalation IS approved, decomposition follows the **strangler path** (carve out one bounded context at a time from a running monolith, never a big-bang rewrite), and a monolith-core plus a few carved services is a perfectly good, often optimal, end state. A "distributed monolith" (services that deploy together, share a DB, or form synchronous request-blocking chains) is an explicit failure mode to reject.
+
+**Authority.** The escalation decision gate and the full **decompose-the-locked-stack** design architecture — bounded contexts sourced from PRODUCT.md modules + the RBAC registry, database-per-service, typed/versioned cross-service contracts (`@app/contracts` zod), Valkey Streams + BullMQ / opt-in NATS JetStream eventing with the outbox + saga patterns, Traefik gateway + Komodo per-service stacks, Auth.js edge → signed-JWT propagation carrying `tenant_id`, OpenTelemetry tracing, inter-service mTLS/signed-token auth, per-service build-once CI (Rule 36), and the strangler migration path — lives in the on-demand deliverable **`.ai_prompt/microservices.md` (#33)**, read ONLY when an app is a candidate for or is undergoing escalation. Paired with **Scenario 47** (Microservices Escalation Assessment / Decomposition). INHERIT-not-REPLACE: a decomposed service never overrides the locked stack — it inherits `security.md`, `ui-rules.md`, `cicd.md`, `rbac.md`, and `notifications.md` per service. **HARD HOLD** — any topology change lands as LOCAL commits only; no staging/prod/demo promotion without the owner's explicit word (`deploy-discipline.md`).
+
+---
+
+### Rule 38 — App Audit Toolkit — a tiered, Compose-native audit toolkit run MANUALLY / ON-DEMAND by default; blocking gates are explicit per-app opt-ins (NEW V32.38)
+
+Every framework-built app ships with an **audit toolkit** — but by owner mandate (2026-07-28) **nothing in it runs automatically in the background.** It is a **manual, on-demand one-shot**: `scripts/audit-app.sh [--tier=1|2] [--report-only] <target>`, fired when the owner wants it (loose trigger "audit this app"). The tiers are **cost bands**, not an auto-schedule; wiring a tier into an actual gate (pre-commit or Phase-5 blocking) is an **explicit per-app opt-in** (`inputs.yml`), never the default. This keeps the suite alive — a gate that blocks every commit for minutes gets a permanent `--no-verify` the first time someone is in a hurry. **When the trigger names no tier, PRESENT A TIER MENU (owner-set 2026-07-28)** — don't make the human recall flags: reply with the scope options (1 = full T1+T2 · 2 = T1 only · 3 = T2 only) + each tier's coverage + report-only/blocking mode, let them pick, then run `audit-app.sh [--tier=N] [--report-only] <target>`. If a tier is already named, skip the menu and run it. Menu detail lives in `.ai_prompt/audit.md`.
+
+- **T1 — cheap (seconds).** Gitleaks (git-history/diff secret scan — closes a real gap: the fleet holds SOPS+age discipline but never scanned history for leaked secrets) · Semgrep (SAST, MCP-connected) · `tsc` (typecheck — monorepo-aware: prefers the repo's own type-check script, else per-package `tsc -p`) · ESLint (lint). Default = manual one-shot. **Recommended opt-in:** wire Gitleaks (`gitleaks protect --staged`) into pre-commit — a secret is unrecoverable once in history — but even this is opt-in, never auto-enabled.
+- **T2 — moderate (minutes).** Trivy (container image CVE scan + `trivy config` IaC/Compose scan) · OSV-Scanner (SCA beyond npm advisories — OS packages, transitive deps) · Syft (SBOM generation as a release artifact) · BackstopJS (visual regression, pairs with the Rule 31 `design-fidelity.mjs` layout gate). Default = manual one-shot in `--report-only` (informs, exits 0). **Opt-in — WIRED (V32.39.1):** `audit.tier2.enforce: true` in `inputs.yml` turns it into a blocking Phase-5 gate — `phases.md` Phase 5 reads that flag as a prose-conditional and, when true, runs `bash scripts/audit-app.sh --tier=2` as a HARD gate (a CRITICAL/HIGH finding blocks Phase 6), alongside the framework's already-wired Phase 5 checks (Playwright verify-all-pages, Lighthouse SEO ≥90, axe-core/Pa11y via `accessibility-agents`, k6 perf, `pnpm audit`, Semgrep). Default `false` → the Phase-5 gate is skipped and T2 stays manual/advisory. (The Gitleaks pre-commit hook remains documented-only / not wired.)
+- **T3 — expensive (hours), NEVER wired.** ZAP DAST · Stryker mutation testing (audits whether the test suite actually tests anything) · k6 load campaigns · manual pentest. Documented with run instructions in `audit.md`, run deliberately as point-in-time campaigns — never a gate.
+
+**INHERIT-not-REPLACE — Rule 38 is the AUTOMATED layer beneath the existing review layers, never a substitute for them.** `security.md` (L1-L6 secure-code-generation rules) and `Security_Checklist.md` (147 items / 21 sections) remain the human/AI review authority; Rule 38 automates the mechanical subset of that surface a scanner can actually catch (secrets, known CVEs, SAST patterns, SBOM composition, visual/layout drift) and gates on it. A tool passing never certifies a human review step as done, and a human review passing never substitutes for running the scanners.
+
+**Fail-closed on findings, fail-open on tooling.** Once a tier has been opted into a gate, a CRITICAL-severity finding from any T1/T2 tool BLOCKS (commit rejected / Phase 5 gate fails); in the default manual `--report-only` mode the same finding is reported but exits 0. A tool that is missing, broken, or times out WARNS and continues — the same graceful-degrade posture as `lint-deploy.sh` C8 (shellcheck absence). An app must never become un-buildable because a scanner isn't installed.
+
+**Zero-disruption — nothing auto-runs, so no gate lands without opt-in.** Because the default for every tier is a manual on-demand one-shot (no lefthook wiring, no Phase-5 gate, no scheduled job installed by a sync), syncing V32.38 into any app — new or already-deployed — never makes a previously-green app red. A pre-commit hook (recommended for Gitleaks) or a blocking T2 Phase-5 gate (`audit.tier2.enforce: true` in `inputs.yml`) is an explicit per-app choice. Same spirit as the V32.33/34 zero-disruption contracts, achieved by defaulting to manual rather than by an opt-out flag.
+
+**Scope boundary — this Rule covers build-time, per-app checks only.** Runtime/infrastructure scanning (image CVE posture in CI at the registry level, container/host hardening, Falco eBPF runtime detection) is owned by the **Server-Setups** pillar, not this framework. Offensive/manual testing (ZAP campaigns as an engagement, threat modeling, manual pentest) is owned by the **Hacking-Framework** pillar. Kubernetes-native tools (Kubescape, Polaris) are out of baseline scope — the framework's default deploy topology is Docker Compose + Komodo + Traefik (Rule 6's K8s scaffold is inactive unless `deploy.k8s.enabled: true`).
+
+**Authority + generator.** The full tool matrix, tier table, per-tool invocation, triage/severity policy, and T3 campaign runbooks live in the on-demand deliverable **`.ai_prompt/audit.md` (#35)**, read at Phase 5 (validation gate) and on the Scenario 48 retrofit. The gate runner is **`scripts/audit-app.sh` (#36)** — `--tier=1|2`, `--report-only`, graceful degrade when a tool is absent — cloning the proven `lint-deploy.sh` gate pattern. **HARD HOLD** — wiring or changing an app's audit gates lands as LOCAL commits only; no staging/prod/demo deploy without the owner's explicit word (`deploy-discipline.md`).
+
+---
+
+### Rule 39 — Dev-Freshness (Dev Leads Every Environment) — local dev must never serve staler code than any environment you ship (NEW V32.39)
+
+**Local dev must never serve staler code than any environment you ship.** A staging/prod/demo deploy is **NOT complete** until the local dev container has been rebuilt off the same `main`/sha — rebuild the app **AND its worker** (an app-only `--build` leaves the worker stale). This promotes the always-on global invariant in `~/.claude/rules/deploy-discipline.md` ("Dev leads every env") to a first-class framework Rule.
+
+**Root cause it prevents.** A dev stack serves a **prebuilt image with NO source bind-mount**, so code changes do not appear until the container is **REBUILT**. Shipping to another environment recreates *that* env but never touches dev — so dev silently serves **stale** code while `main` is already current (the working tree is latest; the running dev *image* is stale). Rebuilding the app but not the worker is the same trap one service deeper.
+
+**Detection backstop.** Run `bash scripts/dev-freshness-check.sh [--report-only] [TARGET_DIR]` (deliverable **#37**) after any ship and at session/loop start. It checks only **CODE services** (`app`/`worker`/`web`/`api`; infra like postgres/valkey/minio is skipped), prefers a stamped git-sha image label, and falls back to image-build / container-recreate time versus the `main` commit; it **exits 2 if any dev code container is behind `main`**. Flags `--branch REF`, `--project NAME`, `--service NAME`, `--all-services`, `--container NAME` are available.
+
+**Fail-open on tooling, fail-closed on drift.** A missing/broken docker or git WARNS and continues (same graceful-degrade posture as `lint-deploy.sh` C8) — an app never becomes un-checkable because tooling is absent; but a genuinely behind dev image is a real finding (exit 2). Wired as an **advisory `--report-only` backstop** at Phase 6 (see `phases.md`), never a hard Phase-6 blocker. **HARD HOLD** — this Rule is a detection backstop that lands LOCAL only; it never authorizes a push/merge/deploy.
 
 ---
 
@@ -1947,7 +2607,7 @@ challenges. Enabled by default on all public-facing forms. WCAG 2.2 AAA complian
 5. DEV + STAGING ENVIRONMENTS (test keys — no real Cloudflare widget needed):
    → .env.dev AND .env.staging both use Cloudflare's official test keys (always passes)
    → This means only production needs real keys — saves hostname budget on the widget
-   → Test sitekey 1x00000000000000000000AA + secret 1x0000000000000000000000000000000AA
+   → Test sitekey 1x00000000000000000000AA + secret 1x0000000000000000000000000000000AA <!-- nosemgrep: generic.secrets.security.detected-generic-secret.detected-generic-secret -- Cloudflare Turnstile official published test keys (always-pass), not real secrets -->
    → For testing failure: use 2x00000000000000000000AB + 2x0000000000000000000000000000000AB
    → For testing interactive challenge: use 3x00000000000000000000FF
    → Staging is a real-world environment but Turnstile test keys still work — they always pass
@@ -2104,228 +2764,38 @@ After this, `CLAUDE.md` exists and loads automatically — you never paste the p
 
 ```
 Step 1 — Folder structure
-  mkdir -p docs .claude .specstory/specs .specstory/history .vscode
-           .cline/tasks .cline/memory .cline/handoffs design-system/pages scripts
+  mkdir -p docs .claude .vscode
+           docs/tasks docs/memory docs/handoffs design-system/pages scripts
 
 Step 2 — CLAUDE.md (copy of master prompt — auto-loads every session)
   Claude Code writes CLAUDE.md from the pasted prompt content.
-  Also writes .specstory/specs/v31-master-prompt.md for SpecStory injection.
+  (SpecStory injection RETIRED V32.34 — Rule 19 tombstoned; no .specstory/ write.)
 
-Step 3 — .clinerules (⚠ Cline DEPRECATED V31 — file still generated for historical parity but unused)
-  Write the file at .clinerules with EXACTLY this content:
+Step 3 — .clinerules — RETIRED (V32.33)
+  Do NOT generate `.clinerules`. Retired V32.33 (Cline deprecated V31; unread by any script or hook).
+  The operational rules it used to mirror (fresh-start safety, error recovery, git rules, lessons
+  priority, context7, private-tag handling) already live natively in this Master Prompt's numbered
+  Rules and are read by Claude Code via CLAUDE.md — nothing is lost by not generating the file.
+  Existing apps that already have a `.clinerules` file: leave it in place, untouched (zero-disruption).
 
-  ```
-  # Spec-Driven Platform V31 — Agent Rules
-  # This file is read by the AI agent before every task. Follow every instruction exactly. (File name kept as .clinerules for historical continuity; Cline deprecated V31.)
-
-  ## BEFORE ANY ACTION — MANDATORY SEQUENCE
-
-  FRESH-START SAFETY (run before reading anything else):
-  1. Read .cline/STATE.md
-  2. IF STATE.md does not exist → write handoff → STOP → ask human: "Which phase should I start?"
-  3. IF STATE.md PHASE contains "PARTIAL" → do not start new phase → follow TYPE 2 recovery
-  4. IF STATE.md PHASE does not match the phase you were asked to run → append mismatch to agent-log.md → ask human to confirm before proceeding
-  5. NEVER assume current phase from conversation history alone. STATE.md is the only source of truth.
-
-  STATE.md vs DECISIONS_LOG.md CONFLICT RESOLUTION (NEW V21):
-  IF STATE.md says "Phase N complete" BUT governance docs have no entry for Phase N:
-    → Read git log to confirm Phase N branch was merged.
-    → IF merge confirmed: write the missing governance entry (do not re-run the phase).
-      Update STATE.md to remove any PARTIAL flag. Proceed to Phase N+1.
-    → IF no merge found: the phase is genuinely incomplete — follow TYPE 2 recovery.
-  IF STATE.md says "Phase 7 complete" BUT IMPLEMENTATION_MAP.md does not reflect the feature:
-    → Run Governance Sync: "Governance Sync" + attach 9 docs. Reconcile before any new Feature Update.
-  RULE: STATE.md = authoritative for phase position. Governance docs = authoritative for content.
-  Never let a content mismatch block phase progression — reconcile, then proceed.
-
-  READ IN THIS ORDER (after STATE.md safety check passes):
-  0. Already read: .cline/STATE.md (FIRST — fresh-start safety above)
-  1. Read: .cline/memory/lessons.md — Read ALL 🔴 gotcha entries in full. Read ALL 🟤 decision entries in full. For remaining entries: read ONLY entries whose title contains a keyword matching the current task domain. Skip all others.
-  2. Read: docs/PRODUCT.md
-  3. Read: inputs.yml
-  4. Read: inputs.schema.json
-  5. Read: docs/CHANGELOG_AI.md
-  6. Read: docs/DECISIONS_LOG.md  (never re-ask anything listed here)
-  7. Read: docs/IMPLEMENTATION_MAP.md
-  8. Read: project.memory.md
-  9. Read: .cline/memory/agent-log.md
-  Do not write any file until all 9 are read.
-
-  ## PHASE 4 EXECUTION RULES — MANDATORY
-  Phase 4 = PART-BY-PART ONLY. Rule 24 governs. This block does NOT override Rule 24.
-  - Each Part runs in a SEPARATE Claude Code session. Never auto-chain parts.
-  - Open the next part task file ONLY after the current part is fully complete and merged.
-  - ALWAYS STOP after each Part. Output "✅ Part [N] complete. Open phase4-part[N+1].md in a NEW Claude Code session."
-  - Wait for the human to open the next session. Do not proceed to Part N+1 in this session.
-  - After Part 8 is complete and merged: human triggers Phase 5 manually ("Start Phase 5").
-  NOTE: The previous instruction "Run all 8 parts sequentially" is SUPERSEDED by Rule 24. Ignore it.
-
-  ## MID-PART INTERRUPTION RECOVERY — MANDATORY (NEW V21)
-  If a Claude Code session ends or is closed before a Part completes:
-  1. On next session start: FRESH-START SAFETY runs first (reads STATE.md).
-  2. IF STATE.md PHASE = "[Part N] PARTIAL" → the Part was interrupted mid-execution.
-  3. Run: git status — identify which files were written before the interruption.
-  4. Run: git stash list — check for any uncommitted work.
-  5. DO NOT start a new Part. Resume the interrupted Part:
-     IF files were committed but branch not merged:
-       → squash-merge the existing branch → verify output contract → proceed to Part N+1.
-     IF files were written but NOT committed:
-       → commit what exists → run lint + typecheck → fix errors → squash-merge.
-     IF nothing was committed (very early interruption):
-       → restart the Part from scratch on the same branch (already exists — checkout, do not create).
-  6. After recovery: rewrite STATE.md — remove PARTIAL flag → set LAST_DONE correctly → proceed.
-
-  ## PHASE 5 EXECUTION RULES — MANDATORY
-  - Run all 9 validation commands. Fix every failure before proceeding.
-  - After all 9 pass: STOP. Output "✅ Phase 5 complete. Say 'Start Phase 6' in a new Claude Code session."
-  - Do NOT auto-proceed to Phase 6. Wait for human trigger.
-
-  ## PHASE 6 EXECUTION RULES — MANDATORY
-  - Start docker-compose.db.yml first (it creates the shared network).
-  - Run pnpm db:migrate then pnpm db:seed after services are healthy.
-  - Run Visual QA checks (Rule 16) after seed completes.
-  - Stop after Phase 6. Do not continue to Phase 7 without human trigger.
-
-  ## SEARCH BEFORE READING — MANDATORY (Rule 17)
-  - Before opening any file: run codebase_search with a natural-language description.
-  - Only open files that search results point to.
-  - Never open files speculatively.
-
-  ## LESSONS.MD PRIORITY — MANDATORY (Rule 18)
-  - Read ALL 🔴 gotcha entries before starting any feature work.
-  - Read ALL 🟤 decision entries before changing anything in that domain.
-  - Write a new typed entry to lessons.md after every error resolved or decision locked.
-  - Never write free-form text to lessons.md. Always use the typed format.
-
-  ## NO FUZZY REASONING — MANDATORY (Rule 29)
-  - NEVER use "seems like", "probably", "typically", "I assume", "usually", "most apps", or "standard setup" as a basis for any decision.
-  - IF any required information is missing from PRODUCT.md, DECISIONS_LOG.md, or inputs.yml:
-    1. STOP. Do not proceed.
-    2. Ask the user for ONLY the specific missing information.
-    3. Wait for the answer before continuing.
-  - IF the answer IS already declared somewhere: use it. Do not re-ask (Rule 10).
-  - This rule has no exceptions. Not for any phase. Not for any domain.
-
-  ## SKILLS CHECK — CONDITIONAL (Rule 26 + Rule 27)
-  - At task start: list .github/skills/ directory contents (directory names only — no full reads).
-  - For each directory found: read ONLY the description: frontmatter line from its SKILL.md.
-  - IF the description matches the current task → read full SKILL.md → follow its numbered steps.
-  - IF no skill description matches → proceed using CLAUDE.md rules only.
-  - NEVER load all skills at once. Contextual loading only.
-  - IF a skill directory exists but has no SKILL.md → log 🔴 gotcha to lessons.md. Do not crash.
-
-  ## CONTEXT7 LIVE DOCS — MANDATORY (NEW V23 — Rule 30)
-  When writing code that uses any external library:
-  1. Identify the library from package.json
-  2. Append "use context7" to the task before execution
-  3. Context7 MCP resolves the library ID and fetches current version-matched docs
-  Priority libraries: Next.js, Prisma, Auth.js v5, tRPC, shadcn/ui, BullMQ, Expo, WatermelonDB, Valkey
-  Context7 is in .vscode/mcp.json — no extra setup per project.
-  Violation: generating library code without context7 risks deprecated APIs that fail Phase 5.
-
-  ## BOOTSTRAP CREDENTIAL GATE — MANDATORY (NEW V23)
-  Bootstrap Step 18 must complete before Phase 2. Phase 1 (dev environment setup) is optional — skip if Node, pnpm, and VS Code Remote-WSL are already installed. Check before any Phase 2+ task:
-  - CREDENTIALS.md exists and has all sections populated (not placeholder-only)
-  - If CREDENTIALS.md is missing: STOP. Ask human to rerun Bootstrap Step 18.
-  - All AI-generated passwords in CREDENTIALS.md are minimum 22 characters.
-  - Never log, echo, or include credential values from CREDENTIALS.md in any output.
-
-  ## ENV FILE RULES — MANDATORY
-  - Always use .env.dev for development, .env.staging for staging, .env.prod for production.
-  - Never use .env.local or .env directly — these are legacy names.
-  - APP_IMAGE_TAG in .env.staging and .env.prod controls which Docker Hub image tag is pulled.
-    Set to :staging-latest or :latest for rolling updates. Set to :sha-{hash} to pin a version.
-  - COMPOSE_PROJECT_NAME is set in every env file — always use it for container_name and network name.
-  - Never hardcode passwords, secrets, or port numbers — always read from env vars.
-  - CREDENTIALS.md is GITIGNORED — verify before every task: if not in .gitignore, add it immediately and stop current task.
-  - NEVER read CREDENTIALS.md into context, tool calls, logs, or governance docs — it is for human eyes only.
-  - NEVER include any credential value in CHANGELOG_AI.md, agent-log.md, lessons.md, or any generated file.
-
-  ## PRIVATE TAG RULE — MANDATORY (Rule 20)
-  - When reading PRODUCT.md: strip all <private>...</private> blocks before processing.
-  - Never write private tag content to any governance doc or source file.
-
-  ## ERROR RECOVERY — 4 RECOVERY TYPES (MANDATORY)
-
-  TYPE 1 — HARD FAILURE (error on execution):
-  - Attempt 1: try the fix.
-  - Attempt 2: try a DIFFERENT approach. Run codebase_search for similar patterns FIRST.
-  - After 2 failures: write handoff to .cline/handoffs/[timestamp]-error.md. STOP.
-  - DO NOT attempt a third identical fix. A third attempt never helps — write handoff instead.
-  - Handoff must contain: what you were doing, full error text, both fix attempts, root cause hypothesis, exact next step for human.
-
-  TYPE 2 — PARTIAL SUCCESS (some files written, phase incomplete):
-  - Set STATE.md PHASE = "[current phase] PARTIAL"
-  - List all changed files in STATE.md LAST_DONE field
-  - Do not continue to next phase. Write handoff with partial state manifest.
-  - Wait for human. Human will say "Resume from handoff: [file]" to continue.
-
-  TYPE 3 — STALE STATE (governance docs behind code):
-  - Stop current task immediately.
-  - Run Governance Sync reconciliation (say "Governance Sync" + attach 9 docs).
-  - Do not proceed until STATE.md and all governance docs match the codebase.
-
-  TYPE 4 — RESUME AFTER INTERRUPTION (session ended mid-phase):
-  - Read STATE.md first.
-  - IF PHASE contains "PARTIAL" → follow TYPE 2 path (resume from last completed sub-step).
-  - IF STATE.md does not exist → write handoff → STOP → ask human which phase to resume.
-  - IF STATE.md PHASE does not match the phase you were asked to run → log mismatch to agent-log.md → ask human to confirm before proceeding.
-  - NEVER assume current phase from conversation history alone. STATE.md is the only source of truth.
-
-  ## GIT RULES — MANDATORY (Rule 23)
-  - NEVER commit directly to main. Always create a branch first.
-  - Branch name format: feat/{slug} for features, scaffold/part-{N} for Phase 4 Parts, fix/{slug} for bugs.
-  - Commit messages: conventional format only — feat(module): description, fix(module): description.
-  - After two-stage review passes (Rule 25): squash-merge to main. Delete feature branch.
-  - Rewrite .cline/STATE.md with updated PHASE, LAST_DONE, NEXT after every task completion.
-
-  ## FILE OWNERSHIP ENFORCEMENT — MANDATORY
-  Before writing any file, check the File Ownership table in CLAUDE.md.
-  IF the file is marked HUMAN:
-    1. STOP immediately. Do not write.
-    2. Output: "⚠ [filename] is human-owned. I cannot modify it directly. Here is the change needed: [describe the exact change]. Please make this edit manually."
-    3. Wait for human to confirm the edit is done before proceeding.
-  IF the file is marked AGENT/GITIGNORE (e.g. CREDENTIALS.md):
-    Write it but NEVER log its contents in any governance doc, context, or tool call output.
-
-  ## DOCKER COMPOSE RULES — MANDATORY
-  - deploy/compose/dev/docker-compose.app.yml: MAY have build: key (builds from source in dev)
-  - deploy/compose/stage/docker-compose.app.yml: MUST NOT have build: key (Docker Hub pull ONLY)
-  - deploy/compose/prod/docker-compose.app.yml: MUST NOT have build: key (Docker Hub pull ONLY)
-  - Staging and prod servers NEVER clone from GitHub, NEVER run pnpm install, NEVER build source.
-  - They ONLY run: docker compose pull → docker compose up -d using pre-built Docker Hub images.
-  - IF a Feature Update accidentally adds build: to a staging/prod compose file → remove it immediately.
-  - Staging and prod app services use Traefik labels for routing — no host ports exposed. Dev app service keeps direct port mapping (V27).
-
-  ## GOVERNANCE WRITES — MANDATORY (non-blocking — agent self-verifies)
-  - Append to CHANGELOG_AI.md after implementation — not during, not before.
-  - Include: Agent: CLAUDE_CODE, Why, Files added/modified/deleted, Schema/migrations, Errors encountered/resolved.
-  - Rewrite IMPLEMENTATION_MAP.md after every feature update to reflect current state.
-  - GOVERNANCE SELF-CHECK (mandatory before squash-merge):
-    □ CHANGELOG_AI.md: verify last entry timestamp matches this session
-    □ IMPLEMENTATION_MAP.md: verify it reflects current build state
-    □ STATE.md: verify rewritten with PHASE/LAST_DONE/NEXT
-    IF any item is missing or stale → fix it BEFORE squash-merge. Do not merge with stale governance.
-  ```
-
-Step 4 — .cline/tasks/ — 8 separate task files (NEW V14 — one per Phase 4 Part)
+Step 4 — docs/tasks/ — 8 separate task files (NEW V14 — one per Phase 4 Part)
   Each Part runs in a fresh Claude Code session to prevent context accumulation (Rule 24).
   Write these 8 files. Each is a standalone task — complete in isolation.
 
-  .cline/tasks/phase4-part1.md:
+  docs/tasks/phase4-part1.md:
   ```
   # Phase 4 Part 1 — Root config files
   # Fresh session. Read STATE.md first, then inputs.yml + PRODUCT.md only.
   # Branch: scaffold/part-1. Never commit to main directly.
   TASK: Generate all root config files (Part 1 of 8).
-  - Read .cline/STATE.md first (orientation).
+  - Read docs/STATE.md first (orientation).
   - Read inputs.yml and docs/PRODUCT.md (entities + tech stack sections only).
-  - Read .cline/memory/lessons.md (ALL 🔴 gotchas first).
+  - Read docs/memory/lessons.md (ALL 🔴 gotchas first).
   - Create scaffold/part-1 branch before writing any file.
   - Generate: pnpm-workspace.yaml, turbo.json, tsconfig.base.json, .editorconfig, .prettierrc, .eslintrc.js, .gitignore (final), .nvmrc.
   - Run: pnpm install --frozen-lockfile. Fix all errors.
   - Run: pnpm lint + pnpm typecheck for files generated in this Part only.
-  - Rewrite .cline/STATE.md: PHASE="Phase 4 Part 1 complete", NEXT="Start Part 2 in new session".
+  - Rewrite docs/STATE.md: PHASE="Phase 4 Part 1 complete", NEXT="Start Part 2 in new session".
   - Commit with message: scaffold(root): root config files — Part 1 of 8
   - Squash-merge scaffold/part-1 to main. Delete branch.
   - VERIFICATION (MANDATORY before reporting complete):
@@ -2339,13 +2809,13 @@ Step 4 — .cline/tasks/ — 8 separate task files (NEW V14 — one per Phase 4 
   STOP HERE. Do not proceed to Part 2 in this session.
   ```
 
-  .cline/tasks/phase4-part2.md:
+  docs/tasks/phase4-part2.md:
   ```
   # Phase 4 Part 2 — packages/shared + packages/api-client
   # Fresh session. Read STATE.md first, then inputs.yml only.
   TASK: Generate shared TypeScript types and API client (Part 2 of 8).
-  - Read .cline/STATE.md first. Confirm LAST_DONE shows Part 1 complete.
-  - Read inputs.yml (entities + apps sections). Read .cline/memory/lessons.md.
+  - Read docs/STATE.md first. Confirm LAST_DONE shows Part 1 complete.
+  - Read inputs.yml (entities + apps sections). Read docs/memory/lessons.md.
   - Create scaffold/part-2 branch.
   - Generate: packages/shared/src/types/, packages/shared/src/schemas/ (Zod), packages/api-client/.
   - Run: pnpm typecheck for this Part. Fix all errors.
@@ -2354,7 +2824,7 @@ Step 4 — .cline/tasks/ — 8 separate task files (NEW V14 — one per Phase 4 
   STOP HERE.
   ```
 
-  .cline/tasks/phase4-part3.md:
+  docs/tasks/phase4-part3.md:
   ```
   # Phase 4 Part 3 — packages/db
   TASK: Generate full ORM schema with all entities (Part 3 of 8).
@@ -2383,17 +2853,17 @@ Step 4 — .cline/tasks/ — 8 separate task files (NEW V14 — one per Phase 4 
   STOP HERE.
   ```
 
-  .cline/tasks/phase4-part4.md — packages/ui + packages/jobs + packages/storage (Part 4 of 8)
-  .cline/tasks/phase4-part5.md — apps/[web] Next.js scaffold (Part 5 of 8)
-  .cline/tasks/phase4-part6.md — apps/[mobile] Expo scaffold — SKIP if no mobile (Part 6 of 8)
-  .cline/tasks/phase4-part7.md — tools/ + deploy/compose/ + SocratiCode artifacts (Part 7 of 8)
-  .cline/tasks/phase4-part8.md — CI + governance docs + MANIFEST.txt + SocratiCode index (Part 8 of 8)
+  docs/tasks/phase4-part4.md — packages/ui + packages/jobs + packages/storage (Part 4 of 8)
+  docs/tasks/phase4-part5.md — apps/[web] Next.js scaffold (Part 5 of 8)
+  docs/tasks/phase4-part6.md — apps/[mobile] Expo scaffold — SKIP if no mobile (Part 6 of 8)
+  docs/tasks/phase4-part7.md — tools/ + deploy/compose/ + SocratiCode artifacts (Part 7 of 8)
+  docs/tasks/phase4-part8.md — CI + governance docs + MANIFEST.txt + SocratiCode index (Part 8 of 8)
 
   Parts 4–8 follow the same pattern as Parts 1–3:
   Read STATE.md first → read only needed docs → branch → build → lint/typecheck → rewrite STATE.md → commit → squash-merge → STOP.
   Human opens the next task file in a fresh Claude Code session.
 
-Step 5 — .cline/memory/lessons.md (structured template — Rule 18 format)
+Step 5 — docs/memory/lessons.md (structured template — Rule 18 format)
   Claude Code writes lessons.md with the typed entry format header AND one pre-seeded gotcha:
   # Lessons Memory — Spec-Driven Platform V31
   # Entry format: ## YYYY-MM-DD — [ICON] [Title]
@@ -2417,7 +2887,7 @@ Step 5 — .cline/memory/lessons.md (structured template — Rule 18 format)
         Working in /mnt/c/ causes severe pnpm and docker performance issues.
   # ---
 
-Step 6 — .cline/memory/agent-log.md
+Step 6 — docs/memory/agent-log.md
   Claude Code writes agent-log with correct format header.
 
 Step 7 — .claude/settings.json
@@ -2472,11 +2942,11 @@ Step 8 — Bootstrap files
   # ─── AI Framework Files: DO NOT GITIGNORE (Claude Code needs these) ───
   # CLAUDE.md              — tracked (Claude Code auto-loads on session start)
   # .claude/               — tracked (modular rules + settings)
-  # .cline/                — tracked (STATE.md + lessons.md + agent-log.md = session memory)
+  # docs/                  — tracked (PRODUCT.md + DESIGN.md + governance docs + STATE.md + memory/ + handoffs/ + tasks/)
   # AI/                    — tracked (Master Prompt reference)
   # .ai_prompt/            — tracked (framework deliverable files)
-  # .clinerules            — tracked (generated by Bootstrap, historical parity)
-  # docs/                  — tracked (PRODUCT.md + DESIGN.md + governance docs)
+  # .clinerules            — RETIRED V32.33, no longer generated (Cline deprecated V31)
+  # .cline/                — NOT generated for new apps (V32.33); existing apps' .cline/ data is left in place, untouched
 
   # Editor + OS
   .DS_Store
@@ -2531,13 +3001,10 @@ Step 10 — .vscode/mcp.json (MCP entries — V10 + Context7 V23 + shadcn V29)
   → shadcn MCP resolves the components and installs them via CLI.
   No API key needed. Free. MIT. Reference: https://ui.shadcn.com/docs/mcp
 
-Step 11 — .specstory/config.json (NEW V11 — SpecStory passive capture config)
-  {
-    "captureHistory": true,
-    "historyDir": ".specstory/history",
-    "specsDir": ".specstory/specs",
-    "autoInjectSpec": "v31-master-prompt.md"
-  }
+Step 11 — SpecStory config — RETIRED (V32.34)
+  Do NOT write `.specstory/config.json`. Rule 19 tombstoned — Claude Code is the sole agent and
+  self-attributes; no passive capture layer to configure. Existing apps' pre-V32.34
+  `.specstory/history/` is left in place, untouched (zero-disruption).
 
 Step 12 — Governance doc templates
   docs/PRODUCT.md       — template with all required sections
@@ -2545,13 +3012,13 @@ Step 12 — Governance doc templates
   docs/DECISIONS_LOG.md — LOCKED entry format template
   docs/IMPLEMENTATION_MAP.md — all section headers
   project.memory.md     — V14 rules + agent stack summary (6 agents + Log Lesson)
-  .cline/STATE.md       — written by Step 16 (not a template — actual content written in Step 16)
+  docs/STATE.md       — written by Step 16 (not a template — actual content written in Step 16)
   docs/DECISIONS_LOG.md entry: Dev environment mode — MODE A (WSL2 native) — locked, no devcontainer (V25)
   docs/DECISIONS_LOG.md entry: Git branching strategy — feat/{slug}, scaffold/part-{N}, squash-merge (Rule 23)
   docs/DECISIONS_LOG.md entry: Model routing — planning/execution/governance model assignments (Rule 24)
   Written by Bootstrap Step 9 — dev environment decision is pre-locked. Agents never re-ask.
 
-Step 13 — Append to .cline/memory/agent-log.md + .cline/memory/lessons.md
+Step 13 — Append to docs/memory/agent-log.md + docs/memory/lessons.md
   Log: "Bootstrap complete — project initialized"
 
 Step 14 — UI UX Pro Max skill check (NEW V12)
@@ -2567,7 +3034,7 @@ Step 15 — Human quick-log task (Log Lesson command)
   discovery to lessons.md in Rule 18 typed format without waiting for an agent session.
   Content of scripts/log-lesson.sh:
   #!/bin/bash
-  echo "=== Log a Lesson to .cline/memory/lessons.md ==="
+  echo "=== Log a Lesson to docs/memory/lessons.md ==="
   echo ""
   echo "Type? [1=🔴 gotcha  2=🟡 fix  3=🟤 decision  4=⚖️ trade-off  5=🟢 change]"
   read TYPE_NUM
@@ -2589,9 +3056,9 @@ Step 15 — Human quick-log task (Log Lesson command)
   read NARRATIVE
   DATE=$(date +%Y-%m-%d)
   ENTRY="\n## $DATE — $ICON $TITLE\n- Type:      $ICON\n- Phase:     manual entry\n- Files:     $FILES\n- Concepts:  $CONCEPTS\n- Narrative: $NARRATIVE\n"
-  echo -e "$ENTRY" >> .cline/memory/lessons.md
+  echo -e "$ENTRY" >> docs/memory/lessons.md
   echo ""
-  echo "✅ Lesson logged to .cline/memory/lessons.md"
+  echo "✅ Lesson logged to docs/memory/lessons.md"
 
   Also write .vscode/tasks.json with a task entry that runs this script:
   {
@@ -2620,10 +3087,10 @@ Step 15 — Human quick-log task (Log Lesson command)
 Step 16 — Git init + STATE.md (NEW V14)
   IF no git repo exists: run `git init && git checkout -b main`
   Write .gitignore (verify all entries from Step 8 are present — Step 8 is the authoritative .gitignore source. STATE.md is NOT gitignored — it is committed)
-  Write .cline/STATE.md with EXACTLY this content:
+  Write docs/STATE.md with EXACTLY this content:
   ```
   # Project State — {{APP_NAME}}
-  # Auto-generated by Claude Code after every task. Never edit manually. (File path kept in .cline/ for historical continuity; Cline deprecated V31.)
+  # Auto-generated by Claude Code after every task. Never edit manually. (Canonical path docs/STATE.md as of V32.33; Cline deprecated V31.)
   # Updated: [timestamp] by BOOTSTRAP
 
   PHASE:        Phase 0 — Bootstrap complete
@@ -2652,8 +3119,8 @@ Step 17 — .github/skills/ directory + spec-driven-core skill (NEW V19)
   # Spec-Driven Platform V31 — Core Rules Compact Reference
 
   ## MANDATORY READ ORDER (do not skip, do not reorder)
-  0. .cline/STATE.md — FIRST. Answers "where am I right now?"
-  1. .cline/memory/lessons.md — ALL 🔴 gotchas first, ALL 🟤 decisions second, rest by relevance
+  0. docs/STATE.md — FIRST. Answers "where am I right now?"
+  1. docs/memory/lessons.md — ALL 🔴 gotchas first, ALL 🟤 decisions second, rest by relevance
   2. docs/PRODUCT.md — what to build
   3. inputs.yml — locked tech stack + config
   4. inputs.schema.json — validation schema
@@ -2661,7 +3128,7 @@ Step 17 — .github/skills/ directory + spec-driven-core skill (NEW V19)
   6. docs/DECISIONS_LOG.md — never re-ask anything listed here
   7. docs/IMPLEMENTATION_MAP.md — current build state
   8. project.memory.md — active rules and agent stack
-  9. .cline/memory/agent-log.md — running log of every agent action
+  9. docs/memory/agent-log.md — running log of every agent action
   Do not write a single line of code until all 9 are read.
 
   ## NON-NEGOTIABLE RULES
@@ -2679,7 +3146,7 @@ Step 17 — .github/skills/ directory + spec-driven-core skill (NEW V19)
   - HTTP security headers + rate limiter + DOMPurify always-on defaults (V18 — Scenario 26).
 
   ## AGENT ATTRIBUTION (include in every CHANGELOG_AI.md entry)
-  CLINE | CLAUDE_CODE | COPILOT | HUMAN | UNKNOWN
+  CLAUDE_CODE | HUMAN   (legacy CLINE/COPILOT/UNKNOWN retired — V32.34)
 
   ## GIT BRANCH NAMING
   feat/{slug} · scaffold/part-{N} · fix/{slug} · chore/{slug}
@@ -2687,7 +3154,7 @@ Step 17 — .github/skills/ directory + spec-driven-core skill (NEW V19)
 
   ## ERROR RECOVERY
   1. Attempt fix. Retry up to 3 times.
-  2. After 3 failures: write .cline/handoffs/[timestamp]-error.md
+  2. After 3 failures: write docs/handoffs/[timestamp]-error.md
   3. Handoff: what you were doing, full error, all 3 attempts, root cause, exact next step.
   4. Stop. Wait for human.
 
@@ -2699,7 +3166,7 @@ Step 17 — .github/skills/ directory + spec-driven-core skill (NEW V19)
   - Never load all skills at once.
 
   4. Append to .gitignore: .github/skills/**/node_modules/
-  5. Append to .cline/memory/agent-log.md:
+  5. Append to docs/memory/agent-log.md:
      BOOTSTRAP | Step 17 | .github/skills/ created. spec-driven-core/SKILL.md written. V19 skill standard active.
 ```
 
@@ -3061,7 +3528,7 @@ Step 18 — Credential Scaffold (V30 — non-blocking — no interview)
      5. Phase 5 validation will fail if required fields are still `⏳ ...` — fix before proceeding
      ```
 
-  C) Append to .cline/memory/agent-log.md:
+  C) Append to docs/memory/agent-log.md:
      BOOTSTRAP | Step 18 | Credential Scaffold complete (V30 — non-blocking).
      AI-generated (22-char min, 48-char for signing secrets):
        - DB passwords (×3 envs), PgBouncer passwords (×3), Valkey passwords (×3),
@@ -3104,28 +3571,27 @@ Next steps — proceed immediately, fill credentials in parallel:
    Or say "Start Phase 4" in Claude Code if you already have a confirmed PRODUCT.md and inputs.yml.
 4. For SocratiCode: Docker must be running (Docker Desktop via WSL2 — start Docker Desktop on Windows)
    After Phase 4 completes, ask Claude Code to index this codebase
-5. Install the SpecStory VS Code extension if not already installed —
-   it auto-captures sessions immediately, no further config needed
-6. Install UI UX Pro Max skill for design system generation (optional but recommended):
+   (SpecStory extension step RETIRED V32.34 — Rule 19 tombstoned, no passive capture to install)
+5. Install UI UX Pro Max skill for design system generation (optional but recommended):
    /plugin install ui-ux-pro-max@ui-ux-pro-max-skill
    (requires Python 3 — Phase 2.6 runs automatically if skill is present)
-7. Install Anthropic frontend-design plugin (NEW V23 — recommended for all UI work):
+6. Install Anthropic frontend-design plugin (NEW V23 — recommended for all UI work):
    /plugin install frontend-design@claude-code
    Auto-activates on all UI tasks. Provides bold aesthetic direction, typography rules,
    animation guidelines, and production-quality visual standards.
    Install once per machine. Works alongside UI UX Pro Max (they complement each other).
 
-8. Install accessibility (a11y) skill for apps with WCAG AA requirement (NEW V23):
+7. Install accessibility (a11y) skill for apps with WCAG AA requirement (NEW V23):
    Conditional — only if PRODUCT.md Non-functional Requirements declares: accessibility: wcag_aa
    /plugin install a11y-skill (or) npx skills add airowe/claude-a11y-skill
    Runs WCAG 2.2 AA audit (axe-core/Pa11y rulesets): contrast ratios (4.5:1 normal, 3:1 large), focus rings,
    alt text, ARIA labels, keyboard navigation, form labels. Pre-delivery checklist enforced.
    Required for MGE (Philippine Data Privacy Act WCAG AA mandate). Recommended for ERP.
 
-9. Optional domain skill packs (install any time — see Scenario 27):
+8. Optional domain skill packs (install any time — see Scenario 27):
    spec-driven-aws · spec-driven-payments · spec-driven-govt · spec-driven-erp
 
-10. BEFORE PHASE 5: fill all ⏳ placeholders in CREDENTIALS.md.
+9. BEFORE PHASE 5: fill all ⏳ placeholders in CREDENTIALS.md.
     Run: bash scripts/sync-credentials-to-env.sh  (generated by Phase 3)
     This propagates CREDENTIALS.md values → .env.dev / .env.staging / .env.prod
     Phase 5 validation will list any remaining unfilled required fields.
@@ -4246,11 +4712,10 @@ Generate:
    Without these secrets, docker-publish.yml will fail silently on first push.
    ```
 
-   **`.gitignore` entries** — enforced in FOUR places (Step 8 is authoritative, others verify idempotently):
+   **`.gitignore` entries** — enforced in THREE places (Step 8 is authoritative, others verify idempotently; V32.33 — `.clinerules` retired, no longer a 4th enforcement point):
    1. Bootstrap Step 8 writes the complete `.gitignore` with ALL entries (env, credentials, AI artifacts, third-party AI tools)
    2. Bootstrap Step 16 verifies all Step 8 entries are still present (idempotent — no new entries)
    3. Phase 4 Part 1 appends/verifies all entries are present (idempotent check)
-   4. `.clinerules` ENV FILE RULES section — agents check on every task start
 
    ```gitignore
    # Environment files — never commit real credentials
@@ -4329,6 +4794,16 @@ Generate:
     ```
     If `vibe_test.enabled: false` → Phase 2.7 skipped. Phase 3 proceeds without stress-test.
     Lock in DECISIONS_LOG.md: "Spec stress-test (Phase 2.7): enabled / disabled + reason"
+5e. `inputs.yml` audit section (NEW V32.38 — Rule 38; Phase-5 gate wired V32.39.1):
+    Generated automatically. Default: OFF — the audit toolkit stays manual/on-demand. Lock in DECISIONS_LOG.md.
+    ```yaml
+    audit:
+      tier2:
+        enforce: false   # V32.38 Rule 38 — set true to make the Tier-2 audit (Trivy/OSV/Syft/BackstopJS) a BLOCKING Phase-5 gate. Default off = manual/on-demand only.
+    ```
+    If `audit.tier2.enforce: true` → Phase 5 runs `bash scripts/audit-app.sh --tier=2` as a HARD gate
+    (a CRITICAL/HIGH finding blocks Phase 6). Default `false` → Tier-2 audit stays manual/on-demand,
+    non-blocking. Gitleaks pre-commit (T1) remains documented-only / opt-in — NOT wired.
 6. If `design-system/MASTER.md` exists: add it to `.claude/settings.json` context file list
    (conditional — only if Phase 2.6 ran and created the file)
 7. Deliver ZIP + `MANIFEST.txt`
@@ -4337,7 +4812,7 @@ Generate:
 ─────────────────────────────────────────────────────────
 PHASE 3 OUTPUT CONTRACT — MANDATORY
 Before reporting complete, verify ALL of these:
-□ inputs.yml exists at project root with all sections (ports.dev, git, docker, vibe_test, models)
+□ inputs.yml exists at project root with all sections (ports.dev, git, docker, vibe_test, audit, models)
 □ inputs.schema.json exists at project root
 □ .env.dev, .env.staging, .env.prod all exist and contain no placeholder values
 □ CREDENTIALS.md exists and is listed in .gitignore
@@ -4438,7 +4913,7 @@ Step 1 — Complexity scan: count modules, entities, roles, integrations from PR
 Step 2 — Context cost estimation: 120K token budget, ≤80K = SAFE zone
 Step 3 — Task decomposition: break Phase 4 Parts into sub-sessions if needed
 Step 4 — Dependency ordering: which modules must build before others
-Step 5 — Write execution-plan.md to .cline/tasks/
+Step 5 — Write execution-plan.md to docs/tasks/
 Step 6 — Skill activation: /scan-project first, then framework verifies Primary Group 6 slots
 Step 7 — Human review: present the plan, wait for confirmation before Phase 4
 ```
@@ -4456,7 +4931,7 @@ Step 7 — Human review: present the plan, wait for confirmation before Phase 4
 
 ─────────────────────────────────────────────────────────
 PHASE 3.5 OUTPUT CONTRACT — MANDATORY
-□ .cline/tasks/execution-plan.md exists with full session schedule
+□ docs/tasks/execution-plan.md exists with full session schedule
 □ Context cost estimate per Part documented
 □ Sub-session splits identified for Parts exceeding 12-file threshold
 □ Skill activation schedule documented (if Skill Installer present)
@@ -4476,7 +4951,7 @@ Each Part runs in a FRESH Claude Code session (Rule 24 — prevents context accu
 Context budget: each Part stays under ~3,000 lines of context for best model output quality (V31: Claude Sonnet 4.6; historical: MiniMax M2.5 when Cline was active).
 Each Part: reads STATE.md first → branches → builds → validates → squash-merges → STOPS.
 
-Trigger: Open `.cline/tasks/phase4-part1.md` in a new Claude Code session → say "Start Part 1"
+Trigger: Open `docs/tasks/phase4-part1.md` in a new Claude Code session → say "Start Part 1"
 After Part 1 completes: open `phase4-part2.md` in a NEW Claude Code session → say "Start Part 2"
 Continue until Part 8 completes. Then say "Start Phase 5" in a new Claude Code session.
 
@@ -4504,7 +4979,7 @@ for this model: each file + overhead ≈ 6-8K tokens, so 12 files ≈ 80-96K ≈
 **If thrashing occurs mid-session despite sub-division:**
 1. Immediately run `/clear` to reset context
 2. Update STATE.md with exact progress
-3. Write a handoff note to `.cline/handoffs/`
+3. Write a handoff note to `docs/handoffs/`
 4. Commit all work done so far
 5. STOP — human opens a new session with narrower scope
 
@@ -6224,8 +6699,9 @@ README.md must include:
   Update index:          codebase_update {} (Claude Code does this automatically after Feature Update)
   Requires:              Docker running
 
-## SpecStory — Change History
-  All sessions auto-captured to .specstory/history/
+## Governance Sync — Change History (git-sourced, Rule 19 RETIRED V32.34)
+  Committed drift:    git log --since="$(git log -1 --format=%cI -- docs/CHANGELOG_AI.md)" --oneline --name-status  # (empty on first run → guard with :-root-commit)
+  Uncommitted drift:  git status --porcelain ; git diff HEAD --stat
   Attribution reconciliation: say "Governance Sync" in Claude Code
 
 ## Service URLs (dev/test — ports assigned during Phase 3, stored in .env.dev)
@@ -6280,7 +6756,7 @@ GOVERNANCE HEALTH
   Rule 9 violations caught:  [count]
   Handoff files written:     [count]
   Lessons added to memory:   [count]
-  Unattributed SpecStory diffs reconciled: [count]
+  Uncommitted/undocumented diffs reconciled: [count]
 
 VELOCITY
   Features shipped this week:  [count]
@@ -6295,24 +6771,41 @@ RECOMMENDED FOCUS FOR NEXT SESSION
 
 ## GOVERNANCE SYNC
 **Trigger:**
-- Via Claude Code: say "Governance Sync" — it reads all 9 governance docs + .specstory/history/ automatically
+- Via Claude Code: say "Governance Sync" — it reads all 9 governance docs + git (two sources below) automatically
 - Via Copilot (emergency fallback only): say "Governance Sync" + attach all 9 docs manually
 - Conflict resolution variant: "Governance Sync — conflict resolution"
 
-**Governance Sync reads SpecStory history for attribution reconciliation:**
+**Governance Sync sources diffs from git (Rule 19 RETIRED V32.34 — SpecStory gone). TWO mandatory sources:**
+
+```bash
+# Anchor = last reconciliation point (CHANGELOG_AI is written by every Gov-Sync / Phase-7 run)
+LAST=$(git log -1 --format=%cI -- docs/CHANGELOG_AI.md)
+LAST=${LAST:-$(git log --max-parents=0 -1 --format=%cI)}   # first run (CHANGELOG_AI not yet committed) → anchor at repo root, never an empty --since
+# A. Committed drift since then (already Claude-Code-attributed at commit via Rule 15)
+git log --since="$LAST" --oneline --name-status
+# B. Uncommitted working-tree edits — the manual-edit case SpecStory used to catch (Rule 1: humans edit PRODUCT.md)
+git status --porcelain ; git diff HEAD --stat   # then git diff HEAD -- <path> per flagged file
+# Note: git diff HEAD shows TRACKED changes only — read any untracked ("??") files directly.
+```
+Attribution collapses to two rows (no more COPILOT/UNKNOWN — Claude Code is sole agent):
+| Source | Attribution | Gov Sync job |
+|---|---|---|
+| committed since `$LAST` | `CLAUDE_CODE` (self-attributed, Rule 15) | doc↔code drift: did CHANGELOG_AI/IMPLEMENTATION_MAP/STATE capture it? |
+| uncommitted (`git diff HEAD`) | `HUMAN` (manual) or in-flight Claude | surface: "uncommitted — attribute on next commit / reconcile now" |
+⚠️ Both sources are mandatory — reading only committed history silently loses manual-edit capture.
 
 ```
 CASE A — code drifted, PRODUCT.md untouched:
   "Governance Sync" + attach 9 docs
-  Agent reads .specstory/history/ for diffs since last CHANGELOG entry
-  Matches diffs to agent sessions → attributes COPILOT or HUMAN where no session found
+  Agent reads git (both sources above) for diffs since last CHANGELOG entry
+  Attributes CLAUDE_CODE (committed) or HUMAN (uncommitted)
   Shows reconciliation table → asks confirmation
   Updates CHANGELOG_AI.md with attributed entries
 
 CASE B — code AND PRODUCT.md both changed:
   "Governance Sync — conflict resolution" + 9 docs
   Agent shows conflict table. You resolve each contradiction.
-  Agent updates all governance docs + attributes SpecStory diffs.
+  Agent updates all governance docs + attributes the git diffs.
 
 Prevention: run Phase 7 for any change > 5 lines. One Governance Sync per day max.
 ```
@@ -6375,7 +6868,7 @@ bash scripts/log-lesson.sh
 4. Keywords / concepts
 5. What happened and why does it matter?
 
-**Output:** Appends a correctly formatted Rule 18 entry to `.cline/memory/lessons.md` immediately.
+**Output:** Appends a correctly formatted Rule 18 entry to `docs/memory/lessons.md` immediately.
 Claude Code reads it with correct priority (🔴 first) next session — no extra steps needed.
 
 **Rule:** Never write free-form text to lessons.md directly. Always use this script or let Claude Code write it. The typed format is what allows Claude Code to read gotchas first and decisions second.
@@ -6497,11 +6990,25 @@ Valkey → ElastiCache: update REDIS_URL=rediss://<endpoint>:6379
 ⚠️ Schema first = NOT NULL failure on existing rows.
 ```
 
-### SCENARIO 12 — Governance Sync: code drifted, docs are stale
+### SCENARIO 12 — Governance Sync: code drifted, docs are stale (V32.34 — git-sourced, Rule 19 RETIRED)
+```bash
+# Anchor = last reconciliation point (CHANGELOG_AI is written by every Gov-Sync / Phase-7 run)
+LAST=$(git log -1 --format=%cI -- docs/CHANGELOG_AI.md)
+LAST=${LAST:-$(git log --max-parents=0 -1 --format=%cI)}   # first run (CHANGELOG_AI not yet committed) → anchor at repo root, never an empty --since
+# A. Committed drift since then (already Claude-Code-attributed at commit via Rule 15)
+git log --since="$LAST" --oneline --name-status
+# B. Uncommitted working-tree edits — the manual-edit case SpecStory used to catch (Rule 1: humans edit PRODUCT.md)
+git status --porcelain ; git diff HEAD --stat   # then git diff HEAD -- <path> per flagged file
+# Note: git diff HEAD shows TRACKED changes only — read any untracked ("??") files directly.
+```
+| Source | Attribution | Gov Sync job |
+|---|---|---|
+| committed since `$LAST` | `CLAUDE_CODE` (self-attributed, Rule 15) | doc↔code drift: did CHANGELOG_AI/IMPLEMENTATION_MAP/STATE capture it? |
+| uncommitted (`git diff HEAD`) | `HUMAN` (manual) or in-flight Claude | surface: "uncommitted — attribute on next commit / reconcile now" |
 ```
 CASE A — code drifted, PRODUCT.md untouched:
   "Governance Sync" + attach 9 docs
-  Agent reads .specstory/history/ to attribute unlogged changes.
+  Agent reads git (both sources above) to attribute unlogged changes.
   Shows reconciliation table with agent attribution → ask confirmation → updates all docs.
 
 CASE B — code AND PRODUCT.md both changed:
@@ -6513,8 +7020,8 @@ Prevention: run Phase 7 for any change > 5 lines. One Governance Sync per day ma
 
 ### SCENARIO 13 — Claude Code wrote a handoff file (Cline deprecated)
 ```
-1. Find: .cline/handoffs/<timestamp>-<e>.md
-   (Note: .cline/handoffs/ folder name preserved for historical continuity — Claude Code writes these files)
+1. Find: docs/handoffs/<timestamp>-<e>.md
+   (Claude Code writes these files; V32.33 retired `.cline/handoffs/` in favor of `docs/handoffs/`)
    Contains: what Claude Code was doing, full error, 3 fix attempts, root cause, what to do.
 
 2. Options:
@@ -6523,12 +7030,12 @@ Prevention: run Phase 7 for any change > 5 lines. One Governance Sync per day ma
    C. Fix .env/config manually → tell Claude Code "Resume from handoff: <filename>"
 
 3. After resolution: Claude Code appends to lessons.md (🟡 fix format — Rule 18).
-   SpecStory captures the full resolution session automatically.
+   git tracks the full resolution session (committed diffs) — Rule 19 RETIRED V32.34.
 ```
 
 ### SCENARIO 14 — Visual QA failed
 ```
-1. Find handoff: .cline/handoffs/<timestamp>-visual-qa.md
+1. Find handoff: docs/handoffs/<timestamp>-visual-qa.md
 2. Common causes:
    - Page not loading: check pnpm db:seed was run, check auth config in .env
    - Console error: missing env var or API endpoint not scaffolded
@@ -6542,7 +7049,7 @@ Prevention: run Phase 7 for any change > 5 lines. One Governance Sync per day ma
 ```
 1. Say "Governance Retro" in Claude Code (no docs attachment needed)
 2. Claude Code outputs the structured retro (built, errors, velocity, health)
-3. Retro includes "Unattributed SpecStory diffs reconciled" count
+3. Retro includes "Uncommitted/undocumented diffs reconciled" count
 4. Use "Recommended Focus" to plan your next Phase 7 or Phase 8
 ```
 
@@ -6572,62 +7079,19 @@ INDEX IS STALE (after large refactor or schema change):
   → codebase_context_index {}
 ```
 
-### SCENARIO 17 — SpecStory captured changes not attributed to any agent (NEW V11)
+### SCENARIO 17 — RETIRED (V32.34)
 ```
-WHEN THIS HAPPENS:
-  - You made inline edits manually or via Copilot autocomplete
-  - No Claude Code session was active at the time
-  - CHANGELOG_AI.md has no entry for the change
-  - .specstory/history/ has a diff showing the change
-
-HOW TO RECONCILE:
-  1. Say "Governance Sync" in Claude Code (reads 9 docs automatically)
-  Claude Code reads automatically. For Copilot emergency fallback: attach all 9 docs manually.
-  2. Claude Code reads .specstory/history/ and finds unattributed diffs
-  3. Claude Code shows you a reconciliation table:
-     - File changed: [filename]
-     - Change type: [added/modified/deleted]
-     - Inferred agent: COPILOT | HUMAN | UNKNOWN
-     - Suggested CHANGELOG entry: [preview]
-  4. Confirm → Claude Code writes attributed entries to CHANGELOG_AI.md
-  5. IMPLEMENTATION_MAP.md updated if structural changes were made
-
-PREVENTION:
-  For any change > 5 lines: use Phase 7 so attribution is automatic.
-  For small Copilot fixes: let them accumulate, run Governance Sync at end of day.
+SpecStory-based unattributed-diff reconciliation is retired. Governance Sync (Scenario 12) now
+reconciles ALL drift — committed and uncommitted — directly from git. Scenario number retained;
+no behavior.
 ```
 
-### SCENARIO 18 — Copilot made inline changes — attribution and governance (NEW V11)
+### SCENARIO 18 — RETIRED (V32.34)
 ```
-WHAT COPILOT CAN AND CANNOT DO:
-  ✓ Inline autocomplete (always on) — SpecStory captures all diffs
-  ✓ Copilot Chat with edits — SpecStory captures all diffs
-  ✓ PR reviews on GitHub — no file changes, no attribution needed
-  ✗ Cannot self-report to CHANGELOG_AI.md (no agentic loop)
-  ✗ Cannot read governance docs autonomously
-  ✗ Cannot run Phase 7 steps automatically
-
-COPILOT'S ROLE IN THE ATTRIBUTION CHAIN:
-  Copilot makes a change
-       ↓
-  SpecStory captures the file diff to .specstory/history/
-       ↓
-  Governance Sync (Scenario 17) attributes it as COPILOT
-       ↓
-  CHANGELOG_AI.md updated: Agent: COPILOT
-
-BEST PRACTICE FOR COPILOT CHANGES:
-  Use Copilot freely for inline fixes and autocomplete.
-  At end of each day or coding session: run "Governance Sync" in Claude Code.
-  This reconciles all Copilot and manual changes in one pass.
-  Never try to manually edit CHANGELOG_AI.md to attribute Copilot — use Governance Sync.
-
-WHEN COPILOT MAKES A LARGER CHANGE (via Chat):
-  After Copilot Chat finishes edits:
-  1. Review the changes in VS Code diff view
-  2. Say "Feature Update" in Claude Code — paste a description of what Copilot changed
-  3. Claude Code reads the diff, validates governance alignment, updates all docs
-  This gives Copilot changes the same governance treatment as Claude Code changes.
+Copilot-inline-change attribution via SpecStory is retired. Any Copilot-authored edit is now
+reconciled the same way as any other uncommitted change — via Governance Sync's git two-source
+read (Scenario 12): committed → CLAUDE_CODE, uncommitted → HUMAN. Scenario number retained; no
+behavior.
 ```
 
 ### SCENARIO 19 — Cline is deprecated — use Claude Code (with Copilot as emergency fallback)
@@ -6798,19 +7262,19 @@ STARTING PHASE 4 (V14 Part-by-Part approach):
   Instead, for each Part:
     1. Open a NEW Claude Code session (close the previous one first)
     2. Claude Code auto-reads CLAUDE.md
-    3. Say: "Start Part [N]" — Claude Code reads .cline/tasks/phase4-part[N].md
+    3. Say: "Start Part [N]" — Claude Code reads docs/tasks/phase4-part[N].md
     4. Claude Code reads STATE.md → confirms LAST_DONE matches previous Part
     5. Claude Code creates branch, builds, validates, squash-merges, rewrites STATE.md
     6. Claude Code outputs: "✅ Part [N] complete. Open phase4-part[N+1].md in a NEW session."
     7. Close this Claude Code session. Open new one. Repeat.
 
 VERIFYING STATE BETWEEN PARTS:
-  - Check .cline/STATE.md after each Part
+  - Check docs/STATE.md after each Part
   - PHASE should say "Phase 4 Part N complete"
   - If it says Part N-1 still: the previous Part didn't finish — resume it before starting N
 
 IF A PART FAILS:
-  - Check .cline/handoffs/ for the error handoff
+  - Check docs/handoffs/ for the error handoff
   - Fix the issue manually or via Claude Code "Resume from handoff: [filename]"
   - Part stays on its branch — do not squash-merge until all checks pass
 ```
@@ -8002,8 +8466,8 @@ SEE ALSO:
 5. docs/DECISIONS_LOG.md
 6. docs/IMPLEMENTATION_MAP.md
 7. project.memory.md
-8. .cline/memory/lessons.md     ← read first, Rule 18 typed format
-9. .cline/memory/agent-log.md
+8. docs/memory/lessons.md     ← read first, Rule 18 typed format
+9. docs/memory/agent-log.md
 ```
 
 Cline: reads all 9 automatically from filesystem. No attachment needed.
@@ -8022,9 +8486,10 @@ Model: Claude Sonnet 4.6 (default) or Claude Opus 4.6 (for complex reasoning).
 **Cline** — ⚠ DEPRECATED V31 (do not use; kept for historical reference only)
 Cline was the fallback builder in V30. As of V31 in-place deprecation, Cline is no longer
 routed to in any framework phase. Claude Code handles all execution work.
-- `.clinerules` is still generated by Bootstrap Step 3 but unread in active use.
-- `.cline/` folder structure (STATE.md, memory/, handoffs/) is preserved because Claude Code
-  writes to those paths — folder names kept for historical continuity.
+- `.clinerules` is RETIRED (V32.33) — Bootstrap Step 3 no longer generates it.
+- Session memory now lives at `docs/STATE.md` + `docs/memory/` + `docs/handoffs/` (V32.33 —
+  retired the `.cline/` split-brain). Existing apps' pre-V32.33 `.cline/` data is left in place,
+  untouched (zero-disruption); new apps are born entirely on `docs/`.
 - Cline extension may remain installed in VS Code as optional emergency fallback, but the
   framework itself never routes to it.
 
@@ -8035,17 +8500,15 @@ V31 model routing (locked in inputs.yml):
   escalation: claude-opus-4-6 (hardest bugs, complex multi-file reasoning)
 
 **GitHub Copilot** — inline autocomplete + handoff fallback
-Always-on ghost text while typing. Changes attributed via SpecStory capture (Rule 19).
+Always-on ghost text while typing. Changes attributed via git (Governance Sync, Scenario 12 — Rule 19 RETIRED V32.34).
 For larger Copilot Chat edits: follow up with "Feature Update" in Claude Code to apply governance.
 PR reviews on GitHub.
 
-**SpecStory** — passive change capture layer (NEW elevated role in V11)
-Install the SpecStory VS Code extension — zero config needed after Bootstrap.
-Bootstrap writes `.specstory/specs/v31-master-prompt.md` and `.specstory/config.json`.
-Auto-captures every Claude Code session to `.specstory/history/`.
-Captures Copilot inline edits via file-change diffs.
-Powers Governance Sync attribution reconciliation (Scenarios 17 + 18).
-`.specstory/history/` is append-only — never delete entries.
+**SpecStory** — ⚠ RETIRED (V32.34) — do not use. Kept in framework for historical reference only.
+Passive `.specstory/history/` capture is retired — Claude Code is the sole agent and
+self-attributes (Rule 15 + CHANGELOG_AI). Governance Sync sources diffs from git instead
+(Scenario 12; Scenarios 17 + 18 tombstoned). Deployed apps keep `.specstory/history/` as a
+frozen legacy audit trail — never migrated/deleted.
 
 **code-review-graph** — structural blast-radius MCP server (NEW V13)
 Install once per machine (not per project): `claude plugin add tirth8205/code-review-graph`
@@ -8066,7 +8529,7 @@ See Rule 30 + Scenario 31 for full usage guide and worked examples.
 **Log Lesson (scripts/log-lesson.sh)** — human quick-log for personal discoveries
 Trigger: VS Code Command Palette → "Tasks: Run Task" → "Log Lesson" (or `bash scripts/log-lesson.sh`)
 Written by Bootstrap (Step 15) to `scripts/log-lesson.sh` + `.vscode/tasks.json`.
-5-question interactive prompt → appends correctly formatted Rule 18 entry to `.cline/memory/lessons.md`.
+5-question interactive prompt → appends correctly formatted Rule 18 entry to `docs/memory/lessons.md`.
 Use when you personally discover something before Claude Code encounters it.
 Never write free-form text to lessons.md — always use this script or let Claude Code write it.
 
@@ -8094,9 +8557,9 @@ Never load all skills at once — contextual loading keeps context lean for all 
 See Scenario 27 for full install, verification, and custom skill authoring guide.
 
 **The filesystem is the shared brain.**
-Claude Code, Copilot, SocratiCode, and SpecStory all communicate through
+Claude Code, Copilot, and SocratiCode all communicate through
 the 9 governance files. SocratiCode adds a searchable semantic layer.
-SpecStory adds a passive diff-capture layer that bridges the attribution gap.
+Git bridges the attribution gap (Governance Sync, Scenario 12 — SpecStory retired V32.34).
 (Cline deprecated V31 — no longer part of active coordination layer.)
 
 ---
@@ -8107,10 +8570,10 @@ SpecStory adds a passive diff-capture layer that bridges the attribution gap.
 docs/PRODUCT.md              HUMAN    Only file humans ever edit
 CLAUDE.md                    HUMAN    Copy of master prompt
 .claude/settings.json        HUMAN    Claude Code project settings
-.clinerules                  HUMAN    Cline configuration
-.cline/tasks/*.md            AGENT    Phase 4 task files (folder name preserved for historical continuity)
+.clinerules                  N/A      RETIRED V32.33 — no longer generated; pre-existing files left untouched
+docs/tasks/*.md               AGENT    Phase 4 task files
 .vscode/mcp.json             HUMAN    MCP server config (SocratiCode entry)
-.cline/STATE.md              AGENT    Rewritten after every task — never edit manually
+docs/STATE.md              AGENT    Rewritten after every task — never edit manually
 .gitignore                   AGENT    Written at Bootstrap Step 16+17 — add entries via Feature Update
 
 inputs.yml                   AGENT    Never edit manually
@@ -8121,13 +8584,12 @@ docs/IMPLEMENTATION_MAP.md   AGENT    Never edit manually
 project.memory.md            AGENT    Never edit manually
 .socraticodecontextartifacts.json  AGENT  Never edit manually
 
-.cline/memory/lessons.md     AGENT    Rule 18 typed format — Claude Code writes entries (V31: Cline deprecated, folder path preserved for historical continuity). Never edit manually.
-.cline/memory/agent-log.md   AGENT    Claude Code appends per session; SpecStory-inferred entries also written here. Never edit manually.
-.cline/handoffs/*.md         AGENT    Claude Code writes when stuck (TYPE 1 recovery). Read and act on these.
+docs/memory/lessons.md     AGENT    Rule 18 typed format — Claude Code writes entries (canonical path since V32.33). Never edit manually.
+docs/memory/agent-log.md   AGENT    Claude Code appends per session; git-diff-inferred entries also written here (V32.34). Never edit manually.
+docs/handoffs/*.md         AGENT    Claude Code writes when stuck (TYPE 1 recovery). Read and act on these.
 
-.specstory/specs/            AGENT    Master prompt copy written by Bootstrap Step 11. Never edit manually.
-.specstory/history/          ALL      Auto-captured by SpecStory — append-only, never delete
-.specstory/config.json       HUMAN    Written by Bootstrap — do not edit
+.specstory/**                 N/A      RETIRED V32.34 — Rule 19 tombstoned; Bootstrap no longer writes any of specs/history/config.json.
+                                       Deployed apps' pre-V32.34 `.specstory/history/` left in place, untouched — frozen legacy audit trail.
 
 scripts/log-lesson.sh        HUMAN    Run to log personal discoveries to lessons.md — never edit the output directly
 .vscode/tasks.json           HUMAN    VS Code task runner — "Log Lesson" task written by Bootstrap
@@ -8187,7 +8649,7 @@ HANDOFF_OUTPUT
   ROOT CAUSE: [best hypothesis]
   NEXT STEP:  [exact action for human to take]
   ─────────────────────────────────────────
-  File written to: .cline/handoffs/[timestamp]-error.md
+  File written to: docs/handoffs/[timestamp]-error.md
 
 PHASE_COMPLETE
   Use when: a phase is fully done, governance verified, ready for next phase
@@ -8233,9 +8695,8 @@ Version stays same for: wording fixes, clarifications, side note updates.
 **Adopting a new version on an existing project:**
 ```
 1. cp "Master_Prompt.md" ./CLAUDE.md
-   Also copy to .specstory/specs/v31-master-prompt.md
-2. Update .specstory/config.json → set autoInjectSpec: "v31-master-prompt.md"
-3. Open new session → immediately run "Resume Session" + 3 docs
+   (SpecStory spec-copy step RETIRED V32.34 — Rule 19 tombstoned, no .specstory/ write)
+2. Open new session → immediately run "Resume Session" + 3 docs
 4. Never re-run Phase 2, 3, or 4 when adopting a new version.
    Resume Session is always sufficient to reconnect to your existing project.
 5. V27: Traefik reverse proxy — update staging/prod compose files: add Traefik labels + proxy external network to app service, remove ports: from app. Add TRAEFIK_NETWORK=proxy and APP_DOMAIN to .env.staging/.env.prod. Dev compose unchanged.
@@ -8264,7 +8725,7 @@ Version stays same for: wording fixes, clarifications, side note updates.
 22. V15 optional: docker.publish: true in inputs.yml → Dockerfile + docker-publish.yml generated
    Add DOCKERHUB_USERNAME + DOCKERHUB_TOKEN secrets in GitHub repo settings
 23. V14 optional: UI UX Pro Max skill + code-review-graph + Section K → Phase 2.6
-24. V11: .specstory/config.json already exists — just update the autoInjectSpec value
+24. V11: (RETIRED V32.34 — .specstory/config.json no longer written/updated; Rule 19 tombstoned)
 ```
 
 
@@ -8419,6 +8880,24 @@ Version stays same for: wording fixes, clarifications, side note updates.
 - NEW TEMPLATES: **templates.md UI LOADING STATE TEMPLATES section.** Canonical snippets for Card/TableRow/FormField (PATH A) + basic wrapper + repeated rows + per-element opt-outs (PATH B) + JSX intrinsic declaration + pin policy.
 - SURFACE ADDITIONS POLICY COMPLIANCE: `@aejkatappaja/phantom-ui` added to `src/data/` LIBRARIES_DB with match signal (project has shadcn deps AND custom components outside `components/ui/`). `/scan-project` Phase 2.6 surfaces it under "Loading States / Structure-Aware Skeletons". Phase 1.5 Part C (Spec-Driven Fit) recommends during Phase 4 Part 2 and Phase 7 Feature Update.
 - Rule count: 30 (unchanged — framework rules are separate from UI component rules). Scenario count: 34 → 35 (+1 for Scenario 35 custom loading state). Bootstrap: 18 → 19 steps (+1 for Step 19 Loading Library Lock). **UI Component Rules: 10 → 11 (+1 for Rule 11 dual-path).** Security Checklist: 84 items (unchanged). Secure Code Gen: 16 sub-sections (unchanged). Prompts: 59 (unchanged). Phase count: 8 main phases + 2.5, 2.6, 2.7, 2.8, 3.5, 6.5 (unchanged). Version bump: V31.2 → V31.3 ✅
+- **V32.45 (2026-08-07) — Button-Affordance Standard:** A fleet-wide UI standard so clients reliably read a button AS a button. Every primary/secondary/CTA button must carry a subtle `shadow-xs/sm` emboss (or an outline border); flat/shadowless styling is reserved for ghost/link TERTIARY actions only. The emboss adds **ELEVATION only** — a button's colours ALWAYS follow the current theme accent; the shadow never changes, tints, or introduces a colour. Extends **`ui-rules.md` Rule 3 in place** (no new UI rule — UI rules stay 14) + `design-principles.md` (interactive-state contract + DO/DO-NOT) + a new **`lint-design.sh` P1j** advisory check (button flat-vs-embossed; tested pos+neg, shellcheck-clean); `CLAUDE.md` #26 advisory list P1a-P1i → P1a-P1j. MINOR — extends a Rule + adds a lint check; no new Rule/Scenario/Prompt/deliverable. **Counts: UNCHANGED — 39 Rules · 49 Scenarios · 62 Prompts (39 NEW ✨) · 39 deliverable files · 14 UI Rules · 147 Checklist items/21 sections · 18 Phase Hooks · 6 agents · 5 MCP servers · 20 Bootstrap Steps.** **Zero-disruption** — P1j is advisory (exit 0); nothing new auto-blocks a build. **HARD HOLD** — local commits only. Historical preservation (Rule 4): all prior changelog entries are unmodified.
+- **V32.44 (2026-08-07) — Existing-App AdminCN Design Adoption Scenario:** Companion to V32.43 — closes the retrofit gap the owner flagged. V32.43 made AdminCN the default for NEW apps + documented the `fake-db`→tRPC graft, but had no first-class NAMED flow for adopting it onto the EXISTING fleet. Adds **Scenario 49 — Existing-App AdminCN Design Adoption / Retrofit**, consistent with the other retrofit scenarios (42 RBAC · 44 SEO · 45 CI/CD · 48 Audit): **UI/design-layer ONLY under INHERIT-not-REPLACE** — keep the app's real tRPC + Prisma + Auth.js v5, re-wire every adopted view off AdminCN's `fake-db`/`zustand`/`nuqs` via the deliverable-#39 graft procedure; incremental strangler-style app-shell adoption (never a big-bang swap); the chosen theme preset reconciled INTO `docs/tokens.json` through the three-layer bridge (Rule 12, not raw preset CSS); per-view graft with the 5-state + tenant-scoping/RBAC contract (Rule 34); a Rule-31 design-baseline update; verify-all-pages regression gate. **Runs PER-SEAT on the target app** (global-feature-broadcast — never from the AIEF seat); the AIEF seat authors the standard + a rollout tracker (`docs/planning/V32.44_ADMINCN_FLEET_ROLLOUT_TRACKER.md`) listing the target apps + per-app effort. MINOR — 1 new Scenario, no new Rule/Prompt/deliverable. **Counts: 49 Scenarios (Scenarios 48→49); all others UNCHANGED — 39 Rules · 62 Prompts (39 NEW ✨) · 39 deliverable files · 14 UI Rules · 147 Checklist items/21 sections · 18 Phase Hooks · 6 agents · 5 MCP servers · 20 Bootstrap Steps.** **Zero-disruption** — adoption is opt-in per app; nothing new auto-blocks a build. **HARD HOLD** — local commits only. Historical preservation (Rule 4): all prior changelog entries are unmodified.
+- **V32.43 (2026-08-07) — AdminCN Fleet-Default Design Starter:** Makes **AdminCN — Shadcn Admin Dashboard Template** (shadcn/studio Pro, v1.0.0) the fleet-DEFAULT UI/UX design starter for every framework-built app, WITHOUT changing the locked backend stack — the *template* expression of the "shadcn/studio Pro is the priority design asset" rule (the V32.11 Pro generator is the *generation* expression; both extend the same baseline). Adoption is **UI/design-layer ONLY under INHERIT-not-REPLACE**: adopt the `default-layout` left-sidebar app-shell (Rule 8), the 10+ theme-preset system, the 50 shadcn/ui components (incl. Pro extras — border-beam, morphing-text, number-ticker, timeline, kanban, rating, circular-progress…), and the dashboard/RBAC/settings/auth view scaffolds; **KEEP tRPC + Prisma + Auth.js v5** and re-wire every adopted view off AdminCN's `fake-db`/`zustand`/`nuqs` data layer via the documented **`fake-db`→tRPC graft procedure** (map mock shape → Prisma model + Zod tRPC router; replace mock fetch with query/mutation; wire the 5 states; enforce tenant-scoping + RBAC hasPermission; Zustand kept only for client-ephemeral UI state). New on-demand deliverable **#39 `.ai_prompt/admincn-starter.md`** is the design-baseline authority (curated-slice manifest, layout menu with `default-layout` = default + 5 opt-in, theme-preset catalogue, graft procedure, license/provenance, INHERIT-not-REPLACE contract — `docs/DESIGN.md`/compiled tokens win token VALUES, ui-rules Rule 12). A **curated slice** (~222 files: theme + default-layout shell + 50 ui + data-decoupled view scaffolds + `PROVENANCE.md`) is vendored to `specdrivenprompt/starter/admincn/` and seeded at **bootstrap Step 20d** (nested — bootstrap total stays 20). `deploy.sh` ships #39 → `.ai_prompt/` + the slice → target `starter/admincn/`. Integrated at the design phases: `phases.md` new V32.43 MODEL HOOK (Phase 2.8/3.3/Parts 5-6 start FROM the AdminCN baseline — not a new phase hook, 18 unchanged), `Planning_Assistant.md` Step 7 design picker defaults to it, `ui-rules.md` Rule 8 names `default-layout` as the concrete left-sidebar shell impl, `templates.md` globals.css bridge reconciles AdminCN presets INTO tokens.json. Global surface: `~/.claude/rules/skill-loadout-card.md` design pipeline ④ adds AdminCN as the default starter the `/cui`→`/iui`→`/rui` build step extends. **License:** paid template ($79), no bundled EULA (underlying shadcn components MIT) — **use-in-own/client-projects ONLY, NO redistribution, NO open-sourcing; AIEF repo stays PRIVATE** (provenance stamped in the slice). **Per-app rollout to already-deployed apps is DEFERRED** — a per-seat broadcast (never edited from the AIEF seat); new apps get the baseline at Phase 0. MINOR — 1 new deliverable #39 + vendored slice; no new Rule/Scenario/Prompt. **Counts: 39 deliverable files (deliverables 38→39); all others UNCHANGED — 39 Rules · 48 Scenarios · 62 Prompts (39 NEW ✨) · 14 UI Rules · 147 Checklist items/21 sections · 18 Phase Hooks · 6 agents · 5 MCP servers · 20 Bootstrap Steps.** Scope + audit trail: `docs/planning/V32.43_ADMINCN_STARTER_SCOPE_PLAN.md`. **Zero-disruption** — nothing new auto-blocks a build. **HARD HOLD** — local commits only. Historical preservation (Rule 4): all prior changelog entries are unmodified.
+- **V32.42 (2026-08-06) — CI/CD Komodo Stack Registration Audit:** Closes the Production-in-Komodo registration gap (verified from the Marine-Guardian hand-installed-prod incident): the generated pipeline ASSUMED every env stack already existed at `/etc/komodo/stacks/<slug>` and never verified it was a Komodo-TRACKED resource, so a prod installed directly on the server was invisible to Komodo's stack list, un-promotable through the pipeline, and silently drifting. **Rule 36 gains a registration mandate** — every non-dev environment (Production included) must exist as a REGISTERED Komodo Stack. The `cicd-gen/` generator emits a new **Stack Registration Audit** artifact (`deploy/komodo-verify.sh` / `cicd-gen --audit`): for each env stack (**prod first & loudest**) it confirms the stack is Komodo-tracked (`km list stacks` / the `ListStacks` read API); an on-host stack absent from Komodo's list is flagged and **scripted-registered via a ResourceSync TOML `[[stack]]` stanza** (manual Scenario-32 UI fallback). Fail-open on tooling (no Komodo CLI/creds → warn, never block), fail-closed on a real untracked-prod finding; wired as an advisory **Phase-6 report-only backstop** (never a hard blocker — same posture as `dev-freshness-check.sh` #37) + a **Scenario-45** retrofit step + a scripted-register path in **Scenario 32**. Also **reconciles `cicd.md §8`'s inaccurate "DeployStack API" claim** with the real mechanism (SSH + `docker compose` against file-on-host Komodo-tracked stacks; the API is used for REGISTRATION/verification, not to replace the proven promotion path), and formalizes **per-env secure credentials** (Server-Setups SOPS vault, never the app repo) + the **domain/subdomain pattern** + a thin pluggable **deploy-platform seam** (register/deploy/verify) for future non-Komodo platforms. Production stays MANUAL-trigger — never auto-deployed by merge-to-`main`. MINOR — extends Rule 36 + Scenarios 45/32 + a Phase-6 hook + one generator artifact; no new Rule/Scenario/Prompt/deliverable. 39 Rules · 48 Scenarios · 62 prompts · 38 deliverables UNCHANGED. **Zero-disruption** — the audit defaults to advisory/report-only; nothing new auto-blocks a build. **HARD HOLD** — local commits only. Historical preservation (Rule 4): all prior changelog entries are unmodified.
+- **V32.41 (2026-08-02) — Capability-Primer Continuous Self-Refresh:** Closes the staleness gap in V32.40 — the primer is a DERIVED artifact, so as an app grows it goes stale until regenerated. `spec-gap-check.sh` (#28) gains **DESYNC CLASS 5 — Capability-Primer staleness**: PRIMER MISSING (spec'd app, no `docs/primer.yml`), PRIMER INCOMPLETE (unfilled `?` fields), PRIMER DRIFT (a known-integration keyword in PRODUCT.md absent from `primer.yml` INTEGRATIONS). It already runs at the Phase 7 Feature-Update pre-flight, so growth is caught automatically. `phases.md` Phase 7 hook gains the self-refresh RESPONSE: on a primer finding, (a) refresh `docs/primer.yml` + rerun `build-primer.sh`, and (b) fire exactly ONE targeted `search-skill <integration>` per drift item — NEVER a full `scan-project` (token-cost discipline — daily bugfix/tweak tasks never trigger this; only a Feature Update that grows the app does). Advisory + graceful-degrade (no PRODUCT.md → skipped; no primer.yml → one nudge). MINOR — extends deliverable #28, no new Rule/Scenario/Prompt/deliverable, NO count change. 39 Rules · 48 Scenarios · 62 prompts · 38 deliverables UNCHANGED. HARD HOLD — local commits only. Historical preservation (Rule 4): all prior changelog entries are unmodified.
+- **V32.40 (2026-08-02) — Capability-Primer Regenerator (Project-Aware Loadout):** Mechanizes the per-project Capability Primer as a framework deliverable — new `scripts/build-primer.sh` (deliverable #38), the sibling of `sync-context.sh` (#27). It regenerates the marker-delimited `<!-- AIEF:PRIMER -->` region of CLAUDE.md — the always-on, loadout-deciding FLAGS slice (stack/realtime · tenancy+RBAC · gov-LGU · public-facing · mobile · data-sensitivity · integrations) — from `docs/primer.yml`, a flat KEY: value spec the agent authors once from docs/PRODUCT.md. The FLAGS slice makes the skill/plugin loadout PROJECT-aware instead of task-shape-generic; it is consumed by the global `~/.claude/rules/skill-loadout-card.md` STEP 0 + `analyze-confirm-gate.md` HAND-2. Rendered from a structured source (NOT grepped from prose) so loadout-deciding semantics (RBAC=custom-roles-not-3-tier, mobile=responsive-web-not-Expo) are the agent's authored judgement, never a fragile guess; unknown fields stay `?`. Scaffolds `docs/primer.yml` + the on-demand DETAIL slice `docs/CAPABILITY_PRIMER.md` on first run; idempotent pure-function render (no timestamps), atomic write, `--check` (exit 3 on drift) + `--file` (path-hardened) — same machinery as sync-context.sh. `deploy.sh` GROUP 15 ships it to `scripts/` and adds `docs/primer.yml` + `docs/CAPABILITY_PRIMER.md` to NEVER-TOUCH. Format spec: `~/.claude/templates/capability-primer.md`; proven on CueLane (`docs/planning/CAPABILITY_PRIMER_PROTOTYPE.md`). Per-app rollout is a per-seat broadcast. MINOR — additive, no new Rule/Scenario/Prompt. Counts: deliverables 37→38; 39 Rules · 48 Scenarios · 62 prompts UNCHANGED. HARD HOLD — local commits only. Historical preservation (Rule 4): all prior changelog entries are unmodified.
+- **V32.39.1 (2026-07-28) — Audit-Gate Wiring:** wires the V32.38 Rule 38 Tier-2 Phase-5 opt-in gate (inputs.yml `audit.tier2.enforce` + a conditional □ gate in phases.md Phase 5; `audit-app.sh --tier=2` blocks on CRITICAL/HIGH when enabled). Adds the `audit: { tier2: { enforce: false } }` stanza to the example inputs.yml (phases.md Phase 3 §5e + Master_Prompt Phase 3 block, default OFF) and a □ AUDIT TOOLKIT T2 GATE conditional in phases.md Phase 5 pre-flight; audit.md §1 + tier table reconcile the T2 gate to WIRED and mark the Gitleaks pre-commit hook DEFERRED/documented-only (NOT wired). PATCH — wiring-only, no behavioral rule change. Counts UNCHANGED — 39 Rules · 48 Scenarios · 62 prompts · 37 deliverables. HARD HOLD — local commits only. Historical preservation (Rule 4): all prior changelog entries are unmodified.
+- **V32.39 (2026-07-28) — Dev-Freshness Deliverable (Dev Leads Every Environment):** Promotes the always-on global discipline `~/.claude/rules/deploy-discipline.md` ("Dev leads every env" invariant, hardened 2026-07-28 after the Marine-Guardian dev-behind-staging incident where the app rebuilt fresh but the worker stayed stale) into a first-class framework **Rule 39 — Dev-Freshness (Dev Leads Every Environment)** + a new deployed deliverable **#37 `scripts/dev-freshness-check.sh`**. The Rule: **local dev must never serve staler code than any environment you ship** — a staging/prod/demo deploy is NOT complete until the local dev container is rebuilt off the same `main`/sha, app **AND** worker (an app-only `--build` leaves the worker stale). Root cause it prevents: a dev stack serves a **prebuilt image with NO source bind-mount**, so code only appears on REBUILD; shipping to another env recreates THAT env but never touches dev, so dev silently serves stale code while `main` is already current. Detection backstop: `bash scripts/dev-freshness-check.sh [--report-only] [TARGET_DIR]` checks only CODE services (`app`/`worker`/`web`/`api`; infra skipped), prefers a stamped git-sha image label, falls back to image-build/container-recreate time vs the `main` commit, and **exits 2 if any dev code container is behind `main`** (flags `--branch`/`--project`/`--service`/`--all-services`/`--container`). **Fail-open on tooling, fail-closed on drift** — a missing/broken docker or git warns and continues (same graceful-degrade posture as `lint-deploy.sh` C8), never breaking a build. Wired as an **advisory `--report-only` backstop** at `phases.md` Phase 6 (run after any ship + at session/loop start), never a hard Phase-6 blocker. The deliverable is copied verbatim from the global fleet helper `~/.local/bin/dev-freshness-check.sh` (logic unchanged) and ships to target `scripts/dev-freshness-check.sh` via `deploy.sh` (Group 14, chmod +x). **Zero-disruption** — nothing new auto-blocks a build; the backstop is advisory. **HARD HOLD** — local commits only; no staging/prod/demo promotion without the owner's explicit word. **Counts: 38→39 Rules · deliverables 36→37; all others UNCHANGED — 48 Scenarios · 62 Prompts (39 NEW ✨) · 14 UI Rules · 147 Checklist items/21 sections · 18 Phase Hooks · 6 agents · 5 MCP servers · 20 Bootstrap Steps.** Historical preservation (Rule 4): all prior changelog entries are unmodified.
+- **V32.38 (2026-07-28) — App Audit Toolkit (Tiered, Compose-Native):** Owner supplied a 30-tool open-source app-audit toolkit; ground-truth analysis found (F1) it assumes Kubernetes as the deploy target, which this fleet is not (Rule 6's K8s scaffold is inactive by default — every real app runs Compose + Komodo + Traefik), (F2) a **confirmed phantom gate** — `security.md` claimed "the framework's existing Trivy image gates (Phase 5/6)" three times, but `phases.md`/`lint-deploy.sh`/CI never implemented any image scan, and (F3) two tools (Tracetest, Pact) only pay off once Rule 37 microservices escalation fires. Rather than a 6th pillar (real standing overhead — its own repo/memory/router-rows/self-linter — fragmenting a security story already spread across `security.md`/`Security_Checklist.md`/`attack-informed-hardening.md`), the 30 tools are routed across the 3 existing pillars along their existing boundaries: build-time per-app checks → **this repo** (Rule 38, ships via `deploy.sh`); runtime/infra scanning → **Server-Setups** (broadcast note only); offensive/manual testing → **Hacking-Framework** (broadcast note only). Adds **Rule 38 — App Audit Toolkit**: a tiered audit toolkit run **MANUAL / ON-DEMAND by default (owner-set 2026-07-28) — nothing auto-runs in the background.** One-shot: `audit-app.sh [--tier=1|2] [--report-only] <target>` (loose trigger "audit this app"). Tiers are **cost bands, not an auto-schedule** — **T1** cheap/seconds (Gitleaks · Semgrep · tsc[monorepo-aware] · ESLint), **T2** moderate/minutes (Trivy image+config · OSV-Scanner · Syft SBOM · BackstopJS, alongside the already-wired Playwright/Lighthouse/axe-Pa11y/k6/pnpm-audit), **T3** expensive/hours, never wired (ZAP DAST · Stryker mutation · manual pentest, documented only). **Blocking gates are explicit per-app OPT-INS, off by default** — a pre-commit hook (recommended for Gitleaks only, since secrets-in-history are unrecoverable) and a blocking T2 Phase-5 gate (`audit.tier2.enforce: true` in `inputs.yml`). **INHERIT-not-REPLACE** — Rule 38 is the automated layer beneath `security.md` L1-L6 and the 147-item `Security_Checklist.md`, never an override. **Fail-closed on findings, fail-open on tooling** — once gated, a CRITICAL finding blocks; a missing/broken scanner always warns (same graceful-degrade posture as `lint-deploy.sh` C8). **Zero-disruption** — the manual default means no gate lands on any app (new or already-deployed) without an explicit opt-in; every app keeps building unchanged (same spirit as V32.33/34). Fixes **F2** — `security.md`'s false "existing Trivy image gates" claim is replaced with a pointer to the now-real Rule 38 gate. Adds on-demand deliverable **#35 `.ai_prompt/audit.md`** (tool matrix, tier table, per-tool invocation, triage/severity policy, T3 runbooks) and deliverable **#36 `scripts/audit-app.sh`** (the T1/T2 gate runner, `--tier=1|2`/`--report-only`/graceful-degrade, cloning the `lint-deploy.sh` pattern). Adds **Scenario 48 — Existing-App Audit Toolkit Retrofit**. Kubescape/Polaris (K8s-native) explicitly OUT of baseline scope; Tracetest/Pact remain conditional on Rule 37 escalation. **HARD HOLD** — local commits only; no staging/prod/demo promotion without the owner's explicit word. **Counts: 37→38 Rules · 47→48 Scenarios · 34→36 deliverable files; all others UNCHANGED — 62 Prompts (39 NEW ✨) · 14 UI Rules · 147 Checklist items/21 sections · 18 Phase Hooks · 6 agents · 5 MCP servers · 20 Bootstrap Steps.** Scope + audit trail: `docs/planning/V32.38_SCOPE.md`. Historical preservation (Rule 4): all prior changelog entries are unmodified.
+- **V32.37 (2026-07-27) — Design-Fidelity Completion (R2/R3/R5/R6):** Design-Fidelity Completion — R2 PA `docs/tokens.json` emission + token-value-equivalence CONTRACT 5, R3 mechanical prototype→production inheritance, R5 non-skippable gate when `docs/MOCKUP.jsx` exists, R6 baseline-update discipline. Closes the deferred RCA seams from `docs/planning/DESIGN_DRIFT_RCA_AND_PLAN.md` §5 left open by the V32.36 keystone (R1+R4). EXTENDS **Rule 31 — Design-as-Contract** in place (no new Rule) with clause (d): **R2** — the Planning Assistant now actually emits `docs/tokens.json` (DTCG v2025.10) derived from the SAME values as `docs/DESIGN.md`/`docs/MOCKUP.jsx`, so Style Dictionary compiles the mockup's OWN palette; `templates.md` token-pipeline.spec.ts gains CONTRACT 5 (token-value-equivalence) asserting a compiled `--sd-color-*` equals the corresponding `tokens.json` `$value`. **R3** — `phases.md` Phase 4 Part 5 now instructs starting from the prototype's own component/markup structure (copy-then-wire real data behind the same boundary, carrying `data-fdl` anchors) rather than re-authoring screens from prose, lowering the drift the R1 gate has to catch. **R5** — `phases.md` qualifies the Phase 3.3 skip: when `docs/MOCKUP.jsx` exists, the baseline-capture (Step 8c) + the Parts-5-6/Phase-5 `design:fidelity` gate are MANDATORY and cannot be skipped; only a genuinely mockup-less app may skip 3.3. **R6** — Rule 31 + `phases.md` Phase 7 make baseline-update discipline explicit: an intentional design change is valid ONLY via re-approve MOCKUP.jsx → `design:fidelity --update-baseline` → commit the new baseline; leaving the old baseline in place while design ships is now an explicit Rule-31 violation (tightens/cross-refs V32.7.3 Design Baseline Back-Port). **NON-DISRUPTIVE** — no existing app is retro-gated; the gate only tightens for apps that already have a `docs/MOCKUP.jsx`. **HARD HOLD** — local commits only; no staging/prod/demo promotion without the owner's explicit word. **Counts: UNCHANGED — Rules 37 · Scenarios 47 · deliverables 34 · 62 Prompts (39 NEW ✨) · 14 UI Rules · 147 Checklist items/21 sections · 18 Phase Hooks · 6 agents · 5 MCP servers · 20 Bootstrap Steps.** Scope + audit trail: `docs/planning/V32.37_SCOPE_PLAN.md`. Historical preservation (Rule 4): all prior changelog entries are unmodified.
+- **V32.36 (2026-07-27) — Design-Fidelity Enforcement (Mockup-Anchored Layout-Fidelity Gate):** Design-Fidelity Enforcement — mockup-anchored layout-fidelity gate (deliverable #34 `scripts/design-fidelity.mjs`) + Rule 31 two-layer extension; keystone R1+R4. EXTENDS **Rule 31 — Design-as-Contract** in place (no new Rule; Rules stay 37) with a second enforced layer: alongside (a) TOKEN fidelity (compiled tokens + disabled default Tailwind palette, existing) sits (c) **LAYOUT fidelity** — a blocking gate that detects structural drift against the human-approved `docs/MOCKUP.jsx` itself, closing the gap the rule's own problem statement names ("verify function never form"; a production baseline re-captured from the build's own render can rubber-stamp drift). Adds on-demand deliverable **#34 `scripts/design-fidelity.mjs`** (DEPLOYED — like `lint-design.sh`/`design-stop-hook.sh`, not a `templates.md` template, so it cannot be dropped under the ≤80K context budget): structural landmarks in both MOCKUP.jsx and the built components carry a stable `data-fdl="<name>"` anchor (content-agnostic region names — `app-shell`, `sidebar`, `topbar`, `page-header`, `primary-content`, `kpi-row`, `data-table`, `detail-panel`, `footer`); a Playwright harness records each anchor's normalized bounding box `{x,y,w,h}` + document order + structural display facts (never colors/text/pixels, so placeholder-vs-real content never trips it); the baseline is captured from the **approved mockup/prototype at Phase 3.3 sign-off** (`design:fidelity --update-baseline`), never re-derived from the build; Phase 4 Parts 5-6 + Phase 5 run `design:fidelity` against that mockup baseline and **exit non-zero** on MOVED/RESIZED/MISSING/EXTRA/REORDERED (`--report-only` stays advisory-only where used). Rule 32(b)'s "Rule 31 visual gate" cross-ref now names both gates (`toHaveScreenshot` + `design-fidelity.mjs`). **Keystone-first scope:** only R1 (the gate) + R4 (deployed, non-droppable) ship this bump; R2 (PA→tokens.json seam), R3 (mechanical prototype-inheritance), R5 (non-skippable), R6 (baseline-update discipline) are DEFERRED per the RCA (`docs/planning/DESIGN_DRIFT_RCA_AND_PLAN.md`). **NON-DISRUPTIVE** — syncing V32.36 into an existing app drops an inert deployed script + empty baseline scaffolding; no app is retro-gated until it captures a baseline (same posture as V32.35). **HARD HOLD** — local commits only; no staging/prod/demo promotion without the owner's explicit word. **Counts: Rules 37 (unchanged) · Scenarios 47 (unchanged) · deliverables 33→34; all others UNCHANGED — 62 Prompts (39 NEW ✨) · 14 UI Rules · 147 Checklist items/21 sections · 18 Phase Hooks · 6 agents · 5 MCP servers · 20 Bootstrap Steps.** Scope + audit trail: `docs/planning/V32.36_SCOPE.md` + `docs/planning/V32.36_PLAN.md`. Historical preservation (Rule 4): all prior changelog entries are unmodified.
+
+- **V32.35 (2026-07-27) — Architecture Posture (Modular-Monolith Default · Microservices Escalation):** Makes explicit the architecture the framework has always built by default and adds a forward-looking escalation standard for the rare app that outgrows it. Adds **Rule 37 — Architecture Posture**: every framework-built app is a **modular monolith by default** (monolithic DEPLOYMENT — one Next.js app · one PostgreSQL · one Compose stack · one migration history — with modular INTERNALS via tRPC routers + the RBAC feature registry; a separated BullMQ worker does not change this), and **microservices is an owner-gated ESCALATION, never the baseline** — triggered only by a real need (divergent scale curve, hard isolation boundary, heavy/license-isolated runtime, org-scaling, divergent SLA), each recorded as a `[WHAT]` in PRODUCT.md + DECISIONS_LOG. Adds on-demand deliverable **#33 `microservices.md`** — the **decompose-the-locked-stack** design architecture (bounded contexts from PRODUCT.md modules + the RBAC registry · database-per-service · typed/versioned `@app/contracts` zod cross-service contracts · Valkey Streams + BullMQ / opt-in NATS JetStream eventing with outbox + saga · Traefik gateway + Komodo per-service stacks · Auth.js edge → signed-JWT propagation carrying `tenant_id` · OpenTelemetry tracing · inter-service mTLS/signed-token auth · per-service build-once CI per Rule 36 · strangler migration path · an explicit anti-over-engineering "what we DON'T do" list), read ONLY when an app clears the escalation gate. Adds **Scenario 47 — Microservices Escalation Assessment / Decomposition**. Two `phases.md` MODEL hooks: the architecture-posture *decision* cue at the Phase 3 pre-lock architecture cluster (beside `architecture-designer`) and a deploy-topology *pointer* at the Phase 6 CI/CD authority block (mirroring the Rule 36 `cicd.md` pointer). **NON-DISRUPTIVE** — syncing V32.35 into an existing app only drops the inert on-demand reference; no app is auto-decomposed; the default stays the modular monolith; escalation is owner-gated and follows the strangler path (one bounded context at a time), never a big-bang rewrite. INHERIT-not-REPLACE: a decomposed service inherits the locked stack (`security.md`/`ui-rules.md`/`cicd.md`/`rbac.md`/`notifications.md`) per service, never overrides it. **HARD HOLD** — any topology change is LOCAL commits only; no staging/prod/demo promotion without the owner's explicit word. **Counts: 36→37 Rules · 46→47 Scenarios · 32→33 deliverable files; all others UNCHANGED — 62 Prompts (39 NEW ✨) · 14 UI Rules · 147 Checklist items/21 sections · 18 Phase Hooks · 6 agents · 5 MCP servers · 20 Bootstrap Steps.** Scope + audit trail: `docs/planning/V32.35_SCOPE.md` + `docs/planning/V32.35_PLAN.md`. Historical preservation (Rule 4): all prior changelog entries are unmodified.
+
+- **V32.34 (2026-07-26) — SpecStory Retirement (Rule-19 / Governance-Sync git-rebase):** Retires SpecStory (`.specstory/history/` passive change-capture) — completes the V32.7 multi-agent retirement (Copilot/Cline gone). Claude Code is the sole agent and self-attributes at commit time (Rule 15 + CHANGELOG_AI + Smart Checkpoint), so the passive capture layer that used to bridge multi-agent attribution gaps is redundant. **Rule 19 is TOMBSTONED IN-PLACE** — the header/slot is retained (`### Rule 19 — SpecStory passive capture — RETIRED (V32.34)`), the body replaced; Rules stay 36, no renumber. **Scenario 17 + 18 are TOMBSTONED IN-PLACE** the same way — headers retained, one-line RETIRED bodies; Scenarios stay 46, no renumber. **Governance Sync now sources diffs from GIT**, reading two mandatory sources: (A) `git log --since=<last docs/CHANGELOG_AI.md commit>` for committed drift (self-attributed `CLAUDE_CODE` at commit, Rule 15), and (B) `git status --porcelain` + `git diff HEAD` for uncommitted working-tree edits (the manual-edit case SpecStory used to catch — attributed `HUMAN` or in-flight Claude). This block is pasted identically into Scenario 12, the Governance Sync section, the Tool Setup Guide, and every other live Gov-Sync reference. **Attribution table collapses from 4 rows to 2** (`CLAUDE_CODE`/`HUMAN` — no more `COPILOT`/`UNKNOWN` inference; Claude Code is sole agent). Bootstrap no longer creates `.specstory/specs` or `.specstory/history`, no longer writes `.specstory/config.json` (Step 11 tombstoned, step number retained — Bootstrap stays 20 steps), and no longer copies the master-prompt spec for SpecStory injection. **ZERO-DISRUPTION for already-deployed apps** — their existing `.specstory/history/` is left in place, untouched, as a frozen legacy audit trail, never migrated or deleted; only NEW apps are born without it. `deploy.sh` is purely additive (no change — the existing `.specstory/history` NEVER_TOUCH/dir-protect entry is kept). **No Rule/Phase/Scenario/security-level removed or redefined — counts UNCHANGED: 36 Rules · 46 Scenarios · 62 Prompts (39 NEW ✨) · 14 UI Rules · 32 deliverable files · 147 Checklist items/21 sections · 18 Phase Hooks · 6 agents (SpecStory retired but kept LISTED, like the retired Cline entry).** Scope + audit trail: `docs/planning/V32.34_SCOPE.md` + `docs/planning/V32.34_PLAN.md`. Historical preservation (Rule 4): all prior changelog entries are unmodified.
+- **V32.33 (2026-07-26) — Cline `.cline/` Split-Brain Retirement:** Retires the `.cline/` vs `docs/` running-state split-brain left over from the Cline-era (Cline deprecated V31). **Canonical running-state path is now `docs/STATE.md`** + `docs/memory/lessons.md` + `docs/memory/agent-log.md` + `docs/handoffs/` + `docs/tasks/` — every live Bootstrap/Rule/Scenario instruction that used to write or read `.cline/*` now targets `docs/*`. **`.clinerules` is retired outright** — Bootstrap Step 3 no longer generates it; its operational content (fresh-start safety, error recovery, git rules, lessons priority, context7, private-tag handling) already lives natively as numbered Rules in this Master Prompt, so nothing is lost. **The correctness fix (additive, closes a real Rule-32 gate fail-open):** `scripts/design-stop-hook.sh` and `scripts/spec-gap-check.sh` previously read ONLY `docs/STATE.md` and silently exited 0 (fail-open) when it was absent — an app still shaped on the old `.cline/STATE.md` path got NO Rule-32 evidence enforcement. Both scripts gain an ADDITIVE `.cline/STATE.md` read-fallback (docs-first, `.cline/STATE.md` fallback, "neither present ⇒ exit 0" unchanged) — never removes a read path. `scripts/sync-context.sh` already had this fallback since V32.20 and is untouched. **`deploy.sh` is purely additive:** every existing `.cline/`+`.specstory/history` NEVER_TOUCH/dir-protect entry is kept; `docs/memory`, `docs/handoffs`, `docs/tasks` + `docs/memory/lessons.md`/`docs/memory/agent-log.md` are ADDED to the protect list. **ZERO-DISRUPTION for already-deployed apps** — their existing `.cline/` data is left in place, untouched; only NEW apps are born entirely on `docs/`. **New Scenario 46 — per-app `.cline/` → `docs/` migration** documents the opt-in walkthrough for an existing app that wants to move off `.cline/`. `R8 Opus Write Allow-List` retargeted to `docs/STATE.md` (the legacy `.cline/STATE.md` entry removed from the enumerated list). **Count change: Scenarios 45→46 ONLY** — no Rule/Phase/security-level removed or redefined (Rules stay 36; deliverables stay 32 — this bump touches existing deliverables, it does not add one). **Canonical counts after V32.33: 36 Rules · 46 Scenarios · 20 Bootstrap Steps · 62 Prompts (39 NEW ✨) · 14 UI Rules · 9 V32 Dispatch Rules · 18 Phase Hooks · 32 deliverable files · 6 memory-governance sections · 12 PRODUCT.md sections · Planning Assistant 12 rules · 5 MCP servers · 147 Security Checklist items / 21 sections.** Scope + audit trail: `docs/planning/V32.33_SCOPE.md` + `docs/planning/V32.33_PLAN.md`. Historical preservation (Rule 4): all prior changelog entries are unmodified.
+
+- **V32.32 (2026-07-22) — CI/CD Pipeline Standard:** Adds **Rule 36 "CI/CD Pipeline Standard"** + a new on-demand deliverable **`.ai_prompt/cicd.md` (#32)** + **Scenario 45 — CI/CD Setup/Retrofit** + a Phase 6 CI/CD wiring step. Codifies the canonical **build-once, promote-forward** pipeline: an image is built and tagged ONCE by CI (`ci.yml` governance→quality→security + `docker-publish.yml` build+tag+push), then the SAME bytes are promoted dev→staging→prod (demo by retag) — never rebuilt per environment. **CI gates and publishes; it never auto-deploys** any environment — deployment stays a separate deliberate step per the existing 3-tier deploy contract. **Staging rehearses on a fresh production-data copy** (data-first gate, `staging-refresh-gate.md`) before the candidate image is deployed, so migrations are proven against real prod-shaped data first. **Production migrations are a deliberate manual `prisma migrate deploy` step** — rehearsed on staging, never auto-run on container boot — and **production DATA is never wiped/reloaded/reseeded**. **Demo migrates but never reseeds**, plus a **6-hour golden self-heal** (`demo-reset.sh`) restores demo to its last-known-good state without a redeploy. **Rollback couples the image with its matching schema** (or explicitly guardrails the mismatch); fix-forward is preferred. Generated per app by the repo-root **`cicd-gen/`** generator (delegates staging refresh to `staging-gate/`, no duplication). **HARD HOLD** — wiring/deploy stays owner-gated. **Count change: Rules 35→36, Scenarios 44→45, deliverables 31→32.** Prompts stay 62, UI Rules stay 14, Bootstrap stays 20, Phase Hooks stay 18, Security Checklist stays 147/21. **Canonical counts after V32.32: 36 Rules · 45 Scenarios · 20 Bootstrap Steps · 62 Prompts (39 NEW ✨) · 14 UI Rules · 9 V32 Dispatch Rules · 18 Phase Hooks · 32 deliverable files · 6 memory-governance sections · 12 PRODUCT.md sections · Planning Assistant 12 rules · 5 MCP servers · 147 Security Checklist items / 21 sections.** Historical preservation (Rule 4): all prior changelog entries are unmodified.
 - **V32.31 (2026-07-20) — SEO-Aware Design & Content (Google-Friendly by Design):** EXTENDS Rule 35 "SEO Foundation (Adaptive Baseline)" (V32.30) upstream into the design/content phases — no new Rule, Scenario, Prompt, or deliverable. V32.30 wired SEO only at Phase 4 (scaffold) + Phase 5 (validation), the TECHNICAL foundation (metadata/sitemap/robots/JSON-LD/Lighthouse). Being Google-friendly — especially for a marketing/landing surface — is a design + content-time concern that must start at the mockup/content stage, not be bolted on after. This bump makes SEO an early design/content concern: the **Planning Assistant's DESIGN.md/MOCKUP.jsx generation step (Step 7)**, **Phase 2.8** (mockup), and **Phase 3.3** (prototype) now plan SEO-informed content structure for public-facing surfaces — a single clear H1 per page, a logical H2/H3 heading hierarchy, keyword-informed headline/body copy, descriptive link text, meaningful `alt` text planned alongside the imagery, and a Core-Web-Vitals-aware layout (LCP-friendly hero, CLS-stable reserved dimensions, no render-blocking heavy assets) — so the designed frontend inherits Google-friendliness by construction rather than a Phase-5 retrofit. `.ai_prompt/seo.md` gains a new "Design & content-time SEO" section (content/copy, structure/semantics, performance-as-design checklists); Rule 35 (`Master_Prompt.md`) gains an extension paragraph pointing to it; `Planning_Assistant.md` Step 7 (DESIGN.md/MOCKUP.jsx) drafts the SEO-aware content structure automatically for public surfaces — no new PRODUCT.md section, no new interview question; **Scenario 44**'s retrofit is EXTENDED with a content/design SEO pass (heading hierarchy, copy, alt text, CWV-affecting layout) alongside its existing technical-tag retrofit, still dev-first + owner-gated (HARD HOLD). **Zero count change** — no new Rule/Scenario/Prompt/deliverable/phase-hook. **Canonical counts after V32.31 (unchanged from V32.30):** 35 Rules · 44 Scenarios · 20 Bootstrap Steps · 62 Prompts (39 NEW ✨) · 14 UI Rules · 9 V32 Dispatch Rules · 18 Phase Hooks · 31 deliverable files · 6 memory-governance sections · 12 PRODUCT.md sections · Planning Assistant 12 rules · 5 MCP servers · 147 Security Checklist items / 21 sections. **Historical preservation (Rule 4):** all prior changelog entries are unmodified.
 - **V32.30 (2026-07-19) — SEO Foundation (Adaptive Baseline):** Adds **Rule 35 "SEO Foundation (Adaptive Baseline)"** + a new always-on deliverable **`.ai_prompt/seo.md` (#31)** + **Scenario 44 — Existing-App SEO Foundation Retrofit**. SEO becomes a **CONSTITUTIONAL, always-on concern** — the same posture as the L1–L6 security stack — NOT a conditional PRODUCT.md-gated capability like V32.28's `notifications.md`: every framework-built app is scaffolded with an SEO foundation automatically, with **no human planning step and no new PRODUCT.md section**. **Adaptive baseline:** public routes get full SEO (indexable, canonical, Open Graph + Twitter, JSON-LD, sitemap inclusion); private/authed/internal routes get a private baseline (`noindex,nofollow` + `robots.ts` disallow + sitemap exclusion), detected from the app's existing route-group/middleware-auth boundary, fail-closed to private on an undetermined route. Built entirely on **Next.js App Router native primitives** (verified against current Next.js docs via context7, `/vercel/next.js`): `metadata`/`generateMetadata`, `app/sitemap.ts` (`MetadataRoute.Sitemap`), `app/robots.ts` (`MetadataRoute.Robots`), `alternates.canonical` + `alternates.languages` (hreflang), `openGraph`/`twitter` fields, and an opt-in dynamic `opengraph-image`/`next/og` `ImageResponse`. Config values (site name, base URL, default OG image, locales) are sourced from the **existing PRODUCT.md App Identity section + env vars** — never fabricated, never a new interview. Enforced at **Phase 4** (scaffold emits sitemap/robots/metadata/JSON-LD) and **Phase 5** (validation gate: metadata on every route, clean sitemap/robots build, canonical+OG+Twitter on public routes, noindex+disallow on private routes, valid structured data, hreflang when multi-locale, **Lighthouse SEO ≥ 90 HARD-gated for any app with a public-facing surface**). **Count change: Rules 34→35, Scenarios 43→44, deliverables 30→31.** Prompts stay 62, UI Rules stay 14, Bootstrap stays 20, Phase Hooks stay 18, Security Checklist stays 147/21. **Canonical counts after V32.30: 35 Rules · 44 Scenarios · 20 Bootstrap Steps · 62 Prompts (39 NEW ✨) · 14 UI Rules · 9 V32 Dispatch Rules · 18 Phase Hooks · 31 deliverable files · 6 memory-governance sections · 12 PRODUCT.md sections · Planning Assistant 12 rules · 5 MCP servers · 147 Security Checklist items / 21 sections.** Historical preservation (Rule 4): all prior changelog entries unmodified.
 - **V32.29 (2026-07-18) — Telegram Storage SCAFFOLD-CODE Port:** Lands the SCAFFOLD-CODE deliverable deferred by V32.27 (the "⚠ SCAFFOLD-CODE PENDING" caveat). Previously `templates.md` documented the Telegram-default storage DECISION but a newly-scaffolded app still shipped MinIO-only and had to adopt the adapter from FRMS by hand. This bump ports the FRMS-proven code path into the scaffold PROSE so Phase 4 now GENERATES it for every new app: the `packages/${app_slug}/storage` **dual-backend `StorageAdapter`** (S3/MinIO **and** Telegram, selected by `STORAGE_BACKEND`), the `MediaObject` ledger Prisma model + `tenants.telegram_channel_id` column + additive migration (tenant-scoped via the composite `@@unique([tenantId, storageKey])` the route depends on), the `/api/media` proxy route (auth → rate-limit → tenant-ledger 404-on-miss → MEDIA_DOWNLOAD audit-before-fetch → serve; `telegramFileId` never leaked) + `resolveMediaBytes` dual-read helper (Telegram-first, MinIO fallback for pre-migration rows), the upload-router Telegram branch that writes the ledger row, and per-env `STORAGE_BACKEND`/`TELEGRAM_*` wiring (dev+staging+prod=Telegram — dev on its OWN dedicated channel; demo=MinIO; MinIO retained everywhere as the temp/index/scratch fallback). Host primitives the app layer must provide are NAMED not fabricated (`platformPrisma`/`ctx.db`, `requireRouteAuth`, `rateLimiters` mediaDownload+upload tiers, an `AuditLog` model). Creds only in Server-Setups (SOPS+age); gov/LGU PII = owner-accepted temp measure (`privacy.md` Rule 33). **Prose-scaffold shape** (agent-generated from `templates.md` prose at Phase 4 Parts 3/4/5, wired via `phases.md` MODEL HOOK pointers) — NOT a copied-file deliverable, because the framework has no template/stub dirs and the deploy whitelist ships only `.md`/`.sh`/`.json`. `templates.md` Rule 5 storage section: the PENDING caveat REPLACED with the full canonical scaffold code; decision-prose + per-env matrix + R2/NATS opt-in + creds/PII caveats preserved. **Zero count change** — no new Rule/Scenario/Prompt/deliverable/phase-hook. **Canonical counts after V32.29 (unchanged from V32.28):** 34 Rules · 43 Scenarios · 20 Bootstrap Steps · 62 Prompts (39 NEW ✨) · 14 UI Rules · 9 V32 Dispatch Rules · 18 Phase Hooks · 30 deliverable files · 6 memory-governance sections · 12 PRODUCT.md sections · Planning Assistant 12 rules · 5 MCP servers · 147 Security Checklist items / 21 sections. **Historical preservation (Rule 4):** all prior changelog entries are unmodified.
@@ -8498,10 +8977,10 @@ Version stays same for: wording fixes, clarifications, side note updates.
 - **V32.1.5 (2026-05-29):** Prompt 4.14 added — **Brownfield PA Adoption: Existing App / Mockup → Reverse-Extract PRODUCT.md.** Fills a long-standing gap: `Planning_Assistant.md` natively supports Situation A (blank interview), Situation B (paste existing PRODUCT.md), and Situation C (resume an old chat) — but has no native mode for *"reverse-extract PRODUCT.md from an existing built app or clickable mockup."* New prompt 4.14 injects this as **Situation D** for the chat session: user uploads PA template + project artifacts (source code / repo zip / screenshots / mockup / partial notes), and PA produces a 3-column triage per required section (✅ CONFIRMED / 🟡 INFERRED / ❓ MISSING), walks the user through gaps one at a time per Rule 7 pacing, runs Rule 5 spec-quality verification, then writes the final PRODUCT.md. Phase 2.8 mockup is conditionally skipped if the user uploaded a working UI artifact. Final routing: working code → prompt 1.5 (Brownfield Adoption), mockup only → 1.3, partial → 1.6, ambiguous → 1.2. **Files changed:** `Prompt_References.html` (new card p-4-14, nav link in Planning Assistant group, hero stats 59→60 / 36→37, decision tree), `Prompt_References.md` (mirror ## 4.14 section, decision tree, What's New summary), `Master_Prompt.md` (this entry), `Framework_Feature_Index.md` (V32.1.5 row + footer count bump), `CLAUDE_compact.md` (title V32.1.4→V32.1.5, prompt count 59→60, STRICTEST line append), `ChatGPT_Cross_Audit.md` (K.28 verification item + verified counts block 59→60 / 36→37). **Count bump:** 59 → 60 Prompts, 36 → 37 NEW ✨. Planning Assistant file itself is NOT modified — Situation D is injected at runtime via the kickoff prompt; if PA ever ships native Situation D support, 4.14 becomes a thin wrapper.
 
 - **V32.2 (2026-06-01) — Dispatch Discipline Expansion:** Adds four new V32 rules (R6–R9) targeting the dominant remaining token leak — Opus burning attention on exploratory reads, serial dispatches, and silent R1 bypasses for "small" edits. **Root cause:** V32 R1–R5 enforced *who writes files* (Sonnet only) but left *Opus's reading cadence and dispatch parallelism* unconstrained. Observed result on AI-Skills-Repo session 2026-06-01: total model usage ~35%, Sonnet only ~10% — Opus was consuming ~71% of the burn doing exploratory reads and serial dispatch turns the framework should have routed to Sonnet. **New rules:**
-  - **R6 Scout-Before-Plan** — Any source/config/test file > 100 lines that Opus needs to understand for planning MUST be summarized by a Scout-Sonnet (`Agent(model: "sonnet", subagent_type: "Explore")`) with a structured extraction schema. Opus reads the summary, not the file. **Architect-read allow-list** (Opus reads directly when ≤ 200 lines; files > 200 lines on the allow-list route through Scout-Sonnet with the **V32.3 Governance Extraction Schema** — see `memory-governance.md §4`): `docs/PRODUCT.md`, `docs/STATE.md`, `docs/DECISIONS_LOG.md`, `docs/CHANGELOG_AI.md`, `docs/IMPLEMENTATION_MAP.md`, `.cline/STATE.md`, `.claude/rules/*.md`, `.ai_prompt/*.md`. R6 extends R5 (Scout-Before-Edit) from Sonnet's editing context to Opus's planning context. **V32.3 closes the "growing governance doc" loophole** — as allow-list docs balloon past 200 lines, Smart Hydration keeps them Scout-mediated rather than becoming the largest Opus reads in every session.
+  - **R6 Scout-Before-Plan** — Any source/config/test file > 100 lines that Opus needs to understand for planning MUST be summarized by a Scout-Sonnet (`Agent(model: "sonnet", subagent_type: "Explore")`) with a structured extraction schema. Opus reads the summary, not the file. **Architect-read allow-list** (Opus reads directly when ≤ 200 lines; files > 200 lines on the allow-list route through Scout-Sonnet with the **V32.3 Governance Extraction Schema** — see `memory-governance.md §4`): `docs/PRODUCT.md`, `docs/STATE.md`, `docs/DECISIONS_LOG.md`, `docs/CHANGELOG_AI.md`, `docs/IMPLEMENTATION_MAP.md`, `.cline/STATE.md` (legacy read-allowance for pre-V32.33 apps not yet migrated — see Scenario 46; new apps never create it), `.claude/rules/*.md`, `.ai_prompt/*.md`. R6 extends R5 (Scout-Before-Edit) from Sonnet's editing context to Opus's planning context. **V32.3 closes the "growing governance doc" loophole** — as allow-list docs balloon past 200 lines, Smart Hydration keeps them Scout-mediated rather than becoming the largest Opus reads in every session.
   - **R7 Default Parallel Fan-Out** — When dispatching ≥ 2 Sonnet subagents whose tasks have no inter-dependency, Opus MUST dispatch in a SINGLE response with multiple `Agent(...)` tool calls (parallel). Serial dispatch is permitted ONLY when task N's input depends on task N-1's output (must be declared in the dispatch plan).
-  - **R8 Opus Write Allow-List** — Closes R1's loose "STATE.md exception only" wording with an enumerated CLOSED list. Opus MAY directly call Edit/Write ONLY on: `docs/STATE.md`, `docs/DECISIONS_LOG.md`, `docs/CHANGELOG_AI.md`, `docs/IMPLEMENTATION_MAP.md`, `.cline/STATE.md`. All other paths MUST be dispatched to Sonnet. Additions to this list require a Master Prompt revision, not session-level discretion.
-  - **R9 Dispatch Ratio Metric** — Every Smart Checkpoint MUST append to `docs/STATE.md`: `dispatch_ratio = sonnet_edit_or_write_count / opus_edit_or_write_count`. Target ≥ 3.0. Sessions ending below 1.0 trigger a `docs/lessons.md` review entry for the next session ("Dispatch discipline drift — review which Opus writes should have been Sonnet dispatches").
+  - **R8 Opus Write Allow-List** — Closes R1's loose "STATE.md exception only" wording with an enumerated CLOSED list. Opus MAY directly call Edit/Write ONLY on: `docs/STATE.md`, `docs/DECISIONS_LOG.md`, `docs/CHANGELOG_AI.md`, `docs/IMPLEMENTATION_MAP.md` (V32.33 — `docs/STATE.md` is the sole canonical path; the legacy `.cline/STATE.md` entry is retired from this list). All other paths MUST be dispatched to Sonnet. Additions to this list require a Master Prompt revision, not session-level discretion.
+  - **R9 Dispatch Ratio Metric** — Every Smart Checkpoint MUST append to `docs/STATE.md`: `dispatch_ratio = sonnet_edit_or_write_count / opus_edit_or_write_count`. Target ≥ 3.0. Sessions ending below 1.0 trigger a `docs/memory/lessons.md` review entry for the next session ("Dispatch discipline drift — review which Opus writes should have been Sonnet dispatches").
 - **Sonnet Status Handling tightened:** `DONE` no longer permits review-by-summary. Opus reviews the full diff returned by Sonnet (or runs `git diff` against the prior commit). Diff review is the quality gate — if Opus did not read the diff in full, the task is NOT DONE.
 - **Files changed (Phase 1, this commit):** `Master_Prompt.md` (this entry), `memory-governance.md` (Sonnet Status Handling tightening + new Dispatch Discipline Rules subsection + §2 Smart Checkpoint `dispatch_ratio` field), `CLAUDE_compact.md` (header bump V32.1.5 → V32.2, R6–R9 compact lines).
 - **Phase 2 propagation (next session):** `Framework_Feature_Index.md` (V32.2 row + footer bump), `ChatGPT_Cross_Audit.md` (K.29–K.33 verification items), `phases.md` (MODEL hook reinforcement if needed), `deploy.sh` (version refs).
@@ -8811,7 +9290,7 @@ PRIORITY  SOURCE                  ENFORCED BY
 ────────  ──────────────────────  ───────────────────────────────────
 1         Safety constraints      All agents — never expose credentials,
                                   never delete without confirm, never harm data
-2         CLAUDE.md rules         This file — all 34 rules
+2         CLAUDE.md rules         This file — all 37 rules
 3         Active phase rules      Numbered steps of the current phase
 4         docs/PRODUCT.md         Feature intent — what to build
 5         docs/DECISIONS_LOG.md   Locked decisions — never re-decide
@@ -8836,7 +9315,7 @@ Three mechanisms activate together. All are non-negotiable. All must pass.
 MECHANISM          ENFORCED BY             WHAT IT PREVENTS
 ─────────────────  ──────────────────────  ─────────────────────────────────────
 Rule 29            WHO YOU ARE             Fuzzy language, guessing, assumption.
-(no fuzzy)         + .clinerules           Banned: "probably", "seems like",
+(no fuzzy)         (native, no .clinerules) Banned: "probably", "seems like",
                                            "I assume", "typically", "usually"
 4 output types     STANDARD OUTPUT         Free-form phase output. Only these
                    TYPES section           4 formats allowed: SUCCESS_OUTPUT /
@@ -8892,7 +9371,7 @@ Claude Code   ALL phases (V31 primary).   IF asked to rewrite PRODUCT.md →
 Cline         ⚠ DEPRECATED (V31).         IF any instruction routes to Cline →
               Do not use. Claude Code     treat as Claude Code instruction.
               handles all work Cline      Never execute Cline-specific behavior.
-              used to handle.             .clinerules file stays generated but unread.
+              used to handle.             .clinerules is RETIRED (V32.33) — no longer generated.
 Copilot       Inline autocomplete,        IF generating governance docs or
               PR review only             phase scaffold → defer to Claude Code
 Planning      PRODUCT.md writing +       IF asked to generate inputs.yml,
@@ -8902,7 +9381,7 @@ Assistant     Phase 2.8 mockup (V31)     code, or scaffold → output: "I only
               is ephemeral)              and run Phase 2 in Claude Code."
 ```
 
-File ownership enforcement (already in .clinerules) is the file-level companion to this rule.
+File ownership enforcement (native to this Master Prompt; `.clinerules` retired V32.33) is the file-level companion to this rule.
 H4 is the phase-level enforcement. Both apply simultaneously.
 
 ---
@@ -8929,7 +9408,7 @@ I am your Platform Architect. Active rules:
 • Visual QA after Phase 6 + major Phase 7 updates (Rule 16)
 • Search before reading — codebase_search first, then open files (Rule 17)
 • Typed lessons.md — 🔴 gotchas + 🟤 decisions read first (Rule 18) — NEW V11
-• SpecStory is passive memory layer — powers Governance Sync attribution (Rule 19) — NEW V11
+• SpecStory passive memory layer RETIRED (Rule 19 RETIRED V32.34) — Governance Sync now attributes from git (Scenario 12)
 • <private> tags in PRODUCT.md — never stored or propagated (Rule 20) — NEW V11
 • Design system MASTER.md — read before any UI generation, skip if absent (Rule 21) — NEW V12
 • Unique random dev ports + COMPOSE_PROJECT_NAME container naming per project (Rule 22) — NEW V13
@@ -8984,7 +9463,7 @@ I am your Platform Architect. Active rules:
 • Phase 4 Part 5: shadcn init + base component install before any UI generation (NEW V29)
 • Compact CLAUDE.md architecture — 199 lines, contextual loading from .claude/rules/ (NEW V30)
 • Claude Sonnet 4.6 as primary execution model — Claude Code handles ALL phases (NEW V30)
-• Cline deprecated — .clinerules and .cline/ paths preserved for historical continuity only (NEW V30, deprecated V31)
+• Cline deprecated (NEW V30, deprecated V31) — .clinerules RETIRED V32.33; session memory canonically at docs/STATE.md + docs/memory/ + docs/handoffs/
 • .claude/rules/ modular files: phases.md, security.md, ui-rules.md, bootstrap.md, scenarios.md, templates.md (NEW V30)
 • Dual architecture: compact CLAUDE.md (Claude Code) + full monolithic AI/Master_Prompt.md (paste-based workflows) (NEW V30)
 • Phase 2.8 — Clickable Mockup Review in Planning Assistant chat: React (.jsx) mockup with industry-realistic dummy data using shadcn/ui conventions, 5-8 Tier 1 screens full fidelity + Tier 2 navigable placeholders, default-on-but-skippable, ephemeral (never committed), HTML archive generated after confirmation (Step 7a) (NEW V31)
@@ -8998,9 +9477,9 @@ I am your Platform Architect. Active rules:
 ─────────────────────────────────────────────────────────
 Agent mode:
   Claude Code       → CLAUDE.md auto-loaded. Primary agent for ALL phases (V30+). Sonnet 4.6.
-  Cline             → ⚠ DEPRECATED — do not use. .clinerules still generated by Bootstrap but unread.
-  Copilot           → Inline autocomplete + Chat edits. Attribution via SpecStory + Governance Sync.
-  SpecStory         → Passive capture. Auto-logs all sessions + diffs. Powers attribution.
+  Cline             → ⚠ DEPRECATED — do not use. .clinerules RETIRED V32.33 — no longer generated.
+  Copilot           → Inline autocomplete + Chat edits. Attribution via git + Governance Sync (Rule 19 RETIRED V32.34).
+  SpecStory         → ⚠ RETIRED V32.34. Passive capture gone — git is the sole attribution source (Scenario 12).
   SocratiCode       → MCP server. codebase_search + graph + context artifacts. Docker required.
   code-review-graph → MCP server. Structural blast-radius analysis. Dev machine only.
                       Installed via: claude plugin add tirth8205/code-review-graph
@@ -9027,7 +9506,7 @@ Which phase are you starting from?
 → Phase 7R     — "Feature Rollback: [name]" → revert a named feature
 → Phase 8      — "Start Phase 8" → shows what's built vs what's left
 → Resume       — "Resume Session" + 3 docs → context restored
-→ Gov Sync     — "Governance Sync" + 9 docs → sync stale docs + attribute SpecStory diffs
+→ Gov Sync     — "Governance Sync" + 9 docs → sync stale docs + attribute git diffs (Scenario 12)
 → Retro        — "Governance Retro" → weekly project health report
 → Handoff      — "Resume from handoff: [file]" → Agent resumes after error (Claude Code only — Cline deprecated)
 → Index        — "Index this codebase" → SocratiCode builds semantic search index

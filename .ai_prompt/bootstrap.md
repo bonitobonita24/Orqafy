@@ -1,7 +1,7 @@
 # Spec-Driven Platform V31 — Bootstrap (Phase 0)
 
 > Loaded contextually when user says 'Bootstrap' in a fresh project.
-> Contains all 20 bootstrap steps including credential collection gate (Step 18), Loading Library Lock (Step 19 V31.3), Design Toolkit + Stop Hook install (Step 20 V32.8), and Privacy & Compliance Scaffold (Step 20b V32.9 — nested under Step 20, bootstrap total stays at 20).
+> Contains all 20 bootstrap steps including credential collection gate (Step 18), Loading Library Lock (Step 19 V31.3), Design Toolkit + Stop Hook install (Step 20 V32.8), Privacy & Compliance Scaffold (Step 20b V32.9), Layout-Fidelity Scaffold (Step 20c V32.36), and AdminCN design-starter seed (Step 20d V32.43) — all nested under Step 20, bootstrap total stays at 20.
 
 ---
 
@@ -20,231 +20,39 @@ After this, `CLAUDE.md` exists and loads automatically — you never paste the p
 
 ```
 Step 1 — Folder structure
-  mkdir -p docs .claude .specstory/specs .specstory/history .vscode
-           .cline/tasks .cline/memory .cline/handoffs design-system/pages scripts
+  mkdir -p docs .claude .vscode
+           docs/tasks docs/memory docs/handoffs design-system/pages scripts
 
 Step 2 — CLAUDE.md (copy of master prompt — auto-loads every session)
   Claude Code writes CLAUDE.md from the pasted prompt content.
-  Also writes .specstory/specs/v31-master-prompt.md for SpecStory injection.
 
-Step 3 — .clinerules (⚠ Cline DEPRECATED V31 — file still generated for historical parity but unused)
-  Write the file at .clinerules with EXACTLY this content:
+Step 3 — .clinerules (RETIRED V32.33 — STOP generating; Cline deprecated V31, this file was historical-parity-only and consumed by nothing)
+  Do NOT write .clinerules content. Write ONLY a one-line tombstone file at .clinerules with EXACTLY this content:
 
   ```
-  # Spec-Driven Platform V31 — Agent Rules
-  # This file is read by the AI agent before every task. Follow every instruction exactly. (File name kept as .clinerules for historical continuity; Cline deprecated V31.)
-
-  ## BEFORE ANY ACTION — MANDATORY SEQUENCE
-
-  FRESH-START SAFETY (run before reading anything else):
-  1. Read .cline/STATE.md
-  2. IF STATE.md does not exist → write handoff → STOP → ask human: "Which phase should I start?"
-  3. IF STATE.md PHASE contains "PARTIAL" → do not start new phase → follow TYPE 2 recovery
-  4. IF STATE.md PHASE does not match the phase you were asked to run → append mismatch to agent-log.md → ask human to confirm before proceeding
-  5. NEVER assume current phase from conversation history alone. STATE.md is the only source of truth.
-
-  STATE.md vs DECISIONS_LOG.md CONFLICT RESOLUTION (NEW V21):
-  IF STATE.md says "Phase N complete" BUT governance docs have no entry for Phase N:
-    → Read git log to confirm Phase N branch was merged.
-    → IF merge confirmed: write the missing governance entry (do not re-run the phase).
-      Update STATE.md to remove any PARTIAL flag. Proceed to Phase N+1.
-    → IF no merge found: the phase is genuinely incomplete — follow TYPE 2 recovery.
-  IF STATE.md says "Phase 7 complete" BUT IMPLEMENTATION_MAP.md does not reflect the feature:
-    → Run Governance Sync: "Governance Sync" + attach 9 docs. Reconcile before any new Feature Update.
-  RULE: STATE.md = authoritative for phase position. Governance docs = authoritative for content.
-  Never let a content mismatch block phase progression — reconcile, then proceed.
-
-  READ IN THIS ORDER (after STATE.md safety check passes):
-  0. Already read: .cline/STATE.md (FIRST — fresh-start safety above)
-  1. Read: .cline/memory/lessons.md — Read ALL 🔴 gotcha entries in full. Read ALL 🟤 decision entries in full. For remaining entries: read ONLY entries whose title contains a keyword matching the current task domain. Skip all others.
-  2. Read: docs/PRODUCT.md
-  3. Read: inputs.yml
-  4. Read: inputs.schema.json
-  5. Read: docs/CHANGELOG_AI.md
-  6. Read: docs/DECISIONS_LOG.md  (never re-ask anything listed here)
-  7. Read: docs/IMPLEMENTATION_MAP.md
-  8. Read: project.memory.md
-  9. Read: .cline/memory/agent-log.md
-  Do not write any file until all 9 are read.
-
-  ## PHASE 4 EXECUTION RULES — MANDATORY
-  Phase 4 = PART-BY-PART ONLY. Rule 24 governs. This block does NOT override Rule 24.
-  - Each Part runs in a SEPARATE Claude Code session. Never auto-chain parts.
-  - Open the next part task file ONLY after the current part is fully complete and merged.
-  - ALWAYS STOP after each Part. Output "✅ Part [N] complete. Open phase4-part[N+1].md in a NEW Claude Code session."
-  - Wait for the human to open the next session. Do not proceed to Part N+1 in this session.
-  - After Part 8 is complete and merged: human triggers Phase 5 manually ("Start Phase 5").
-  NOTE: The previous instruction "Run all 8 parts sequentially" is SUPERSEDED by Rule 24. Ignore it.
-
-  ## MID-PART INTERRUPTION RECOVERY — MANDATORY (NEW V21)
-  If a Claude Code session ends or is closed before a Part completes:
-  1. On next session start: FRESH-START SAFETY runs first (reads STATE.md).
-  2. IF STATE.md PHASE = "[Part N] PARTIAL" → the Part was interrupted mid-execution.
-  3. Run: git status — identify which files were written before the interruption.
-  4. Run: git stash list — check for any uncommitted work.
-  5. DO NOT start a new Part. Resume the interrupted Part:
-     IF files were committed but branch not merged:
-       → squash-merge the existing branch → verify output contract → proceed to Part N+1.
-     IF files were written but NOT committed:
-       → commit what exists → run lint + typecheck → fix errors → squash-merge.
-     IF nothing was committed (very early interruption):
-       → restart the Part from scratch on the same branch (already exists — checkout, do not create).
-  6. After recovery: rewrite STATE.md — remove PARTIAL flag → set LAST_DONE correctly → proceed.
-
-  ## PHASE 5 EXECUTION RULES — MANDATORY
-  - Run all 9 validation commands. Fix every failure before proceeding.
-  - After all 9 pass: STOP. Output "✅ Phase 5 complete. Say 'Start Phase 6' in a new Claude Code session."
-  - Do NOT auto-proceed to Phase 6. Wait for human trigger.
-
-  ## PHASE 6 EXECUTION RULES — MANDATORY
-  - Start docker-compose.db.yml first (it creates the shared network).
-  - Run pnpm db:migrate then pnpm db:seed after services are healthy.
-  - Run Visual QA checks (Rule 16) after seed completes.
-  - Stop after Phase 6. Do not continue to Phase 7 without human trigger.
-
-  ## SEARCH BEFORE READING — MANDATORY (Rule 17)
-  - Before opening any file: run codebase_search with a natural-language description.
-  - Only open files that search results point to.
-  - Never open files speculatively.
-
-  ## LESSONS.MD PRIORITY — MANDATORY (Rule 18)
-  - Read ALL 🔴 gotcha entries before starting any feature work.
-  - Read ALL 🟤 decision entries before changing anything in that domain.
-  - Write a new typed entry to lessons.md after every error resolved or decision locked.
-  - Never write free-form text to lessons.md. Always use the typed format.
-
-  ## NO FUZZY REASONING — MANDATORY (Rule 29)
-  - NEVER use "seems like", "probably", "typically", "I assume", "usually", "most apps", or "standard setup" as a basis for any decision.
-  - IF any required information is missing from PRODUCT.md, DECISIONS_LOG.md, or inputs.yml:
-    1. STOP. Do not proceed.
-    2. Ask the user for ONLY the specific missing information.
-    3. Wait for the answer before continuing.
-  - IF the answer IS already declared somewhere: use it. Do not re-ask (Rule 10).
-  - This rule has no exceptions. Not for any phase. Not for any domain.
-
-  ## SKILLS CHECK — CONDITIONAL (Rule 26 + Rule 27)
-  - At task start: list .github/skills/ directory contents (directory names only — no full reads).
-  - For each directory found: read ONLY the description: frontmatter line from its SKILL.md.
-  - IF the description matches the current task → read full SKILL.md → follow its numbered steps.
-  - IF no skill description matches → proceed using CLAUDE.md rules only.
-  - NEVER load all skills at once. Contextual loading only.
-  - IF a skill directory exists but has no SKILL.md → log 🔴 gotcha to lessons.md. Do not crash.
-
-  ## CONTEXT7 LIVE DOCS — MANDATORY (NEW V23 — Rule 30)
-  When writing code that uses any external library:
-  1. Identify the library from package.json
-  2. Append "use context7" to the task before execution
-  3. Context7 MCP resolves the library ID and fetches current version-matched docs
-  Priority libraries: Next.js, Prisma, Auth.js v5, tRPC, shadcn/ui, BullMQ, Expo, WatermelonDB, Valkey
-  Context7 is in .vscode/mcp.json — no extra setup per project.
-  Violation: generating library code without context7 risks deprecated APIs that fail Phase 5.
-
-  ## BOOTSTRAP CREDENTIAL SCAFFOLD — MANDATORY (V30 — non-blocking)
-  Bootstrap Step 18 writes CREDENTIALS.md with AI-generated secrets + blank ⏳ placeholders for human-provided fields. Phase 1 (dev environment setup) is optional — skip if Node, pnpm, and VS Code Remote-WSL are already installed. Check before any Phase 2+ task:
-  - CREDENTIALS.md exists (may contain ⏳ placeholders — that is expected after Bootstrap).
-  - If CREDENTIALS.md is missing: STOP. Ask human to rerun Bootstrap Step 18.
-  - All AI-generated passwords in CREDENTIALS.md are minimum 22 characters (48-char for signing secrets).
-  - Phases 2–4 run fine with ⏳ placeholders still present (they don't need those credentials).
-  - Phase 5 pre-flight will block if REQUIRED ⏳ fields remain unfilled (GitHub, SMTP, etc.).
-  - Never log, echo, or include credential values from CREDENTIALS.md in any output.
-  - Never fill ⏳ placeholders yourself — only the human provides those values.
-
-  ## ENV FILE RULES — MANDATORY
-  - Always use .env.dev for development, .env.staging for staging, .env.prod for production.
-  - Never use .env.local or .env directly — these are legacy names.
-  - APP_IMAGE_TAG in .env.staging and .env.prod controls which Docker Hub image tag is pulled.
-    Set to :staging-latest or :latest for rolling updates. Set to :sha-{hash} to pin a version.
-  - COMPOSE_PROJECT_NAME is set in every env file — always use it for container_name and network name.
-  - Never hardcode passwords, secrets, or port numbers — always read from env vars.
-  - CREDENTIALS.md is GITIGNORED — verify before every task: if not in .gitignore, add it immediately and stop current task.
-  - NEVER read CREDENTIALS.md into context, tool calls, logs, or governance docs — it is for human eyes only.
-  - NEVER include any credential value in CHANGELOG_AI.md, agent-log.md, lessons.md, or any generated file.
-
-  ## PRIVATE TAG RULE — MANDATORY (Rule 20)
-  - When reading PRODUCT.md: strip all <private>...</private> blocks before processing.
-  - Never write private tag content to any governance doc or source file.
-
-  ## ERROR RECOVERY — 4 RECOVERY TYPES (MANDATORY)
-
-  TYPE 1 — HARD FAILURE (error on execution):
-  - Attempt 1: try the fix.
-  - Attempt 2: try a DIFFERENT approach. Run codebase_search for similar patterns FIRST.
-  - After 2 failures: write handoff to .cline/handoffs/[timestamp]-error.md. STOP.
-  - DO NOT attempt a third identical fix. A third attempt never helps — write handoff instead.
-  - Handoff must contain: what you were doing, full error text, both fix attempts, root cause hypothesis, exact next step for human.
-
-  TYPE 2 — PARTIAL SUCCESS (some files written, phase incomplete):
-  - Set STATE.md PHASE = "[current phase] PARTIAL"
-  - List all changed files in STATE.md LAST_DONE field
-  - Do not continue to next phase. Write handoff with partial state manifest.
-  - Wait for human. Human will say "Resume from handoff: [file]" to continue.
-
-  TYPE 3 — STALE STATE (governance docs behind code):
-  - Stop current task immediately.
-  - Run Governance Sync reconciliation (say "Governance Sync" + attach 9 docs).
-  - Do not proceed until STATE.md and all governance docs match the codebase.
-
-  TYPE 4 — RESUME AFTER INTERRUPTION (session ended mid-phase):
-  - Read STATE.md first.
-  - IF PHASE contains "PARTIAL" → follow TYPE 2 path (resume from last completed sub-step).
-  - IF STATE.md does not exist → write handoff → STOP → ask human which phase to resume.
-  - IF STATE.md PHASE does not match the phase you were asked to run → log mismatch to agent-log.md → ask human to confirm before proceeding.
-  - NEVER assume current phase from conversation history alone. STATE.md is the only source of truth.
-
-  ## GIT RULES — MANDATORY (Rule 23)
-  - NEVER commit directly to main. Always create a branch first.
-  - Branch name format: feat/{slug} for features, scaffold/part-{N} for Phase 4 Parts, fix/{slug} for bugs.
-  - Commit messages: conventional format only — feat(module): description, fix(module): description.
-  - After two-stage review passes (Rule 25): squash-merge to main. Delete feature branch.
-  - Rewrite .cline/STATE.md with updated PHASE, LAST_DONE, NEXT after every task completion.
-
-  ## FILE OWNERSHIP ENFORCEMENT — MANDATORY
-  Before writing any file, check the File Ownership table in CLAUDE.md.
-  IF the file is marked HUMAN:
-    1. STOP immediately. Do not write.
-    2. Output: "⚠ [filename] is human-owned. I cannot modify it directly. Here is the change needed: [describe the exact change]. Please make this edit manually."
-    3. Wait for human to confirm the edit is done before proceeding.
-  IF the file is marked AGENT/GITIGNORE (e.g. CREDENTIALS.md):
-    Write it but NEVER log its contents in any governance doc, context, or tool call output.
-
-  ## DOCKER COMPOSE RULES — MANDATORY
-  - deploy/compose/dev/docker-compose.app.yml: MAY have build: key (builds from source in dev)
-  - deploy/compose/stage/docker-compose.app.yml: MUST NOT have build: key (Docker Hub pull ONLY)
-  - deploy/compose/prod/docker-compose.app.yml: MUST NOT have build: key (Docker Hub pull ONLY)
-  - Staging and prod servers NEVER clone from GitHub, NEVER run pnpm install, NEVER build source.
-  - They ONLY run: docker compose pull → docker compose up -d using pre-built Docker Hub images.
-  - IF a Feature Update accidentally adds build: to a staging/prod compose file → remove it immediately.
-  - Staging and prod app services use Traefik labels for routing — no host ports exposed. Dev app service keeps direct port mapping (V27).
-
-  ## GOVERNANCE WRITES — MANDATORY (non-blocking — agent self-verifies)
-  - Append to CHANGELOG_AI.md after implementation — not during, not before.
-  - Include: Agent: CLAUDE_CODE, Why, Files added/modified/deleted, Schema/migrations, Errors encountered/resolved.
-  - Rewrite IMPLEMENTATION_MAP.md after every feature update to reflect current state.
-  - GOVERNANCE SELF-CHECK (mandatory before squash-merge):
-    □ CHANGELOG_AI.md: verify last entry timestamp matches this session
-    □ IMPLEMENTATION_MAP.md: verify it reflects current build state
-    □ STATE.md: verify rewritten with PHASE/LAST_DONE/NEXT
-    IF any item is missing or stale → fix it BEFORE squash-merge. Do not merge with stale governance.
+  # RETIRED V32.33 — Cline deprecated V31; this file generated no live content since then. Its
+  # former read-order/rules content now lives at docs/STATE.md + docs/memory/lessons.md +
+  # docs/memory/agent-log.md (see CLAUDE.md for the authoritative read order).
   ```
 
-Step 4 — .cline/tasks/ — 8 separate task files (NEW V14 — one per Phase 4 Part)
+Step 4 — docs/tasks/ — 8 separate task files (NEW V14 — one per Phase 4 Part)
   Each Part runs in a fresh Claude Code session to prevent context accumulation (Rule 24).
   Write these 8 files. Each is a standalone task — complete in isolation.
 
-  .cline/tasks/phase4-part1.md:
+  docs/tasks/phase4-part1.md:
   ```
   # Phase 4 Part 1 — Root config files
   # Fresh session. Read STATE.md first, then inputs.yml + PRODUCT.md only.
   # Branch: scaffold/part-1. Never commit to main directly.
   TASK: Generate all root config files (Part 1 of 8).
-  - Read .cline/STATE.md first (orientation).
+  - Read docs/STATE.md first (orientation).
   - Read inputs.yml and docs/PRODUCT.md (entities + tech stack sections only).
-  - Read .cline/memory/lessons.md (ALL 🔴 gotchas first).
+  - Read docs/memory/lessons.md (ALL 🔴 gotchas first).
   - Create scaffold/part-1 branch before writing any file.
   - Generate: pnpm-workspace.yaml, turbo.json, tsconfig.base.json, .editorconfig, .prettierrc, .eslintrc.js, .gitignore (final), .nvmrc.
   - Run: pnpm install --frozen-lockfile. Fix all errors.
   - Run: pnpm lint + pnpm typecheck for files generated in this Part only.
-  - Rewrite .cline/STATE.md: PHASE="Phase 4 Part 1 complete", NEXT="Start Part 2 in new session".
+  - Rewrite docs/STATE.md: PHASE="Phase 4 Part 1 complete", NEXT="Start Part 2 in new session".
   - Commit with message: scaffold(root): root config files — Part 1 of 8
   - Squash-merge scaffold/part-1 to main. Delete branch.
   - VERIFICATION (MANDATORY before reporting complete):
@@ -258,13 +66,13 @@ Step 4 — .cline/tasks/ — 8 separate task files (NEW V14 — one per Phase 4 
   STOP HERE. Do not proceed to Part 2 in this session.
   ```
 
-  .cline/tasks/phase4-part2.md:
+  docs/tasks/phase4-part2.md:
   ```
   # Phase 4 Part 2 — packages/shared + packages/api-client
   # Fresh session. Read STATE.md first, then inputs.yml only.
   TASK: Generate shared TypeScript types and API client (Part 2 of 8).
-  - Read .cline/STATE.md first. Confirm LAST_DONE shows Part 1 complete.
-  - Read inputs.yml (entities + apps sections). Read .cline/memory/lessons.md.
+  - Read docs/STATE.md first. Confirm LAST_DONE shows Part 1 complete.
+  - Read inputs.yml (entities + apps sections). Read docs/memory/lessons.md.
   - Create scaffold/part-2 branch.
   - Generate: packages/shared/src/types/, packages/shared/src/schemas/ (Zod), packages/api-client/.
   - Run: pnpm typecheck for this Part. Fix all errors.
@@ -273,7 +81,7 @@ Step 4 — .cline/tasks/ — 8 separate task files (NEW V14 — one per Phase 4 
   STOP HERE.
   ```
 
-  .cline/tasks/phase4-part3.md:
+  docs/tasks/phase4-part3.md:
   ```
   # Phase 4 Part 3 — packages/db
   TASK: Generate full ORM schema with all entities (Part 3 of 8).
@@ -306,17 +114,17 @@ Step 4 — .cline/tasks/ — 8 separate task files (NEW V14 — one per Phase 4 
   STOP HERE.
   ```
 
-  .cline/tasks/phase4-part4.md — packages/ui + packages/jobs + packages/storage (Part 4 of 8)
-  .cline/tasks/phase4-part5.md — apps/[web] Next.js scaffold (Part 5 of 8)
-  .cline/tasks/phase4-part6.md — apps/[mobile] Expo scaffold — SKIP if no mobile (Part 6 of 8)
-  .cline/tasks/phase4-part7.md — tools/ + deploy/compose/ + SocratiCode artifacts (Part 7 of 8)
-  .cline/tasks/phase4-part8.md — CI + governance docs + MANIFEST.txt + SocratiCode index (Part 8 of 8)
+  docs/tasks/phase4-part4.md — packages/ui + packages/jobs + packages/storage (Part 4 of 8)
+  docs/tasks/phase4-part5.md — apps/[web] Next.js scaffold (Part 5 of 8)
+  docs/tasks/phase4-part6.md — apps/[mobile] Expo scaffold — SKIP if no mobile (Part 6 of 8)
+  docs/tasks/phase4-part7.md — tools/ + deploy/compose/ + SocratiCode artifacts (Part 7 of 8)
+  docs/tasks/phase4-part8.md — CI + governance docs + MANIFEST.txt + SocratiCode index (Part 8 of 8)
 
   Parts 4–8 follow the same pattern as Parts 1–3:
   Read STATE.md first → read only needed docs → branch → build → lint/typecheck → rewrite STATE.md → commit → squash-merge → STOP.
   Human opens the next task file in a fresh Claude Code session.
 
-Step 5 — .cline/memory/lessons.md (structured template — Rule 18 format)
+Step 5 — docs/memory/lessons.md (structured template — Rule 18 format)
   Claude Code writes lessons.md with the typed entry format header AND one pre-seeded gotcha:
   # Lessons Memory — Spec-Driven Platform V31
   # Entry format: ## YYYY-MM-DD — [ICON] [Title]
@@ -340,7 +148,7 @@ Step 5 — .cline/memory/lessons.md (structured template — Rule 18 format)
         Working in /mnt/c/ causes severe pnpm and docker performance issues.
   # ---
 
-Step 6 — .cline/memory/agent-log.md
+Step 6 — docs/memory/agent-log.md
   Claude Code writes agent-log with correct format header.
 
 Step 7 — .claude/settings.json
@@ -421,11 +229,10 @@ Step 8 — Bootstrap files
   # ─── AI Framework Files: DO NOT GITIGNORE (Claude Code needs these) ───
   # CLAUDE.md              — tracked (Claude Code auto-loads on session start)
   # .claude/               — tracked (modular rules + settings)
-  # .cline/                — tracked (STATE.md + lessons.md + agent-log.md = session memory)
   # AI/                    — tracked (Master Prompt reference)
   # .ai_prompt/            — tracked (framework deliverable files)
-  # .clinerules            — tracked (generated by Bootstrap, historical parity)
-  # docs/                  — tracked (PRODUCT.md + DESIGN.md + governance docs)
+  # .clinerules            — tracked (RETIRED V32.33 one-line tombstone only; Cline deprecated V31)
+  # docs/                  — tracked (PRODUCT.md + DESIGN.md + governance docs + STATE.md + memory/ + handoffs/ + tasks/ = session memory, V32.33)
 
   # Editor + OS
   .DS_Store
@@ -534,13 +341,7 @@ Step 10 — MCP config (V31.3 dual-write — .mcp.json for Claude Code + .vscode
                  .vscode/mcp.json IS committed too (for VS Code Copilot users on the team).
                  Both files must stay in sync — if you add/remove an MCP entry, update both.
 
-Step 11 — .specstory/config.json (NEW V11 — SpecStory passive capture config)
-  {
-    "captureHistory": true,
-    "historyDir": ".specstory/history",
-    "specsDir": ".specstory/specs",
-    "autoInjectSpec": "v31-master-prompt.md"
-  }
+Step 11 — (RETIRED V32.34) SpecStory passive-capture config no longer written. Claude Code self-attributes; Governance Sync is git-sourced.
 
 Step 12 — Governance doc templates
   docs/PRODUCT.md       — template with all required sections
@@ -548,7 +349,7 @@ Step 12 — Governance doc templates
   docs/DECISIONS_LOG.md — LOCKED entry format template
   docs/IMPLEMENTATION_MAP.md — all section headers
   project.memory.md     — V14 rules + agent stack summary (6 agents + Log Lesson)
-  .cline/STATE.md       — written by Step 16 (not a template — actual content written in Step 16)
+  docs/STATE.md       — written by Step 16 (not a template — actual content written in Step 16)
   docs/DECISIONS_LOG.md entry: Dev environment mode — MODE A (WSL2 native) — locked, no devcontainer (V25)
   docs/DECISIONS_LOG.md entry: Git branching strategy — feat/{slug}, scaffold/part-{N}, squash-merge (Rule 23)
   docs/DECISIONS_LOG.md entry: Model routing — planning/execution/governance model assignments (Rule 24)
@@ -572,10 +373,10 @@ Step 12 — Governance doc templates
   # If a matching standing_check exists, run it before writing any code.
   ```
 
-  Append to .cline/memory/agent-log.md:
+  Append to docs/memory/agent-log.md:
   BOOTSTRAP | Step 12 | docs/LESSONS_REGISTRY.md seed written (V32.8 consult pointer).
 
-Step 13 — Append to .cline/memory/agent-log.md + .cline/memory/lessons.md
+Step 13 — Append to docs/memory/agent-log.md + docs/memory/lessons.md
   Log: "Bootstrap complete — project initialized"
 
 Step 14 — UI UX Pro Max skill check (NEW V12)
@@ -591,7 +392,7 @@ Step 15 — Human quick-log task (Log Lesson command)
   discovery to lessons.md in Rule 18 typed format without waiting for an agent session.
   Content of scripts/log-lesson.sh:
   #!/bin/bash
-  echo "=== Log a Lesson to .cline/memory/lessons.md ==="
+  echo "=== Log a Lesson to docs/memory/lessons.md ==="
   echo ""
   echo "Type? [1=🔴 gotcha  2=🟡 fix  3=🟤 decision  4=⚖️ trade-off  5=🟢 change]"
   read TYPE_NUM
@@ -613,9 +414,9 @@ Step 15 — Human quick-log task (Log Lesson command)
   read NARRATIVE
   DATE=$(date +%Y-%m-%d)
   ENTRY="\n## $DATE — $ICON $TITLE\n- Type:      $ICON\n- Phase:     manual entry\n- Files:     $FILES\n- Concepts:  $CONCEPTS\n- Narrative: $NARRATIVE\n"
-  echo -e "$ENTRY" >> .cline/memory/lessons.md
+  echo -e "$ENTRY" >> docs/memory/lessons.md
   echo ""
-  echo "✅ Lesson logged to .cline/memory/lessons.md"
+  echo "✅ Lesson logged to docs/memory/lessons.md"
 
   Also write .vscode/tasks.json with a task entry that runs this script:
   {
@@ -644,10 +445,11 @@ Step 15 — Human quick-log task (Log Lesson command)
 Step 16 — Git init + STATE.md (NEW V14)
   IF no git repo exists: run `git init && git checkout -b main`
   Write .gitignore (verify all entries from Step 8 are present — Step 8 is the authoritative .gitignore source. STATE.md is NOT gitignored — it is committed)
-  Write .cline/STATE.md with EXACTLY this content:
+  Write docs/STATE.md with EXACTLY this content:
   ```
   # Project State — {{APP_NAME}}
-  # Auto-generated by Claude Code after every task. Never edit manually. (File path kept in .cline/ for historical continuity; Cline deprecated V31.)
+  # Auto-generated by Claude Code after every task. Never edit manually. (V32.33 — docs/STATE.md is the
+  # single canonical location; Cline deprecated V31, .cline/STATE.md retired.)
   # Updated: [timestamp] by BOOTSTRAP
 
   PHASE:        Phase 0 — Bootstrap complete
@@ -660,8 +462,15 @@ Step 16 — Git init + STATE.md (NEW V14)
     planning:   claude-code (Phase 2 — V31 primary)
     execution:  claude-sonnet-4-6 via Claude Code (V31 primary; Cline deprecated)
     governance: gemini-2.5-flash-lite (cheapest, non-critical writes)
+  evidence:
+    contract:        ""
+    check_command:   ""
+    captured_output: |
   ```
   Do NOT gitignore STATE.md — it is the shared project dashboard.
+  The evidence: block (V32.8 §templates.md, Rule 32 Verifiable-Done) ships EMPTY at Bootstrap —
+  populate contract/check_command/captured_output at the FIRST done-claim, never before. The
+  design-stop-hook.sh Stop hook (Step 7) blocks a done-claim while captured_output stays empty.
 
 Step 17 — .github/skills/ directory + spec-driven-core skill (NEW V19)
   1. Run: mkdir -p .github/skills/spec-driven-core
@@ -676,8 +485,8 @@ Step 17 — .github/skills/ directory + spec-driven-core skill (NEW V19)
   # Spec-Driven Platform V31 — Core Rules Compact Reference
 
   ## MANDATORY READ ORDER (do not skip, do not reorder)
-  0. .cline/STATE.md — FIRST. Answers "where am I right now?"
-  1. .cline/memory/lessons.md — ALL 🔴 gotchas first, ALL 🟤 decisions second, rest by relevance
+  0. docs/STATE.md — FIRST. Answers "where am I right now?"
+  1. docs/memory/lessons.md — ALL 🔴 gotchas first, ALL 🟤 decisions second, rest by relevance
   2. docs/PRODUCT.md — what to build
   3. inputs.yml — locked tech stack + config
   4. inputs.schema.json — validation schema
@@ -685,7 +494,7 @@ Step 17 — .github/skills/ directory + spec-driven-core skill (NEW V19)
   6. docs/DECISIONS_LOG.md — never re-ask anything listed here
   7. docs/IMPLEMENTATION_MAP.md — current build state
   8. project.memory.md — active rules and agent stack
-  9. .cline/memory/agent-log.md — running log of every agent action
+  9. docs/memory/agent-log.md — running log of every agent action
   Do not write a single line of code until all 9 are read.
 
   ## NON-NEGOTIABLE RULES
@@ -703,7 +512,7 @@ Step 17 — .github/skills/ directory + spec-driven-core skill (NEW V19)
   - HTTP security headers + rate limiter + DOMPurify always-on defaults (V18 — Scenario 26).
 
   ## AGENT ATTRIBUTION (include in every CHANGELOG_AI.md entry)
-  CLINE | CLAUDE_CODE | COPILOT | HUMAN | UNKNOWN
+  CLAUDE_CODE | HUMAN   (legacy CLINE/COPILOT/UNKNOWN retired — V32.34)
 
   ## GIT BRANCH NAMING
   feat/{slug} · scaffold/part-{N} · fix/{slug} · chore/{slug}
@@ -711,7 +520,7 @@ Step 17 — .github/skills/ directory + spec-driven-core skill (NEW V19)
 
   ## ERROR RECOVERY
   1. Attempt fix. Retry up to 3 times.
-  2. After 3 failures: write .cline/handoffs/[timestamp]-error.md
+  2. After 3 failures: write docs/handoffs/[timestamp]-error.md
   3. Handoff: what you were doing, full error, all 3 attempts, root cause, exact next step.
   4. Stop. Wait for human.
 
@@ -723,7 +532,7 @@ Step 17 — .github/skills/ directory + spec-driven-core skill (NEW V19)
   - Never load all skills at once.
 
   4. Append to .gitignore: .github/skills/**/node_modules/
-  5. Append to .cline/memory/agent-log.md:
+  5. Append to docs/memory/agent-log.md:
      BOOTSTRAP | Step 17 | .github/skills/ created. spec-driven-core/SKILL.md written. V19 skill standard active.
 ```
 
@@ -1085,7 +894,7 @@ Step 18 — Credential Scaffold (V30 — non-blocking — no interview)
      5. Phase 5 validation will fail if required fields are still `⏳ ...` — fix before proceeding
      ```
 
-  C) Append to .cline/memory/agent-log.md:
+  C) Append to docs/memory/agent-log.md:
      BOOTSTRAP | Step 18 | Credential Scaffold complete (V30 — non-blocking).
      AI-generated (22-char min, 48-char for signing secrets):
        - DB passwords (×3 envs), PgBouncer passwords (×3), Valkey passwords (×3),
@@ -1129,7 +938,7 @@ Step 19 — Loading Library Lock (NEW V31.3 — UI dual-path decision)
      Locked at Bootstrap Step 19. No re-asking allowed.
      ```
 
-  B) Append the following entry to .cline/memory/lessons.md
+  B) Append the following entry to docs/memory/lessons.md
      (Rule 18 typed format, type = 🟤 decision):
      ```
      ## {{DATE}} — 🟤 decision Loading library locked to dual-path (shadcn Skeleton + phantom-ui)
@@ -1143,7 +952,7 @@ Step 19 — Loading Library Lock (NEW V31.3 — UI dual-path decision)
        the right path per component using Phase 2.8 mockup classification tags.
      ```
 
-  C) Append to .cline/memory/agent-log.md:
+  C) Append to docs/memory/agent-log.md:
      ```
      {{TIMESTAMP}}  BOOTSTRAP  Step 19 — Loading library dual-path locked in DECISIONS_LOG.md.
      ```
@@ -1173,7 +982,7 @@ Step 20 — Design Toolkit scaffold (V32.8 — non-blocking)
      import StyleDictionary from 'style-dictionary';
 
      const sd = new StyleDictionary({
-       source: ['tokens/tokens.json'],
+       source: ['docs/tokens.json'],
        platforms: {
          css: {
            transformGroup: 'css',
@@ -1240,11 +1049,11 @@ Step 20 — Design Toolkit scaffold (V32.8 — non-blocking)
      Decision: style-dictionary v5 is the sole token compiler for all framework-built apps.
      Config: sd.config.mjs at project root. Prefix: 'sd' (non-negotiable — prevents shadcn collision).
      Pipeline: design:validate (DTCG gate) → design:build (SD compile) → design:check (Playwright contracts).
-     Token source: tokens/tokens.json (DTCG v2025.10 format). Output: app/generated-tokens.css + tokens.js/d.ts.
+     Token source: docs/tokens.json (PA-derived DTCG v2025.10; V32.37 R2 single source — no tokens/tokens.json copy). Output: app/generated-tokens.css + tokens.js/d.ts.
      Locked at Bootstrap Step 20. Phase 4 Part 5 wires generated-tokens.css into app/globals.css.
      ```
 
-  G) Append to .cline/memory/lessons.md (Rule 18 typed format, type = 🟤 decision):
+  G) Append to docs/memory/lessons.md (Rule 18 typed format, type = 🟤 decision):
      ```
      ## {{DATE}} — 🟤 decision Design Toolkit locked to style-dictionary v5 (V32.8)
      - Type:      🟤 decision
@@ -1257,7 +1066,7 @@ Step 20 — Design Toolkit scaffold (V32.8 — non-blocking)
        Playwright visual contracts. Phase 4 Part 5 imports app/generated-tokens.css into globals.css.
      ```
 
-  H) Append to .cline/memory/agent-log.md:
+  H) Append to docs/memory/agent-log.md:
      ```
      {{TIMESTAMP}}  BOOTSTRAP  Step 20 — style-dictionary v5 scaffolded.
      sd.config.mjs + scripts/design-validate.mjs written. design:* scripts added to package.json.
@@ -1358,7 +1167,7 @@ Step 20b — Privacy & Compliance Scaffold (NEW V32.9 — non-blocking)
      Locked at Bootstrap Step 20b. Hook 18 (memory-governance.md §3) surfaces any gaps during Phase 4.
      ```
 
-  E) Append to .cline/memory/lessons.md (Rule 18 typed format, type = 🟤 decision):
+  E) Append to docs/memory/lessons.md (Rule 18 typed format, type = 🟤 decision):
      ```
      ## {{DATE}} — 🟤 decision Privacy & Compliance Scaffold locked (V32.9)
      - Type:      🟤 decision
@@ -1372,7 +1181,7 @@ Step 20b — Privacy & Compliance Scaffold (NEW V32.9 — non-blocking)
        only assertions backed by framework enforcement are ON by default. Cert badges require real certs.
      ```
 
-  F) Append to .cline/memory/agent-log.md:
+  F) Append to docs/memory/agent-log.md:
      ```
      {{TIMESTAMP}}  BOOTSTRAP  Step 20b — Privacy & Compliance Scaffold complete (V32.9).
      ComplianceFooter written. ConsentRecord + DataSubjectRequest Prisma stubs appended.
@@ -1380,13 +1189,101 @@ Step 20b — Privacy & Compliance Scaffold (NEW V32.9 — non-blocking)
      Read .ai_prompt/privacy.md during Phase 4 Part 3 to expand stubs into full implementation.
      ```
 
-  Step 20b is non-blocking. Bootstrap proceeds to completion.
+  Step 20b is non-blocking. Bootstrap proceeds to Step 20c.
 
-After Claude Code finishes all 20 steps (including Step 20b), OUTPUT THE FOLLOWING TEXT TO THE HUMAN. Do not execute these instructions yourself — they are for the human to read:
+Step 20c — Layout-Fidelity Scaffold (V32.36 — non-blocking, anti-drop)
+
+  After Step 20b completes — execute the following automatically:
+
+  A) ASSERT `scripts/design-fidelity.mjs` exists (anti-drop check, like the existing gate-file
+     checks for `scripts/lint-deploy.sh` / `scripts/design-stop-hook.sh` / `scripts/lint-design.sh` /
+     `scripts/spec-gap-check.sh`):
+     ```bash
+     test -f scripts/design-fidelity.mjs || echo "⚠ MISSING: scripts/design-fidelity.mjs — deploy.sh should have copied this (V32.36 deliverable #34). Re-run deploy.sh."
+     ```
+     `deploy.sh` copies this file into target `scripts/` (chmod +x) — this step only VERIFIES it landed;
+     it never authors the script content itself (R4 — non-droppable deployed script, not a
+     model-instantiated template).
+
+  B) Seed `design-fidelity.config.json` at the project root (canonical source: templates.md
+     §design-fidelity.config.json) with default tolerances:
+     ```json
+     {
+       "posTol": 0.03,
+       "sizeTol": 0.05,
+       "viewport": { "width": 1440, "height": 900 }
+     }
+     ```
+
+  C) Seed an empty baseline manifest `docs/design-baseline/manifest.json`:
+     ```bash
+     mkdir -p docs/design-baseline
+     ```
+     ```json
+     {}
+     ```
+     The manifest is a FLAT MAP `{ "<screen>": { "mockupRoute": "/…", "appRoute": "/…", "fixtureState": "…" } }`
+     — it starts as an empty object `{}` (not `{"screens":[]}`; the gate iterates `Object.entries`, and an
+     empty object is what triggers the script's "no baseline — run --update-baseline" happy path). At **Phase
+     3.3 Step 8c** the build session AUTHORS one entry per prototype screen (listing its `mockupRoute` +
+     `appRoute`), THEN runs `design:fidelity --update-baseline` to capture each screen's `<screen>.layout.json`
+     from the mockup render. (`--update-baseline` captures baselines for the entries you list; it does not
+     auto-discover screens or rewrite `manifest.json`.)
+
+  D) Append to docs/DECISIONS_LOG.md (LOCKED):
+     ```
+     ## LOCKED: Layout-Fidelity Gate — mockup-anchored, content-agnostic (V32.36)
+
+     Decision: design-fidelity.mjs diffs the built app's structural landmarks against a baseline
+     captured from the APPROVED docs/MOCKUP.jsx render (never a re-captured production baseline).
+     Matching key: data-fdl="<name>" anchors (content-agnostic — real vs placeholder data cannot
+     trip it). Config: design-fidelity.config.json (posTol/sizeTol/viewport). Manifest:
+     docs/design-baseline/manifest.json. Baseline captured at Phase 3.3 Step 8c (post-sign-off).
+     Gate enforced (HARD, blocking) at Phase 4 Parts 5-6 gate-closure and Phase 5 validation.
+     Locked at Bootstrap Step 20c. Rule 31 extension (V32.36) — layout fidelity alongside token fidelity.
+     ```
+
+  E) Append to docs/memory/agent-log.md:
+     ```
+     {{TIMESTAMP}}  BOOTSTRAP  Step 20c — Layout-Fidelity Scaffold complete (V32.36).
+     scripts/design-fidelity.mjs existence verified (deploy.sh-copied, anti-drop). design-fidelity.config.json
+     seeded. docs/design-baseline/manifest.json seeded empty. DECISIONS_LOG.md entry written.
+     ```
+
+  Step 20c is non-blocking. Bootstrap proceeds to Step 20d.
+
+Step 20d — AdminCN design-starter seed (V32.43 — non-blocking, nested under Step 20; bootstrap total stays 20)
+
+  After Step 20c completes — execute the following automatically:
+
+  A) ASSERT the vendored AdminCN slice landed (deploy.sh copies `specdrivenprompt/starter/admincn/` →
+     the target's `starter/admincn/`, like the other deploy.sh-copied assets):
+     ```bash
+     test -d starter/admincn && test -f starter/admincn/PROVENANCE.md || echo "⚠ MISSING: starter/admincn/ — deploy.sh should have copied the AdminCN design-starter slice (V32.43 deliverable #39). Re-run deploy.sh."
+     ```
+  B) Seed the design language from the AdminCN default baseline: adopt the `default-layout` left-sidebar
+     app-shell (ui-rules Rule 8), pick ONE theme preset from `starter/admincn/utils/theme-presets.ts` as
+     the app default, and reconcile it INTO docs/DESIGN.md / the compiled token contract (ui-rules Rule 12
+     — the preset seeds values, docs/tokens.json stays the single source). Do NOT copy AdminCN's
+     `fake-db`/`store`/`nuqs` data layer — adopted views are re-wired to tRPC/Prisma at their build phase
+     per the graft procedure. **Read `.ai_prompt/admincn-starter.md`** for the manifest + graft procedure.
+  C) Write a DECISIONS_LOG.md entry (design baseline = AdminCN default-layout + <chosen preset>) and an
+     agent-log line:
+     ```
+     {{TIMESTAMP}}  BOOTSTRAP  Step 20d — AdminCN design-starter seeded (V32.43). starter/admincn/ presence
+     verified (deploy.sh-copied). Design baseline = default-layout app-shell + theme preset reconciled to
+     docs/DESIGN.md. Read .ai_prompt/admincn-starter.md at the design phases (2.8/3.3/Parts 5-6).
+     ```
+
+  Step 20d is non-blocking. Bootstrap proceeds to completion.
+
+After Claude Code finishes all 20 steps (including Step 20b, Step 20c, and Step 20d), OUTPUT THE FOLLOWING TEXT TO THE HUMAN. Do not execute these instructions yourself — they are for the human to read:
 ```
 ✅ Bootstrap complete — CREDENTIALS.md written with AI-generated secrets + blank placeholders.
 ✅ Privacy & Compliance Scaffold complete (V32.9) — ConsentRecord/DataSubjectRequest Prisma stubs,
    DSR tRPC router placeholder, and ComplianceFooter component written. Expand in Phase 4 Parts 3-4.
+✅ Layout-Fidelity Scaffold complete (V32.36) — scripts/design-fidelity.mjs verified, design-fidelity.config.json
+   + empty docs/design-baseline/manifest.json seeded. Baseline captured at Phase 3.3 Step 8c.
 
 ⏳ CREDENTIALS TO FILL BEFORE PHASE 5:
    Open CREDENTIALS.md and fill in the sections marked "⏳ FILL LATER":
@@ -1414,8 +1311,7 @@ Next steps — proceed immediately, fill credentials in parallel:
    Or say "Start Phase 4" in Claude Code if you already have a confirmed PRODUCT.md and inputs.yml.
 4. For SocratiCode: Docker must be running (Docker Desktop via WSL2 — start Docker Desktop on Windows)
    After Phase 4 completes, ask Claude Code to index this codebase
-5. Install the SpecStory VS Code extension if not already installed —
-   it auto-captures sessions immediately, no further config needed
+5. SpecStory retired V32.34 — Claude Code self-attributes; no extension install needed.
 6. Install UI UX Pro Max skill for design system generation (optional but recommended):
    /plugin install ui-ux-pro-max@ui-ux-pro-max-skill
    (requires Python 3 — Phase 2.6 runs automatically if skill is present)

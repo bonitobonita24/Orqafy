@@ -17,6 +17,15 @@ Rule 12 (Compiled-tokens-only + palette disable) was added in V32.8 to enforce D
 Rule 13 (Accessibility / WCAG 2.2 AA) was added in V32.9 — hard gate for gov/LGU apps (DICT MC 004), warn-only otherwise.
 Rule 14 (Motion & Micro-interactions) was added in V32.14 — Motion (motion.dev) is the only prescribed animation library; every animation must respect prefers-reduced-motion (ties to R13's WCAG gate).
 
+**DESIGN-ASSET SOURCING PRIORITY (fleet standard, owner-set 2026-08-07 — governs every rule below).**
+shadcn/studio **Pro** is the PRIORITY source for ALL design assets across the whole design workflow —
+**blocks, components, pages, and templates** — via the shadcn/studio Pro MCP (`/cui`→`/iui`→`/rui`, `/ftc`)
+and the **AdminCN default starter** (V32.43). Reach for Pro FIRST for any design-generation or asset need.
+Free/OSS alternatives — plain shadcn/ui components + Blocks, Kibo UI (Rule 7), community registries — are
+**FALLBACKS**, used only when Pro lacks the asset or is unreachable. This priority governs WHERE assets are
+sourced; it NEVER overrides the locked stack, shadcn/ui-only (Rule 1), or docs/DESIGN.md tokens
+(INHERIT-not-REPLACE). Every Pro asset still reconciles to docs/DESIGN.md / compiled tokens (Rule 12).
+
 ```
 1. shadcn/ui is the ONLY component library. NEVER import MUI, Ant Design, Chakra UI,
    Mantine, DaisyUI, or any other React UI library.
@@ -38,6 +47,20 @@ Rule 14 (Motion & Micro-interactions) was added in V32.14 — Motion (motion.dev
    dark mode toggle pattern (class-based, next-themes).
    Theming docs: https://ui.shadcn.com/docs/theming
    Dark mode docs: https://ui.shadcn.com/docs/dark-mode
+   BUTTON AFFORDANCE (fleet standard, all apps): every primary/secondary/CTA button
+   carries a SMALL raised elevation — a subtle shadow-xs/shadow-sm (or a committed
+   outline border) — so it visibly reads as a pressable control, not static text.
+   NEVER ship a flat, shadowless, borderless block as a primary/secondary button
+   (clients repeatedly mistake it for a non-button). Reserve fully-flat variants
+   (ghost, link) for TERTIARY/inline actions only. Keep the shadow a subtle emboss,
+   never a heavy drop shadow. THE SHADOW IS THE ONLY THING ADDED — button COLORS
+   (fill, border, text, hover) ALWAYS come from the CURRENT THEME's accent/token
+   values (var(--primary), var(--accent), var(--secondary), …). NEVER change, tint,
+   or introduce a new accent colour for a button; the emboss elevation is layered on
+   top of the theme's own button colours, nothing else. Exact shadow token/values come
+   from docs/DESIGN.md; this rule mandates that elevation EXISTS on non-tertiary buttons.
+   Full rationale + the DO/DO-NOT list: .ai_prompt/design-principles.md "Interactive state rules".
+   Advisory lint: scripts/lint-design.sh flags flat/shadowless primary buttons (P-series).
 
 4. Forms: use shadcn/ui Form component with React Hook Form + Zod validation.
    This mirrors the server-side pattern (tRPC + Zod). Client-side forms reuse
@@ -87,6 +110,12 @@ Rule 14 (Motion & Micro-interactions) was added in V32.14 — Motion (motion.dev
    header-tab strip for a multi-section functional app. EXEMPT (immersive, no app-shell):
    kiosk / wall-display / public marketing-landing-auth. INHERIT-not-REPLACE — docs/DESIGN.md
    may override per surface. Full detail: design-principles.md Pillar 3 "Layout archetype".
+   CONCRETE DEFAULT IMPLEMENTATION (V32.43): the persistent left-sidebar app-shell is delivered by the
+   **AdminCN `default-layout`** starter (shadcn `sidebar`-based shell + header + `components/layout/*`),
+   the fleet-default design baseline — vendored curated slice `specdrivenprompt/starter/admincn/`, seeded
+   at Phase 0. The other 5 AdminCN layouts (full-navbar, horizontal, icon-menu, paper, split) are
+   documented opt-in. **Read `.ai_prompt/admincn-starter.md`** for the slice manifest, theme presets, and
+   the `fake-db`→tRPC graft procedure. INHERIT-not-REPLACE — AdminCN supplies shell structure, not tokens.
 
 9. Icons: lucide-react (already a shadcn/ui dependency). NEVER import heroicons,
    react-icons, font-awesome, or phosphor-icons alongside lucide.
@@ -155,6 +184,20 @@ Rule 14 (Motion & Micro-interactions) was added in V32.14 — Motion (motion.dev
     color values blocked by lint/CI, the only available primitives are the compiled vars.
     This is the enforcement mechanism for Rule 31 (Design-as-Contract).
     Reference: Master_Prompt.md Rule 31 + templates.md (generated-tokens.css + globals.css bridge).
+
+    STRUCTURAL LAYOUT ANCHORS (NEW V32.36 — companion to the token gate above, NOT a token rule).
+    Tag structural landmarks with a stable `data-fdl="<name>"` attribute in `docs/MOCKUP.jsx` AND
+    every scaffolded/prototype component that inherits from it — the anchor vocabulary: `app-shell`,
+    `sidebar`, `topbar`, `page-header`, `primary-content`, `kpi-row`, `data-table`, `detail-panel`,
+    `footer`. This feeds the `scripts/design-fidelity.mjs` layout-fidelity gate (Rule 31's second
+    enforced layer), which diffs anchored regions' position/size/order against the approved mockup
+    baseline — content-agnostic (matches by anchor NAME only, never by text/color/count), so
+    real-vs-placeholder data can never trip it. Tag ~6-15 anchors per screen (the structural
+    skeleton only); un-anchored elements are simply ignored by the gate. Dynamic-count regions
+    (lists/tables) get ONE container anchor, never one per row.
+    INHERIT-not-REPLACE: the fidelity gate never governs token *values* — this rule's HARD RULES
+    a-d above still own those; the gate only checks placement vs the mockup.
+    Reference: Master_Prompt.md Rule 31 + .ai_prompt/phases.md Phase 3.3/Parts 5-6/Phase 5 wiring.
 
 13. Accessibility — WCAG 2.2 AA target (NEW V32.9 — Rule 33 Compliance & Data Privacy).
     WCAG 2.2 AA is the framework's named accessibility target for all apps.

@@ -390,7 +390,7 @@ challenges. Enabled by default on all public-facing forms. WCAG 2.2 AAA complian
 5. DEV + STAGING ENVIRONMENTS (test keys — no real Cloudflare widget needed):
    → .env.dev AND .env.staging both use Cloudflare's official test keys (always passes)
    → This means only production needs real keys — saves hostname budget on the widget
-   → Test sitekey 1x00000000000000000000AA + secret 1x0000000000000000000000000000000AA
+   → Test sitekey 1x00000000000000000000AA + secret 1x0000000000000000000000000000000AA <!-- nosemgrep: generic.secrets.security.detected-generic-secret.detected-generic-secret -- Cloudflare Turnstile official published test keys (always-pass), not real secrets -->
    → For testing failure: use 2x00000000000000000000AB + 2x0000000000000000000000000000000AB
    → For testing interactive challenge: use 3x00000000000000000000FF
    → Staging is a real-world environment but Turnstile test keys still work — they always pass
@@ -442,22 +442,30 @@ CSP: https://developers.cloudflare.com/turnstile/reference/content-security-poli
    explicitly embeddable widgets. Pair the two headers — never rely on X-Frame-Options alone.
 ```
 
-**SOFTWARE SUPPLY-CHAIN SAFETY — OWASP Top 10:2025 A03 (NEW V32.9):**
+**SOFTWARE SUPPLY-CHAIN SAFETY — OWASP Top 10:2025 A03 (NEW V32.9; gate fixed V32.38):**
 ```
-Aligns with the framework's existing Trivy image gates (Phase 5/6) — this section is the
-source-side complement: lock what comes IN, prove what ships OUT.
+Covered by Rule 38's T2 audit tools (`.ai_prompt/audit.md`, `scripts/audit-app.sh --tier=2`) — run
+MANUAL / ON-DEMAND by default, and as a blocking Phase-5 gate only if the app opts in
+(`audit.tier2.enforce: true` in `inputs.yml`). This section is the source-side complement: lock what
+comes IN, prove what ships OUT.
 1. PIN dependencies — commit the lockfile (package-lock.json / pnpm-lock.yaml). CI installs with
    `npm ci` / `pnpm install --frozen-lockfile` — NEVER a fresh resolve that can drift the tree.
 2. No floating tags for security-relevant deps. Pin exact versions for anything in the auth,
    crypto, payment, or tenant-isolation path (re-pin explicitly on a Phase 7 bump).
 3. Provenance — prefer packages with npm provenance / signed releases; pin Docker base images by
    digest (FROM image@sha256:...), not by mutable tag, so the build is reproducible.
-4. SBOM — generate a Software Bill of Materials at build (e.g. `syft` / `trivy sbom`) and keep it
-   as a release artifact. Trivy then scans both the image AND the SBOM for known CVEs (the existing
-   Phase 5/6 image gate). A failing CVE gate blocks promotion.
+4. SBOM — generate a Software Bill of Materials at build (Syft, wired into the T2 gate) and keep it
+   as a release artifact. Trivy then scans both the image AND the config (`trivy image` + `trivy
+   config`) for known CVEs/misconfig, and OSV-Scanner covers SCA beyond npm advisories — together the
+   Rule 38 T2 toolset. Once the app opts the T2 gate in, a failing CRITICAL finding blocks promotion;
+   in the default on-demand mode the finding is reported (exit 0). A missing/broken scanner warns
+   (fail-closed on findings, fail-open on tooling — see `audit.md`).
 5. Dockerfile hygiene — NEVER `COPY . .` in a monorepo worker stage; it drags sibling node_modules
    and prototype/ artifacts into the image (phantom CVEs). Copy only the needed build context.
-6. Audit on a cadence — `npm audit` / `pnpm audit` in CI; treat high/critical as build-failing.
+6. Audit on a cadence — `npm audit` / `pnpm audit` in CI (Phase 5 cmd 9); treat high/critical as
+   build-failing. Rule 38 T1 (Gitleaks, recommended pre-commit opt-in) covers git-history secret
+   scanning; T2 covers image/SBOM/SCA (run on demand, or as an opt-in Phase-5 gate); T3 (`audit.md`)
+   documents on-demand/campaign tools, never gated.
 ```
 
 **EXCEPTIONAL-CONDITION HANDLING — OWASP Top 10:2025 A10 (NEW V32.9):**
@@ -494,7 +502,7 @@ L6     Prisma guardrails (auto tenant inj.) V4 Access Control (structural enforc
 Auth   Auth.js v5 defaults + sessions       V6 Authentication; V3 Session Management
 Files  Upload/download safety               V12 Files & Resources
 Errors Fail-closed + generic messages       V7 Logging & Error Handling (+ Top 10:2025 A10)
-Supply Lockfiles / SBOM / Trivy gate        V1 Encoding-agnostic / supply chain (+ Top 10:2025 A03)
+Supply Lockfiles / SBOM / Rule 38 T2 gate   V1 Encoding-agnostic / supply chain (+ Top 10:2025 A03)
 ```
 
 **COMPLIANCE / DATA-SUBJECT / PRIVACY CONTROLS:**
@@ -691,7 +699,7 @@ PRIORITY  SOURCE                  ENFORCED BY
 ────────  ──────────────────────  ───────────────────────────────────
 1         Safety constraints      All agents — never expose credentials,
                                   never delete without confirm, never harm data
-2         CLAUDE.md rules         This file — all 34 rules
+2         CLAUDE.md rules         This file — all 37 rules
 3         Active phase rules      Numbered steps of the current phase
 4         docs/PRODUCT.md         Feature intent — what to build
 5         docs/DECISIONS_LOG.md   Locked decisions — never re-decide
@@ -716,8 +724,8 @@ Three mechanisms activate together. All are non-negotiable. All must pass.
 MECHANISM          ENFORCED BY             WHAT IT PREVENTS
 ─────────────────  ──────────────────────  ─────────────────────────────────────
 Rule 29            WHO YOU ARE             Fuzzy language, guessing, assumption.
-(no fuzzy)         + .clinerules           Banned: "probably", "seems like",
-                                           "I assume", "typically", "usually"
+(no fuzzy)         [RETIRED V32.33:        Banned: "probably", "seems like",
+                    .clinerules]           "I assume", "typically", "usually"
 4 output types     STANDARD OUTPUT         Free-form phase output. Only these
                    TYPES section           4 formats allowed: SUCCESS_OUTPUT /
                                            GAP_REPORT / HANDOFF_OUTPUT /
@@ -772,7 +780,8 @@ Claude Code   ALL phases (V31 primary).   IF asked to rewrite PRODUCT.md →
 Cline         ⚠ DEPRECATED (V31).         IF any instruction routes to Cline →
               Do not use. Claude Code     treat as Claude Code instruction.
               handles all work Cline      Never execute Cline-specific behavior.
-              used to handle.             .clinerules file stays generated but unread.
+              used to handle.             RETIRED (V32.33): .clinerules is no longer
+                                          generated — see docs/STATE.md + CLAUDE.md.
 Copilot       Inline autocomplete,        IF generating governance docs or
               PR review only             phase scaffold → defer to Claude Code
 Planning      PRODUCT.md writing +       IF asked to generate inputs.yml,
@@ -782,7 +791,7 @@ Assistant     Phase 2.8 mockup (V31)     code, or scaffold → output: "I only
               is ephemeral)              and run Phase 2 in Claude Code."
 ```
 
-File ownership enforcement (already in .clinerules) is the file-level companion to this rule.
-H4 is the phase-level enforcement. Both apply simultaneously.
+File ownership enforcement (formerly in .clinerules, RETIRED V32.33 — see CLAUDE.md) is the
+file-level companion to this rule. H4 is the phase-level enforcement. Both apply simultaneously.
 
 ---

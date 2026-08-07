@@ -1188,7 +1188,7 @@ ul.checklist li:last-child { border-bottom: none; }
 
     <!-- HERO -->
     <div class="hero">
-      <div class="hero-eyebrow">v32.14 locked · release ready</div>
+      <div class="hero-eyebrow">V32.45.1 locked · release ready</div>
       <h1>Prompt <span class="accent-word">References</span></h1>
       <p class="hero-lede">Every prompt you need from empty project folder to production-ready app. Four scenario groups match your actual lifecycle — no noise, no filler.</p>
 
@@ -1206,7 +1206,7 @@ ul.checklist li:last-child { border-bottom: none; }
           <div class="stat-label">New ✨</div>
         </div>
         <div class="stat">
-          <div class="stat-num">25</div>
+          <div class="stat-num">36</div>
           <div class="stat-label">Framework Files</div>
         </div>
       </div>
@@ -1712,7 +1712,7 @@ Check 2 — PRODUCT.md state:
 Check 3 — Governance docs state:
   [ ] docs/DECISIONS_LOG.md, CHANGELOG_AI.md, IMPLEMENTATION_MAP.md
   [ ] project.memory.md, inputs.yml, inputs.schema.json
-  [ ] .cline/memory/lessons.md, agent-log.md
+  [ ] docs/memory/lessons.md, agent-log.md
 
 Check 4 — Runtime artifacts:
   [ ] CREDENTIALS.md (count remaining ⏳ markers)
@@ -2282,7 +2282,7 @@ grep -c "⏳" CREDENTIALS.md  # should be 0 for REQUIRED sections</div>
               <div class="code-header"><span class="code-lang">Prompt</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
               <div class="code-body">Bootstrap</div>
             </div>
-            <p>Runs all 20 Bootstrap steps — folder structure, governance docs, <code>.vscode/mcp.json</code>, <code>.specstory/config.json</code>, typed <code>lessons.md</code>, <code>CREDENTIALS.md</code> with AI-generated secrets + <code>⏳ FILL LATER</code> placeholders, and the Loading Library Lock (DECISIONS_LOG.md entry for ui-rules.md Rule 11 dual-path). <strong>Does not block on credentials.</strong> CREDENTIALS.md is the required gate for Phase 2 — Phase 2 will refuse to start without it.</p>
+            <p>Runs all 20 Bootstrap steps — folder structure, governance docs, <code>.vscode/mcp.json</code>, typed <code>lessons.md</code>, <code>CREDENTIALS.md</code> with AI-generated secrets + <code>⏳ FILL LATER</code> placeholders, and the Loading Library Lock (DECISIONS_LOG.md entry for ui-rules.md Rule 11 dual-path). <strong>Does not block on credentials.</strong> CREDENTIALS.md is the required gate for Phase 2 — Phase 2 will refuse to start without it.</p>
 
             <h4>1.3.2 — Phase 2 operational interview</h4>
             <div class="code-block">
@@ -2393,7 +2393,7 @@ Read ONLY this module's PRODUCT.md section. Commit and stop.</div>
             <div class="code-block">
               <div class="code-header"><span class="code-lang">Prompt</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
               <div class="code-body">Resume session. Read STATE.md for current status, then read the latest 
-handoff note in .cline/handoffs/ before doing anything.
+handoff note in docs/handoffs/ before doing anything.
 
 Continue Phase 4 Part [N] — next module is [ModuleName].
 Read ONLY PRODUCT.md sections for this module.</div>
@@ -2516,7 +2516,7 @@ DIMENSION 2 — PHASE STATE DETECTION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Read: docs/IMPLEMENTATION_MAP.md, docs/CHANGELOG_AI.md, project.memory.md,
-      docs/DECISIONS_LOG.md, .cline/memory/agent-log.md
+      docs/DECISIONS_LOG.md, docs/memory/agent-log.md
 
 Determine and report:
   2.1  Last completed phase (most recent "Phase N completed" entry in CHANGELOG_AI)
@@ -2529,7 +2529,7 @@ Determine and report:
        — production live? (check deploy/compose/prod/)
   2.6  Days since last Phase 7 Feature Update (parse CHANGELOG_AI timestamps)
   2.7  Total features implemented (count "Feature Update" entries)
-  2.8  Any pending mid-Part handoffs: ls .cline/handoffs/pause-*.md
+  2.8  Any pending mid-Part handoffs: ls docs/handoffs/pause-*.md
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DIMENSION 3 — GOVERNANCE DOC INTEGRITY
@@ -2543,8 +2543,8 @@ Check each of 9 governance documents for existence + basic health:
   3.5  docs/DECISIONS_LOG.md               (exists? non-empty?)
   3.6  docs/IMPLEMENTATION_MAP.md          (reflects current state?)
   3.7  project.memory.md                   (has recent updates?)
-  3.8  .cline/memory/lessons.md            (typed entries? line count?)
-  3.9  .cline/memory/agent-log.md          (recent entries?)
+  3.8  docs/memory/lessons.md            (typed entries? line count?)
+  3.9  docs/memory/agent-log.md          (recent entries?)
 
 For each: EXISTS / MISSING / CORRUPT / EMPTY + line count + last modified.
 
@@ -2860,7 +2860,7 @@ Then run Bootstrap in ADOPTION mode:
   Adopted Spec-Driven Platform V31. Pre-existing code attributed to HUMAN."
 - Create docs/IMPLEMENTATION_MAP.md documenting what's already built vs remaining
 - Create project.memory.md
-- Create .cline/memory/lessons.md (empty) and agent-log.md with adoption entry
+- Create docs/memory/lessons.md (empty) and agent-log.md with adoption entry
 - Create inputs.yml reflecting EXISTING stack (not Spec-Driven defaults)
 - DO NOT run Phase 4 — code already exists
 - DO NOT modify any app code
@@ -3233,7 +3233,7 @@ Report PASS/FAIL per dimension. Do NOT modify anything — report only.</div>
           <div class="prompt-num">2.5</div>
           <div class="prompt-title-wrap">
             <div class="prompt-title">Governance Sync</div>
-            <div class="prompt-summary">End of day — reconcile drift from manual edits, Copilot changes, out-of-band fixes</div>
+            <div class="prompt-summary">End of day — reconcile drift from manual edits, out-of-band fixes</div>
           </div>
           <div class="prompt-toggle">›</div>
         </div>
@@ -3250,7 +3250,7 @@ Report PASS/FAIL per dimension. Do NOT modify anything — report only.</div>
               <div class="code-body">Governance Sync — conflict resolution</div>
             </div>
 
-            <p>Agent reads <code>.specstory/history/</code> for unattributed diffs since last CHANGELOG entry. Attributes each as COPILOT / HUMAN / UNKNOWN. Shows reconciliation table. You confirm. Agent updates all 9 governance docs.</p>
+            <p><strong>(git-sourced, V32.34 — Rule 19 SpecStory retired)</strong> Agent reads TWO sources since the last reconciliation anchor (<code>LAST=$(git log -1 --format=%cI -- docs/CHANGELOG_AI.md)</code>): <strong>(A)</strong> committed drift — <code>git log --since="$LAST" --oneline --name-status</code>, self-attributed <code>CLAUDE_CODE</code> (Rule 15); <strong>(B)</strong> uncommitted working-tree edits — <code>git status --porcelain</code> + <code>git diff HEAD --stat</code>, attributed <code>HUMAN</code> (manual) or in-flight Claude. Both sources are mandatory — skipping (B) silently loses manual-edit capture. Shows a reconciliation table (2 rows: committed / uncommitted). You confirm. Agent updates all 9 governance docs.</p>
 
             <div class="callout callout-tip">
               <span class="callout-icon">ⓘ</span>
@@ -3278,7 +3278,7 @@ Report PASS/FAIL per dimension. Do NOT modify anything — report only.</div>
               <div class="code-header"><span class="code-lang">Bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
               <div class="code-body">bash scripts/log-lesson.sh</div>
             </div>
-            <p>Interactive 5-question prompt (type / title / files / keywords / explanation). Appends correctly-formatted Rule 18 entry to <code>.cline/memory/lessons.md</code>. Next session, agent reads 🔴 gotchas first, 🟤 decisions second.</p>
+            <p>Interactive 5-question prompt (type / title / files / keywords / explanation). Appends correctly-formatted Rule 18 entry to <code>docs/memory/lessons.md</code>. Next session, agent reads 🔴 gotchas first, 🟤 decisions second.</p>
           </div>
         </div>
       </div>
@@ -3422,13 +3422,13 @@ Report only. If FAIL: suggest exact PRODUCT.md edit needed.</div>
             <div class="code-block">
               <div class="code-header"><span class="code-lang">Pause Prompt</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
               <div class="code-body">Pause current work. Before stopping:
-1. Write a handoff note to .cline/handoffs/ with current progress, 
+1. Write a handoff note to docs/handoffs/ with current progress, 
    pending items, and resume instructions
 2. Update STATE.md with current status (mark as PAUSED)
 3. Update CHANGELOG_AI.md with everything done this session
 4. Update DECISIONS_LOG.md if any decisions were made
 5. Update IMPLEMENTATION_MAP.md if any new files were created
-6. Append to .cline/memory/lessons.md if any errors were resolved
+6. Append to docs/memory/lessons.md if any errors were resolved
 7. Commit all changes to the current branch with message: 
    "wip: pause session — [brief description of what was done]"
 8. Do NOT squash-merge into main. Do NOT delete the branch.
@@ -3439,12 +3439,12 @@ Report only. If FAIL: suggest exact PRODUCT.md edit needed.</div>
             <div class="code-block">
               <div class="code-header"><span class="code-lang">Prompt</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
               <div class="code-body">Resume session. Read STATE.md for current status, then read the latest 
-handoff note in .cline/handoffs/ before doing anything.</div>
+handoff note in docs/handoffs/ before doing anything.</div>
             </div>
 
             <p><strong>What happens on pause:</strong> Agent writes the handoff note with exact state (files written, pending items, uncommitted changes, decisions, gotchas), updates all governance docs, and marks STATE.md as PAUSED with the handoff filename.</p>
 
-            <p><strong>What happens on resume:</strong> Agent reads STATE.md first (Rule 24), finds the PAUSED status with the handoff filename, reads the handoff note from <code>.cline/handoffs/</code>, then reads the 9 governance docs (lessons.md first). Full context rebuilt automatically from files. No need to tell it which Phase or Part — it knows from STATE.md and the handoff note.</p>
+            <p><strong>What happens on resume:</strong> Agent reads STATE.md first (Rule 24), finds the PAUSED status with the handoff filename, reads the handoff note from <code>docs/handoffs/</code>, then reads the 9 governance docs (lessons.md first). Full context rebuilt automatically from files. No need to tell it which Phase or Part — it knows from STATE.md and the handoff note.</p>
           </div>
         </div>
       </div>
@@ -3564,13 +3564,13 @@ VERIFY: [how to confirm]</div>
           <div class="prompt-num">3.2</div>
           <div class="prompt-title-wrap">
             <div class="prompt-title">Resume from Handoff</div>
-            <div class="prompt-summary">Agent got stuck after 2 failed fix attempts — handoff file at .cline/handoffs/</div>
+            <div class="prompt-summary">Agent got stuck after 2 failed fix attempts — handoff file at docs/handoffs/</div>
           </div>
           <div class="prompt-toggle">›</div>
         </div>
         <div class="prompt-body">
           <div class="prompt-content">
-            <p>The agent (Claude Code in V31) tried a fix twice, failed, wrote a handoff instead of attempting a third identical fix. <em>(Folder path <code>.cline/handoffs/</code> preserved for historical continuity; Cline deprecated V31 but the path name lives on.)</em></p>
+            <p>The agent (Claude Code in V31) tried a fix twice, failed, wrote a handoff instead of attempting a third identical fix. <em>(Canonical path is <code>docs/handoffs/</code> as of V32.33; apps deployed before V32.33 still use <code>.cline/handoffs/</code> — legacy path still honored.)</em></p>
 
             <h4>Option A — fix yourself, then tell Claude to retry</h4>
             <div class="code-block">
@@ -3600,7 +3600,7 @@ VERIFY: [how to confirm]</div>
         </div>
         <div class="prompt-body">
           <div class="prompt-content">
-            <p>Check handoff at <code>.cline/handoffs/[timestamp]-visual-qa.md</code>.</p>
+            <p>Check handoff at <code>docs/handoffs/[timestamp]-visual-qa.md</code>.</p>
 
             <h4>Common causes</h4>
             <ul>
@@ -3961,7 +3961,7 @@ cp -r .ai_prompt-v31-backup .ai_prompt</div>
               <div class="code-header"><span class="code-lang">Audit Prompt</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
               <div class="code-body">Lessons Audit
 
-Read .cline/memory/lessons.md in full. For each entry:
+Read docs/memory/lessons.md in full. For each entry:
 
 1. Classify its current relevance:
    - STILL VALID — gotcha/fix/decision still applies to current codebase
@@ -4093,21 +4093,21 @@ Before I proceed, create a full rollback plan:
 
 6. Estimate rollback time if something goes wrong
 
-Output a ROLLBACK PLAN file at .cline/handoffs/rollback-[slug]-[timestamp].md
+Output a ROLLBACK PLAN file at docs/handoffs/rollback-[slug]-[timestamp].md
 Do not start the operation yet. Wait for my explicit "proceed" confirmation.</div>
             </div>
 
             <h4>After you proceed (operation succeeds)</h4>
             <div class="code-block">
               <div class="code-header"><span class="code-lang">Prompt</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-              <div class="code-body">Archive rollback plan .cline/handoffs/rollback-[slug]-[timestamp].md — operation
-succeeded. Move to .cline/handoffs/archive/ with a SUCCESS suffix.</div>
+              <div class="code-body">Archive rollback plan docs/handoffs/rollback-[slug]-[timestamp].md — operation
+succeeded. Move to docs/handoffs/archive/ with a SUCCESS suffix.</div>
             </div>
 
             <h4>If operation fails</h4>
             <div class="code-block">
               <div class="code-header"><span class="code-lang">Prompt</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-              <div class="code-body">Execute rollback per .cline/handoffs/rollback-[slug]-[timestamp].md
+              <div class="code-body">Execute rollback per docs/handoffs/rollback-[slug]-[timestamp].md
 Report each step as completed.</div>
             </div>
           </div>
@@ -4290,7 +4290,7 @@ Do NOT read any more files — every file read makes it worse.
    - Any dependencies the next session needs to know about
    - Estimated context consumption that caused thrashing (how many files read,
      how large was PRODUCT.md section, how many governance docs loaded)
-4. Write a handoff note to .cline/handoffs/ with:
+4. Write a handoff note to docs/handoffs/ with:
    - Current phase and task
    - What's done, what's remaining
    - Any partial code that needs completion
@@ -4661,7 +4661,7 @@ STEP 2 — RESTART CLAUDE CODE BEFORE PROCEEDING. The new compact CLAUDE.md need
             </div>
 
             <div class="callout warning"><strong>Verify PRODUCT.md is current before nuking.</strong> Whatever PRODUCT.md says is what gets rebuilt. If PRODUCT.md is behind reality, the rebuild reproduces the same gaps. Run Prompt 2.9 first OR Prompt 4.14 (brownfield reverse-extract) if you suspect drift.</div>
-            <div class="callout warning"><strong>Do NOT delete <code>docs/lessons.md</code>.</strong> Phase 4 pre-flight reads it (V32.3 Smart Governance Hydration). Without it, prior failure modes recur. The 3.23.A PRESERVE list includes <code>docs/</code> in full — leave it alone.</div>
+            <div class="callout warning"><strong>Do NOT delete <code>docs/memory/lessons.md</code>.</strong> Phase 4 pre-flight reads it (V32.3 Smart Governance Hydration). Without it, prior failure modes recur. The 3.23.A PRESERVE list includes <code>docs/</code> in full — leave it alone.</div>
             <div class="callout warning"><strong>Manual rebuild runs over many sessions.</strong> Every phase (and every Phase 4 Part) is a fresh dispatch boundary. There is no shortcut — trying to fit Phase 0 → Phase 6.5 into one session is exactly the thrashing pattern V32 was built to prevent.</div>
             <div class="callout warning"><strong>The <code>~/clean-slate-backup-*.tar.gz</code> snapshot is your insurance.</strong> Keep it until Phase 6.5 passes cleanly. Then <code>rm</code> it if you want.</div>
             <div class="callout warning"><strong>Phase 3.3 is a HARD GATE (V32.6).</strong> Do not let Claude skip it or fold it into Phase 4. The Orqafy lesson: scaffolding before behavior is validated produces integration bugs that are expensive to find later. Client sign-off in <code>docs/DECISIONS_LOG.md</code> is the explicit gate-close signal.</div>
@@ -4931,7 +4931,7 @@ Attached is our PRODUCT.md. Generate three human-readable docs from it:
    - Tech stack overview (from PRODUCT.md + Spec-Driven defaults)
    - Key architectural decisions (from DECISIONS_LOG.md if available)
    - Local setup order: Bootstrap → Phase 5 → Phase 6
-   - Where to find things (governance docs, .cline/, inputs.yml, etc.)
+   - Where to find things (governance docs, docs/, inputs.yml, etc.)
 
 3. DEMO_SCRIPT.md (for sales/demo walkthrough):
    - Primary happy path (one full user flow from start to finish)
@@ -5850,8 +5850,12 @@ bash scripts/log-lesson.sh</div>
               <td><code>inputs.yml</code>, <code>CHANGELOG_AI.md</code>, <code>DECISIONS_LOG.md</code>, <code>IMPLEMENTATION_MAP.md</code>, <code>project.memory.md</code>, <code>apps/</code>, <code>packages/</code>, <code>deploy/</code></td>
             </tr>
             <tr>
+              <td><strong style="color:var(--blue)">Tracked (not gitignored)</strong></td>
+              <td><code>CLAUDE.md</code>, <code>.claude/</code>, <code>AI/</code>, <code>.clinerules</code>, <code>.cline/</code> (legacy apps), <code>docs/</code> (incl. <code>docs/STATE.md</code>, <code>docs/memory/</code>, <code>docs/handoffs/</code>, <code>docs/tasks/</code> — V32.33+), <code>.ai_prompt/</code></td>
+            </tr>
+            <tr>
               <td><strong style="color:var(--amber)">Gitignored</strong></td>
-              <td><code>CLAUDE.md</code>, <code>.claude/</code>, <code>AI/</code>, <code>.clinerules</code>, <code>.cline/</code>, <code>.specstory/</code>, <code>.ai_prompt/</code>, <code>CREDENTIALS.md</code>, <code>.env.dev/.staging/.prod</code>, <code>.code-review-graph/</code></td>
+              <td><code>.specstory/</code>, <code>CREDENTIALS.md</code>, <code>.env.dev/.staging/.prod</code>, <code>.code-review-graph/</code></td>
             </tr>
             <tr>
               <td><strong style="color:var(--purple)">Committed template</strong></td>

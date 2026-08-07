@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 # =============================================================================
 # spec-gap-check.sh — Powerbyte fleet cross-artifact gap-check (V32.21, deliverable #28)
+#                     (V32.41 — adds CLASS 5 Capability-Primer staleness)
 #
 # Compares the spec-persistence artifact set — docs/PRODUCT.md, prisma schema,
-# docs/IMPLEMENTATION_MAP.md, docs/STATE.md, inputs.yml — against each other and
-# reports deterministic desync classes. Mirrors sync-context.sh (#27) / lint-design.sh
+# docs/IMPLEMENTATION_MAP.md, docs/STATE.md, inputs.yml, docs/primer.yml — against
+# each other and reports deterministic desync classes. CLASS 5 (V32.41) makes the
+# Capability Primer (build-primer.sh #38) self-refresh as an app grows: a new
+# feature/integration in PRODUCT.md that the primer doesn't yet reflect is flagged so
+# the Phase 7 pre-flight can refresh the primer + fire a targeted (never full) skill hunt. Mirrors sync-context.sh (#27) / lint-design.sh
 # (#26) / lint-deploy.sh (#20) house style: same shebang/flag/exit-code shape, same
 # role — a cheap, deterministic, pure-bash gate. Complements Master_Prompt.md Rule 1's
 # LIVING-SPEC model (V32.21 "Spec-Persistence Model" addendum): PRODUCT.md is the
@@ -92,7 +96,11 @@ fi
 # ── Best-effort locate the other 4 artifacts (project-relative, missing = skip) ──
 IMPL_MAP="$PROJECT_ROOT/docs/IMPLEMENTATION_MAP.md"
 STATE_MD="$PROJECT_ROOT/docs/STATE.md"
+# Additive fallback (V32.33): a not-yet-migrated app still on legacy .cline/STATE.md
+# is still gap-checked instead of silently skipped. docs/ is canonical and wins.
+[ -f "$STATE_MD" ] || STATE_MD="$PROJECT_ROOT/.cline/STATE.md"
 INPUTS_YML="$PROJECT_ROOT/inputs.yml"
+PRIMER_YML="$PROJECT_ROOT/docs/primer.yml"   # Capability-Primer source (V32.41 — build-primer.sh #38)
 
 PRISMA_SCHEMA=""
 for cand in "packages/db/prisma/schema.prisma" "prisma/schema.prisma"; do
@@ -185,6 +193,49 @@ if [ -f "$INPUTS_YML" ] && [ -n "$RESOLVED" ] && [ -f "$RESOLVED" ]; then
   fi
 fi
 
+# ── DESYNC CLASS 5 — Capability-Primer staleness (PRODUCT.md vs docs/primer.yml) ──
+# V32.41 continuous-refresh gate. Advisory, keyword-based, low-false-positive — it makes the
+# primer (build-primer.sh #38) SELF-REFRESH as an app grows: a new feature/integration in
+# PRODUCT.md that the primer doesn't yet reflect gets flagged here so the Phase 7 pre-flight can
+# (a) refresh docs/primer.yml + rerun build-primer.sh and (b) fire ONE targeted `search-skill`
+# for the new capability (never a full scan-project — see phases.md Phase 7). Graceful-degrade:
+# no PRODUCT.md → skipped; no docs/primer.yml → a single "run build-primer.sh" nudge, not noise.
+#
+# EDITABLE: extend PRIMER_INTEGRATION_SIGNALS with any integration that pulls a specific
+# SDK/skill/security-note (the ones the primer's Integrations field exists to surface). Keep it to
+# named services — generic words would cry wolf. Mirrors lint-design.sh's editable-config posture.
+PRIMER_INTEGRATION_SIGNALS=(
+  Xendit PayMongo Stripe PayPal GCash Maya
+  Resend SendGrid Postmark Mailgun Twilio
+  Turnstile reCAPTCHA hCaptcha
+  Cloudflare MinIO Telegram Expo
+  Mapbox Leaflet OpenAI Anthropic Auth.js Prisma BullMQ Valkey
+)
+if [ -n "$RESOLVED" ] && [ -f "$RESOLVED" ]; then
+  if [ ! -f "$PRIMER_YML" ]; then
+    # 5a — a spec'd app with no primer source yet: nudge adoption (one line, not per-field noise).
+    add_finding "PRIMER MISSING" "docs/PRODUCT.md exists but docs/primer.yml does not — run 'bash scripts/build-primer.sh' to scaffold + author the Capability Primer (feeds the skill-loadout step)"
+  else
+    # 5b — scaffolded but unfilled: any FLAGS field still literal '?' is an incomplete primer.
+    UNFILLED="$(grep -oE '^[[:space:]]*[A-Z_]+:[[:space:]]*\?' "$PRIMER_YML" 2>/dev/null \
+      | sed -E 's/^[[:space:]]*//; s/:.*$//' | paste -sd',' - || true)"
+    if [ -n "$UNFILLED" ]; then
+      add_finding "PRIMER INCOMPLETE" "docs/primer.yml has unfilled '?' field(s): ${UNFILLED} — author from docs/PRODUCT.md, then rerun 'bash scripts/build-primer.sh'"
+    fi
+    # 5c — growth drift: an integration named in PRODUCT.md but absent from the primer's
+    # Integrations line = the primer is stale vs a feature the app grew. Each is a candidate for
+    # a targeted search-skill (Phase 7 step b).
+    PRIMER_INTEGRATIONS_LINE="$(grep -m1 -iE '^[[:space:]]*INTEGRATIONS:' "$PRIMER_YML" 2>/dev/null || true)"
+    for sig in "${PRIMER_INTEGRATION_SIGNALS[@]}"; do
+      if grep -qiwF "$sig" "$RESOLVED" 2>/dev/null; then
+        if ! printf '%s' "$PRIMER_INTEGRATIONS_LINE" | grep -qiwF "$sig"; then
+          add_finding "PRIMER DRIFT" "docs/PRODUCT.md mentions '$sig' but docs/primer.yml INTEGRATIONS omits it — refresh the primer (build-primer.sh) and consider 'search-skill $sig' for a matching skill/SDK"
+        fi
+      fi
+    done
+  fi
+fi
+
 # ── Render GAP_REPORT ─────────────────────────────────────────────────────────
 render_report() {
   printf '%s\n' "GAP_REPORT (spec-gap-check.sh — advisory, non-blocking)"
@@ -194,6 +245,7 @@ render_report() {
   printf '%s\n' "  IMPLEMENTATION_MAP.md: $( [ -f "$IMPL_MAP" ] && echo 'docs/IMPLEMENTATION_MAP.md (found)' || echo '(missing — skipped)' )"
   printf '%s\n' "  STATE.md:              $( [ -f "$STATE_MD" ] && echo 'docs/STATE.md (found)' || echo '(missing — skipped)' )"
   printf '%s\n' "  inputs.yml:            $( [ -f "$INPUTS_YML" ] && echo 'inputs.yml (found)' || echo '(missing — skipped)' )"
+  printf '%s\n' "  docs/primer.yml:       $( [ -f "$PRIMER_YML" ] && echo 'docs/primer.yml (found)' || echo '(missing — build-primer.sh not yet run)' )"
   printf '%s\n' ""
   if [ "$FINDINGS" -eq 0 ]; then
     printf '%b%s%b\n' "$GRN" "✅ no cross-artifact gaps found" "$RST"

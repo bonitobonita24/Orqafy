@@ -247,7 +247,7 @@ Check 2 — PRODUCT.md state:
 Check 3 — Governance docs state:
   [ ] docs/DECISIONS_LOG.md, CHANGELOG_AI.md, IMPLEMENTATION_MAP.md
   [ ] project.memory.md, inputs.yml, inputs.schema.json
-  [ ] .cline/memory/lessons.md, agent-log.md
+  [ ] docs/memory/lessons.md, agent-log.md
 
 Check 4 — Runtime artifacts:
   [ ] CREDENTIALS.md (count remaining ⏳ markers)
@@ -772,7 +772,7 @@ Then in Claude Code:
 Bootstrap
 ```
 
-**What happens:** Runs all 20 Bootstrap steps — folder structure, governance docs, `.vscode/mcp.json`, `.specstory/config.json`, typed `lessons.md`, `CREDENTIALS.md` with AI-generated secrets + `⏳ FILL LATER` placeholders, and the Loading Library Lock (DECISIONS_LOG.md entry for ui-rules.md Rule 11 dual-path). **Does not block on credentials.** CREDENTIALS.md is the required gate for Phase 2 — Phase 2 will refuse to start without it.
+**What happens:** Runs all 20 Bootstrap steps — folder structure, governance docs, `.vscode/mcp.json`, typed `lessons.md`, `CREDENTIALS.md` with AI-generated secrets + `⏳ FILL LATER` placeholders, and the Loading Library Lock (DECISIONS_LOG.md entry for ui-rules.md Rule 11 dual-path). **Does not block on credentials.** CREDENTIALS.md is the required gate for Phase 2 — Phase 2 will refuse to start without it.
 
 ### 1.3.2 — Phase 2 operational interview
 ```
@@ -891,7 +891,7 @@ Session 8d onward — one Mobile First module per session:
 **Resume between module sessions:**
 ```
 Resume session. Read STATE.md for current status, then read the latest 
-handoff note in .cline/handoffs/ before doing anything.
+handoff note in docs/handoffs/ before doing anything.
 
 Continue Phase 4 Part [N] — next module is [ModuleName].
 Read ONLY PRODUCT.md sections for this module.
@@ -997,7 +997,7 @@ DIMENSION 2 — PHASE STATE DETECTION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Read: docs/IMPLEMENTATION_MAP.md, docs/CHANGELOG_AI.md, project.memory.md,
-      docs/DECISIONS_LOG.md, .cline/memory/agent-log.md
+      docs/DECISIONS_LOG.md, docs/memory/agent-log.md
 
 Determine and report:
   2.1  Last completed phase (most recent "Phase N completed" entry in CHANGELOG_AI)
@@ -1010,7 +1010,7 @@ Determine and report:
        — production live? (check deploy/compose/prod/ + last production deploy timestamp)
   2.6  Days since last Phase 7 Feature Update (parse CHANGELOG_AI timestamps)
   2.7  Total features implemented (count "Feature Update" entries in CHANGELOG_AI)
-  2.8  Any pending mid-Part handoffs: ls .cline/handoffs/pause-*.md
+  2.8  Any pending mid-Part handoffs: ls docs/handoffs/pause-*.md
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DIMENSION 3 — GOVERNANCE DOC INTEGRITY
@@ -1024,8 +1024,8 @@ Check each of 9 governance documents for existence + basic health:
   3.5  docs/DECISIONS_LOG.md               (exists? non-empty?)
   3.6  docs/IMPLEMENTATION_MAP.md          (exists? reflects current state?)
   3.7  project.memory.md                   (exists? has recent updates?)
-  3.8  .cline/memory/lessons.md            (exists? typed entries? line count?)
-  3.9  .cline/memory/agent-log.md          (exists? recent entries?)
+  3.8  docs/memory/lessons.md            (exists? typed entries? line count?)
+  3.9  docs/memory/agent-log.md          (exists? recent entries?)
 
 For each, report: EXISTS / MISSING / CORRUPT / EMPTY + line count + last modified date.
 
@@ -1369,7 +1369,7 @@ Then run Bootstrap in ADOPTION mode:
   Adopted Spec-Driven Platform V31. Pre-existing code attributed to HUMAN."
 - Create docs/IMPLEMENTATION_MAP.md documenting what's already built vs remaining
 - Create project.memory.md
-- Create .cline/memory/lessons.md (empty) and agent-log.md with adoption entry
+- Create docs/memory/lessons.md (empty) and agent-log.md with adoption entry
 - Create inputs.yml reflecting EXISTING stack (not Spec-Driven defaults)
 - DO NOT run Phase 4 — code already exists
 - DO NOT modify any app code
@@ -1702,7 +1702,7 @@ Index this codebase
 
 ## 2.5 — Governance Sync (end of day — reconcile drift)
 
-**When:** End of work session, or when code has drifted from PRODUCT.md (manual edits, Copilot inline changes, out-of-band fixes).
+**When:** End of work session, or when code has drifted from PRODUCT.md (manual edits, out-of-band fixes).
 
 ```
 Governance Sync
@@ -1713,7 +1713,7 @@ Governance Sync
 Governance Sync — conflict resolution
 ```
 
-**What happens:** Agent reads `.specstory/history/` for unattributed diffs since last CHANGELOG entry. Attributes each diff as COPILOT / HUMAN / UNKNOWN. Shows you a reconciliation table. You confirm. Agent updates all 9 governance docs.
+**What happens (git-sourced, V32.34 — Rule 19 SpecStory retired):** Agent reads TWO sources since the last reconciliation anchor (`LAST=$(git log -1 --format=%cI -- docs/CHANGELOG_AI.md)`): **(A)** committed drift — `git log --since="$LAST" --oneline --name-status`, self-attributed `CLAUDE_CODE` (Rule 15); **(B)** uncommitted working-tree edits — `git status --porcelain` + `git diff HEAD --stat`, attributed `HUMAN` (manual) or in-flight Claude. Both sources are mandatory — skipping (B) silently loses manual-edit capture. Shows you a reconciliation table (2 rows: committed / uncommitted). You confirm. Agent updates all 9 governance docs.
 
 **Frequency:** At most once per day. Prevention is better — use `Feature Update` for any change >5 lines.
 
@@ -1729,7 +1729,7 @@ Governance Sync — conflict resolution
 bash scripts/log-lesson.sh
 ```
 
-**What happens:** Interactive 5-question prompt (type / title / files / keywords / explanation). Appends correctly-formatted Rule 18 entry to `.cline/memory/lessons.md`. Next session, agent reads 🔴 gotchas first, 🟤 decisions second.
+**What happens:** Interactive 5-question prompt (type / title / files / keywords / explanation). Appends correctly-formatted Rule 18 entry to `docs/memory/lessons.md`. Next session, agent reads 🔴 gotchas first, 🟤 decisions second.
 
 ---
 
@@ -1817,13 +1817,13 @@ instead — see **Scenario 40** in `scenarios.md`.
 **To pause:**
 ```
 Pause current work. Before stopping:
-1. Write a handoff note to .cline/handoffs/ with current progress, 
+1. Write a handoff note to docs/handoffs/ with current progress, 
    pending items, and resume instructions
 2. Update STATE.md with current status (mark as PAUSED)
 3. Update CHANGELOG_AI.md with everything done this session
 4. Update DECISIONS_LOG.md if any decisions were made
 5. Update IMPLEMENTATION_MAP.md if any new files were created
-6. Append to .cline/memory/lessons.md if any errors were resolved
+6. Append to docs/memory/lessons.md if any errors were resolved
 7. Commit all changes to the current branch with message: 
    "wip: pause session — [brief description of what was done]"
 8. Do NOT squash-merge into main. Do NOT delete the branch.
@@ -1833,12 +1833,12 @@ Pause current work. Before stopping:
 **To resume later (new Claude Code session):**
 ```
 Resume session. Read STATE.md for current status, then read the latest 
-handoff note in .cline/handoffs/ before doing anything.
+handoff note in docs/handoffs/ before doing anything.
 ```
 
 **What happens on pause:** Agent writes the handoff note with exact state (files written, pending items, uncommitted changes, decisions, gotchas), updates all governance docs, and marks STATE.md as PAUSED with the handoff filename.
 
-**What happens on resume:** Agent reads STATE.md first (Rule 24), finds the PAUSED status with the handoff filename, reads the handoff note from `.cline/handoffs/`, then reads the 9 governance docs (lessons.md first). Full context rebuilt automatically from files. No need to tell it which Phase or Part — it knows from STATE.md and the handoff note.
+**What happens on resume:** Agent reads STATE.md first (Rule 24), finds the PAUSED status with the handoff filename, reads the handoff note from `docs/handoffs/`, then reads the 9 governance docs (lessons.md first). Full context rebuilt automatically from files. No need to tell it which Phase or Part — it knows from STATE.md and the handoff note.
 
 ---
 
@@ -1902,7 +1902,7 @@ VERIFY: [how to confirm]
 
 ## 3.2 — Resume from Handoff (agent got stuck)
 
-**When:** You see a file at `.cline/handoffs/[timestamp]-error.md`. The agent (Claude Code in V31) tried a fix twice, failed, wrote a handoff instead of attempting a third identical fix. (Folder path `.cline/handoffs/` preserved for historical continuity; Cline deprecated V31 but the path name lives on.)
+**When:** You see a file at `docs/handoffs/[timestamp]-error.md` (or `.cline/handoffs/` on apps deployed before V32.33 — legacy path still honored). The agent (Claude Code in V31) tried a fix twice, failed, wrote a handoff instead of attempting a third identical fix.
 
 **Option A — fix yourself, then tell Claude to retry:**
 ```
@@ -1921,7 +1921,7 @@ Read this handoff and resolve:
 
 ## 3.3 — Visual QA Failed
 
-**When:** Phase 6 Visual QA fails or a Feature Update's QA check fails. Check handoff at `.cline/handoffs/[timestamp]-visual-qa.md`.
+**When:** Phase 6 Visual QA fails or a Feature Update's QA check fails. Check handoff at `docs/handoffs/[timestamp]-visual-qa.md`.
 
 **Common causes:**
 - Page not loading → check `pnpm db:seed` ran, check auth config in `.env.dev`
@@ -2151,12 +2151,12 @@ cp -r .ai_prompt-v31-backup .ai_prompt
 
 ## 3.12 — Lessons Audit (NEW — periodic lessons.md cleanup)
 
-**When:** Every 4-6 weeks, or when `.cline/memory/lessons.md` exceeds ~500 lines. Too many stale lessons slow down every session (they get read before the 9 governance docs).
+**When:** Every 4-6 weeks, or when `docs/memory/lessons.md` exceeds ~500 lines. Too many stale lessons slow down every session (they get read before the 9 governance docs).
 
 ```
 Lessons Audit
 
-Read .cline/memory/lessons.md in full. For each entry:
+Read docs/memory/lessons.md in full. For each entry:
 
 1. Classify its current relevance:
    - STILL VALID — gotcha/fix/decision still applies to current codebase
@@ -2256,19 +2256,19 @@ Before I proceed, create a full rollback plan:
 
 6. Estimate rollback time if something goes wrong
 
-Output a ROLLBACK PLAN file at .cline/handoffs/rollback-[slug]-[timestamp].md
+Output a ROLLBACK PLAN file at docs/handoffs/rollback-[slug]-[timestamp].md
 Do not start the operation yet. Wait for my explicit "proceed" confirmation.
 ```
 
 **After you proceed (operation succeeds):**
 ```
-Archive rollback plan .cline/handoffs/rollback-[slug]-[timestamp].md — operation
-succeeded. Move to .cline/handoffs/archive/ with a SUCCESS suffix.
+Archive rollback plan docs/handoffs/rollback-[slug]-[timestamp].md — operation
+succeeded. Move to docs/handoffs/archive/ with a SUCCESS suffix.
 ```
 
 **If operation fails:**
 ```
-Execute rollback per .cline/handoffs/rollback-[slug]-[timestamp].md
+Execute rollback per docs/handoffs/rollback-[slug]-[timestamp].md
 Report each step as completed.
 ```
 
@@ -2389,7 +2389,7 @@ Do NOT read any more files — every file read makes it worse.
    - Any dependencies the next session needs to know about
    - Estimated context consumption that caused thrashing (how many files read,
      how large was PRODUCT.md section, how many governance docs loaded)
-4. Write a handoff note to .cline/handoffs/ with:
+4. Write a handoff note to docs/handoffs/ with:
    - Current phase and task
    - What's done, what's remaining
    - Any partial code that needs completion
@@ -2650,7 +2650,7 @@ Restart Claude Code. Resume MANUALLY per **3.23.C**.
 
 > ⚠ **Verify PRODUCT.md is current before nuking.** Whatever PRODUCT.md says is what gets rebuilt. If PRODUCT.md is behind reality, the rebuild reproduces the same gaps. Run Prompt 2.9 first OR Prompt 4.14 (brownfield reverse-extract) if you suspect drift.
 
-> ⚠ **Do NOT delete `docs/lessons.md`.** Phase 4 pre-flight reads it (V32.3 Smart Governance Hydration). Without it, prior failure modes recur. The 3.23.A PRESERVE list includes `docs/` in full — leave it alone.
+> ⚠ **Do NOT delete `docs/memory/lessons.md`.** Phase 4 pre-flight reads it (V32.3 Smart Governance Hydration). Without it, prior failure modes recur. The 3.23.A PRESERVE list includes `docs/` in full — leave it alone.
 
 > ⚠ **Manual rebuild runs over many sessions.** Every phase (and every Phase 4 Part) is a fresh dispatch boundary. There is no shortcut — trying to fit Phase 0 → Phase 6.5 into one session is exactly the thrashing pattern V32 was built to prevent.
 
@@ -2841,7 +2841,7 @@ Attached is our PRODUCT.md. Generate three human-readable docs from it:
    - Tech stack overview (from PRODUCT.md + Spec-Driven defaults)
    - Key architectural decisions (from DECISIONS_LOG.md if available)
    - Local setup order: Bootstrap → Phase 5 → Phase 6
-   - Where to find things (governance docs, .cline/, inputs.yml, etc.)
+   - Where to find things (governance docs, docs/, inputs.yml, etc.)
 
 3. DEMO_SCRIPT.md (for sales/demo walkthrough):
    - Primary happy path (one full user flow from start to finish)
@@ -3653,7 +3653,8 @@ bash scripts/log-lesson.sh
 |---|---|
 | **Human** | `docs/PRODUCT.md` — the only human-edited file |
 | **Agent** | `inputs.yml`, `CHANGELOG_AI.md`, `DECISIONS_LOG.md`, `IMPLEMENTATION_MAP.md`, `project.memory.md`, `apps/`, `packages/`, `deploy/` |
-| **Gitignored** | `CLAUDE.md`, `.claude/`, `AI/`, `.clinerules`, `.cline/`, `.specstory/`, `.ai_prompt/`, `CREDENTIALS.md`, `.env.dev/.staging/.prod`, `.code-review-graph/`, `project.memory.md` |
+| **Tracked (not gitignored)** | `CLAUDE.md`, `.claude/`, `AI/`, `.clinerules`, `.cline/` (legacy apps), `docs/` (incl. `docs/STATE.md`, `docs/memory/`, `docs/handoffs/`, `docs/tasks/` — V32.33+), `.ai_prompt/` |
+| **Gitignored** | `.specstory/`, `CREDENTIALS.md`, `.env.dev/.staging/.prod`, `.code-review-graph/`, `project.memory.md` |
 | **Committed template** | `.env.example` — placeholders only |
 
 ---

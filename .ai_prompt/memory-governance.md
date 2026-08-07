@@ -528,7 +528,7 @@ Agent(
 **Architect-read allow-list** (Opus reads directly when ≤ 200 lines; files > 200 lines route through Scout-Sonnet with the **Governance Extraction Schema** below — V32.3):
 - `docs/PRODUCT.md` (source of truth, Rule 1)
 - `docs/STATE.md`, `docs/DECISIONS_LOG.md`, `docs/CHANGELOG_AI.md`, `docs/IMPLEMENTATION_MAP.md`
-- `.cline/STATE.md`
+- `.cline/STATE.md` (legacy read-allowance for apps deployed before V32.33 not yet migrated — see Scenario 46; new apps never create it)
 - `.claude/rules/*.md`, `.ai_prompt/*.md` (framework governance — session-start only)
 
 R6 extends R5 (Scout-Before-Edit) from Sonnet's editing context to Opus's planning context. **V32.3 closes the "growing governance doc" loophole** — as allow-list docs grow past 200 lines, Smart Hydration keeps them Scout-mediated rather than burning the full file into Opus context.
@@ -541,7 +541,7 @@ Per-doc extraction contract for the 9 governance docs of Rule 4. Scout-Sonnet re
 governance_hydration:
   task_domain: "<keyword[,keyword,...] for filtering — derived from current task>"
 
-  lessons_md:                       # .cline/memory/lessons.md
+  lessons_md:                       # docs/memory/lessons.md
     gotchas_in_full: [...]          # ALL 🔴 entries — verbatim
     decisions_in_full: [...]        # ALL 🟤 entries — verbatim
     keyword_matched: [...]          # remaining entries whose title matches task_domain
@@ -569,7 +569,7 @@ governance_hydration:
 
   project_memory_md:                # full read (always small + ambient)
 
-  agent_log_md:                     # .cline/memory/agent-log.md
+  agent_log_md:                     # docs/memory/agent-log.md
     current_session: [...]          # action entries from current session
     task_domain_hits: [...]         # action entries matching task_domain from prior sessions
 
@@ -629,7 +629,6 @@ docs/STATE.md
 docs/DECISIONS_LOG.md
 docs/CHANGELOG_AI.md
 docs/IMPLEMENTATION_MAP.md
-.cline/STATE.md
 ```
 
 ALL other paths (source code, configs, tests, schemas, governance docs not listed, framework files) MUST be dispatched to Sonnet via `Agent(model: "sonnet")`. The list is CLOSED — additions require a Master Prompt revision, not session-level discretion. If a path is not on the list and Opus is about to Edit/Write, STOP and write a Sonnet dispatch scope instead.
@@ -647,7 +646,7 @@ dispatch_ratio:
   status: PASS (≥3.0) | WARN (1.0–2.99) | FAIL (<1.0)
 ```
 
-`FAIL` status triggers a `docs/lessons.md` entry for the next session:
+`FAIL` status triggers a `docs/memory/lessons.md` entry for the next session:
 > "Dispatch discipline drift — review which Opus writes should have been Sonnet dispatches. Session <id> ended with ratio <X>."
 
 The metric is per-session, not cumulative. Resets at each new Claude Code session. Counts are gathered by inspecting the session's tool-call log at Smart Checkpoint time.

@@ -1,4 +1,4 @@
-# Spec-Driven Platform V31 — Scenarios 1-44
+# Spec-Driven Platform V32.45 — Scenarios 1-49
 
 > Loaded contextually when user triggers a named scenario.
 > Read ONLY the scenario matching the user's request.
@@ -110,12 +110,25 @@ Valkey → ElastiCache: update REDIS_URL=rediss://<endpoint>:6379
 ⚠️ Schema first = NOT NULL failure on existing rows.
 ```
 
-### SCENARIO 12 — Governance Sync: code drifted, docs are stale
+### SCENARIO 12 — Governance Sync: code drifted, docs are stale (V32.34 — git-sourced)
 ```
 CASE A — code drifted, PRODUCT.md untouched:
   "Governance Sync" + attach 9 docs
-  Agent reads .specstory/history/ to attribute unlogged changes.
-  Shows reconciliation table with agent attribution → ask confirmation → updates all docs.
+  Agent sources diffs from git instead of .specstory/history/, reading TWO sources:
+    # Anchor = last reconciliation point (CHANGELOG_AI is written by every Gov-Sync / Phase-7 run)
+    LAST=$(git log -1 --format=%cI -- docs/CHANGELOG_AI.md)
+    LAST=${LAST:-$(git log --max-parents=0 -1 --format=%cI)}   # first run (CHANGELOG_AI not yet committed) → anchor at repo root, never an empty --since
+    # A. Committed drift since then (already Claude-Code-attributed at commit via Rule 15)
+    git log --since="$LAST" --oneline --name-status
+    # B. Uncommitted working-tree edits — the manual-edit case SpecStory used to catch (Rule 1: humans edit PRODUCT.md)
+    git status --porcelain ; git diff HEAD --stat   # then git diff HEAD -- <path> per flagged file
+    # Note: git diff HEAD shows TRACKED changes only — read any untracked ("??") files directly.
+  Attribution table COLLAPSES to two rows (no more COPILOT/UNKNOWN — Claude Code is sole agent):
+    | Source | Attribution | Gov Sync job |
+    |---|---|---|
+    | committed since $LAST | CLAUDE_CODE (self-attributed, Rule 15) | doc↔code drift: did CHANGELOG_AI/IMPLEMENTATION_MAP/STATE capture it? |
+    | uncommitted (git diff HEAD) | HUMAN (manual) or in-flight Claude | surface: "uncommitted — attribute on next commit / reconcile now" |
+  Shows reconciliation table with the above attribution → ask confirmation → updates all docs.
 
 CASE B — code AND PRODUCT.md both changed:
   "Governance Sync — conflict resolution" + 9 docs
@@ -126,7 +139,7 @@ Prevention: run Phase 7 for any change > 5 lines. One Governance Sync per day ma
 
 ### SCENARIO 13 — Claude Code wrote a handoff file (Cline deprecated)
 ```
-1. Find: .cline/handoffs/<timestamp>-<e>.md
+1. Find: docs/handoffs/<timestamp>-<e>.md
    Contains: what Claude Code was doing, full error, 3 fix attempts, root cause, what to do.
 
 2. Options:
@@ -135,12 +148,12 @@ Prevention: run Phase 7 for any change > 5 lines. One Governance Sync per day ma
    C. Fix .env/config manually → tell Claude Code "Resume from handoff: <filename>"
 
 3. After resolution: Claude Code appends to lessons.md (🟡 fix format — Rule 18).
-   SpecStory captures the full resolution session automatically.
+   git tracks the full resolution session (committed diffs).
 ```
 
 ### SCENARIO 14 — Visual QA failed
 ```
-1. Find handoff: .cline/handoffs/<timestamp>-visual-qa.md
+1. Find handoff: docs/handoffs/<timestamp>-visual-qa.md
 2. Common causes:
    - Page not loading: check pnpm db:seed was run, check auth config in .env
    - Console error: missing env var or API endpoint not scaffolded
@@ -154,7 +167,7 @@ Prevention: run Phase 7 for any change > 5 lines. One Governance Sync per day ma
 ```
 1. Say "Governance Retro" in Claude Code (no docs attachment needed)
 2. Claude Code outputs the structured retro (built, errors, velocity, health)
-3. Retro includes "Unattributed SpecStory diffs reconciled" count
+3. Retro includes "Uncommitted/undocumented diffs reconciled" count
 4. Use "Recommended Focus" to plan your next Phase 7 or Phase 8
 ```
 
@@ -184,62 +197,16 @@ INDEX IS STALE (after large refactor or schema change):
   → codebase_context_index {}
 ```
 
-### SCENARIO 17 — SpecStory captured changes not attributed to any agent (NEW V11)
+### SCENARIO 17 — RETIRED (V32.34)
 ```
-WHEN THIS HAPPENS:
-  - You made inline edits manually or via Copilot autocomplete
-  - No Claude Code session was active at the time
-  - CHANGELOG_AI.md has no entry for the change
-  - .specstory/history/ has a diff showing the change
-
-HOW TO RECONCILE:
-  1. Say "Governance Sync" in Claude Code + attach 9 docs
-  Claude Code reads automatically. For Copilot/Claude Code: attach all 9 docs manually.
-  2. Claude Code reads .specstory/history/ and finds unattributed diffs
-  3. Claude Code shows you a reconciliation table:
-     - File changed: [filename]
-     - Change type: [added/modified/deleted]
-     - Inferred agent: COPILOT | HUMAN | UNKNOWN
-     - Suggested CHANGELOG entry: [preview]
-  4. Confirm → Claude Code writes attributed entries to CHANGELOG_AI.md
-  5. IMPLEMENTATION_MAP.md updated if structural changes were made
-
-PREVENTION:
-  For any change > 5 lines: use Phase 7 so attribution is automatic.
-  For small Copilot fixes: let them accumulate, run Governance Sync at end of day.
+SpecStory/Copilot attribution — RETIRED V32.34; Claude Code sole self-attributing agent;
+Governance Sync is git-sourced — see Scenario 12.
 ```
 
-### SCENARIO 18 — Copilot made inline changes — attribution and governance (NEW V11)
+### SCENARIO 18 — RETIRED (V32.34)
 ```
-WHAT COPILOT CAN AND CANNOT DO:
-  ✓ Inline autocomplete (always on) — SpecStory captures all diffs
-  ✓ Copilot Chat with edits — SpecStory captures all diffs
-  ✓ PR reviews on GitHub — no file changes, no attribution needed
-  ✗ Cannot self-report to CHANGELOG_AI.md (no agentic loop)
-  ✗ Cannot read governance docs autonomously
-  ✗ Cannot run Phase 7 steps automatically
-
-COPILOT'S ROLE IN THE ATTRIBUTION CHAIN:
-  Copilot makes a change
-       ↓
-  SpecStory captures the file diff to .specstory/history/
-       ↓
-  Governance Sync (Scenario 17) attributes it as COPILOT
-       ↓
-  CHANGELOG_AI.md updated: Agent: COPILOT
-
-BEST PRACTICE FOR COPILOT CHANGES:
-  Use Copilot freely for inline fixes and autocomplete.
-  At end of each day or coding session: run "Governance Sync" in Claude Code.
-  This reconciles all Copilot and manual changes in one pass.
-  Never try to manually edit CHANGELOG_AI.md to attribute Copilot — use Governance Sync.
-
-WHEN COPILOT MAKES A LARGER CHANGE (via Chat):
-  After Copilot Chat finishes edits:
-  1. Review the changes in VS Code diff view
-  2. Say "Feature Update" in Claude Code — paste a description of what Copilot changed
-  3. Claude Code reads the diff, validates governance alignment, updates all docs
-  This gives Copilot changes the same governance treatment as Claude Code changes.
+SpecStory/Copilot attribution — RETIRED V32.34; Claude Code sole self-attributing agent;
+Governance Sync is git-sourced — see Scenario 12.
 ```
 
 ### SCENARIO 19 — Cline is deprecated — use Claude Code (with Copilot as emergency fallback)
@@ -411,19 +378,19 @@ STARTING PHASE 4 (V14 Part-by-Part approach):
   Instead, for each Part:
     1. Open a NEW Claude Code session (close the previous one first)
     2. Claude Code auto-reads CLAUDE.md
-    3. Say: "Start Part [N]" — Claude Code reads .cline/tasks/phase4-part[N].md
+    3. Say: "Start Part [N]" — Claude Code reads docs/tasks/phase4-part[N].md
     4. Claude Code reads STATE.md → confirms LAST_DONE matches previous Part
     5. Claude Code creates branch, builds, validates, squash-merges, rewrites STATE.md
     6. Claude Code outputs: "✅ Part [N] complete. Open phase4-part[N+1].md in a NEW session."
     7. Close this Claude Code session. Open new one. Repeat.
 
 VERIFYING STATE BETWEEN PARTS:
-  - Check .cline/STATE.md after each Part
+  - Check docs/STATE.md after each Part
   - PHASE should say "Phase 4 Part N complete"
   - If it says Part N-1 still: the previous Part didn't finish — resume it before starting N
 
 IF A PART FAILS:
-  - Check .cline/handoffs/ for the error handoff
+  - Check docs/handoffs/ for the error handoff
   - Fix the issue manually or via Claude Code "Resume from handoff: [filename]"
   - Part stays on its branch — do not squash-merge until all checks pass
 ```
@@ -1379,6 +1346,31 @@ C1 — Create the Production Stack:
   Run directory: /opt/stacks/${app_slug}-prod
   auto_update:  false   ← NEVER auto-update prod. Human clicks Deploy in Komodo UI after verifying staging.
 
+C1a — SCRIPTED alternative to C1 (NEW V32.42 — ResourceSync register, preferred over the manual
+  UI when the pipeline is generator-managed):
+  Instead of clicking through the UI, declare the stack as a **ResourceSync** resource — a
+  `[[stack]]` TOML stanza checked into git (e.g. `deploy/komodo/resources.toml`) and synced by
+  Komodo's own git-sync (`km sync` / the Komodo Core ResourceSync poll):
+  ```toml
+  [[stack]]
+  name = "${app_slug}-prod"
+  [stack.config]
+  server = "[your server name in Komodo]"
+  run_directory = "/opt/stacks/${app_slug}-prod"
+  file_paths = ["docker-compose.prod.yml"]
+  git_provider = "github.com"
+  git_account = "${git_account}"
+  repo = "${owner}/${repo}"
+  branch = "main"
+  auto_update = false   # NEVER auto-update prod
+  ```
+  This is what `deploy/komodo-verify.sh` (`cicd.md` §8.1) emits/prints when it finds an
+  UNTRACKED prod stack — apply it via `km sync` (or commit + let ResourceSync poll pick it up).
+  The manual UI path (C1-C3) remains the **fallback** when ResourceSync/`km` isn't wired yet.
+  Verify tracked with `km list stacks` (or API `read("ListStacks", {})`) — a stack directory
+  present on the server but ABSENT from this list is the hand-installed/untracked case this audit
+  exists to catch (origin: Marine-Guardian prod, installed directly on-server, invisible to Komodo).
+
 C2 — Compose file for production (paste into Komodo UI → Stack → Compose):
   IDENTICAL structure to staging compose — same service definitions, same Traefik labels.
   The ONLY difference is COMPOSE_PROJECT_NAME (${app_slug}_prod) which namespaces everything.
@@ -1615,8 +1607,8 @@ SEE ALSO:
 5. docs/DECISIONS_LOG.md
 6. docs/IMPLEMENTATION_MAP.md
 7. project.memory.md
-8. .cline/memory/lessons.md     ← read first, Rule 18 typed format
-9. .cline/memory/agent-log.md
+8. docs/memory/lessons.md     ← read first, Rule 18 typed format
+9. docs/memory/agent-log.md
 ```
 
 Claude Code: reads all 9 automatically from filesystem. No attachment needed.
@@ -1632,7 +1624,7 @@ Auto-loads CLAUDE.md. No pasting. Use for PRODUCT.md updates, Phase 2 interview,
 
 **Claude Code** — building (Phase 3-8, Part by Part in fresh sessions)
 Auto-loads CLAUDE.md. Reads STATE.md first (Rule 24), then 9 docs (lessons.md first, Rule 18 order).
-(.clinerules is generated by Bootstrap Step 3 for historical parity but unused in active V31 work.)
+(.clinerules generation retired V32.33 — historical: was generated by Bootstrap Step 3 for Cline parity, unused since V31.)
 Each Phase 4 Part runs in a fresh session. Feature Updates: branch → build → two-stage review → merge.
 Writes lessons.md in Rule 18 typed format after every error resolved or decision locked.
 Model routing (V31 — locked in inputs.yml):
@@ -1649,17 +1641,13 @@ V31 model routing (locked in inputs.yml):
   governance: gemini-2.5-flash-lite (non-critical doc writes — cheapest)
 
 **GitHub Copilot** — inline autocomplete + handoff fallback
-Always-on ghost text while typing. Changes attributed via SpecStory capture (Rule 19).
+Always-on ghost text while typing. Changes attributed via git-sourced Governance Sync (Rule 19 RETIRED V32.34 — see Scenario 12).
 For larger Copilot Chat edits: follow up with "Feature Update" in Claude Code to apply governance.
 PR reviews on GitHub.
 
-**SpecStory** — passive change capture layer (NEW elevated role in V11)
-Install the SpecStory VS Code extension — zero config needed after Bootstrap.
-Bootstrap writes `.specstory/specs/v31-master-prompt.md` and `.specstory/config.json`.
-Auto-captures every Claude Code session to `.specstory/history/`.
-Captures Copilot inline edits via file-change diffs.
-Powers Governance Sync attribution reconciliation (Scenarios 17 + 18).
-`.specstory/history/` is append-only — never delete entries.
+**SpecStory** — RETIRED V32.34. Passive change capture is no longer generated; Governance Sync now
+sources diffs from git (Scenario 12). Deployed apps keep any existing `.specstory/history/` as a
+frozen legacy audit trail — never migrated or deleted.
 
 **code-review-graph** — structural blast-radius MCP server (NEW V13)
 Install once per machine (not per project): `claude plugin add tirth8205/code-review-graph`
@@ -1680,7 +1668,7 @@ See Rule 30 + Scenario 31 for full usage guide and worked examples.
 **Log Lesson (scripts/log-lesson.sh)** — human quick-log for personal discoveries
 Trigger: VS Code Command Palette → "Tasks: Run Task" → "Log Lesson" (or `bash scripts/log-lesson.sh`)
 Written by Bootstrap (Step 15) to `scripts/log-lesson.sh` + `.vscode/tasks.json`.
-5-question interactive prompt → appends correctly formatted Rule 18 entry to `.cline/memory/lessons.md`.
+5-question interactive prompt → appends correctly formatted Rule 18 entry to `docs/memory/lessons.md`.
 Use when you personally discover something before Claude Code encounters it.
 Never write free-form text to lessons.md — always use this script or let Claude Code write it.
 
@@ -1708,10 +1696,10 @@ Never load all skills at once — contextual loading keeps context lean for all 
 See Scenario 27 for full install, verification, and custom skill authoring guide.
 
 **The filesystem is the shared brain.**
-Claude Code, Copilot, SocratiCode, and SpecStory all communicate through
+Claude Code, Copilot, and SocratiCode all communicate through
 the 9 governance files. SocratiCode adds a searchable semantic layer.
-SpecStory adds a passive diff-capture layer that bridges the attribution gap.
-(Cline deprecated V31 — no longer part of active coordination layer.)
+Governance Sync bridges the attribution gap by sourcing diffs from git (Scenario 12).
+(Cline deprecated V31, SpecStory retired V32.34 — neither is part of the active coordination layer.)
 
 ---
 
@@ -2139,7 +2127,7 @@ CONTEXT:
   propagates automatically rather than remaining siloed in one project.
 
 SCOPE ROUTING TABLE (Rule 32):
-  project scope   → stays in .cline/memory/lessons.md (already there, no action)
+  project scope   → stays in docs/memory/lessons.md (already there, no action)
   framework scope → a framework deliverable (deploy.sh ships it to new apps)
   conductor scope → /memory (MEMORY.md or a topic file in the conductor's memory dir)
 
@@ -2399,7 +2387,7 @@ VERIFICATION:
 
 ---
 
-### Scenario 43 — Add Multi-Channel Event Delivery / Notifications
+### SCENARIO 43 — Add Multi-Channel Event Delivery / Notifications
 
 **Trigger:** `docs/PRODUCT.md` declares a multi-channel notification / event-delivery need (email + push + SMS + webhook + in-app, event-driven side-effects across services, a notification center).
 
@@ -2433,16 +2421,343 @@ VERIFICATION:
 
 ---
 
+### SCENARIO 45 — App CI/CD Pipeline Setup / Retrofit (NEW V32.32)
+
+**Trigger:** this is the **umbrella** scenario for standing up or fixing an app's whole CI/CD
+pipeline — the owner says anything like "set up CI/CD for `<app>`", "wire up the deploy pipeline",
+"our staging/prod promotion is broken", "add a rollback script", "the demo keeps drifting, add a
+self-heal", or "get `<app>` onto the CI/CD standard." Fires on TWO cases: (a) a **new** app at
+Phase 6 scaffold time (automatic, no interview — the pipeline is scaffolded the same way SEO is),
+or (b) a **retrofit** of an already-built app whose `deploy/`/`.github/workflows/` predate the
+V32.32 standard.
+
+**Read first:** `.ai_prompt/cicd.md` (deliverable #32 — the umbrella CI/CD standard: the two
+GitHub workflows, image-tag promotion, the 4-environment data model, the 8-step production
+promotion sequence, demo self-heal, coupled image+schema rollback, Komodo/Traefik wiring, secrets)
++ Rule 36 (`Master_Prompt.md`).
+
+**What this scenario does NOT restate (pointer-only, per `cicd.md`'s own umbrella posture):**
+- The staging data-first refresh procedure + its 4 robustness invariants → **Scenario 43's**
+  companion, `~/.claude/rules/staging-refresh-gate.md` + the **`staging-gate/`** generator
+  (`staging-refresh-setup`) — materializes `deploy/staging-refresh-and-deploy.sh`, never hand-ported.
+- The dev image build + push mechanics → **Scenario 30** (dev image build + push pipeline).
+- The Docker Hub image pipeline + Komodo deployment shape → **Scenario 24**.
+- Komodo staging + production deployment with full service isolation → **Scenario 32**.
+- The 3-tier natural-language deploy contract (commit=local / "push to staging" / "push to
+  production" / "push to demo") → `~/.claude/rules/deploy-discipline.md`.
+This scenario ties those together via the generator; it does not re-explain any of them.
+
+**Read first (generator):** the repo-root **`cicd-gen/`** generator (`cicd.md` §10) — materializes,
+per app, from the canonical template: `ci.yml` (governance + quality + security gate on merge —
+never deploys) · `docker-publish.yml` (build + publish only, tags `latest`/`staging-latest`/
+`sha-<short>`, no auto staging-deploy) · `push.sh` (dev builds+tests, staging/prod are pure
+registry re-tags) · `start.sh` (brings a stack up, DB-first, namespaced by
+`${COMPOSE_PROJECT_NAME}`) · `push-to-demo.sh` (promote a source tag → `demo-latest`, migrate YES,
+reseed NEVER) · **`rollback.sh` (NEW)** — couples image + schema rollback so old code never runs
+on new schema · **`demo-reset.sh` (NEW)** — infra-level self-heal that restores demo to its curated
+baseline on a schedule without ever touching a live promotion. Staging-refresh generation stays
+delegated to **`staging-gate/`** — `cicd-gen/` does not re-generate it.
+
+**Procedure (dev-first, LOCAL-only, HARD HOLD — same posture as Scenario 42's RBAC retrofit,
+Scenario 43's notifications build, and Scenario 44's SEO retrofit):**
+1. **New app (Phase 6 scaffold):** run `cicd-gen/` against the fresh project layout — no PRODUCT.md
+   checkbox, no interview, same "constitutional, always-on" posture as the SEO Foundation. Emits
+   the file set above + calls `staging-refresh-setup` (per the staging-refresh-gate rule) for the
+   staging-refresh script.
+2. **Retrofit (existing app):** confirm the app is on framework V32.32 (`register-to-aief` →
+   `prep-sync` if not — governance-only, no behavior change), then run `cicd-gen/` against the
+   existing repo layout. Where the app already has a concrete `deploy/` script or CI workflow that
+   deviates deliberately, **INHERIT-not-REPLACE** — `cicd-gen/` fills gaps (esp. the two NEW
+   scripts, `rollback.sh` + `demo-reset.sh`), it never overwrites a working deliberate deviation
+   without the owner confirming the diff.
+3. Verify the split: `ci.yml` gates the merge only; `docker-publish.yml` builds/publishes only and
+   never auto-deploys staging (staging auto-deploy would skip the prod-data refresh — see Scenario
+   43's staging-refresh-gate pointer above).
+4. Gate the CI auto-deploy of staging exactly as Scenario 43/the staging-refresh-gate rule
+   requires, if not already gated.
+5. Wire `rollback.sh` to the app's actual image-tag + migration scheme (couples an image rollback
+   to its matching schema state — never rolls back code alone onto a newer schema).
+6. Wire `demo-reset.sh` as a host cron / Komodo scheduled action per `cicd.md` §6 — self-heals
+   demo drift without ever reseeding or touching a live staging/prod promotion.
+7. **Komodo Stack Registration Audit (NEW V32.42)** — run `bash deploy/komodo-verify.sh
+   --report-only` (or `cicd-gen --audit`) after generating the pipeline; for each env stack
+   (**PRODUCTION first**) confirm it is a Komodo-tracked resource (`km list stacks` /
+   `ListStacks`). Register any untracked stack via the printed ResourceSync `[[stack]]` TOML
+   stanza (manual fallback: Scenario 32 Part C). Advisory, local-only, HARD HOLD — never blocks
+   the retrofit, only surfaces an untracked prod loudly.
+8. Full gate + Visual QA on DEV. Back-port the setup/retrofit to `docs/DECISIONS_LOG.md` +
+   `docs/CHANGELOG_AI.md`. LOCAL only.
+9. Promotion (each a separate owner word, never auto, per `~/.claude/rules/deploy-discipline.md`):
+   - **STAGING:** "push to staging" → `main` → CI builds/publishes → staging refresh-and-deploy
+     script (Scenario 43 / `staging-gate/`) runs the data-first rehearsal.
+   - **PROD:** "push to production" → the 8-step manual promotion sequence in `cicd.md` §5.
+   - **DEMO:** "push to demo" → `push-to-demo.sh` (migrate YES, reseed NEVER).
+   None of these fire without the owner's explicit word.
+
+**VERIFICATION:**
+- `cicd-gen/` output matches `cicd.md` §10's file list exactly, incl. the two NEW scripts.
+- `ci.yml` never deploys; `docker-publish.yml` never auto-deploys staging.
+- `rollback.sh` rolls back image + schema TOGETHER (never image-only).
+- `demo-reset.sh` restores demo without reseeding or touching staging/prod.
+- Staging-refresh script is the `staging-gate/`-generated one — not hand-ported.
+- Komodo Stack Registration Audit ran; every env stack (prod first) confirmed Komodo-tracked or
+  registered via ResourceSync TOML — never silently left untracked.
+- `docs/DECISIONS_LOG.md` / `docs/CHANGELOG_AI.md` updated.
+- No staging/prod/demo change without an explicit owner word.
+
+---
+
+### SCENARIO 46 — Existing-App Cline→Docs State Migration (NEW V32.33)
+
+**Trigger:** the owner says anything like "migrate `<app>` off `.cline`", "move this app's state to
+`docs/`", "retire Cline STATE on `<app>`", "this app is still on `.cline/STATE.md`, migrate it", or a
+`register-to-aief`/`prep-sync` scan flags an app still writing `.cline/STATE.md`. This is the
+**per-app, OPT-IN** completion of the V32.33 Cline STATE split-brain retirement — new apps are already
+born on `docs/STATE.md` (bootstrap.md); this scenario converts an **already-deployed** app that still
+lives on the legacy `.cline/` convention.
+
+**Read first:** `Master_Prompt.md` V32.33 changelog entry (the split-brain defect + the additive gate
+fallback) — orients on WHY this migration exists before touching a live app's state files.
+
+**⛔ HARD RULE — runs in the APP'S OWN session, never from the AIEF framework seat.** This scenario
+never reaches into an app repo from the Powerbyte-AIEF seat (`global-feature-broadcast.md`). It is
+broadcast via memory as an available scenario; the app's own Claude Code session executes it.
+
+**⛔ ZERO-DISRUPTION — never forced, never on a timer.** Migrating is entirely the owning app's choice.
+An app that never runs this scenario keeps working forever — `design-stop-hook.sh` and
+`spec-gap-check.sh` carry a permanent `.cline/STATE.md` read-fallback for exactly this case (V32.33 §5.4).
+
+**Procedure (dev-first, LOCAL-only, HARD HOLD — same posture as Scenarios 42-45):**
+1. Confirm the app is still on `.cline/STATE.md` (`ls .cline/STATE.md`) and is on framework V32.33+
+   (`register-to-aief` → `prep-sync` first if not — governance-only, no behavior change).
+2. Branch: `git checkout -b chore/cline-to-docs-state-migration` (per `branch-commit-discipline.md`).
+3. **Literal `git mv`, basenames preserved** (required — swarm-orchestrator's basename union-merge,
+   `lib.sh:312` `_GOVERNANCE_UNION_BASENAMES`, matches on basename, not path — a basename change
+   silently drops the file from the merge):
+   ```
+   git mv .cline/STATE.md            docs/STATE.md
+   git mv .cline/memory/lessons.md   docs/memory/lessons.md
+   git mv .cline/memory/agent-log.md docs/memory/agent-log.md
+   git mv .cline/handoffs            docs/handoffs
+   git mv .cline/tasks               docs/tasks
+   ```
+   If `docs/memory/`, `docs/handoffs/`, or `docs/tasks/` already partially exist (mixed-state app),
+   merge file-by-file instead of a directory `git mv` — never overwrite a newer `docs/` file with an
+   older `.cline/` one.
+4. **Verify content moved byte-for-byte** — `git diff --stat` shows pure renames (100% similarity), no
+   content mutation. Spot-check `docs/STATE.md` still carries its `evidence:` block if one was present.
+5. **Run the gate regression** — confirm `design-stop-hook.sh` and `spec-gap-check.sh` now read
+   `docs/STATE.md` as primary (the `.cline/STATE.md` fallback should no longer trigger once
+   `docs/STATE.md` exists): a missing-`docs/STATE.md`-but-present-`.cline/STATE.md` case must no
+   longer be the path in use; a done-claim with an empty `evidence:` block must still be BLOCKED
+   (non-zero exit) exactly as before the migration — the fix must not have weakened the gate.
+6. Update any app-local doc/README pointing at `.cline/` paths (search `grep -rn '\.cline'` in the
+   app repo, excluding `.specstory` and any frozen audit file).
+7. Back-port to `docs/DECISIONS_LOG.md` + `docs/CHANGELOG_AI.md` (Rule 15 attribution). Commit LOCAL
+   only — no push/deploy from this scenario (`deploy-discipline.md`).
+8. **Only after this app is fully migrated** may ITS OWN `.cline/STATE.md` gate fallback be considered
+   for retirement — **per-app only, decided by that app's owner session, never globally or on a
+   timer.** Retiring the fallback fleet-wide is a separate, much later decision gated on every app
+   having migrated — do not act on it here.
+
+**VERIFICATION:**
+- `git mv` used (not copy+delete) — history preserved per file.
+- All 5 target basenames (`STATE.md`, `lessons.md`, `agent-log.md`, `handoffs/`, `tasks/`) match their
+  pre-migration basenames exactly — swarm basename-union merge (`lib.sh:312`) unaffected.
+- `docs/STATE.md` carries its `evidence:` block (contract/check_command/captured_output) if the app
+  already used one; gate behavior on an empty/missing `evidence:` block is unchanged (still blocks).
+- No `.cline/` path reference survives in the app's own docs/config (`.specstory` and any frozen
+  cross-audit file excluded).
+- `docs/DECISIONS_LOG.md` / `docs/CHANGELOG_AI.md` updated; commit is LOCAL only.
+- This app's own `.cline/STATE.md` fallback in `design-stop-hook.sh`/`spec-gap-check.sh` is left in
+  place unless the owner explicitly also runs the (separate, later) fallback-retirement step.
+
+---
+
+### SCENARIO 47 — Microservices Escalation Assessment / Decomposition (NEW V32.35)
+
+**Trigger:** the owner is weighing whether an app should move off the modular monolith to
+microservices, OR a new project may need service decomposition — anything like "should `<app>` be
+microservices?", "split `<app>` into services", "decompose the render/ML/heavy part out of the
+monolith", "this workload needs to scale independently", or "assess `<app>` for microservices." This
+is the assessment-first gate for the rare app that genuinely outgrows the modular monolith — most of
+the time the answer is "stay a monolith."
+
+**Read first:** `.ai_prompt/microservices.md` (deliverable #33 — the Rule 37 authority: the §0
+non-disruption banner, §1 escalation decision gate, §2 decompose-the-locked-stack reference
+architecture, §3 strangler migration path, §4 anti-over-engineering, §5 pre-ship gates) + Rule 37
+(`Master_Prompt.md`).
+
+**Procedure (assessment-first, LOCAL-only, HARD HOLD — same posture as Scenarios 42-46):**
+1. **DEFAULT is the modular monolith** — confirm a REAL §1 escalation trigger exists (divergent scale
+   curve / hard isolation boundary / heavy-or-license-isolated runtime / org-scaling / divergent SLA).
+   No genuine trigger → stay a monolith, STOP. Reject the anti-triggers ("it'll scale someday",
+   "microservices are best practice", "the code feels big", "we want independent modules").
+2. Read `.ai_prompt/microservices.md` and apply its **§1 decision gate**; record the confirmed trigger
+   as an owner-gated `[WHAT]` in `docs/PRODUCT.md` (§ Non-functional / § Deployment Config) +
+   `docs/DECISIONS_LOG.md`.
+3. Identify the **MINIMUM** service set — usually ONE carved bounded context (from PRODUCT.md Modules
+   & Features + the RBAC feature registry), not "all of them."
+4. **Existing app → strangler extraction** (§3): draw the seam inside the monolith first (tRPC router
+   boundary + events), stand up the new service with its own DB, dual-write / event-sync its data,
+   route that context's traffic through the Traefik gateway, then delete the old in-process module —
+   only after the whole-blast-radius regression gate is green (Playwright verify-all-pages + full
+   suite, `branch-commit-discipline`). **Greenfield-that-qualifies →** scaffold per `microservices.md`
+   §2 (decompose-the-locked-stack: bounded contexts, database-per-service, typed `@app/contracts`
+   zod, Valkey Streams + BullMQ / NATS JetStream eventing, outbox + idempotent consumers, edge Auth.js
+   → signed-JWT `tenant_id` propagation, Traefik gateway + Komodo per-service stacks, OpenTelemetry).
+5. Each service **inherits the locked stack** — `security.md` (L1-L6 per service), `ui-rules.md`,
+   `cicd.md` (per-service build-once + coupled image↔migration rollback), `rbac.md`,
+   `notifications.md`. **INHERIT-not-REPLACE** — never override them.
+6. **NON-DISRUPTIVE + HARD HOLD:** LOCAL commits only; no staging/prod/demo promotion without the
+   owner's explicit word (`deploy-discipline.md`). No existing app is auto-converted.
+
+Full architecture: `.ai_prompt/microservices.md` (#33), Rule 37.
+
+---
+
+### SCENARIO 48 — Existing-App Audit Toolkit Retrofit (NEW V32.38)
+
+**Trigger:** the owner says anything like "audit this app", "add the audit toolkit to `<app>`", "get
+`<app>` onto the Rule 38 standard", "scan `<app>` for secrets/CVEs", or a `register-to-aief`/`prep-sync`
+scan flags an app on framework < V32.38. **Default = make the manual one-shot available, NOT install a
+gate** (owner-set 2026-07-28 — nothing auto-runs). The primary outcome of this scenario is simply that
+`audit-app.sh` runs cleanly against the app on demand. NO tier is auto-wired for any app, new or
+existing; a pre-commit hook or a blocking Phase-5 T2 gate is a **separate, explicit per-app opt-in**
+(steps 7-8, optional).
+
+**Read first:** `.ai_prompt/audit.md` (deliverable #35 — the tool matrix, tier table, per-tool
+invocation, triage/severity policy, T3 campaign runbooks) + Rule 38 (`Master_Prompt.md`).
+
+**⛔ NEVER hard-fail an app on day one.** An app with years of accumulated code will surface a real
+findings backlog the moment T1/T2 scanners run for the first time. Flipping straight to blocking
+mode would break every commit and get the toolkit disabled within a week — the exact failure mode
+Rule 38's tiering exists to prevent. This scenario ALWAYS establishes a `--report-only` baseline
+before any gate is allowed to block.
+
+**Procedure (dev-first, LOCAL-only, HARD HOLD — same posture as Scenarios 42-47):**
+1. Confirm the app is on framework V32.38+ (`register-to-aief` → `prep-sync` first if not —
+   governance-only, no behavior change).
+2. **Install/verify the scanners** — Gitleaks, Semgrep, tsc, ESLint (T1) and Trivy, OSV-Scanner,
+   Syft, BackstopJS (T2). Where a tool is missing, note it — `audit-app.sh` degrades gracefully
+   (warns, never blocks) per Rule 38's fail-open-on-tooling rule, so a partial toolset is a valid
+   starting point, not a blocker to this scenario.
+3. **Run T1 in `--report-only` first**: `bash scripts/audit-app.sh --tier=1 --report-only`. Record
+   every finding — do NOT fix them all inline; this is a baseline snapshot, not a cleanup sprint.
+4. **Run T2 in `--report-only` first**: `bash scripts/audit-app.sh --tier=2 --report-only`. Same
+   posture — capture the baseline (image CVEs, transitive-dependency CVEs, SBOM, visual-regression
+   deltas against the current build) before considering any blocking mode.
+5. **Triage the existing-finding backlog** — classify each T1/T2 finding as: (a) fix now (cheap,
+   real, high-severity — e.g. a leaked secret in git history gets rotated immediately per
+   `no-secret-rotation-nagging`-adjacent Server-Setups process, a trivially-patchable CVE gets
+   bumped), (b) fix soon (tracked as a follow-up task, not blocking this retrofit), or (c)
+   **accepted risk** (a finding that is a known false positive, an intentionally-vendored pattern,
+   or a risk the owner explicitly accepts for now).
+6. **Record every accepted-risk item in `docs/DECISIONS_LOG.md`** — the specific finding, why it's
+   accepted, and any planned revisit condition. An accepted risk that is never written down is a
+   silent gap the NEXT scan will re-flag as new; writing it down makes the backlog auditable instead
+   of noisy.
+7. **(OPTIONAL) Opt in to a blocking T2 gate via `inputs.yml`** — only if the owner wants T2 wired as
+   a gate, and only once the (a)-class findings are fixed and the (b)/(c) backlog is recorded, set
+   `audit.tier2.enforce: true` so T2 blocks at Phase 5. Skip this entirely to keep T2 manual/on-demand
+   (the default). Nothing forces this step.
+8. **(OPTIONAL) Wire a hook** — if the owner wants it, wire the **recommended** Gitleaks pre-commit
+   hook (`gitleaks protect --staged`, same shape as `check-framework-alignment.sh`'s pre-push hook —
+   the one gate §1 of `audit.md` recommends, since secrets-in-history are unrecoverable) and/or T2 into
+   the Phase 5 OUTPUT CONTRACT. Default is NO hook — the manual one-shot stands on its own.
+9. Full gate + Visual QA on DEV. Back-port the retrofit to `docs/DECISIONS_LOG.md` +
+   `docs/CHANGELOG_AI.md` (Rule 15 attribution). Commit LOCAL only — no push/deploy from this
+   scenario (`deploy-discipline.md`).
+
+**VERIFICATION:**
+- `bash scripts/audit-app.sh --tier=1 --report-only` and `--tier=2 --report-only` both exit 0 and
+  produce a findings report BEFORE any gate is flipped to blocking.
+- Every accepted-risk finding has a corresponding entry in `docs/DECISIONS_LOG.md`.
+- No app is left blocking on an untriaged backlog — blocking mode is opt-in ONLY after triage.
+- A missing scanner warns (non-fatal) rather than failing the retrofit — fail-open-on-tooling holds.
+- `docs/DECISIONS_LOG.md` / `docs/CHANGELOG_AI.md` updated; commit is LOCAL only.
+- No staging/prod/demo change without an explicit owner word.
+
+Full standard: `.ai_prompt/audit.md` (#35), Rule 38.
+
+---
+
+### SCENARIO 49 — Existing-App AdminCN Design Adoption / Retrofit (NEW V32.44)
+
+**Trigger:** the owner says anything like "adopt the AdminCN design on `<app>`", "reskin `<app>` to the new
+design starter", "bring `<app>` onto the AdminCN app-shell/theme", "upgrade `<app>`'s UI to the fleet
+default", or a `register-to-aief`/`prep-sync` scan flags an app on framework < V32.43. V32.43 makes AdminCN
+the default for NEW apps at Phase 0; this scenario is the retrofit path for an EXISTING app that predates it
+or was only partially themed.
+
+**Read first:** `.ai_prompt/admincn-starter.md` (deliverable #39 — curated-slice manifest, layout menu, theme
+presets, the `fake-db`→tRPC graft procedure, license/provenance, INHERIT-not-REPLACE contract) + `ui-rules.md`
+Rule 8 (app-shell archetype) + `ui-rules.md` Rule 12 (compiled-tokens single source).
+
+**⚠ WHERE THIS RUNS — per-seat, never from the AIEF seat.** This is a per-app UI migration executed on the
+target app's OWN seat under the global-feature-broadcast discipline. The AIEF seat authors the standard + a
+rollout tracker; it NEVER edits an app repo's code or memory. Pick up this scenario in the app's own session.
+
+**⛔ UI/DESIGN LAYER ONLY — never a backend rewrite.** Adopt AdminCN's app-shell, theme presets, components,
+and view structure. KEEP the app's real tRPC + Prisma + Auth.js v5. Do NOT import AdminCN's `fake-db` /
+`zustand` / `nuqs` data layer — every adopted view is re-wired to the app's existing backend via the graft
+procedure. `docs/DESIGN.md` / compiled tokens (Rule 12) win every token-VALUE conflict — AdminCN supplies
+structure, not values.
+
+**Procedure (dev-first, LOCAL-only, HARD HOLD — same posture as Scenarios 42-48):**
+1. Confirm the app is on framework V32.43+ (`register-to-aief` → `prep-sync` first if not — governance-only,
+   no behavior change; this is what lands the vendored `starter/admincn/` slice + `.ai_prompt/admincn-starter.md`).
+2. **Reconcile the component set** — diff the app's `packages/ui` (or `components/ui`) against the 50 AdminCN
+   components; add the AdminCN extras the app is missing (border-beam, number-ticker, timeline, kanban,
+   circular-progress, etc.). Never duplicate a component the app already has.
+3. **Adopt the app-shell incrementally** — introduce the AdminCN `default-layout` left-sidebar shell (Rule 8)
+   behind the app's existing routes; migrate the real nav config into `navConfig`. Keep it working at every
+   step (strangler-style, one shell region at a time), never a big-bang swap.
+4. **Reconcile the theme** — pick ONE AdminCN preset as the app default and fold its accent/radius/surface
+   VALUES into the app's `docs/tokens.json` → the Style-Dictionary `--sd-*` layer (templates.md three-layer
+   bridge). Do NOT paste AdminCN's raw preset CSS over the app's compiled tokens.
+5. **Graft views one at a time** — for each screen being reskinned to an AdminCN scaffold, run the deliverable
+   #39 `fake-db`→tRPC graft: identify the scaffold's mock-data shape → map to the app's existing Prisma model
+   + tRPC router (reuse the app's `packages/shared` Zod schemas) → replace the mock fetch with the app's real
+   tRPC query/mutation → wire the 5 states (loading/empty/error/partial/success) → enforce the app's existing
+   tenant-scoping + RBAC (`hasPermission`, Rule 34). Zustand only for client-ephemeral UI state (theme,
+   sidebar open) — never server data.
+6. **Update the design baseline (Rule 31)** — the reskin is an intentional design change, so re-approve the
+   mockup/baseline: update `docs/DESIGN.md` + `docs/MOCKUP.jsx` to the AdminCN direction, capture a fresh
+   `design:fidelity` baseline, and log the decision in `docs/DECISIONS_LOG.md`. Leaving the old baseline in
+   place while shipping the new design is a Rule-31 violation.
+7. Full gate + Visual QA on DEV (verify-all-pages — the reskin must not regress any existing flow; blast-radius
+   discipline). Back-port to `docs/DECISIONS_LOG.md` + `docs/CHANGELOG_AI.md` (Rule 15). Commit LOCAL only —
+   no push/deploy from this scenario (`deploy-discipline.md`).
+
+**VERIFICATION:**
+- The adopted views render REAL app data through the existing tRPC/Prisma backend — no AdminCN `fake-db` /
+  `zustand` / `nuqs` import remains in any adopted render path.
+- `docs/tokens.json` stays the single token source; the chosen preset's values are compiled through the
+  three-layer bridge, not pasted as raw CSS (Rule 12).
+- Every existing user flow still passes verify-all-pages (no regression from the reskin).
+- `docs/DESIGN.md` / `docs/MOCKUP.jsx` + the `design:fidelity` baseline updated to the new design (Rule 31);
+  decision logged in `docs/DECISIONS_LOG.md`.
+- `lint-design.sh` clean on the app's OWN authored screens (the vendored slice's own upstream tells are
+  out of scope — see `.ai_prompt/admincn-starter.md` "Design anti-slop gate — scope note").
+- `docs/DECISIONS_LOG.md` / `docs/CHANGELOG_AI.md` updated; commit is LOCAL only. No staging/prod/demo change
+  without an explicit owner word. License: AdminCN is use-in-own/client-projects only — the app repo inherits
+  the no-redistribution constraint (keep it private if it carries the slice).
+
+Full standard: `.ai_prompt/admincn-starter.md` (#39), `ui-rules.md` Rule 8 + Rule 12, Rule 31.
+
+---
+
 ### File Ownership Reference
 
 ```
 docs/PRODUCT.md              HUMAN    Only file humans ever edit
 CLAUDE.md                    HUMAN    Copy of master prompt
 .claude/settings.json        HUMAN    Claude Code project settings
-.clinerules                  HUMAN    Cline configuration (⚠ deprecated V31 — file still generated for historical parity but unused)
-.cline/tasks/*.md            AGENT    Phase 4 task files (folder name preserved for historical continuity)
+.clinerules                  RETIRED  Cline configuration — generation STOPPED V32.33 (⚠ deprecated V31, unused; historical file only on apps built before V32.33)
+docs/tasks/*.md               AGENT    Phase 4 task files (was .cline/tasks/ pre-V32.33 — basename preserved)
 .vscode/mcp.json             HUMAN    MCP server config (SocratiCode entry)
-.cline/STATE.md              AGENT    Rewritten after every task — never edit manually
+docs/STATE.md                 AGENT    Rewritten after every task — never edit manually
 .gitignore                   AGENT    Written at Bootstrap Step 16+17 — add entries via Feature Update
 
 inputs.yml                   AGENT    Never edit manually
@@ -2453,13 +2768,11 @@ docs/IMPLEMENTATION_MAP.md   AGENT    Never edit manually
 project.memory.md            AGENT    Never edit manually
 .socraticodecontextartifacts.json  AGENT  Never edit manually
 
-.cline/memory/lessons.md     AGENT    Rule 18 typed format — never edit manually
-.cline/memory/agent-log.md   AGENT    Claude Code primary writer; others via attribution layer — never edit manually
-.cline/handoffs/*.md         AGENT    Written when agent is stuck — read and act on these
+docs/memory/lessons.md        AGENT    Rule 18 typed format — never edit manually
+docs/memory/agent-log.md      AGENT    Claude Code primary writer; others via attribution layer — never edit manually
+docs/handoffs/*.md            AGENT    Written when agent is stuck — read and act on these
 
-.specstory/specs/            HUMAN    Master prompt copy written by Bootstrap
-.specstory/history/          SYSTEM   SpecStory passive capture — append-only, never delete
-.specstory/config.json       HUMAN    Written by Bootstrap — do not edit
+.specstory/                  RETIRED  Passive capture — generation STOPPED V32.34 (Governance Sync is git-sourced, Scenario 12); apps built before V32.34 keep it as a frozen legacy audit trail — never migrated/deleted
 
 scripts/log-lesson.sh        HUMAN    Run to log personal discoveries to lessons.md — never edit the output directly
 .vscode/tasks.json           HUMAN    VS Code task runner — "Log Lesson" task written by Bootstrap

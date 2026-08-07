@@ -42,6 +42,7 @@
 #   P1g Justified body text                (text-align:justify / text-justify — rivers of white)
 #   P1h Image hover transform              (<img> hover:scale-/hover:rotate-)
 #   P1i Crushed / negative letter-spacing  (tracking-tighter / letter-spacing:-0.0x)
+#   P1j Flat / shadowless primary button   (shadow-none on Button / ghost|link as a submit action → needs shadow-xs emboss)
 # Behavioural craft rules (five-states, animation timing) are NOT grep-checkable —
 # they live in design-principles.md / motion.md as agent+reviewer guidance.
 # =============================================================================
@@ -174,6 +175,11 @@ H="$(scan '<img[^>]*\bhover:(scale|rotate)-|<img[^>]*\bgroup-hover:(scale|rotate
 # ── P1i — Crushed / negative letter-spacing ──────────────────────────────────
 H="$(scan '\btracking-tighter\b|letter-spacing:\s*-0?\.0[3-9]|letter-spacing:\s*-[1-9]')"
 [ -n "$H" ] && report P1 P1i "Crushed/negative letter-spacing — costs legibility; tighten display type optically, not destructively." "$H"
+
+# ── P1j — Flat / shadowless primary button (fleet button-affordance standard) ──
+# Tells: shadow-none on a Button, OR a ghost/link variant used as a submit (primary) action.
+H="$(scan '<[Bb]utton[^>]*\bshadow-none\b|variant=["'"'"']?(ghost|link)["'"'"']?[^>]*type=["'"'"']?submit|type=["'"'"']?submit["'"'"']?[^>]*variant=["'"'"']?(ghost|link)')"
+[ -n "$H" ] && report P1 P1j "Flat/shadowless primary button — give primary/secondary/CTA buttons a small shadow-xs/shadow-sm (or outline border) so they read as buttons; reserve ghost/link for tertiary/inline actions (see ui-rules.md Rule 3 + design-principles.md)." "$H"
 
 # ============================================================================
 # Summary  (mirrors lint-deploy.sh)

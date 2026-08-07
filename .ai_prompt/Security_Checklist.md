@@ -316,7 +316,7 @@
        → Scenario 24, Phase 4 Part 7
        VERIFY: grep "build:" deploy/compose/stage/ deploy/compose/prod/ — must return 0
 □ 12.7 Staging/prod compose files have Traefik labels AND no host ports on app service (V27)
-       → Scenario 32 Part B/C, .clinerules DOCKER COMPOSE RULES
+       → Scenario 32 Part B/C, DOCKER COMPOSE RULES (formerly .clinerules, RETIRED V32.33 — see templates.md)
        VERIFY: staging/prod app service has traefik.enable=true label
        VERIFY: staging/prod app service has NO ports: section (Traefik routes traffic)
        VERIFY: dev app service still has ports: section (direct access via Docker Desktop)

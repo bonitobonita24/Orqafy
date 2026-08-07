@@ -1029,10 +1029,17 @@ If you pick one, I'll:
   2. After you confirm, extract the shadcn-compatible design tokens into docs/DESIGN.md
   3. Claude Code will apply those CSS variable overrides during Phase 4 UI builds
 
-If you skip this, the app will use shadcn/ui defaults (Zinc gray, Inter font,
-standard spacing) — still looks clean and professional.
+If you skip this, the app starts from the fleet-DEFAULT design baseline — the **AdminCN**
+design starter (shadcn/studio Pro): a polished left-sidebar admin app-shell + a curated theme
+preset (still shadcn/ui under the hood) — clean and professional out of the box. A visual
+direction you name just tunes the preset/tokens on top of that baseline.
 
-→ Name a visual direction (e.g. "Linear-style" or "Stripe-style") or say "skip design" to use defaults.
+(Framework note — V32.43: the design language defaults to the AdminCN `default-layout` app-shell
++ theme preset, reconciled into docs/DESIGN.md. Whatever direction you pick, DESIGN.md stays the
+token source of truth; AdminCN supplies the shell/component structure, not fixed token values.
+Claude Code reads `.ai_prompt/admincn-starter.md` at the build phases.)
+
+→ Name a visual direction (e.g. "Linear-style" or "Stripe-style") or say "skip design" to use the AdminCN default.
 ```
 
 ```
@@ -1132,6 +1139,14 @@ REQUIRED STRUCTURE:
   throughout the component. This makes the mockup visually match the target aesthetic.
 - IF NOT: use standard shadcn/ui color tokens (bg-background, text-foreground, etc.)
 - Uses useState for screen navigation (showScreen state)
+- **Structural layout anchors (NEW V32.36 — REQUIRED):** tag every structural landmark with a
+  stable `data-fdl="<name>"` attribute, using ONLY the names that apply to each screen —
+  vocabulary: `app-shell`, `sidebar`, `topbar`, `page-header`, `primary-content`, `kpi-row`,
+  `data-table`, `detail-panel`, `footer`. This is the skeleton the downstream
+  `scripts/design-fidelity.mjs` layout-fidelity gate (Rule 31's layout layer) diffs the BUILT
+  app against THIS mockup on — content-agnostic, matched by anchor name only, never by text or
+  data, so real vs. placeholder data never trips it. Tag ~6-15 anchors per screen (structural
+  skeleton only, not every div); dynamic-count regions (lists/tables) get ONE container anchor.
 - Mockup banner (yellow, always visible): "📐 PHASE 2.8 MOCKUP — [AppName] —
   Visual check of PRODUCT.md interpretation. Not live. No data persists."
 - App header with nav links for EVERY declared screen (Tier 1 + Tier 2)
@@ -1156,6 +1171,9 @@ TIER 1 SCREEN FIDELITY CHECKLIST (every Tier 1 screen MUST include):
   ☐ If dashboard: 3-6 KPI cards + at least one mock chart + Recent Activity feed
   ☐ At least one section showing an empty state somewhere
   ☐ Mobile responsive via Tailwind breakpoints (sidebar collapse, table scroll)
+  ☐ Structural landmarks tagged with `data-fdl` anchors (app-shell/sidebar/topbar/page-header/
+    primary-content/kpi-row/data-table/detail-panel/footer, as applicable) — feeds the
+    design:fidelity layout-fidelity gate downstream (NEW V32.36)
 
 WHY REACT FIRST:
 - In Claude.ai: the .jsx renders as a live inline artifact (real component state, hover
@@ -1372,16 +1390,35 @@ IF user replies "confirmed" (or similar positive):
       page is Google-friendly by design rather than retrofitted at Phase 5. (Rule 35 + seo.md §1.5.)"
 
   STEP 7b.5 — IF DESIGN_AESTHETIC_CHOSEN: Generate docs/tokens.json (DTCG machine sibling):
-    → Translate the color palette and layout values from DESIGN.md into a minimal
-      DTCG v2025.10 token file. Use the seed template from templates.md §V32.8.
+    → MUST derive every value from the SAME color/spacing/radius values already committed to
+      DESIGN.md's token table + used inline (hsl()/hex) in MOCKUP.jsx — one source of values,
+      two representations. This file is NEVER the untouched generic seed from templates.md
+      §V32.8 (that seed is a placeholder skeleton for a from-scratch scaffold only, not a
+      substitute for real derivation). Structure per DTCG v2025.10 — a minimal worked example:
+      ```json
+      {
+        "$schema": "https://tr.designtokens.org/format/",
+        "color": {
+          "primary": { "$value": "#0066ff", "$type": "color" }
+        },
+        "spacing": {
+          "md": { "$value": "16px", "$type": "dimension" }
+        }
+      }
+      ```
+      Every leaf carries `$value` + `$type`; group names may extend beyond `color`/`spacing`
+      (e.g. `radius`) but each leaf's `$value` MUST equal the corresponding DESIGN.md/MOCKUP.jsx
+      value (HSL → hex/rgb conversion is lossless-equivalent, never a different color).
     → Output as "docs/tokens.json" — write to the project folder (Claude Code PA) or
       deliver as a downloadable artifact (Claude.ai) alongside DESIGN.md.
-    → Tell the user: "docs/tokens.json is the machine-readable sibling of DESIGN.md.
-      (V32.8 INHERIT-not-REPLACE: this file is the human-verified BASELINE for the
-      Style Dictionary compile pipeline. Rule 31's design:validate script will check it
-      against the DTCG v2025.10 schema before any compile step runs — the file must pass
-      design:validate before it can compile to CSS. /design-tokens EXPANDS it; it is
-      NEVER regenerated from scratch after this point.)"
+    → Tell the user: "docs/tokens.json is the machine-readable sibling of DESIGN.md, DERIVED
+      from the same values — not a generic seed. (V32.8 INHERIT-not-REPLACE: this file is the
+      human-verified BASELINE for the Style Dictionary compile pipeline. Rule 31's
+      design:validate script will check it against the DTCG v2025.10 schema before any compile
+      step runs — the file must pass design:validate before it can compile to CSS. Phase 3.3's
+      design:build then compiles THIS derived file — never the generic seed — so the built
+      palette provably equals the approved mockup's. /design-tokens EXPANDS it; it is NEVER
+      regenerated from scratch after this point.)"
 
   STEP 7c — IF DESIGN_AESTHETIC_CHOSEN:
     → Add a one-line pointer to PRODUCT.md Section 10 (Non-functional Requirements):
@@ -1636,8 +1673,8 @@ V19 ADDITIONS (agents, not this chat):
   Claude Code reads STATE.md first every session (Rule 24) — quick orientation before 9 governance docs
   Git branch before every Feature Update — squash-merge after two-stage review (Rule 23+25)
   Claude Code writes typed lessons.md entries (🔴/🟡/🟤/⚖️/🟢) — Rule 18
-  SpecStory captures all session history passively — Rule 19
-  Governance Sync attributes Copilot + manual changes — Scenarios 17+18
+  git tracks all session history (Rule 19 RETIRED V32.34)
+  Governance Sync reconciles doc↔code drift from git — Scenario 12
   <private> tags in PRODUCT.md never reach governance docs — Rule 20
   Claude Sonnet 4.6 via Claude Code is the default execution model (Cline deprecated V31)
 ```
@@ -1671,7 +1708,7 @@ V19 ADDITIONS (agents, not this chat):
 - V23: set accessibility: wcag_aa in Non-functional Requirements for WCAG AA enforcement (required for MGE)
 - V22: CREDENTIALS.md is gitignored — contains all passwords, GitHub Secrets reminder, Docker Hub info
 - V22: COMMANDS.md at project root lists every dev command — Docker, DB, tests, git, agent triggers
-- All agents (Claude Code, Cline ⚠ deprecated V31, Copilot, SpecStory, SocratiCode, code-review-graph, UI UX Pro Max) coordinate through the governance system — you never track attribution manually
+- All agents (Claude Code, Cline ⚠ deprecated V31, Copilot, SpecStory ⚠ retired V32.34, SocratiCode, code-review-graph, UI UX Pro Max) coordinate through the governance system — you never track attribution manually
 - V28: Secure Code Generation expanded — CSRF protection documented (tRPC + SameSite inherently resistant), SSRF prevention rules added, session invalidation on role/tenant change, tiered global rate limiting. No interview or PRODUCT.md changes — V28 is additive security hardening only.
 - V29: shadcn/ui ecosystem enforcement — Step 6b added (charts/maps/complex UI questions). PRODUCT.md template Tech Stack expanded (chart library, map library, complex components, icon set fields). Design Identity adds theming reference (ui.shadcn.com/docs/theming). shadcn/ui is locked as the ONLY component library — agents never import alternatives.
 - V30: Compact CLAUDE.md architecture — Claude Code now loads ~200 lines instead of ~8000. Full details in .claude/rules/ (contextual loading). Claude Sonnet 4.6 is the primary execution model for ALL phases. Cline is fallback only. No Planning Assistant changes — PRODUCT.md format unchanged from V29.

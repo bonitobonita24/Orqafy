@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# Spec-Driven Platform V32.17 — File Deployment Script
+# Spec-Driven Platform V32.38 — File Deployment Script
 # ============================================================
 # V32.10 (compose resource limits) + V32.11 (shadcn/studio Pro default
 # design generator) add NO new deliverable files — their content ships via
@@ -80,7 +80,38 @@
 #         • .ai_prompt/seo.md                (SEO scaffold + validation reference, Rule 35 — ALWAYS-ON — deliverable #31)
 # V32.30 (seo.md always-on reference) adds deliverable #31 — the adaptive-baseline SEO
 # foundation (.ai_prompt/, Scenario 44). Deliverable count 30 → 31.
-#         NOTE: sd.config.mjs, design-validate.mjs, and STATE.md evidence template are
+#      V32.32 CI/CD standard (overwrite-with-backup):
+#         • .ai_prompt/cicd.md               (CI/CD standard reference — on-demand — deliverable #32)
+#         • .ai_prompt/microservices.md      (Microservices escalation standard — on-demand — deliverable #33)
+#      V32.38 App Audit Toolkit, Rule 38 (overwrite-with-backup + chmod +x):
+#         • .ai_prompt/audit.md              (App Audit Toolkit standard — on-demand — deliverable #35)
+#         • scripts/audit-app.sh             (T1/T2 gate runner — deliverable #36)
+#      V32.39 Dev-Freshness deliverable, Rule 39 (overwrite-with-backup + chmod +x):
+#         • scripts/dev-freshness-check.sh   (dev-leads-every-env detection backstop — deliverable #37)
+# V32.32 (cicd.md on-demand reference) adds deliverable #32 — the CI/CD standard reference
+# (.ai_prompt/). Deliverable count 31 → 32.
+# V32.35 (microservices.md on-demand reference) adds deliverable #33 — the microservices
+# escalation standard / decompose-the-locked-stack architecture (.ai_prompt/). Deliverable count 32 → 33.
+# V32.36 (design-fidelity.mjs mockup-anchored layout-fidelity gate) adds deliverable #34 —
+# scripts/design-fidelity.mjs (Playwright layout-signature diff: MOVED/RESIZED/MISSING/EXTRA/
+# REORDERED vs a mockup-captured baseline; blocking at Phase 4 Parts 5-6 + Phase 5, --report-only
+# elsewhere; clones the lint-design.sh deploy pattern). Deliverable count 33 → 34. See GROUP 12 below.
+# V32.38 (App Audit Toolkit, Rule 38) adds deliverable #35 — .ai_prompt/audit.md (on-demand
+# tiered audit-gate authority: tool matrix, tier table, per-tool invocation, triage/severity
+# policy, T3 runbooks; see GROUP 8 above) — and deliverable #36 — scripts/audit-app.sh (the
+# T1/T2 gate runner, `--tier=1|2`/`--report-only`, graceful-degrade, clones the lint-deploy.sh
+# pattern; see GROUP 13 below). Deliverable count 34 → 36.
+# V32.39 (dev-freshness-check.sh dev-freshness detection backstop, Rule 39) adds deliverable #37 —
+# scripts/dev-freshness-check.sh (detects a stale LOCAL DEV image behind main after a ship; exit 2 if
+# behind; fail-open on tooling; clones the lint-deploy.sh graceful-degrade pattern; see GROUP 14 below).
+# Deliverable count 36 → 37.
+# V32.40 (build-primer.sh Capability-Primer regenerator) adds deliverable #38 — scripts/build-primer.sh
+# (idempotent AIEF:PRIMER region regenerator in CLAUDE.md sourced from docs/primer.yml; scaffolds
+# docs/primer.yml + docs/CAPABILITY_PRIMER.md stubs if absent; path-hardened; renders the always-on
+# loadout-deciding FLAGS slice consumed by ~/.claude/rules/skill-loadout-card.md STEP 0; sibling of
+# sync-context.sh #27; see GROUP 15 below). Deliverable count 37 → 38.
+#         NOTE: sd.config.mjs, design-validate.mjs, STATE.md evidence template, AND (V32.36)
+#         design-fidelity.config.json + docs/design-baseline/manifest.json are
 #         NOT deploy-copied — they are scaffolded by bootstrap.md Step 20 from templates.md
 #         (project-adjacent files, not standalone framework deliverables).
 #
@@ -99,10 +130,14 @@
 #         • CREDENTIALS.md               (human-filled secrets)
 #         • .env.dev / .env.staging / .env.prod (runtime config)
 #         • .env.example                 (committed template)
-#         • .cline/memory/lessons.md     (learned gotchas)
-#         • .cline/memory/agent-log.md   (session log)
-#         • .cline/handoffs/*            (unresolved handoffs)
-#         • .specstory/history/*         (session capture)
+#         • docs/memory/lessons.md       (learned gotchas — V32.33 canonical home)
+#         • docs/memory/agent-log.md     (session log — V32.33 canonical home)
+#         • docs/handoffs/*              (unresolved handoffs — V32.33 canonical home)
+#         • docs/tasks/*                 (task decomposition — V32.33 canonical home)
+#         • .cline/memory/lessons.md     (learned gotchas — legacy pre-V32.33, still protected)
+#         • .cline/memory/agent-log.md   (session log — legacy pre-V32.33, still protected)
+#         • .cline/handoffs/*            (unresolved handoffs — legacy pre-V32.33, still protected)
+#         • .specstory/history/*         (session capture — SpecStory retired V32.34, protected as legacy audit trail)
 #         • apps/ packages/ deploy/      (your actual codebase)
 #
 #      If this script ever attempts to write to these paths, it will ABORT.
@@ -135,6 +170,13 @@
 #   │   ├── rbac.md                    ← NEW V32.25 — Tenant-RBAC standard, Rule 34 (→ .ai_prompt/, deliverable #29)
 #   │   ├── notifications.md              ← NEW V32.28 — Event Delivery & Notifications (→ .ai_prompt/, deliverable #30)
 #   │   ├── seo.md                     ← NEW V32.30 — SEO Foundation (Adaptive Baseline), Rule 35 (→ .ai_prompt/, deliverable #31)
+#   │   ├── cicd.md                    ← NEW V32.32 — CI/CD standard reference (→ .ai_prompt/, deliverable #32)
+#   │   ├── microservices.md           ← NEW V32.35 — microservices escalation standard (→ .ai_prompt/, deliverable #33)
+#   │   ├── design-fidelity.mjs        ← NEW V32.36 — mockup-anchored layout-fidelity gate (→ scripts/, deliverable #34)
+#   │   ├── audit.md                   ← NEW V32.38 — App Audit Toolkit standard, Rule 38 (→ .ai_prompt/, deliverable #35)
+#   │   ├── audit-app.sh               ← NEW V32.38 — T1/T2 gate runner (→ scripts/, deliverable #36)
+#   │   ├── dev-freshness-check.sh     ← NEW V32.39 — dev-freshness detection backstop (→ scripts/, deliverable #37)
+#   │   ├── build-primer.sh            ← NEW V32.40 — Capability-Primer regenerator (→ scripts/, deliverable #38)
 #   │   ├── Planning_Assistant.md
 #   │   ├── Framework_Feature_Index.md
 #   │   ├── AI_Tools_Reference.md
@@ -142,7 +184,7 @@
 #   │   ├── ChatGPT_Cross_Audit.md
 #   │   ├── Prompt_References.md
 #   │   └── Prompt_References.html     ← interactive HTML UI for prompt references
-#   └── deploy.sh             ← this script at project root (31-file total deliverable set)
+#   └── deploy.sh             ← this script at project root (38-file total deliverable set)
 #
 # DEPLOYED TARGET LOCATIONS (V32.7.2 additions):
 #   .claude/agents/spec-executor.md    ← overwrite-with-backup (framework-owned)
@@ -163,6 +205,9 @@
 #   .ai_prompt/notifications.md        ← overwrite-with-backup (framework-owned) (deliverable #30, V32.28)
 # DEPLOYED TARGET LOCATIONS (V32.30 addition):
 #   .ai_prompt/seo.md                  ← overwrite-with-backup (framework-owned) (deliverable #31, V32.30)
+# DEPLOYED TARGET LOCATIONS (V32.32 addition):
+#   .ai_prompt/cicd.md                 ← overwrite-with-backup (framework-owned) (deliverable #32, V32.32)
+#   .ai_prompt/microservices.md        ← overwrite-with-backup (framework-owned) (deliverable #33, V32.35)
 #   tests/visual/                      ← scaffold-if-absent (.gitkeep); existing files untouched
 # DEPLOYED TARGET LOCATIONS (V32.17 addition):
 #   scripts/lint-design.sh             ← overwrite-with-backup (framework-owned), chmod +x (deliverable #26, V32.17)
@@ -172,6 +217,19 @@
 #   scripts/sync-context.sh            ← overwrite-with-backup (framework-owned), chmod +x (deliverable #27, V32.20)
 # DEPLOYED TARGET LOCATIONS (V32.21 addition):
 #   scripts/spec-gap-check.sh          ← overwrite-with-backup (framework-owned), chmod +x (deliverable #28, V32.21)
+# DEPLOYED TARGET LOCATIONS (V32.36 addition):
+#   scripts/design-fidelity.mjs        ← overwrite-with-backup (framework-owned), chmod +x (deliverable #34, V32.36)
+#   NOTE: design-fidelity.config.json, docs/design-baseline/manifest.json — scaffolded by
+#   bootstrap.md Step 20 from templates.md (not deploy-copied), same pattern as sd.config.mjs.
+# DEPLOYED TARGET LOCATIONS (V32.38 addition):
+#   .ai_prompt/audit.md                ← overwrite-with-backup (framework-owned) (deliverable #35, V32.38)
+#   scripts/audit-app.sh               ← overwrite-with-backup (framework-owned), chmod +x (deliverable #36, V32.38)
+# DEPLOYED TARGET LOCATIONS (V32.39 addition):
+#   scripts/dev-freshness-check.sh     ← overwrite-with-backup (framework-owned), chmod +x (deliverable #37, V32.39)
+# DEPLOYED TARGET LOCATIONS (V32.40 addition):
+#   scripts/build-primer.sh            ← overwrite-with-backup (framework-owned), chmod +x (deliverable #38, V32.40)
+#   NOTE: docs/primer.yml + docs/CAPABILITY_PRIMER.md are NOT deploy-copied — build-primer.sh
+#   scaffolds them per-app on first run (project-adjacent, agent-authored; primer.yml is protected below).
 #
 # USAGE:
 #   cd your-project
@@ -208,7 +266,7 @@ if [ ! -d "$AI_PROMPT" ]; then
 fi
 
 echo "============================================================"
-echo "  Spec-Driven Platform V32.16 — Deployment"
+echo "  Spec-Driven Platform V32.41 — Deployment"
 echo "============================================================"
 echo "  Project root:  $PROJECT"
 echo "  Source folder: $AI_PROMPT"
@@ -233,6 +291,10 @@ NEVER_TOUCH=(
   ".env.staging"
   ".env.prod"
   ".env.example"
+  "docs/memory/lessons.md"
+  "docs/memory/agent-log.md"
+  "docs/primer.yml"
+  "docs/CAPABILITY_PRIMER.md"
   ".cline/memory/lessons.md"
   ".cline/memory/agent-log.md"
 )
@@ -249,7 +311,7 @@ guard_never_touch() {
     fi
   done
   # Also protect directories in prefix
-  for protected_dir in ".cline/handoffs" ".specstory/history" "apps" "packages" "deploy"; do
+  for protected_dir in "docs/memory" "docs/handoffs" "docs/tasks" ".cline/handoffs" ".specstory/history" "apps" "packages" "deploy"; do
     if [[ "$relative" == "$protected_dir/"* ]]; then
       echo "🛑 FATAL: script attempted to write inside NEVER-TOUCH directory: $protected_dir/"
       echo "    Aborting before any file is modified."
@@ -668,14 +730,43 @@ overwrite_with_backup "$AI_PROMPT/LESSONS_REGISTRY.md" "$PROJECT/.ai_prompt/LESS
 #   .ai_prompt/seo.md      ← SEO Foundation (Adaptive Baseline) (V32.30 — Rule 35)
 #                             Deliverable #31. ALWAYS-ON — read at Phase 4 scaffold + Phase 5
 #                             validation gate, no PRODUCT.md flag required.
+#   .ai_prompt/cicd.md     ← CI/CD standard reference (V32.32)
+#                             Deliverable #32. Loaded on-demand during CI/CD pipeline work.
+#   .ai_prompt/microservices.md ← Microservices escalation standard (V32.35)
+#                             Deliverable #33. Loaded on-demand during microservices escalation work.
+#   .ai_prompt/audit.md    ← App Audit Toolkit standard (V32.38 — Rule 38)
+#                             Deliverable #35. Loaded on-demand for audit-gate work (tool matrix,
+#                             tier table, per-tool invocation, triage/severity policy, T3 runbooks).
 # ============================================================
-echo "─── Group 8: V32.9 compliance + data privacy + V32.12 design principles + V32.14 motion + V32.25 rbac + V32.28 notifications + V32.30 seo ───"
+echo "─── Group 8: V32.9 compliance + data privacy + V32.12 design principles + V32.14 motion + V32.25 rbac + V32.28 notifications + V32.30 seo + V32.32 cicd + V32.35 microservices + V32.38 audit ───"
 overwrite_with_backup "$AI_PROMPT/privacy.md" "$PROJECT/.ai_prompt/privacy.md"
 overwrite_with_backup "$AI_PROMPT/design-principles.md" "$PROJECT/.ai_prompt/design-principles.md"
 overwrite_with_backup "$AI_PROMPT/motion.md" "$PROJECT/.ai_prompt/motion.md"
 overwrite_with_backup "$AI_PROMPT/rbac.md" "$PROJECT/.ai_prompt/rbac.md"
 overwrite_with_backup "$AI_PROMPT/notifications.md" "$PROJECT/.ai_prompt/notifications.md"
 overwrite_with_backup "$AI_PROMPT/seo.md" "$PROJECT/.ai_prompt/seo.md"
+overwrite_with_backup "$AI_PROMPT/cicd.md" "$PROJECT/.ai_prompt/cicd.md"
+overwrite_with_backup "$AI_PROMPT/microservices.md" "$PROJECT/.ai_prompt/microservices.md"
+overwrite_with_backup "$AI_PROMPT/audit.md" "$PROJECT/.ai_prompt/audit.md"
+overwrite_with_backup "$AI_PROMPT/admincn-starter.md" "$PROJECT/.ai_prompt/admincn-starter.md"   # V32.43 — deliverable #39 (AdminCN design starter)
+echo ""
+
+# ============================================================
+# GROUP 16 — starter/admincn/ vendored curated slice (V32.43 — deliverable #39 companion)
+# The AdminCN design-starter slice (theme + default-layout app-shell + 50 shadcn/ui components +
+# data-decoupled view scaffolds + PROVENANCE.md, ~222 files) seeded at bootstrap Step 20d. Copied
+# recursively to the target's starter/admincn/. Graceful: if the staged slice is absent, warn + skip
+# (never breaks a deploy — same posture as the tests/visual scaffold). LICENSE: use-in-own only, NO
+# redistribution — the target repo inherits the PROVENANCE.md constraint.
+# ============================================================
+echo "─── Group 16: starter/admincn/ — AdminCN design-starter slice (V32.43, deliverable #39) ───"
+if [ -d "$AI_PROMPT/starter/admincn" ]; then
+  mkdir -p "$PROJECT/starter"
+  cp -R "$AI_PROMPT/starter/admincn" "$PROJECT/starter/admincn"
+  echo "  ✅ starter/admincn/  (AdminCN curated slice copied — see .ai_prompt/admincn-starter.md + starter/admincn/PROVENANCE.md)"
+else
+  echo "  ⏭  starter/admincn/  (staged slice not found at .ai_prompt/starter/admincn — skipped; re-stage the slice to seed the AdminCN design starter)"
+fi
 echo ""
 
 # ============================================================
@@ -721,6 +812,68 @@ if [ -f "$PROJECT/scripts/spec-gap-check.sh" ]; then
 fi
 echo ""
 
+# ============================================================
+# GROUP 12 — scripts/ target: design-fidelity.mjs mockup-anchored layout-fidelity gate (V32.36)
+# Deliverable #34. Phase 3.3 gate-closure / Phase 4 Parts 5-6 / Phase 5 invoke it as
+# `node scripts/design-fidelity.mjs [--update-baseline|--report-only] [--file <relpath>]`
+# (blocking by default at Parts 5-6 + Phase 5; --report-only advisory elsewhere).
+# Overwrite-with-backup (framework-owned) + chmod +x.
+# ============================================================
+echo "─── Group 12: scripts/design-fidelity.mjs — layout-fidelity gate (V32.36) ───"
+# scripts/ already created by Group 6 — no mkdir needed here.
+overwrite_with_backup "$AI_PROMPT/design-fidelity.mjs" "$PROJECT/scripts/design-fidelity.mjs"
+if [ -f "$PROJECT/scripts/design-fidelity.mjs" ]; then
+  chmod +x "$PROJECT/scripts/design-fidelity.mjs"
+fi
+echo ""
+
+# ============================================================
+# GROUP 13 — scripts/ target: audit-app.sh T1/T2 audit-gate runner (V32.38 — Rule 38)
+# Deliverable #36. phases.md Phase 5 OUTPUT CONTRACT + lefthook pre-commit invoke it as
+# `bash scripts/audit-app.sh --tier=1|2 [--report-only]` (T1 blocks every commit, T2 blocks
+# the Phase 5 gate; graceful-degrade when a tool is absent, cloning the lint-deploy.sh pattern).
+# Overwrite-with-backup (framework-owned) + chmod +x.
+# ============================================================
+echo "─── Group 13: scripts/audit-app.sh — T1/T2 audit-gate runner (V32.38) ───"
+# scripts/ already created by Group 6 — no mkdir needed here.
+overwrite_with_backup "$AI_PROMPT/audit-app.sh" "$PROJECT/scripts/audit-app.sh"
+if [ -f "$PROJECT/scripts/audit-app.sh" ]; then
+  chmod +x "$PROJECT/scripts/audit-app.sh"
+fi
+echo ""
+
+# ============================================================
+# GROUP 14 — scripts/ target: dev-freshness-check.sh dev-freshness detection backstop (V32.39 — Rule 39)
+# Deliverable #37. Detects the silent STALE-DEV-IMAGE drift: a dev stack serves a PREBUILT image with
+# NO source bind-mount, so a staging/prod/demo ship recreates THAT env but leaves dev serving old code.
+# Run after any ship + at session/loop start as `bash scripts/dev-freshness-check.sh --report-only`;
+# exit 2 if any dev code container is behind main (fail-open on tooling, same graceful-degrade posture
+# as lint-deploy.sh). Overwrite-with-backup (framework-owned) + chmod +x.
+# ============================================================
+echo "─── Group 14: scripts/dev-freshness-check.sh — dev-freshness detection backstop (V32.39) ───"
+# scripts/ already created by Group 6 — no mkdir needed here.
+overwrite_with_backup "$AI_PROMPT/dev-freshness-check.sh" "$PROJECT/scripts/dev-freshness-check.sh"
+if [ -f "$PROJECT/scripts/dev-freshness-check.sh" ]; then
+  chmod +x "$PROJECT/scripts/dev-freshness-check.sh"
+fi
+echo ""
+
+# ============================================================
+# GROUP 15 — scripts/ target: build-primer.sh Capability-Primer regenerator (V32.40 — deliverable #38)
+# Idempotent regenerator for the AIEF:PRIMER region in CLAUDE.md, sourced from docs/primer.yml (a flat
+# KEY: value spec the agent authors from docs/PRODUCT.md). Renders the always-on, loadout-deciding FLAGS
+# slice consumed by ~/.claude/rules/skill-loadout-card.md STEP 0 + analyze-confirm-gate.md HAND-2; scaffolds
+# docs/primer.yml + docs/CAPABILITY_PRIMER.md stubs on first run. Sibling of sync-context.sh (deliverable
+# #27). Overwrite-with-backup (framework-owned) + chmod +x. docs/primer.yml is NEVER-TOUCH (below).
+# ============================================================
+echo "─── Group 15: scripts/build-primer.sh — Capability-Primer regenerator (V32.40) ───"
+# scripts/ already created by Group 6 — no mkdir needed here.
+overwrite_with_backup "$AI_PROMPT/build-primer.sh" "$PROJECT/scripts/build-primer.sh"
+if [ -f "$PROJECT/scripts/build-primer.sh" ]; then
+  chmod +x "$PROJECT/scripts/build-primer.sh"
+fi
+echo ""
+
 # 7c: tests/visual/ scaffold — create directory + .gitkeep ONLY if the directory is absent.
 # Never overwrite existing snapshot files inside tests/visual/.
 if [ ! -d "$PROJECT/tests/visual" ]; then
@@ -758,7 +911,7 @@ echo ""
 # SUMMARY
 # ============================================================
 echo "============================================================"
-echo "  ✅ V32.20 deployment complete — safety contract honored"
+echo "  ✅ V32.41 deployment complete — safety contract honored"
 echo "============================================================"
 echo ""
 echo "  Files deployed to project tree (OVERWRITE bucket):"
@@ -770,6 +923,10 @@ echo "    scripts/design-stop-hook.sh             ← Claude Code Stop hook, chm
 echo "    scripts/lint-design.sh                  ← design anti-slop gate, chmod +x (V32.17, deliverable #26)"
 echo "    scripts/sync-context.sh                 ← managed-context regenerator, chmod +x (V32.20, deliverable #27)"
 echo "    scripts/spec-gap-check.sh               ← cross-artifact gap-check, chmod +x (V32.21, deliverable #28)"
+echo "    scripts/design-fidelity.mjs              ← mockup-anchored layout-fidelity gate, chmod +x (V32.36, deliverable #34)"
+echo "    scripts/audit-app.sh                    ← T1/T2 audit-gate runner, chmod +x (V32.38, deliverable #36)"
+echo "    scripts/dev-freshness-check.sh          ← dev-freshness detection backstop, chmod +x (V32.39, deliverable #37)"
+echo "    scripts/build-primer.sh                 ← Capability-Primer regenerator, chmod +x (V32.40, deliverable #38)"
 echo ""
 echo "  Merged additively (APPEND/MERGE bucket):"
 echo "    .gitignore                              ← V32 entries added, user entries preserved"
@@ -808,14 +965,22 @@ echo "    design-principles.md                      ← framework-level design g
 echo "    motion.md                                 ← framework-level motion guidance (V32.14, deliverable #25)"
 echo "    notifications.md                          ← event-delivery & notification pattern (V32.28, deliverable #30)"
 echo "    seo.md                                    ← SEO scaffold + validation (any public/private app) (V32.30, deliverable #31)"
+echo "    cicd.md                                   ← CI/CD standard reference (V32.32, deliverable #32)"
+echo "    microservices.md                          ← microservices escalation standard (V32.35, deliverable #33)"
+echo "    audit.md                                  ← App Audit Toolkit standard, Rule 38 (V32.38, deliverable #35)"
 echo "    (Deployed to scripts/ — do not run from .ai_prompt/:)"
 echo "    lint-deploy.sh                            ← pre-deploy footgun gate (deploys to scripts/lint-deploy.sh, V32.7.5)"
 echo "    design-stop-hook.sh                       ← Claude Code Stop hook (deploys to scripts/, V32.8)"
 echo "    lint-design.sh                            ← design anti-slop gate (deploys to scripts/lint-design.sh, V32.17)"
 echo "    sync-context.sh                           ← managed-context regenerator (deploys to scripts/sync-context.sh, V32.20)"
 echo "    spec-gap-check.sh                         ← cross-artifact gap-check (deploys to scripts/spec-gap-check.sh, V32.21)"
-echo "    (Note: sd.config.mjs, design-validate.mjs, STATE.md.template are scaffolded by"
-echo "     bootstrap.md Step 20 from templates.md — not deployed by this script)"
+echo "    design-fidelity.mjs                       ← mockup-anchored layout-fidelity gate (deploys to scripts/design-fidelity.mjs, V32.36)"
+echo "    audit-app.sh                              ← T1/T2 audit-gate runner (deploys to scripts/audit-app.sh, V32.38)"
+echo "    dev-freshness-check.sh                    ← dev-freshness detection backstop (deploys to scripts/dev-freshness-check.sh, V32.39)"
+echo "    build-primer.sh                           ← Capability-Primer regenerator (deploys to scripts/build-primer.sh, V32.40)"
+echo "    (Note: sd.config.mjs, design-validate.mjs, STATE.md.template, design-fidelity.config.json,"
+echo "     docs/design-baseline/manifest.json are scaffolded by bootstrap.md Step 20 from"
+echo "     templates.md — not deployed by this script)"
 echo "    (Scaffold — created only if absent:)"
 echo "    tests/visual/                             ← visual-test snapshot directory (V32.8)"
 echo ""

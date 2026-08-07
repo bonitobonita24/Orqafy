@@ -256,6 +256,7 @@ The 12 operative laws an agent applies when designing flows (law → build impli
 - Buttons must also have loading and error states when they trigger async operations.
 - Button type (submit/destructive/navigate) × style (primary/secondary/ghost) × state (default/loading/error…) are three orthogonal dimensions — do not encode functional differences into style alone.
 - Focus must be visible: `:focus-visible` outline, not removed. Never `outline: 0` without a replacement.
+- **Button affordance — a button must LOOK clickable (fleet standard).** Every button carries a **subtle raised/embossed elevation** — a small `shadow-xs`/`shadow-sm` (or a committed border on outline styles) — so it visibly reads as a pressable control, not static text. A completely flat, borderless, shadowless block is the failure clients repeatedly mistake for a non-button. Rule: **primary/secondary/CTA buttons are never flat** — they must show elevation (shadow) and/or fill/border. Reserve genuinely flat treatments (`ghost`, `link`) for **tertiary/inline** actions only (e.g. an inline "cancel" beside an elevated primary, a text link inside prose) — never for the main action of a surface. Keep the shadow *small* (barely-raised emboss, not a heavy drop shadow). **The shadow is the ONLY addition** — button colours (fill, border, text, hover) always follow the CURRENT THEME's accent/token values (`var(--primary)`, `var(--accent)`, …); never change, tint, or introduce a new accent colour for a button, and never encode elevation as a colour shift. This is an affordance-clarity requirement, not decoration (Aesthetic-Usability + Recognition-over-Recall). DESIGN.md decides the exact shadow token/values; this contract decides elevation must EXIST on non-tertiary buttons.
 
 **Feedback rules:**
 - Loading states must set expectations: progress indicator for determinate waits, skeleton screens for predictable content layouts, spinner only for indeterminate short waits.
@@ -289,6 +290,7 @@ DESIGN.md decides how each LOOKS; this contract decides which must EXIST. WCAG 2
 
 **Agent rules — DO:**
 - Define all five base states (default/hover/focus/active/disabled) before shipping any control.
+- Give every primary/secondary/CTA button a **small elevation** — `shadow-xs`/`shadow-sm` (or a committed outline border) — so it reads as clickable; keep it a subtle emboss, never a heavy drop shadow, and keep the button's colours on the current theme's accent/tokens (add elevation only, never a colour change).
 - Size all touch targets at ≥ 44 × 44px on touch devices; ≥ 8px spacing between adjacent targets.
 - Use `padding` (not just text size) to meet target minimums.
 - Trap focus inside modals until dismissed; return focus to the trigger element on close.
@@ -298,6 +300,7 @@ DESIGN.md decides how each LOOKS; this contract decides which must EXIST. WCAG 2
 - Do not use `tabindex > 0` — it creates unpredictable tab order.
 - Do not use `pointer-events: none` as a substitute for `disabled` — removes from keyboard/AT.
 - Do not use hover-only affordances for critical information — hover does not exist on touch or keyboard.
+- Do not ship a flat, shadowless, borderless block as a primary/secondary button — it reads as static text and clients mistake it for a non-button. Flat = `ghost`/`link` = tertiary/inline actions only.
 - Do not place destructive actions adjacent to primary actions without sufficient spacing.
 
 **Testable checks:**
@@ -364,7 +367,7 @@ DESIGN.md decides how each LOOKS; this contract decides which must EXIST. WCAG 2
 
 ## Pillar 8 — Anti-AI-Slop (cardinal sins + extended tells)
 
-Concrete tells that separate "shipped by a designer" from "default LLM output." Surfaced by `scripts/lint-design.sh` (D1–D8 P0 + P1a–P1i advisory), which runs `--report-only` at the design phases (3.3 / Parts 5-6 / Phase 5) — advisory, for agent self-correction, not a hard block.
+Concrete tells that separate "shipped by a designer" from "default LLM output." Surfaced by `scripts/lint-design.sh` (D1–D8 P0 + P1a–P1j advisory), which runs `--report-only` at the design phases (3.3 / Parts 5-6 / Phase 5) — advisory, for agent self-correction, not a hard block.
 
 1. Default Tailwind indigo/violet as accent — use `var(--accent)`.
 2. Two-stop purple/blue/cyan "trust" gradient on the hero — flat surface + type beats it.

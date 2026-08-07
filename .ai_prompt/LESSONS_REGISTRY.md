@@ -199,3 +199,33 @@ _Promoted: 2026-07-10_
 _Promoted: 2026-07-10_
 
 ---
+
+## framework.design-fidelity.mockup-vs-shipped-layout-drift
+
+| Field | Value |
+|---|---|
+| **fingerprint** | `framework.design-fidelity.mockup-vs-shipped-layout-drift` |
+| **machine_signature** | (AI-judged: shipped UI structurally diverges from the approved `docs/MOCKUP.jsx` — a section moved / removed / added / reordered vs the mockup — while token/color-fidelity checks still pass; OR a `design:fidelity` layout baseline captured from the built output rather than from the approved mockup, so pre-baseline drift is "baselined-in") |
+| **scope** | `framework` |
+| **failure** | The approved `docs/MOCKUP.jsx` was the reference of ZERO automated fidelity checks. TOKEN/palette fidelity is machine-enforced (Style Dictionary + `ui-rules.md` Rule 12), but STRUCTURAL/LAYOUT fidelity was guarded only by (a) a human eyeball at the Phase 3.3 sign-off and (b) a self-referential baseline captured from the build ITSELF — so any structural drift introduced BEFORE baseline capture gets "baselined-in" and ships silently (approved-mockup-vs-shipped-UI divergence; Marine-Guardian failure). Compounders: Phase 3.3 was skippable even when a mockup existed; production screens were re-authored from `docs/PRODUCT.md`/`docs/DESIGN.md` prose instead of inherited from the approved prototype; and an intentional design change had no defined baseline-update path. Root cause of the whole V32.36/V32.37 arc (`docs/planning/DESIGN_DRIFT_RCA_AND_PLAN.md`). |
+| **standing_check** | For any app where `docs/MOCKUP.jsx` exists: (a) at Phase 3.3 tag BOTH the mockup and the scaffolded components with stable `data-fdl` layout anchors and capture the layout baseline from the APPROVED mockup, never from the build (Step 8c); (b) run `node scripts/design-fidelity.mjs` in GATE mode at Phase 4 Parts 5-6 AND Phase 5 — any MOVED/RESIZED/MISSING/EXTRA/REORDERED anchor beyond tolerance is a HARD gate fail (exit non-zero blocks); (c) the gate + Phase 3.3 baseline capture are NON-SKIPPABLE when a mockup exists (R5); (d) start each production screen by MECHANICALLY copying the Phase 3.3 prototype's markup (carry `data-fdl` anchors verbatim), do NOT re-author from prose (R3); (e) an intentional design change is valid ONLY via re-approve `docs/MOCKUP.jsx` → `design:fidelity --update-baseline` → commit the new baseline (R6) — leaving the old baseline in place while design ships is a Rule-31 violation. Verify the gate itself with `node scripts/design-fidelity.mjs --self-test` (expect 5/5). |
+| **check_location** | `scripts/design-fidelity.mjs` (self-test + gate) + `Master_Prompt.md` Rule 31 clauses (c)(d) + `phases.md` Phase 3.3 Step 8c / Parts 5-6 MODEL HOOK / Phase 5 gate / Phase 7 baseline-update discipline + `docs/planning/DESIGN_DRIFT_RCA_AND_PLAN.md` |
+
+_Promoted: 2026-07-27_
+
+---
+
+## framework.docs.claimed-gate-with-no-implementation
+
+| Field | Value |
+|---|---|
+| **fingerprint** | `framework.docs.claimed-gate-with-no-implementation` |
+| **machine_signature** | (AI-judged: prose in a deliverable asserts an enforcement gate — "the existing X gate", "blocks promotion", "the framework's existing …" — with zero corresponding hit in `phases.md`, `scripts/*.sh`, or `.github/workflows/*`) |
+| **scope** | `framework` |
+| **failure** | `security.md`'s SOFTWARE SUPPLY-CHAIN SAFETY block (V32.9) asserted three times that the framework already had a Trivy-based container-image scan gate at "Phase 5/6" and that "a failing CVE gate blocks promotion" — but no such gate ever existed: `grep -in trivy specdrivenprompt/phases.md` returned zero hits, `lint-deploy.sh` C1–C8 contains no image scan, and no CI workflow references trivy/grype/snyk. Phase 5 only ran `pnpm audit --audit-level=high` (dependency CVEs, not image scanning). The claim shipped to every app via `deploy.sh` for multiple versions before a ground-truth audit (V32.38 scoping, 2026-07-28) caught it — a documentation-level "phantom-done" that could mislead a build session into skipping the real image-scan work because the doc says it's already covered. |
+| **standing_check** | Before writing that a gate/check "exists", "is enforced", or "blocks" anything in ANY framework deliverable: `grep` for its actual implementation across `phases.md` (the phase step or OUTPUT CONTRACT that runs it) + `scripts/*.sh` (the script that executes it) + `.github/workflows/*.yml` (the CI step) — and cite the exact `file:line` in the prose itself (e.g. "Rule 38 T2 gate, `scripts/audit-app.sh --tier=2`"). A prose claim with no cited implementation is not a gate; if the check doesn't exist yet, say so explicitly ("planned", "not yet wired") rather than describing it as current/existing. |
+| **check_location** | `security.md` SOFTWARE SUPPLY-CHAIN SAFETY block (V32.38 fix) + `.ai_prompt/audit.md` (Rule 38 authority) + `scripts/audit-app.sh` |
+
+_Promoted: 2026-07-28_
+
+---
