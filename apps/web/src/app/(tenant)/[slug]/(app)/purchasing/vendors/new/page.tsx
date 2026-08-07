@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PageHeader } from "@/components/layout/page-header";
+import { Card, CardContent } from "@/components/ui/card";
 import { VendorForm } from "../vendor-form";
 
 export const metadata: Metadata = { title: "New Vendor" };
@@ -13,23 +15,23 @@ export default async function NewVendorPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div>
         <Link
           href={`/${slug}/purchasing/vendors`}
-          className="text-sm text-muted-foreground hover:text-foreground"
+          className="text-xs text-muted-foreground hover:text-foreground"
         >
           ← Vendors
         </Link>
       </div>
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">New Vendor</h1>
-        <p className="text-sm text-muted-foreground">
-          Add a supplier or e-commerce seller to your vendor list.
-        </p>
-      </div>
-      <div className="rounded-lg border border-border bg-card p-6">
-        <VendorForm slug={slug} mode="create" />
-      </div>
+      <PageHeader
+        title="New Vendor"
+        description="Add a supplier or e-commerce seller to your vendor list."
+      />
+      <Card>
+        <CardContent className="p-6">
+          <VendorForm slug={slug} mode="create" />
+        </CardContent>
+      </Card>
     </div>
   );
 }

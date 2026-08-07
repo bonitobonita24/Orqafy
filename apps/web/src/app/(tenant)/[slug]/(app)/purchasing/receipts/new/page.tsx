@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Card, CardContent } from "@/components/ui/card";
 import { GrForm } from "./gr-form";
 
 export const metadata: Metadata = { title: "Record Goods Receipt" };
@@ -58,29 +60,29 @@ export default async function NewGrPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div>
         <Link
           href={`/${slug}/purchasing/receipts`}
-          className="text-sm text-muted-foreground hover:text-foreground"
+          className="text-xs text-muted-foreground hover:text-foreground"
         >
           ← Goods Receipts
         </Link>
       </div>
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Record Goods Receipt</h1>
-        <p className="text-sm text-muted-foreground">
-          Record items received against an approved Purchase Order.
-        </p>
-      </div>
+      <PageHeader
+        title="Record Goods Receipt"
+        description="Record items received against an approved Purchase Order."
+      />
       {receivablePos.length === 0 ? (
         <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
           No purchase orders are currently in a receivable state (approved / ordered / partially received).
           {/* HOLD(owner-rule): approval workflow — POs need to be approved before receipt can be recorded. */}
         </div>
       ) : (
-        <div className="rounded-lg border border-border bg-card p-6">
-          <GrForm slug={slug} receivablePos={receivablePos} />
-        </div>
+        <Card>
+          <CardContent className="p-6">
+            <GrForm slug={slug} receivablePos={receivablePos} />
+          </CardContent>
+        </Card>
       )}
     </div>
   );

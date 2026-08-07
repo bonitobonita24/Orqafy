@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Card, CardContent } from "@/components/ui/card";
 import { VendorForm } from "../../vendor-form";
 import { VendorDeactivateButton } from "./vendor-deactivate-button";
 import { VendorReactivateButton } from "./vendor-reactivate-button";
@@ -47,45 +49,49 @@ export default async function EditVendorPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div>
         <Link
           href={`/${slug}/purchasing/vendors`}
-          className="text-sm text-muted-foreground hover:text-foreground"
+          className="text-xs text-muted-foreground hover:text-foreground"
         >
           ← Vendors
         </Link>
       </div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Edit Vendor</h1>
-          <p className="text-sm text-muted-foreground">{vendor.companyName}</p>
-        </div>
-        {vendor.isActive && (
-          <VendorDeactivateButton slug={slug} vendorId={vendorId} companyName={vendor.companyName} />
-        )}
-        {!vendor.isActive && (
-          <VendorReactivateButton slug={slug} vendorId={vendorId} companyName={vendor.companyName} />
-        )}
-      </div>
-      <div className="rounded-lg border border-border bg-card p-6">
-        <VendorForm
-          slug={slug}
-          mode="edit"
-          vendorId={vendorId}
-          initial={{
-            type: vendor.type as "direct" | "ecommerce",
-            companyName: vendor.companyName,
-            contactName: vendor.contactName ?? undefined,
-            email: vendor.email ?? undefined,
-            phone: vendor.phone ?? undefined,
-            address: vendor.address ?? undefined,
-            platformUrl: vendor.platformUrl ?? undefined,
-            platformName: vendor.platformName ?? undefined,
-            paymentTerms: vendor.paymentTerms ?? undefined,
-            notes: vendor.notes ?? undefined,
-          }}
-        />
-      </div>
+      <PageHeader
+        title="Edit Vendor"
+        description={vendor.companyName}
+        actions={
+          <>
+            {vendor.isActive && (
+              <VendorDeactivateButton slug={slug} vendorId={vendorId} companyName={vendor.companyName} />
+            )}
+            {!vendor.isActive && (
+              <VendorReactivateButton slug={slug} vendorId={vendorId} companyName={vendor.companyName} />
+            )}
+          </>
+        }
+      />
+      <Card>
+        <CardContent className="p-6">
+          <VendorForm
+            slug={slug}
+            mode="edit"
+            vendorId={vendorId}
+            initial={{
+              type: vendor.type as "direct" | "ecommerce",
+              companyName: vendor.companyName,
+              contactName: vendor.contactName ?? undefined,
+              email: vendor.email ?? undefined,
+              phone: vendor.phone ?? undefined,
+              address: vendor.address ?? undefined,
+              platformUrl: vendor.platformUrl ?? undefined,
+              platformName: vendor.platformName ?? undefined,
+              paymentTerms: vendor.paymentTerms ?? undefined,
+              notes: vendor.notes ?? undefined,
+            }}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

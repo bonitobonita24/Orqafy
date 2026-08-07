@@ -1,6 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PackageCheck } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const metadata: Metadata = { title: "Goods Receipts" };
 export const dynamic = "force-dynamic";
@@ -50,93 +64,90 @@ export default async function GoodsReceiptsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Goods Receipts</h1>
-          <p className="text-sm text-muted-foreground">
-            {receipts.length} receipt{receipts.length === 1 ? "" : "s"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/${slug}/purchasing`}
-            className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
-          >
-            ← Purchase Orders
-          </Link>
-          <Link
-            href={`/${slug}/purchasing/receipts/new`}
-            className="rounded-md border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
-          >
-            + Record Receipt
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="Goods Receipts"
+        description={`${receipts.length} receipt${receipts.length === 1 ? "" : "s"}`}
+        actions={
+          <>
+            <Button variant="outline" asChild>
+              <Link href={`/${slug}/purchasing`}>← Purchase Orders</Link>
+            </Button>
+            <Button asChild>
+              <Link href={`/${slug}/purchasing/receipts/new`}>+ Record Receipt</Link>
+            </Button>
+          </>
+        }
+      />
 
-      <div className="rounded-lg border border-border bg-card">
-        {receipts.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No goods receipts recorded.{" "}
-            <Link href={`/${slug}/purchasing/receipts/new`} className="text-primary hover:underline">
-              Record your first receipt.
-            </Link>
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">GR Number</th>
-                <th className="px-4 py-3 font-medium">Purchase Order</th>
-                <th className="px-4 py-3 font-medium">Vendor</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Received At</th>
-                <th className="px-4 py-3 font-medium">Items</th>
-              </tr>
-            </thead>
-            <tbody>
-              {receipts.map((gr) => (
-                <tr
-                  key={gr.id}
-                  className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/${slug}/purchasing/receipts/${gr.id}`}
-                      className="font-mono text-xs font-medium text-primary hover:underline"
-                    >
-                      {gr.grNumber}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    <Link
-                      href={`/${slug}/purchasing/orders/${gr.purchaseOrder.id}`}
-                      className="font-mono text-xs hover:text-foreground hover:underline"
-                    >
-                      {gr.purchaseOrder.poNumber}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {gr.purchaseOrder.vendor.companyName}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
-                        GR_STATUS_BADGE[gr.status] ?? GR_STATUS_BADGE["pending"]
-                      }`}
-                    >
-                      {GR_STATUS_LABELS[gr.status] ?? gr.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {gr.receivedAt.toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{gr._count.items}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          {receipts.length === 0 ? (
+            <div className="p-6">
+              <EmptyState
+                icon={PackageCheck}
+                title="No goods receipts recorded."
+                action={
+                  <Button asChild>
+                    <Link href={`/${slug}/purchasing/receipts/new`}>Record your first receipt</Link>
+                  </Button>
+                }
+              />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>GR Number</TableHead>
+                  <TableHead>Purchase Order</TableHead>
+                  <TableHead>Vendor</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Received At</TableHead>
+                  <TableHead>Items</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {receipts.map((gr) => (
+                  <TableRow key={gr.id}>
+                    <TableCell className="font-mono text-xs">
+                      <Link
+                        href={`/${slug}/purchasing/receipts/${gr.id}`}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {gr.grNumber}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      <Link
+                        href={`/${slug}/purchasing/orders/${gr.purchaseOrder.id}`}
+                        className="font-mono text-xs hover:text-foreground hover:underline"
+                      >
+                        {gr.purchaseOrder.poNumber}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {gr.purchaseOrder.vendor.companyName}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`rounded-full ${
+                          GR_STATUS_BADGE[gr.status] ?? GR_STATUS_BADGE["pending"]
+                        }`}
+                      >
+                        {GR_STATUS_LABELS[gr.status] ?? gr.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {gr.receivedAt.toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{gr._count.items}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
