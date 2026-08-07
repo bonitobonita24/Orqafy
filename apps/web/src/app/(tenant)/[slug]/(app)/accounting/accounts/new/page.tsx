@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { AccountForm } from "../account-form";
 
 export const metadata: Metadata = { title: "New Account" };
@@ -13,22 +16,21 @@ export default async function NewAccountPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">New Account</h1>
-          <p className="text-sm text-muted-foreground">Add an account to the chart of accounts.</p>
-        </div>
-        <Link
-          href={`/${slug}/accounting/accounts`}
-          className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
-        >
-          ← Chart of Accounts
-        </Link>
-      </div>
+      <PageHeader
+        title="New Account"
+        description="Add an account to the chart of accounts."
+        actions={
+          <Button variant="outline" asChild>
+            <Link href={`/${slug}/accounting/accounts`}>← Chart of Accounts</Link>
+          </Button>
+        }
+      />
 
-      <div className="rounded-lg border border-border bg-card p-6">
-        <AccountForm slug={slug} mode="create" />
-      </div>
+      <Card>
+        <CardContent className="px-6 py-6">
+          <AccountForm slug={slug} mode="create" />
+        </CardContent>
+      </Card>
     </div>
   );
 }

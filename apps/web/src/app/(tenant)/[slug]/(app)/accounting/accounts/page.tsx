@@ -1,6 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BookOpenCheck } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const metadata: Metadata = { title: "Chart of Accounts" };
 export const dynamic = "force-dynamic";
@@ -12,6 +26,15 @@ const TYPE_BADGE: Record<string, string> = {
   revenue:   "border-primary/30 bg-primary/10 text-primary",
   expense:   "border-red-500/30 bg-red-500/10 text-red-400",
 };
+
+const TYPE_TABS = [
+  { key: "all", label: "All" },
+  { key: "asset", label: "Asset" },
+  { key: "liability", label: "Liability" },
+  { key: "equity", label: "Equity" },
+  { key: "revenue", label: "Revenue" },
+  { key: "expense", label: "Expense" },
+];
 
 async function getAccounts(tenantId: string, type?: string, activeOnly?: boolean) {
   return prisma.account.findMany({
@@ -57,44 +80,28 @@ export default async function ChartOfAccountsPage({
   const activeType = sp.type ?? "all";
   const accounts = await getAccounts(tenantId, activeType, activeOnly);
 
-  const TYPE_TABS = [
-    { key: "all", label: "All" },
-    { key: "asset", label: "Asset" },
-    { key: "liability", label: "Liability" },
-    { key: "equity", label: "Equity" },
-    { key: "revenue", label: "Revenue" },
-    { key: "expense", label: "Expense" },
-  ];
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Chart of Accounts</h1>
-          <p className="text-sm text-muted-foreground">
-            {accounts.length} account{accounts.length === 1 ? "" : "s"}
-            {activeOnly ? " — active only" : ""}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/${slug}/accounting`}
-            className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
-          >
-            ← Accounting
-          </Link>
-          <Link
-            href={`/${slug}/accounting/accounts/new`}
-            className="rounded-md border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
-          >
-            + New Account
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="Chart of Accounts"
+        description={`${accounts.length} account${accounts.length === 1 ? "" : "s"}${
+          activeOnly ? " — active only" : ""
+        }`}
+        actions={
+          <>
+            <Button variant="outline" asChild>
+              <Link href={`/${slug}/accounting`}>← Accounting</Link>
+            </Button>
+            <Button asChild>
+              <Link href={`/${slug}/accounting/accounts/new`}>+ New Account</Link>
+            </Button>
+          </>
+        }
+      />
 
       {/* Type + active filter row */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex gap-1 rounded-md border border-border bg-card p-1">
+        <div className="flex flex-wrap gap-1 rounded-md border border-border bg-card p-1">
           {TYPE_TABS.map((tab) => (
             <Link
               key={tab.key}
@@ -129,82 +136,90 @@ export default async function ChartOfAccountsPage({
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
-        {accounts.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No accounts found.{" "}
-            <Link href={`/${slug}/accounting/accounts/new`} className="text-primary hover:underline">
-              Create your first account.
-            </Link>
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Code</th>
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Type</th>
-                <th className="px-4 py-3 font-medium">Subtype</th>
-                <th className="px-4 py-3 font-medium">JE Lines</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {accounts.map((account) => (
-                <tr
-                  key={account.id}
-                  className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                >
-                  <td className="px-4 py-3 font-mono text-xs font-medium">{account.code}</td>
-                  <td className="px-4 py-3 font-medium">
-                    {account.name}
-                    {account.isSystem && (
-                      <span className="ml-2 text-xs text-muted-foreground">(system)</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${
-                        TYPE_BADGE[account.type] ?? TYPE_BADGE["asset"]
-                      }`}
-                    >
-                      {account.type}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground capitalize">
-                    {account.subtype !== null ? account.subtype : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {account._count.journalLines}
-                  </td>
-                  <td className="px-4 py-3">
-                    {account.isActive ? (
-                      <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                        Active
-                      </span>
-                    ) : (
-                      <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                        Inactive
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {!account.isSystem && (
-                      <Link
-                        href={`/${slug}/accounting/accounts/${account.id}/edit`}
-                        className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+      <Card>
+        <CardContent className="p-0">
+          {accounts.length === 0 ? (
+            <div className="p-6">
+              <EmptyState
+                icon={BookOpenCheck}
+                title="No accounts found."
+                action={
+                  <Link
+                    href={`/${slug}/accounting/accounts/new`}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Create your first account →
+                  </Link>
+                }
+              />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Subtype</TableHead>
+                  <TableHead>JE Lines</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {accounts.map((account) => (
+                  <TableRow key={account.id}>
+                    <TableCell className="font-mono text-xs font-medium">{account.code}</TableCell>
+                    <TableCell className="font-medium">
+                      {account.name}
+                      {account.isSystem && (
+                        <span className="ml-2 text-xs text-muted-foreground">(system)</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`rounded-full capitalize ${
+                          TYPE_BADGE[account.type] ?? TYPE_BADGE["asset"]
+                        }`}
                       >
-                        Edit
-                      </Link>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+                        {account.type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground capitalize">
+                      {account.subtype !== null ? account.subtype : "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {account._count.journalLines}
+                    </TableCell>
+                    <TableCell>
+                      {account.isActive ? (
+                        <Badge variant="outline" className="rounded-full border-primary/30 bg-primary/10 text-primary">
+                          Active
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="rounded-full border-border bg-muted text-muted-foreground">
+                          Inactive
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {!account.isSystem && (
+                        <Link
+                          href={`/${slug}/accounting/accounts/${account.id}/edit`}
+                          className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                        >
+                          Edit
+                        </Link>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
