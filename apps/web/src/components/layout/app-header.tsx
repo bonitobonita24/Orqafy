@@ -1,6 +1,6 @@
 "use client";
 
-import { MobileNav } from "@/components/layout/mobile-nav";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/layout/mode-toggle";
 import { NotificationBell } from "@/components/layout/notification-bell";
 
@@ -15,7 +15,7 @@ export function AppHeader({ title, tenantSlug }: AppHeaderProps) {
     <header className="flex h-14 items-center justify-between border-b border-border bg-card px-6">
       {/* Left: page title or tenant context */}
       <div className="flex items-center gap-3">
-        {tenantSlug !== undefined ? <MobileNav slug={tenantSlug} /> : null}
+        <SidebarTrigger />
         {title !== undefined && title !== "" ? (
           <h1 className="text-sm font-medium">{title}</h1>
         ) : tenantSlug !== undefined ? (

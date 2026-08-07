@@ -3,6 +3,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppHeader } from "@/components/layout/app-header";
 import { ContentContainer } from "@/components/layout/content-container";
 import { AppDownloadInterstitial } from "@/components/app-download-interstitial";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
 export const metadata: Metadata = { title: "Orqafy" };
 
@@ -15,18 +16,18 @@ export default async function AppLayout({ children, params }: AppLayoutProps) {
   const { slug } = await params;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <SidebarProvider>
       {/* Mounted once for the whole authenticated app shell — renders
           nothing unless the visitor is on real mobile web (see
           shouldShowInterstitial in lib/app-interstitial.ts). */}
       <AppDownloadInterstitial />
       <AppSidebar slug={slug} />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <SidebarInset>
         <AppHeader tenantSlug={slug} />
         <main className="flex-1 overflow-y-auto py-6">
           <ContentContainer>{children}</ContentContainer>
         </main>
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
