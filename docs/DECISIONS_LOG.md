@@ -1638,3 +1638,32 @@ templating/generator system is introduced.
 
 **Reference:** `docs/DEPLOY_COMPOSE_RECONCILIATION.md` (ground-truthed divergence table,
 what changed, verification performed).
+
+## RECORD (2026-08-08): AdminCN design adoption — foundation + shell + all authed surfaces
+
+Owner-directed (2026-08-07) + approved ("all approved, do it, full auto"). Adopted the fleet-default
+**AdminCN** design language (Scenario 49, `.ai_prompt/admincn-starter.md`) as a UI/design layer ONLY —
+tRPC + Prisma + Auth.js v5 backend unchanged; no `fake-db`/`zustand`(server)/`nuqs` adopted. Branch
+`feat/admincn-adoption` (off the V32.45.1 framework-sync branch), LOCAL / HARD HOLD (unmerged, unpushed).
+
+Done + verified:
+- **Foundation**: reconciled component set to 50 (shadcn + AdminCN Pro extras; kanban/combobox/button-group
+  skipped — need @base-ui). Theme infra: next-themes light/dark (default DARK), ModeToggle; existing dark
+  palette preserved byte-identical (INHERIT-not-REPLACE).
+- **App-shell**: swapped to the shadcn `sidebar` primitive (default-layout); RBAC nav gating + tenant-slug
+  hrefs + white-label SidebarFooter (V32.26) preserved. Live-verified.
+- **All 23 authed modules** (dashboard, settings/RBAC, CRM/clients/invoices/quotations, purchasing/inventory/
+  POS/ecommerce, banking/accounting/payroll/expenses, projects/tasks/job-orders/service/employees/dtr/support)
+  + **platform-admin**: consistent reusable RSC-safe `PageHeader` + Card/Table/Badge/EmptyState idiom. Every
+  query/mutation/link/amount-math preserved verbatim; typecheck/lint/build green per module; comprehensive
+  live-verify passed (~15 pages, 0 errors). One runtime RSC bug (function prop across server→client) found +
+  fixed on the dashboard; lesson logged globally.
+
+PENDING (owner):
+- **Storefront (`store/*`)** — NOT restyled: it is the PUBLIC customer shop (product cards + cart), a different
+  design language than the admin ERP; AdminCN has no shop scaffold. Needs a dedicated shop-design decision.
+- **E re-baseline** — update `docs/DESIGN.md` + `docs/MOCKUP.jsx` to the AdminCN direction + capture a fresh
+  `design:fidelity` baseline: this is a design-contract re-approval requiring owner sign-off (Scenario 49 §6, Rule 31).
+- **Merge** `feat/admincn-adoption` (+ `feat/seo-foundation`, framework-sync) → local `main`: owner's call (HARD HOLD).
+- Pre-existing (NOT AdminCN): notifications realtime — `/api/sse` Valkey "Stream isn't writeable" +
+  `notification.list` connection errors. Separate bug to triage.
