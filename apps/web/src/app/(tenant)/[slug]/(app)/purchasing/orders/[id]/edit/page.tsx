@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Card, CardContent } from "@/components/ui/card";
 import { PoForm } from "../../new/po-form";
 
 export const metadata: Metadata = { title: "Edit Purchase Order" };
@@ -57,10 +59,10 @@ export default async function EditPoPage({
   if (po.status !== "draft") {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-3">
+        <div>
           <Link
             href={`/${slug}/purchasing/orders/${id}`}
-            className="text-sm text-muted-foreground hover:text-foreground"
+            className="text-xs text-muted-foreground hover:text-foreground"
           >
             ← {po.poNumber}
           </Link>
@@ -77,41 +79,43 @@ export default async function EditPoPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div>
         <Link
           href={`/${slug}/purchasing/orders/${id}`}
-          className="text-sm text-muted-foreground hover:text-foreground"
+          className="text-xs text-muted-foreground hover:text-foreground"
         >
           ← {po.poNumber}
         </Link>
       </div>
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Edit Purchase Order</h1>
-        <p className="text-sm text-muted-foreground">{po.poNumber} — Draft</p>
-      </div>
-      <div className="rounded-lg border border-border bg-card p-6">
-        <PoForm
-          slug={slug}
-          vendors={vendors}
-          poId={id}
-          initial={{
-            vendorId: po.vendorId,
-            currency: po.currency,
-            notes: po.notes ?? undefined,
-            expectedDelivery: po.expectedDelivery
-              ? po.expectedDelivery.toISOString().slice(0, 10)
-              : undefined,
-            items: po.items.map((item) => ({
-              description: item.description,
-              quantity: String(Number(item.quantity)),
-              unitPrice: String(Number(item.unitPrice)),
-              allocationType: "company_expense" as const,
-              warehouseId: "",
-              projectId: "",
-            })),
-          }}
-        />
-      </div>
+      <PageHeader
+        title="Edit Purchase Order"
+        description={`${po.poNumber} — Draft`}
+      />
+      <Card>
+        <CardContent className="p-6">
+          <PoForm
+            slug={slug}
+            vendors={vendors}
+            poId={id}
+            initial={{
+              vendorId: po.vendorId,
+              currency: po.currency,
+              notes: po.notes ?? undefined,
+              expectedDelivery: po.expectedDelivery
+                ? po.expectedDelivery.toISOString().slice(0, 10)
+                : undefined,
+              items: po.items.map((item) => ({
+                description: item.description,
+                quantity: String(Number(item.quantity)),
+                unitPrice: String(Number(item.unitPrice)),
+                allocationType: "company_expense" as const,
+                warehouseId: "",
+                projectId: "",
+              })),
+            }}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }
