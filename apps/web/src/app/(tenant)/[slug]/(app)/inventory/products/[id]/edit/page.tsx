@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { ProductForm } from "../../product-form";
 
 export const metadata: Metadata = { title: "Edit Product" };
@@ -49,39 +52,38 @@ export default async function EditProductPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Edit Product</h1>
-          <p className="text-sm text-muted-foreground">{product.name}</p>
-        </div>
-        <Link
-          href={`/${slug}/inventory`}
-          className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
-        >
-          ← Back
-        </Link>
-      </div>
+      <PageHeader
+        title="Edit Product"
+        description={product.name}
+        actions={
+          <Button variant="outline" asChild>
+            <Link href={`/${slug}/inventory`}>← Back</Link>
+          </Button>
+        }
+      />
 
-      <div className="rounded-lg border border-border bg-card px-6 py-6">
-        <ProductForm
-          slug={slug}
-          categories={categories}
-          mode="edit"
-          productId={product.id}
-          defaultValues={{
-            name: product.name,
-            sku: product.sku,
-            barcode: product.barcode,
-            description: product.description,
-            categoryId: product.categoryId,
-            unit: product.unit,
-            baseCost: product.baseCost.toString(),
-            reorderLevel: product.reorderLevel,
-            isActive: product.isActive,
-            isSerialTracked: product.isSerialTracked,
-          }}
-        />
-      </div>
+      <Card>
+        <CardContent className="p-6">
+          <ProductForm
+            slug={slug}
+            categories={categories}
+            mode="edit"
+            productId={product.id}
+            defaultValues={{
+              name: product.name,
+              sku: product.sku,
+              barcode: product.barcode,
+              description: product.description,
+              categoryId: product.categoryId,
+              unit: product.unit,
+              baseCost: product.baseCost.toString(),
+              reorderLevel: product.reorderLevel,
+              isActive: product.isActive,
+              isSerialTracked: product.isSerialTracked,
+            }}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

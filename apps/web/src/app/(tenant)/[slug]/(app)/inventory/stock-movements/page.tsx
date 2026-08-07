@@ -2,6 +2,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { StockActions } from "./stock-actions";
 
 export const metadata: Metadata = { title: "Stock Movements" };
@@ -139,23 +151,18 @@ export default async function StockMovementsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Stock Movements</h1>
-          <p className="text-sm text-muted-foreground">
-            {movements.length} shown · {counts.in} in · {counts.out} out · {counts.transfer} transfer · {counts.adjustment} adjustment
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <StockActions products={products} warehouses={warehouses} />
-          <Link
-            href={`/${slug}/inventory`}
-            className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
-          >
-            ← Products
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="Stock Movements"
+        description={`${movements.length} shown · ${counts.in} in · ${counts.out} out · ${counts.transfer} transfer · ${counts.adjustment} adjustment`}
+        actions={
+          <>
+            <StockActions products={products} warehouses={warehouses} />
+            <Button variant="outline" asChild>
+              <Link href={`/${slug}/inventory`}>← Products</Link>
+            </Button>
+          </>
+        }
+      />
 
       {product !== null && (
         <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/10 px-4 py-2 text-sm">
@@ -224,72 +231,72 @@ export default async function StockMovementsPage({
         </form>
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
-        {movements.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No stock movements match these filters.
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Date</th>
-                <th className="px-4 py-3 font-medium">Type</th>
-                <th className="px-4 py-3 font-medium">Product</th>
-                <th className="px-4 py-3 font-medium">From → To</th>
-                <th className="px-4 py-3 font-medium text-right">Qty</th>
-                <th className="px-4 py-3 font-medium">Notes / Ref</th>
-              </tr>
-            </thead>
-            <tbody>
-              {movements.map((m) => {
-                const typeStyle = TYPE_STYLES[m.type] ?? "border-border bg-muted text-muted-foreground";
-                const fromName = m.fromWarehouse !== null ? m.fromWarehouse.name : "—";
-                const toName = m.toWarehouse !== null ? m.toWarehouse.name : "—";
-                const noteOrRef =
-                  m.notes !== null && m.notes !== ""
-                    ? m.notes
-                    : m.referenceType !== null
-                      ? `Ref: ${m.referenceType}`
-                      : "—";
-                return (
-                  <tr
-                    key={m.id}
-                    className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                  >
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {m.createdAt.toISOString().slice(0, 10)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full border px-2 py-0.5 text-xs font-medium ${typeStyle}`}
-                      >
-                        {m.type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="font-medium">{m.product.name}</span>
-                      {m.product.sku !== null && (
-                        <span className="ml-2 text-xs text-muted-foreground">{m.product.sku}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {fromName} → {toName}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-muted-foreground">
-                      {Number(m.quantity).toLocaleString("en-PH", {
-                        minimumFractionDigits: 2,
-                      })}{" "}
-                      {m.product.unit}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{noteOrRef}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          {movements.length === 0 ? (
+            <div className="px-6 py-12 text-center text-sm text-muted-foreground">
+              No stock movements match these filters.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead>From → To</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead>Notes / Ref</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {movements.map((m) => {
+                  const typeStyle =
+                    TYPE_STYLES[m.type] ?? "border-border bg-muted text-muted-foreground";
+                  const fromName = m.fromWarehouse !== null ? m.fromWarehouse.name : "—";
+                  const toName = m.toWarehouse !== null ? m.toWarehouse.name : "—";
+                  const noteOrRef =
+                    m.notes !== null && m.notes !== ""
+                      ? m.notes
+                      : m.referenceType !== null
+                        ? `Ref: ${m.referenceType}`
+                        : "—";
+                  return (
+                    <TableRow key={m.id}>
+                      <TableCell className="text-muted-foreground">
+                        {m.createdAt.toISOString().slice(0, 10)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={`rounded-full ${typeStyle}`}>
+                          {m.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium">{m.product.name}</span>
+                        {m.product.sku !== null && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {m.product.sku}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {fromName} → {toName}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-muted-foreground">
+                        {Number(m.quantity).toLocaleString("en-PH", {
+                          minimumFractionDigits: 2,
+                        })}{" "}
+                        {m.product.unit}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{noteOrRef}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
