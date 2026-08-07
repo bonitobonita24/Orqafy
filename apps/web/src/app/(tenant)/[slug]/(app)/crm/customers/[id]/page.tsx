@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   ContactLogTimeline,
   type ContactLogEntry,
@@ -94,99 +97,101 @@ export default async function CustomerDetailPage({ params }: Props) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {customer.companyName !== null ? customer.companyName : fullName}
-          </h1>
-          {customer.companyName !== null && (
-            <p className="text-sm text-muted-foreground">{fullName}</p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <span
-            className={`rounded-full border px-2 py-0.5 text-xs font-medium ${tierClass}`}
-          >
-            {tierLabel}
-          </span>
-          {customer.isActive ? (
-            <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-              Active
-            </span>
-          ) : (
-            <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-              Inactive
-            </span>
-          )}
-          <Link
-            href={`/${slug}/crm/customers/${customer.id}/edit`}
-            className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
-          >
-            Edit
-          </Link>
-          <CustomerToggleActive
-            customerId={customer.id}
-            isActive={customer.isActive}
-          />
-        </div>
-      </div>
+      <PageHeader
+        title={customer.companyName !== null ? customer.companyName : fullName}
+        description={customer.companyName !== null ? fullName : undefined}
+        actions={
+          <>
+            <Badge variant="outline" className={`rounded-full ${tierClass}`}>
+              {tierLabel}
+            </Badge>
+            {customer.isActive ? (
+              <Badge
+                variant="outline"
+                className="rounded-full border-primary/30 bg-primary/10 text-primary"
+              >
+                Active
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="rounded-full border-border bg-muted text-muted-foreground"
+              >
+                Inactive
+              </Badge>
+            )}
+            <Link
+              href={`/${slug}/crm/customers/${customer.id}/edit`}
+              className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+            >
+              Edit
+            </Link>
+            <CustomerToggleActive
+              customerId={customer.id}
+              isActive={customer.isActive}
+            />
+          </>
+        }
+      />
 
       {/* Customer Info */}
-      <div className="rounded-lg border border-border bg-card p-6">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Customer Information
-        </h2>
-        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {customer.email !== null && (
+      <Card>
+        <CardContent className="p-6">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Customer Information
+          </h2>
+          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {customer.email !== null && (
+              <div>
+                <dt className="text-xs text-muted-foreground">Email</dt>
+                <dd className="mt-0.5 text-sm">{customer.email}</dd>
+              </div>
+            )}
+            {customer.phone !== null && (
+              <div>
+                <dt className="text-xs text-muted-foreground">Phone</dt>
+                <dd className="mt-0.5 text-sm">{customer.phone}</dd>
+              </div>
+            )}
+            {location !== null && (
+              <div>
+                <dt className="text-xs text-muted-foreground">Location</dt>
+                <dd className="mt-0.5 text-sm">{location}</dd>
+              </div>
+            )}
+            {customer.address !== null && (
+              <div>
+                <dt className="text-xs text-muted-foreground">Address</dt>
+                <dd className="mt-0.5 text-sm">{customer.address}</dd>
+              </div>
+            )}
+            {customer.postalCode !== null && (
+              <div>
+                <dt className="text-xs text-muted-foreground">Postal Code</dt>
+                <dd className="mt-0.5 text-sm">{customer.postalCode}</dd>
+              </div>
+            )}
             <div>
-              <dt className="text-xs text-muted-foreground">Email</dt>
-              <dd className="mt-0.5 text-sm">{customer.email}</dd>
+              <dt className="text-xs text-muted-foreground">Country</dt>
+              <dd className="mt-0.5 text-sm">{customer.country}</dd>
+            </div>
+            {customer.taxId !== null && (
+              <div>
+                <dt className="text-xs text-muted-foreground">Tax ID</dt>
+                <dd className="mt-0.5 text-sm">{customer.taxId}</dd>
+              </div>
+            )}
+          </dl>
+          {customer.notes !== null && (
+            <div className="mt-4 border-t border-border pt-4">
+              <dt className="text-xs text-muted-foreground">Notes</dt>
+              <dd className="mt-0.5 text-sm text-muted-foreground">
+                {customer.notes}
+              </dd>
             </div>
           )}
-          {customer.phone !== null && (
-            <div>
-              <dt className="text-xs text-muted-foreground">Phone</dt>
-              <dd className="mt-0.5 text-sm">{customer.phone}</dd>
-            </div>
-          )}
-          {location !== null && (
-            <div>
-              <dt className="text-xs text-muted-foreground">Location</dt>
-              <dd className="mt-0.5 text-sm">{location}</dd>
-            </div>
-          )}
-          {customer.address !== null && (
-            <div>
-              <dt className="text-xs text-muted-foreground">Address</dt>
-              <dd className="mt-0.5 text-sm">{customer.address}</dd>
-            </div>
-          )}
-          {customer.postalCode !== null && (
-            <div>
-              <dt className="text-xs text-muted-foreground">Postal Code</dt>
-              <dd className="mt-0.5 text-sm">{customer.postalCode}</dd>
-            </div>
-          )}
-          <div>
-            <dt className="text-xs text-muted-foreground">Country</dt>
-            <dd className="mt-0.5 text-sm">{customer.country}</dd>
-          </div>
-          {customer.taxId !== null && (
-            <div>
-              <dt className="text-xs text-muted-foreground">Tax ID</dt>
-              <dd className="mt-0.5 text-sm">{customer.taxId}</dd>
-            </div>
-          )}
-        </dl>
-        {customer.notes !== null && (
-          <div className="mt-4 border-t border-border pt-4">
-            <dt className="text-xs text-muted-foreground">Notes</dt>
-            <dd className="mt-0.5 text-sm text-muted-foreground">
-              {customer.notes}
-            </dd>
-          </div>
-        )}
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Contacts */}
       <ContactsPanel
@@ -209,12 +214,14 @@ export default async function CustomerDetailPage({ params }: Props) {
       />
 
       {/* Attachments */}
-      <section className="mt-6 rounded-lg border border-border bg-card p-6">
-        <CustomerAttachments customerId={customer.id} />
-      </section>
+      <Card>
+        <CardContent className="p-6">
+          <CustomerAttachments customerId={customer.id} />
+        </CardContent>
+      </Card>
 
       {/* Touchpoints */}
-      <div className="rounded-lg border border-border bg-card">
+      <Card>
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <h2 className="text-sm font-semibold">
             Touchpoints
@@ -227,7 +234,7 @@ export default async function CustomerDetailPage({ params }: Props) {
         <div className="px-6 py-4">
           <ContactLogTimeline initialLogs={contactLogs} />
         </div>
-      </div>
+      </Card>
     </div>
   );
 }
