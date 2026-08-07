@@ -1,6 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ReceiptText } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const metadata: Metadata = { title: "Journal Entries" };
 export const dynamic = "force-dynamic";
@@ -10,6 +24,13 @@ const STATUS_BADGE: Record<string, string> = {
   posted: "border-primary/30 bg-primary/10 text-primary",
   void:   "border-red-500/30 bg-red-500/10 text-red-400",
 };
+
+const STATUS_TABS = [
+  { key: "all", label: "All" },
+  { key: "draft", label: "Draft" },
+  { key: "posted", label: "Posted" },
+  { key: "void", label: "Void" },
+];
 
 async function getTenantId(slug: string) {
   const t = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
@@ -51,38 +72,24 @@ export default async function JournalEntriesPage({
   const activeStatus = sp.status ?? "all";
   const entries = await getJournalEntries(tenantId, activeStatus);
 
-  const STATUS_TABS = [
-    { key: "all", label: "All" },
-    { key: "draft", label: "Draft" },
-    { key: "posted", label: "Posted" },
-    { key: "void", label: "Void" },
-  ];
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Journal Entries</h1>
-          <p className="text-sm text-muted-foreground">
-            {entries.length} entr{entries.length === 1 ? "y" : "ies"}
-            {activeStatus !== "all" ? ` — ${activeStatus}` : ""}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/${slug}/accounting`}
-            className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
-          >
-            ← Accounting
-          </Link>
-          <Link
-            href={`/${slug}/accounting/journal-entries/new`}
-            className="rounded-md border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
-          >
-            + New Entry
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="Journal Entries"
+        description={`${entries.length} entr${entries.length === 1 ? "y" : "ies"}${
+          activeStatus !== "all" ? ` — ${activeStatus}` : ""
+        }`}
+        actions={
+          <>
+            <Button variant="outline" asChild>
+              <Link href={`/${slug}/accounting`}>← Accounting</Link>
+            </Button>
+            <Button asChild>
+              <Link href={`/${slug}/accounting/journal-entries/new`}>+ New Entry</Link>
+            </Button>
+          </>
+        }
+      />
 
       <div className="flex gap-1 rounded-md border border-border bg-card p-1">
         {STATUS_TABS.map((tab) => (
@@ -100,72 +107,80 @@ export default async function JournalEntriesPage({
         ))}
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
-        {entries.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No journal entries found.{" "}
-            <Link href={`/${slug}/accounting/journal-entries/new`} className="text-primary hover:underline">
-              Create your first entry.
-            </Link>
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Entry #</th>
-                <th className="px-4 py-3 font-medium">Date</th>
-                <th className="px-4 py-3 font-medium">Description</th>
-                <th className="px-4 py-3 font-medium">Lines</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((entry) => (
-                <tr
-                  key={entry.id}
-                  className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/${slug}/accounting/journal-entries/${entry.id}`}
-                      className="font-mono text-xs font-medium text-primary hover:underline"
-                    >
-                      {entry.entryNumber}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {entry.date.toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3 max-w-xs truncate" title={entry.description}>
-                    {entry.description}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{entry._count.lines}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${
-                        STATUS_BADGE[entry.status] ?? STATUS_BADGE["draft"]
-                      }`}
-                    >
-                      {entry.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {entry.status === "draft" && (
+      <Card>
+        <CardContent className="p-0">
+          {entries.length === 0 ? (
+            <div className="p-6">
+              <EmptyState
+                icon={ReceiptText}
+                title="No journal entries found."
+                action={
+                  <Link
+                    href={`/${slug}/accounting/journal-entries/new`}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Create your first entry →
+                  </Link>
+                }
+              />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Entry #</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Lines</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {entries.map((entry) => (
+                  <TableRow key={entry.id}>
+                    <TableCell>
                       <Link
-                        href={`/${slug}/accounting/journal-entries/${entry.id}/edit`}
-                        className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                        href={`/${slug}/accounting/journal-entries/${entry.id}`}
+                        className="font-mono text-xs font-medium text-primary hover:underline"
                       >
-                        Edit
+                        {entry.entryNumber}
                       </Link>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {entry.date.toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate" title={entry.description}>
+                      {entry.description}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{entry._count.lines}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`rounded-full capitalize ${
+                          STATUS_BADGE[entry.status] ?? STATUS_BADGE["draft"]
+                        }`}
+                      >
+                        {entry.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {entry.status === "draft" && (
+                        <Link
+                          href={`/${slug}/accounting/journal-entries/${entry.id}/edit`}
+                          className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                        >
+                          Edit
+                        </Link>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { JournalEntryForm } from "../../journal-entry-form";
 
 export const metadata: Metadata = { title: "Edit Journal Entry" };
@@ -26,15 +29,14 @@ export default async function EditJournalEntryPage({
   if (entry.status !== "draft") {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Cannot Edit Entry</h1>
-          <Link
-            href={`/${slug}/accounting/journal-entries/${id}`}
-            className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
-          >
-            ← Back
-          </Link>
-        </div>
+        <PageHeader
+          title="Cannot Edit Entry"
+          actions={
+            <Button variant="outline" asChild>
+              <Link href={`/${slug}/accounting/journal-entries/${id}`}>← Back</Link>
+            </Button>
+          }
+        />
         <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
           Only draft journal entries can be edited.
         </div>
@@ -57,39 +59,38 @@ export default async function EditJournalEntryPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Edit Journal Entry</h1>
-          <p className="text-sm text-muted-foreground font-mono">{entry.entryNumber}</p>
-        </div>
-        <Link
-          href={`/${slug}/accounting/journal-entries/${id}`}
-          className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted/30"
-        >
-          ← Entry Detail
-        </Link>
-      </div>
+      <PageHeader
+        title="Edit Journal Entry"
+        description={<span className="font-mono">{entry.entryNumber}</span>}
+        actions={
+          <Button variant="outline" asChild>
+            <Link href={`/${slug}/accounting/journal-entries/${id}`}>← Entry Detail</Link>
+          </Button>
+        }
+      />
 
-      <div className="rounded-lg border border-border bg-card p-6">
-        <JournalEntryForm
-          slug={slug}
-          mode="edit"
-          entryId={entry.id}
-          fiscalYears={fiscalYears}
-          accounts={accounts}
-          initial={{
-            fiscalYearId: entry.fiscalYearId,
-            date: entry.date.toISOString().slice(0, 10),
-            description: entry.description,
-            lines: entry.lines.map((l) => ({
-              accountId: l.accountId,
-              debit: Number(l.debit),
-              credit: Number(l.credit),
-              description: l.description ?? "",
-            })),
-          }}
-        />
-      </div>
+      <Card>
+        <CardContent className="px-6 py-6">
+          <JournalEntryForm
+            slug={slug}
+            mode="edit"
+            entryId={entry.id}
+            fiscalYears={fiscalYears}
+            accounts={accounts}
+            initial={{
+              fiscalYearId: entry.fiscalYearId,
+              date: entry.date.toISOString().slice(0, 10),
+              description: entry.description,
+              lines: entry.lines.map((l) => ({
+                accountId: l.accountId,
+                debit: Number(l.debit),
+                credit: Number(l.credit),
+                description: l.description ?? "",
+              })),
+            }}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }
