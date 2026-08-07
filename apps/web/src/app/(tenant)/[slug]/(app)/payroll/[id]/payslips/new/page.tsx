@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Card, CardContent } from "@/components/ui/card";
 import { PayslipForm } from "../../payslip-form";
 
 export const metadata: Metadata = { title: "Add Payslip" };
@@ -48,16 +50,22 @@ export default async function AddPayslipPage({
         >
           ← Back to {payroll.payrollNumber}
         </Link>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">Add Payslip</h1>
-        <p className="text-sm text-muted-foreground">
-          Manually enter amounts for this employee on run{" "}
-          <span className="font-mono text-xs">{payroll.payrollNumber}</span>.
-        </p>
       </div>
+      <PageHeader
+        title="Add Payslip"
+        description={
+          <>
+            Manually enter amounts for this employee on run{" "}
+            <span className="font-mono text-xs">{payroll.payrollNumber}</span>.
+          </>
+        }
+      />
 
-      <div className="rounded-lg border border-border bg-card p-6">
-        <PayslipForm slug={slug} payrollId={id} currency={payroll.currency} />
-      </div>
+      <Card>
+        <CardContent className="p-6">
+          <PayslipForm slug={slug} payrollId={id} currency={payroll.currency} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -2,6 +2,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { PayrollActions } from "./payroll-actions";
 
 export const metadata: Metadata = { title: "Payroll Run" };
@@ -66,115 +78,128 @@ export default async function PayrollDetailPage({
   const payroll = await getPayroll(id, tenant.id);
   if (payroll === null) notFound();
 
+  const statusClass = STATUS_BADGE[payroll.status] ?? STATUS_BADGE["draft"]!;
+  const statusLabel = STATUS_LABELS[payroll.status] ?? payroll.status;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <Link
-            href={`/${slug}/payroll`}
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
-            ← Back to Payroll
-          </Link>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">
-            Payroll Run
-          </h1>
-          <p className="font-mono text-xs text-muted-foreground">
-            {payroll.payrollNumber}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {payroll.status === "draft" && (
-            <Link
-              href={`/${slug}/payroll/${id}/payslips/new`}
-              className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              + Add Payslip
-            </Link>
-          )}
-          <PayrollActions payrollId={id} status={payroll.status} />
-          <span
-            className={`rounded-full border px-3 py-1 text-xs font-medium ${
-              STATUS_BADGE[payroll.status] ?? STATUS_BADGE["draft"]
-            }`}
-          >
-            {STATUS_LABELS[payroll.status] ?? payroll.status}
-          </span>
-        </div>
+      <div>
+        <Link
+          href={`/${slug}/payroll`}
+          className="text-xs text-muted-foreground hover:text-foreground"
+        >
+          ← Back to Payroll
+        </Link>
       </div>
 
+      <PageHeader
+        title="Payroll Run"
+        description={
+          <span className="font-mono text-xs">{payroll.payrollNumber}</span>
+        }
+        actions={
+          <>
+            {payroll.status === "draft" && (
+              <Button asChild>
+                <Link href={`/${slug}/payroll/${id}/payslips/new`}>+ Add Payslip</Link>
+              </Button>
+            )}
+            <PayrollActions payrollId={id} status={payroll.status} />
+            <Badge variant="outline" className={`rounded-full ${statusClass}`}>
+              {statusLabel}
+            </Badge>
+          </>
+        }
+      />
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-        <div className="rounded-lg border border-border bg-card p-4">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">
-            Period Start
-          </div>
-          <div className="mt-1 text-sm">
-            {payroll.periodStart.toLocaleDateString()}
-          </div>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">
-            Period End
-          </div>
-          <div className="mt-1 text-sm">
-            {payroll.periodEnd.toLocaleDateString()}
-          </div>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">
-            Processed
-          </div>
-          <div className="mt-1 text-sm">
-            {payroll.processedAt !== null ? payroll.processedAt.toLocaleString() : "—"}
-          </div>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">
-            Paid
-          </div>
-          <div className="mt-1 text-sm">
-            {payroll.paidAt !== null ? payroll.paidAt.toLocaleString() : "—"}
-          </div>
-        </div>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              Period Start
+            </div>
+            <div className="mt-1 text-sm">
+              {payroll.periodStart.toLocaleDateString()}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              Period End
+            </div>
+            <div className="mt-1 text-sm">
+              {payroll.periodEnd.toLocaleDateString()}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              Processed
+            </div>
+            <div className="mt-1 text-sm">
+              {payroll.processedAt !== null ? payroll.processedAt.toLocaleString() : "—"}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              Paid
+            </div>
+            <div className="mt-1 text-sm">
+              {payroll.paidAt !== null ? payroll.paidAt.toLocaleString() : "—"}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-border bg-card p-5">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">
-            Total Gross
-          </div>
-          <div className="mt-2 font-mono text-lg font-semibold">
-            {formatMoney(payroll.totalGross, payroll.currency)}
-          </div>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-5">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">
-            Total Deductions
-          </div>
-          <div className="mt-2 font-mono text-lg font-semibold text-red-400">
-            {formatMoney(payroll.totalDeductions, payroll.currency)}
-          </div>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-5">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">
-            Total Net
-          </div>
-          <div className="mt-2 font-mono text-lg font-semibold text-primary">
-            {formatMoney(payroll.totalNet, payroll.currency)}
-          </div>
-        </div>
+        <Card>
+          <CardContent className="p-5">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              Total Gross
+            </div>
+            <div className="mt-2 font-mono text-lg font-semibold">
+              {formatMoney(payroll.totalGross, payroll.currency)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              Total Deductions
+            </div>
+            <div className="mt-2 font-mono text-lg font-semibold text-red-400">
+              {formatMoney(payroll.totalDeductions, payroll.currency)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              Total Net
+            </div>
+            <div className="mt-2 font-mono text-lg font-semibold text-primary">
+              {formatMoney(payroll.totalNet, payroll.currency)}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {payroll.notes !== null && (
-        <section className="rounded-lg border border-border bg-card p-5">
-          <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
-            Notes
-          </h2>
-          <p className="whitespace-pre-wrap text-sm">{payroll.notes}</p>
-        </section>
+        <Card>
+          <CardContent className="p-5">
+            <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
+              Notes
+            </h2>
+            <p className="whitespace-pre-wrap text-sm">{payroll.notes}</p>
+          </CardContent>
+        </Card>
       )}
 
-      <section className="rounded-lg border border-border bg-card">
+      <Card>
         <div className="border-b border-border px-5 py-3">
           <h2 className="text-sm font-semibold">
             Payslips
@@ -183,77 +208,76 @@ export default async function PayrollDetailPage({
             </span>
           </h2>
         </div>
-        {payroll.payslips.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No payslips generated yet.
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Employee</th>
-                <th className="px-4 py-3 font-medium text-right">Basic Pay</th>
-                <th className="px-4 py-3 font-medium text-right">Overtime</th>
-                <th className="px-4 py-3 font-medium text-right">Allowances</th>
-                <th className="px-4 py-3 font-medium text-right">Gross</th>
-                <th className="px-4 py-3 font-medium text-right">SSS</th>
-                <th className="px-4 py-3 font-medium text-right">PhilHealth</th>
-                <th className="px-4 py-3 font-medium text-right">Pag-IBIG</th>
-                <th className="px-4 py-3 font-medium text-right">W/Tax</th>
-                <th className="px-4 py-3 font-medium text-right">Deductions</th>
-                <th className="px-4 py-3 font-medium text-right">Net</th>
-              </tr>
-            </thead>
-            <tbody>
-              {payroll.payslips.map((ps) => (
-                <tr
-                  key={ps.id}
-                  className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                >
-                  <td className="px-4 py-3">
-                    <div className="font-medium">
-                      {userDisplayName(ps.employee.user)}
-                    </div>
-                    <div className="font-mono text-xs text-muted-foreground">
-                      {ps.employee.employeeNumber}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">
-                    {formatMoney(ps.basicPay, payroll.currency)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">
-                    {formatMoney(ps.overtimePay, payroll.currency)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">
-                    {formatMoney(ps.allowances, payroll.currency)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">
-                    {formatMoney(ps.grossPay, payroll.currency)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
-                    {formatMoney(ps.sssDeduction, payroll.currency)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
-                    {formatMoney(ps.philhealthDeduction, payroll.currency)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
-                    {formatMoney(ps.pagibigDeduction, payroll.currency)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
-                    {formatMoney(ps.taxDeduction, payroll.currency)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs text-red-400">
-                    {formatMoney(ps.totalDeductions, payroll.currency)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs font-semibold text-primary">
-                    {formatMoney(ps.netPay, payroll.currency)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+        <CardContent className="p-0">
+          {payroll.payslips.length === 0 ? (
+            <div className="px-6 py-12 text-center text-sm text-muted-foreground">
+              No payslips generated yet.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Employee</TableHead>
+                  <TableHead className="text-right">Basic Pay</TableHead>
+                  <TableHead className="text-right">Overtime</TableHead>
+                  <TableHead className="text-right">Allowances</TableHead>
+                  <TableHead className="text-right">Gross</TableHead>
+                  <TableHead className="text-right">SSS</TableHead>
+                  <TableHead className="text-right">PhilHealth</TableHead>
+                  <TableHead className="text-right">Pag-IBIG</TableHead>
+                  <TableHead className="text-right">W/Tax</TableHead>
+                  <TableHead className="text-right">Deductions</TableHead>
+                  <TableHead className="text-right">Net</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {payroll.payslips.map((ps) => (
+                  <TableRow key={ps.id}>
+                    <TableCell>
+                      <div className="font-medium">
+                        {userDisplayName(ps.employee.user)}
+                      </div>
+                      <div className="font-mono text-xs text-muted-foreground">
+                        {ps.employee.employeeNumber}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {formatMoney(ps.basicPay, payroll.currency)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {formatMoney(ps.overtimePay, payroll.currency)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {formatMoney(ps.allowances, payroll.currency)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {formatMoney(ps.grossPay, payroll.currency)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs text-muted-foreground">
+                      {formatMoney(ps.sssDeduction, payroll.currency)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs text-muted-foreground">
+                      {formatMoney(ps.philhealthDeduction, payroll.currency)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs text-muted-foreground">
+                      {formatMoney(ps.pagibigDeduction, payroll.currency)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs text-muted-foreground">
+                      {formatMoney(ps.taxDeduction, payroll.currency)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs text-red-400">
+                      {formatMoney(ps.totalDeductions, payroll.currency)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs font-semibold text-primary">
+                      {formatMoney(ps.netPay, payroll.currency)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

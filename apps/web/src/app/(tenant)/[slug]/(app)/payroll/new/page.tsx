@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PageHeader } from "@/components/layout/page-header";
+import { Card, CardContent } from "@/components/ui/card";
 import { PayrollRunForm } from "../payroll-run-form";
 
 export const metadata: Metadata = { title: "New Payroll Run" };
@@ -20,15 +22,17 @@ export default async function NewPayrollRunPage({
         >
           ← Back to Payroll
         </Link>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">New Payroll Run</h1>
-        <p className="text-sm text-muted-foreground">
-          Create a draft payroll run. Add payslips manually after creation.
-        </p>
       </div>
+      <PageHeader
+        title="New Payroll Run"
+        description="Create a draft payroll run. Add payslips manually after creation."
+      />
 
-      <div className="rounded-lg border border-border bg-card p-6">
-        <PayrollRunForm slug={slug} mode="create" />
-      </div>
+      <Card>
+        <CardContent className="p-6">
+          <PayrollRunForm slug={slug} mode="create" />
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -1,7 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Wallet } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const metadata: Metadata = { title: "Payroll" };
 export const dynamic = "force-dynamic";
@@ -70,39 +84,33 @@ export default async function PayrollPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Payroll</h1>
-          <p className="text-sm text-muted-foreground">
-            {payrolls.length} payroll run{payrolls.length === 1 ? "" : "s"}
-            {activeStatus !== "all" ? ` — ${STATUS_LABELS[activeStatus] ?? activeStatus}` : ""}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/${slug}/payroll/statutory-rates`}
-            className="rounded-md border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-          >
-            Statutory Rates
-          </Link>
-          <Link
-            href={`/${slug}/payroll/new`}
-            className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            + New Payroll Run
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="Payroll"
+        description={`${payrolls.length} payroll run${payrolls.length === 1 ? "" : "s"}${
+          activeStatus !== "all" ? ` — ${STATUS_LABELS[activeStatus] ?? activeStatus}` : ""
+        }`}
+        actions={
+          <>
+            <Button variant="outline" asChild>
+              <Link href={`/${slug}/payroll/statutory-rates`}>Statutory Rates</Link>
+            </Button>
+            <Button asChild>
+              <Link href={`/${slug}/payroll/new`}>+ New Payroll Run</Link>
+            </Button>
+          </>
+        }
+      />
 
-      <div className="flex flex-wrap gap-1 rounded-md border border-border bg-card p-1">
+      {/* Status filter tabs */}
+      <div className="flex flex-wrap gap-2">
         {STATUS_TABS.map((tab) => (
           <Link
             key={tab.key}
             href={`?status=${tab.key}`}
-            className={`rounded px-3 py-1 text-sm transition-colors ${
+            className={`rounded-full border px-3 py-1 text-xs font-medium ${
               activeStatus === tab.key
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:text-foreground"
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-card text-muted-foreground hover:text-foreground"
             }`}
           >
             {tab.label}
@@ -110,68 +118,68 @@ export default async function PayrollPage({
         ))}
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
-        {payrolls.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No payroll runs found.
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Payroll #</th>
-                <th className="px-4 py-3 font-medium">Period</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Payslips</th>
-                <th className="px-4 py-3 font-medium text-right">Gross</th>
-                <th className="px-4 py-3 font-medium text-right">Deductions</th>
-                <th className="px-4 py-3 font-medium text-right">Net</th>
-              </tr>
-            </thead>
-            <tbody>
-              {payrolls.map((p) => (
-                <tr
-                  key={p.id}
-                  className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`payroll/${p.id}`}
-                      className="font-mono text-xs font-medium text-primary hover:underline"
-                    >
-                      {p.payrollNumber}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {formatPeriod(p.periodStart, p.periodEnd)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
-                        STATUS_BADGE[p.status] ?? STATUS_BADGE["draft"]
-                      }`}
-                    >
-                      {STATUS_LABELS[p.status] ?? p.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {p._count.payslips}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">
-                    {formatMoney(p.totalGross, p.currency)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
-                    {formatMoney(p.totalDeductions, p.currency)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs font-semibold">
-                    {formatMoney(p.totalNet, p.currency)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          {payrolls.length === 0 ? (
+            <div className="p-6">
+              <EmptyState icon={Wallet} title="No payroll runs found." />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Payroll #</TableHead>
+                  <TableHead>Period</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Payslips</TableHead>
+                  <TableHead className="text-right">Gross</TableHead>
+                  <TableHead className="text-right">Deductions</TableHead>
+                  <TableHead className="text-right">Net</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {payrolls.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-mono text-xs">
+                      <Link
+                        href={`payroll/${p.id}`}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {p.payrollNumber}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatPeriod(p.periodStart, p.periodEnd)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`rounded-full ${
+                          STATUS_BADGE[p.status] ?? STATUS_BADGE["draft"]
+                        }`}
+                      >
+                        {STATUS_LABELS[p.status] ?? p.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {p._count.payslips}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {formatMoney(p.totalGross, p.currency)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs text-muted-foreground">
+                      {formatMoney(p.totalDeductions, p.currency)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs font-semibold">
+                      {formatMoney(p.totalNet, p.currency)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
