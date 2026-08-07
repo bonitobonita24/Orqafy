@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
 import { NewJobOrderForm } from "./new-job-order-form";
 
 export const metadata: Metadata = { title: "New Job Order" };
@@ -44,10 +45,11 @@ export default async function NewJobOrderPage({
         >
           ← Job orders
         </Link>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">New Job Order</h1>
-        <p className="text-sm text-muted-foreground">
-          Record a new repair or service intake for a customer.
-        </p>
+        <PageHeader
+          className="mt-1"
+          title="New Job Order"
+          description="Record a new repair or service intake for a customer."
+        />
       </div>
       <NewJobOrderForm slug={slug} customers={customers} />
     </div>

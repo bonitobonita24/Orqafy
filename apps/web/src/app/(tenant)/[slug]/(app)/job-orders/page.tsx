@@ -1,7 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Wrench } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const metadata: Metadata = { title: "Job Orders" };
 export const dynamic = "force-dynamic";
@@ -113,21 +127,17 @@ export default async function JobOrdersPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Job Orders</h1>
-          <p className="text-sm text-muted-foreground">
-            {jobOrders.length} job order{jobOrders.length === 1 ? "" : "s"}
-            {activeStatus !== "all" ? ` — ${STATUS_LABELS[activeStatus] ?? activeStatus}` : ""}
-          </p>
-        </div>
-        <Link
-          href={`/${slug}/service/job-orders/new`}
-          className="rounded-md border border-primary bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
-        >
-          + New Job Order
-        </Link>
-      </div>
+      <PageHeader
+        title="Job Orders"
+        description={`${jobOrders.length} job order${jobOrders.length === 1 ? "" : "s"}${
+          activeStatus !== "all" ? ` — ${STATUS_LABELS[activeStatus] ?? activeStatus}` : ""
+        }`}
+        actions={
+          <Button asChild>
+            <Link href={`/${slug}/service/job-orders/new`}>+ New Job Order</Link>
+          </Button>
+        }
+      />
 
       <div className="flex flex-wrap gap-1 rounded-md border border-border bg-card p-1">
         {STATUS_TABS.map((tab) => (
@@ -145,78 +155,75 @@ export default async function JobOrdersPage({
         ))}
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
-        {jobOrders.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No job orders found.
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Job Order #</th>
-                <th className="px-4 py-3 font-medium">Title</th>
-                <th className="px-4 py-3 font-medium">Customer</th>
-                <th className="px-4 py-3 font-medium">Device</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Priority</th>
-                <th className="px-4 py-3 font-medium">Technician</th>
-                <th className="px-4 py-3 font-medium">Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {jobOrders.map((jo) => (
-                <tr
-                  key={jo.id}
-                  className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`job-orders/${jo.id}`}
-                      className="font-mono text-xs font-medium text-primary hover:underline"
-                    >
-                      {jo.jobOrderNumber}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 max-w-xs truncate">{jo.title}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {customerLabel(jo.customer)}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {jo.deviceBrand !== null || jo.deviceModel !== null
-                      ? `${jo.deviceBrand ?? ""} ${jo.deviceModel ?? ""}`.trim() || "—"
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
-                        STATUS_BADGE[jo.status] ?? STATUS_BADGE["received"]
-                      }`}
-                    >
-                      {STATUS_LABELS[jo.status] ?? jo.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
-                        PRIORITY_BADGE[jo.priority] ?? PRIORITY_BADGE["medium"]
-                      }`}
-                    >
-                      {jo.priority}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {technicianLabel(jo.technician)}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {jo.createdAt.toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          {jobOrders.length === 0 ? (
+            <div className="p-6">
+              <EmptyState icon={Wrench} title="No job orders found." />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Job Order #</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Device</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Technician</TableHead>
+                  <TableHead>Created</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {jobOrders.map((jo) => (
+                  <TableRow key={jo.id}>
+                    <TableCell>
+                      <Link
+                        href={`job-orders/${jo.id}`}
+                        className="font-mono text-xs font-medium text-primary hover:underline"
+                      >
+                        {jo.jobOrderNumber}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate">{jo.title}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {customerLabel(jo.customer)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {jo.deviceBrand !== null || jo.deviceModel !== null
+                        ? `${jo.deviceBrand ?? ""} ${jo.deviceModel ?? ""}`.trim() || "—"
+                        : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`rounded-full ${STATUS_BADGE[jo.status] ?? STATUS_BADGE["received"]}`}
+                      >
+                        {STATUS_LABELS[jo.status] ?? jo.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`rounded-full ${PRIORITY_BADGE[jo.priority] ?? PRIORITY_BADGE["medium"]}`}
+                      >
+                        {jo.priority}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {technicianLabel(jo.technician)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {jo.createdAt.toLocaleDateString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

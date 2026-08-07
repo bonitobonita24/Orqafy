@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { JobOrderLineItems } from "./job-order-line-items";
 import { JobOrderStatusActions } from "./job-order-status-actions";
 import { SignaturePad } from "./signature-pad";
@@ -115,52 +118,60 @@ export default async function JobOrderDetailPage({ params }: PageProps) {
           <span>/</span>
           <span className="text-foreground">{jobOrder.jobOrderNumber}</span>
         </div>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              {jobOrder.title}
-            </h1>
-            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <span
-                className={`rounded-full border px-2 py-0.5 text-xs font-medium ${statusClass}`}
-              >
-                {jobOrder.status.replace(/_/g, " ")}
-              </span>
-              <span>Priority: {jobOrder.priority}</span>
-              <span>•</span>
-              <span>Customer: {customerLabel(jobOrder.customer)}</span>
+        <PageHeader
+          title={jobOrder.title}
+          description={
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className={`rounded-full ${statusClass}`}>
+                  {jobOrder.status.replace(/_/g, " ")}
+                </Badge>
+                <span>Priority: {jobOrder.priority}</span>
+                <span>•</span>
+                <span>Customer: {customerLabel(jobOrder.customer)}</span>
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-muted-foreground">Technician:</span>
+                <AssignTechnician
+                  jobOrderId={jobOrder.id}
+                  currentTechnicianId={jobOrder.technicianId}
+                  users={users}
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-2 pt-1 text-sm">
-              <span className="text-muted-foreground">Technician:</span>
-              <AssignTechnician
-                jobOrderId={jobOrder.id}
-                currentTechnicianId={jobOrder.technicianId}
-                users={users}
-              />
-            </div>
-          </div>
-          <JobOrderStatusActions
-            jobOrderId={jobOrder.id}
-            currentStatus={jobOrder.status as Parameters<typeof JobOrderStatusActions>[0]["currentStatus"]}
-            hasCustomerSignature={jobOrder.customerSignatureUrl !== null}
-            hasTechnicianSignature={jobOrder.technicianSignatureUrl !== null}
-          />
-        </div>
+          }
+          actions={
+            <JobOrderStatusActions
+              jobOrderId={jobOrder.id}
+              currentStatus={jobOrder.status as Parameters<typeof JobOrderStatusActions>[0]["currentStatus"]}
+              hasCustomerSignature={jobOrder.customerSignatureUrl !== null}
+              hasTechnicianSignature={jobOrder.technicianSignatureUrl !== null}
+            />
+          }
+        />
         {jobOrder.reportedIssue !== "" ? (
-          <div className="rounded-md border border-border bg-card/40 p-3 text-sm">
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">
-              Reported issue
-            </div>
-            <p className="mt-1 whitespace-pre-wrap text-foreground">{jobOrder.reportedIssue}</p>
-          </div>
+          <Card className="bg-card/40">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-normal uppercase tracking-wide text-muted-foreground">
+                Reported issue
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 text-sm">
+              <p className="whitespace-pre-wrap text-foreground">{jobOrder.reportedIssue}</p>
+            </CardContent>
+          </Card>
         ) : null}
         {jobOrder.diagnosis !== null && jobOrder.diagnosis.length > 0 ? (
-          <div className="rounded-md border border-border bg-card/40 p-3 text-sm">
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">
-              Diagnosis
-            </div>
-            <p className="mt-1 whitespace-pre-wrap text-foreground">{jobOrder.diagnosis}</p>
-          </div>
+          <Card className="bg-card/40">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-normal uppercase tracking-wide text-muted-foreground">
+                Diagnosis
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 text-sm">
+              <p className="whitespace-pre-wrap text-foreground">{jobOrder.diagnosis}</p>
+            </CardContent>
+          </Card>
         ) : null}
       </header>
 
@@ -172,9 +183,11 @@ export default async function JobOrderDetailPage({ params }: PageProps) {
         currency={jobOrder.currency}
       />
 
-      <section className="rounded-lg border border-border p-4">
-        <JobOrderAttachments jobOrderId={jobOrder.id} />
-      </section>
+      <Card>
+        <CardContent className="p-4">
+          <JobOrderAttachments jobOrderId={jobOrder.id} />
+        </CardContent>
+      </Card>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
