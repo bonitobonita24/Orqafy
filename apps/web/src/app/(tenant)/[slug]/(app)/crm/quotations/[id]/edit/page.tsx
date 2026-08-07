@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
 import {
   QuotationBuilder,
   type InitialQuotation,
@@ -95,14 +96,10 @@ export default async function EditQuotationPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Edit quotation
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {quotation.quotationNumber} · Draft
-        </p>
-      </div>
+      <PageHeader
+        title="Edit quotation"
+        description={`${quotation.quotationNumber} · Draft`}
+      />
       <QuotationBuilder
         slug={slug}
         customers={customers}

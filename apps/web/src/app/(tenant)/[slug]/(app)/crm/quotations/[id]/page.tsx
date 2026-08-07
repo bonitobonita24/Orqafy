@@ -3,6 +3,18 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 import { formatCurrency } from "@/lib/quotation-build";
+import { PageHeader } from "@/components/layout/page-header";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { QuotationActions } from "./quotation-actions";
 
 export const metadata: Metadata = { title: "Quotation" };
@@ -94,203 +106,211 @@ export default async function QuotationDetailPage({ params }: PageProps) {
         </Link>
       </div>
 
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <h1 className="font-mono text-xl font-bold tracking-tight">
+      <PageHeader
+        title={quotation.title}
+        titleClassName="text-2xl"
+        description={
+          <>
+            <span className="mr-2 inline-flex items-center gap-2 font-mono text-xs font-bold text-foreground">
               {quotation.quotationNumber}
-            </h1>
-            <span
-              className={`inline-flex rounded-full border px-2 py-0.5 text-xs ${statusClass}`}
-            >
-              {statusLabel}
+              <Badge variant="outline" className={`rounded-full ${statusClass}`}>
+                {statusLabel}
+              </Badge>
             </span>
-          </div>
-          <h2 className="text-2xl font-bold tracking-tight">{quotation.title}</h2>
-          <p className="text-sm text-muted-foreground">
+            <br className="sm:hidden" />
             For {customerLabel(quotation.customer)} · Created by {creator} ·{" "}
             {quotation.createdAt.toLocaleDateString()}
             {quotation.validUntil
               ? ` · Valid until ${quotation.validUntil.toLocaleDateString()}`
               : ""}
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <Link
-            href={`/${slug}/crm/quotations/${quotation.id}/pdf`}
-            className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
-          >
-            View PDF
-          </Link>
-          <QuotationActions
-            quotationId={quotation.id}
-            status={quotation.status}
-            convertedToInvoiceId={quotation.convertedToInvoiceId}
-            slug={slug}
-          />
-        </div>
-      </div>
+          </>
+        }
+        actions={
+          <>
+            <Button variant="outline" asChild>
+              <Link href={`/${slug}/crm/quotations/${quotation.id}/pdf`}>View PDF</Link>
+            </Button>
+            <QuotationActions
+              quotationId={quotation.id}
+              status={quotation.status}
+              convertedToInvoiceId={quotation.convertedToInvoiceId}
+              slug={slug}
+            />
+          </>
+        }
+      />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
         <div className="space-y-6">
           {quotation.sections.length === 0 ? (
-            <div className="rounded-lg border border-border bg-card px-6 py-12 text-center text-sm text-muted-foreground">
-              No sections on this quotation.
-            </div>
+            <Card>
+              <CardContent className="px-6 py-12 text-center text-sm text-muted-foreground">
+                No sections on this quotation.
+              </CardContent>
+            </Card>
           ) : (
             quotation.sections.map((section) => (
-              <div key={section.id} className="rounded-lg border border-border bg-card">
+              <Card key={section.id}>
                 <div className="border-b border-border px-4 py-3">
                   <h3 className="font-medium">{section.name}</h3>
                   {section.description !== null && section.description.length > 0 ? (
                     <p className="text-xs text-muted-foreground">{section.description}</p>
                   ) : null}
                 </div>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                      <th className="px-4 py-2 font-medium">Description</th>
-                      <th className="px-4 py-2 text-right font-medium">Qty</th>
-                      <th className="px-4 py-2 font-medium">Unit</th>
-                      <th className="px-4 py-2 text-right font-medium">Base cost</th>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                      <TableHead>Unit</TableHead>
+                      <TableHead className="text-right">Base cost</TableHead>
                       {quotation.markupColumns.map((col) => (
-                        <th
+                        <TableHead
                           key={col.id}
-                          className="px-4 py-2 text-right font-medium"
+                          className="text-right"
                           title={`${col.tier} · ${col.percentage.toString()}%${col.useCeiling ? " (ceiling)" : ""}`}
                         >
                           {col.name}
-                        </th>
+                        </TableHead>
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {section.lineItems.map((li) => (
-                      <tr
-                        key={li.id}
-                        className="border-b border-border last:border-0 hover:bg-muted/30"
-                      >
-                        <td className="px-4 py-2">{li.description}</td>
-                        <td className="px-4 py-2 text-right font-mono">
+                      <TableRow key={li.id}>
+                        <TableCell>{li.description}</TableCell>
+                        <TableCell className="text-right font-mono">
                           {li.quantity.toString()}
-                        </td>
-                        <td className="px-4 py-2 text-xs text-muted-foreground">{li.unit}</td>
-                        <td className="px-4 py-2 text-right font-mono">
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {li.unit}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
                           {formatCurrency(Number(li.baseCost), quotation.currency)}
-                        </td>
+                        </TableCell>
                         {quotation.markupColumns.map((col) => {
                           const markup = li.markups.find(
                             (m) => m.markupColumnId === col.id,
                           );
                           return (
-                            <td key={col.id} className="px-4 py-2 text-right font-mono">
+                            <TableCell key={col.id} className="text-right font-mono">
                               {markup
                                 ? formatCurrency(
                                     Number(markup.markedUpPrice),
                                     quotation.currency,
                                   )
                                 : "—"}
-                            </td>
+                            </TableCell>
                           );
                         })}
-                      </tr>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </TableBody>
+                </Table>
+              </Card>
             ))
           )}
 
-          <div className="rounded-lg border border-border bg-card p-4">
-            <div className="ml-auto max-w-xs space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-mono">
-                  {formatCurrency(Number(quotation.subtotal), quotation.currency)}
-                </span>
+          <Card>
+            <CardContent className="p-4">
+              <div className="ml-auto max-w-xs space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="font-mono">
+                    {formatCurrency(Number(quotation.subtotal), quotation.currency)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tax</span>
+                  <span className="font-mono">
+                    {formatCurrency(Number(quotation.taxAmount), quotation.currency)}
+                  </span>
+                </div>
+                <div className="flex justify-between border-t border-border pt-2 text-base font-semibold">
+                  <span>Total</span>
+                  <span className="font-mono">
+                    {formatCurrency(Number(quotation.totalAmount), quotation.currency)}
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Tax</span>
-                <span className="font-mono">
-                  {formatCurrency(Number(quotation.taxAmount), quotation.currency)}
-                </span>
-              </div>
-              <div className="flex justify-between border-t border-border pt-2 text-base font-semibold">
-                <span>Total</span>
-                <span className="font-mono">
-                  {formatCurrency(Number(quotation.totalAmount), quotation.currency)}
-                </span>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {quotation.notes !== null && quotation.notes.length > 0 ? (
-            <div className="rounded-lg border border-border bg-card p-4">
-              <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Notes
-              </h4>
-              <p className="mt-2 whitespace-pre-wrap text-sm">{quotation.notes}</p>
-            </div>
+            <Card>
+              <CardContent className="p-4">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Notes
+                </h4>
+                <p className="mt-2 whitespace-pre-wrap text-sm">{quotation.notes}</p>
+              </CardContent>
+            </Card>
           ) : null}
 
           {quotation.termsAndConditions !== null
           && quotation.termsAndConditions.length > 0 ? (
-            <div className="rounded-lg border border-border bg-card p-4">
-              <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Terms & Conditions
-              </h4>
-              <p className="mt-2 whitespace-pre-wrap text-sm">
-                {quotation.termsAndConditions}
-              </p>
-            </div>
+            <Card>
+              <CardContent className="p-4">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Terms & Conditions
+                </h4>
+                <p className="mt-2 whitespace-pre-wrap text-sm">
+                  {quotation.termsAndConditions}
+                </p>
+              </CardContent>
+            </Card>
           ) : null}
         </div>
 
         <aside className="space-y-4">
-          <div className="rounded-lg border border-border bg-card p-4">
-            <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Markup columns
-            </h4>
-            {quotation.markupColumns.length === 0 ? (
-              <p className="mt-2 text-sm text-muted-foreground">No markup columns.</p>
-            ) : (
-              <ul className="mt-2 space-y-2 text-sm">
-                {quotation.markupColumns.map((col) => (
-                  <li key={col.id} className="flex justify-between gap-3">
-                    <span>
-                      {col.name}
-                      <span className="ml-1 text-xs text-muted-foreground">
-                        ({col.tier})
+          <Card>
+            <CardContent className="p-4">
+              <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Markup columns
+              </h4>
+              {quotation.markupColumns.length === 0 ? (
+                <p className="mt-2 text-sm text-muted-foreground">No markup columns.</p>
+              ) : (
+                <ul className="mt-2 space-y-2 text-sm">
+                  {quotation.markupColumns.map((col) => (
+                    <li key={col.id} className="flex justify-between gap-3">
+                      <span>
+                        {col.name}
+                        <span className="ml-1 text-xs text-muted-foreground">
+                          ({col.tier})
+                        </span>
                       </span>
-                    </span>
-                    <span className="font-mono text-xs">
-                      {col.percentage.toString()}%{col.useCeiling ? " ⌈⌉" : ""}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                      <span className="font-mono text-xs">
+                        {col.percentage.toString()}%{col.useCeiling ? " ⌈⌉" : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
 
-          <div className="rounded-lg border border-border bg-card p-4">
-            <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Revisions
-            </h4>
-            {quotation.revisions.length === 0 ? (
-              <p className="mt-2 text-sm text-muted-foreground">No revisions yet.</p>
-            ) : (
-              <ul className="mt-2 space-y-2 text-sm">
-                {quotation.revisions.map((rev) => (
-                  <li key={rev.id} className="flex justify-between">
-                    <span>Rev #{rev.revisionNumber}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {rev.createdAt.toLocaleDateString()}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <Card>
+            <CardContent className="p-4">
+              <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Revisions
+              </h4>
+              {quotation.revisions.length === 0 ? (
+                <p className="mt-2 text-sm text-muted-foreground">No revisions yet.</p>
+              ) : (
+                <ul className="mt-2 space-y-2 text-sm">
+                  {quotation.revisions.map((rev) => (
+                    <li key={rev.id} className="flex justify-between">
+                      <span>Rev #{rev.revisionNumber}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {rev.createdAt.toLocaleDateString()}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
         </aside>
       </div>
     </div>
