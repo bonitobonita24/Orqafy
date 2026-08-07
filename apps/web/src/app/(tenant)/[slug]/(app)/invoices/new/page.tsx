@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
 import { InvoiceForm } from "./invoice-form";
 
 export const metadata: Metadata = { title: "New Invoice" };
@@ -53,7 +54,7 @@ export default async function NewInvoicePage({ params }: Props) {
         <span className="text-xs text-muted-foreground">/</span>
         <span className="text-xs text-muted-foreground">New</span>
       </div>
-      <h1 className="text-2xl font-bold tracking-tight">New Invoice</h1>
+      <PageHeader title="New Invoice" />
       <InvoiceForm slug={slug} customers={customers} projects={projects} />
     </div>
   );

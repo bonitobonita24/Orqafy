@@ -1,6 +1,17 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { InvoiceActions } from "./invoice-actions";
 import { InvoiceAttachments } from "./invoice-attachments";
 
@@ -141,86 +152,88 @@ export default async function InvoiceDetailPage({ params }: Props) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight font-mono">
-            {invoice.invoiceNumber}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+      <PageHeader
+        className="sm:items-start"
+        title={invoice.invoiceNumber}
+        titleClassName="font-mono"
+        description={
+          <>
             {customerName}
             {invoice.project !== null && (
               <span className="ml-2 text-muted-foreground/60">
                 · {invoice.project.name}
               </span>
             )}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span
-            className={`rounded-full border px-2 py-0.5 text-xs font-medium ${statusClass}`}
-          >
-            {statusLabel}
-          </span>
-          <InvoiceActions
-            invoiceId={invoice.id}
-            status={invoice.status}
-            outstandingBalance={outstandingBalance}
-            fundSources={fundSources}
-          />
-        </div>
-      </div>
+          </>
+        }
+        actions={
+          <>
+            <Badge variant="outline" className={`rounded-full ${statusClass}`}>
+              {statusLabel}
+            </Badge>
+            <InvoiceActions
+              invoiceId={invoice.id}
+              status={invoice.status}
+              outstandingBalance={outstandingBalance}
+              fundSources={fundSources}
+            />
+          </>
+        }
+      />
 
       {/* Invoice Info */}
-      <div className="rounded-lg border border-border bg-card p-6">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Invoice Details
-        </h2>
-        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div>
-            <dt className="text-xs text-muted-foreground">Due Date</dt>
-            <dd className="mt-0.5 text-sm">{formatDate(invoice.dueDate)}</dd>
-          </div>
-          {invoice.issuedAt !== null && (
+      <Card>
+        <CardContent className="p-6">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Invoice Details
+          </h2>
+          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <dt className="text-xs text-muted-foreground">Issued</dt>
-              <dd className="mt-0.5 text-sm">{formatDate(invoice.issuedAt)}</dd>
+              <dt className="text-xs text-muted-foreground">Due Date</dt>
+              <dd className="mt-0.5 text-sm">{formatDate(invoice.dueDate)}</dd>
+            </div>
+            {invoice.issuedAt !== null && (
+              <div>
+                <dt className="text-xs text-muted-foreground">Issued</dt>
+                <dd className="mt-0.5 text-sm">{formatDate(invoice.issuedAt)}</dd>
+              </div>
+            )}
+            {invoice.paidAt !== null && (
+              <div>
+                <dt className="text-xs text-muted-foreground">Paid</dt>
+                <dd className="mt-0.5 text-sm">{formatDate(invoice.paidAt)}</dd>
+              </div>
+            )}
+            <div>
+              <dt className="text-xs text-muted-foreground">Created By</dt>
+              <dd className="mt-0.5 text-sm">
+                {invoice.createdBy.firstName} {invoice.createdBy.lastName}
+              </dd>
+            </div>
+            {invoice.customer.email !== null && (
+              <div>
+                <dt className="text-xs text-muted-foreground">Customer Email</dt>
+                <dd className="mt-0.5 text-sm">{invoice.customer.email}</dd>
+              </div>
+            )}
+            {invoice.customer.phone !== null && (
+              <div>
+                <dt className="text-xs text-muted-foreground">Customer Phone</dt>
+                <dd className="mt-0.5 text-sm">{invoice.customer.phone}</dd>
+              </div>
+            )}
+          </dl>
+          {invoice.notes !== null && (
+            <div className="mt-4 border-t border-border pt-4">
+              <dt className="text-xs text-muted-foreground">Notes</dt>
+              <dd className="mt-0.5 text-sm text-muted-foreground">{invoice.notes}</dd>
             </div>
           )}
-          {invoice.paidAt !== null && (
-            <div>
-              <dt className="text-xs text-muted-foreground">Paid</dt>
-              <dd className="mt-0.5 text-sm">{formatDate(invoice.paidAt)}</dd>
-            </div>
-          )}
-          <div>
-            <dt className="text-xs text-muted-foreground">Created By</dt>
-            <dd className="mt-0.5 text-sm">
-              {invoice.createdBy.firstName} {invoice.createdBy.lastName}
-            </dd>
-          </div>
-          {invoice.customer.email !== null && (
-            <div>
-              <dt className="text-xs text-muted-foreground">Customer Email</dt>
-              <dd className="mt-0.5 text-sm">{invoice.customer.email}</dd>
-            </div>
-          )}
-          {invoice.customer.phone !== null && (
-            <div>
-              <dt className="text-xs text-muted-foreground">Customer Phone</dt>
-              <dd className="mt-0.5 text-sm">{invoice.customer.phone}</dd>
-            </div>
-          )}
-        </dl>
-        {invoice.notes !== null && (
-          <div className="mt-4 border-t border-border pt-4">
-            <dt className="text-xs text-muted-foreground">Notes</dt>
-            <dd className="mt-0.5 text-sm text-muted-foreground">{invoice.notes}</dd>
-          </div>
-        )}
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Line Items */}
-      <div className="rounded-lg border border-border bg-card">
+      <Card>
         <div className="border-b border-border px-6 py-4">
           <h2 className="text-sm font-semibold">Line Items</h2>
         </div>
@@ -229,35 +242,32 @@ export default async function InvoiceDetailPage({ params }: Props) {
             No line items.
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Description</th>
-                <th className="px-4 py-3 font-medium text-right">Qty</th>
-                <th className="px-4 py-3 font-medium text-right">Unit Price</th>
-                <th className="px-4 py-3 font-medium text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Description</TableHead>
+                <TableHead className="text-right">Qty</TableHead>
+                <TableHead className="text-right">Unit Price</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {lineItems.map((item, idx) => (
-                <tr
-                  key={idx}
-                  className="border-b border-border last:border-0"
-                >
-                  <td className="px-4 py-3">{item.description}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">
+                <TableRow key={idx}>
+                  <TableCell>{item.description}</TableCell>
+                  <TableCell className="text-right tabular-nums">
                     {item.quantity}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
                     {formatCurrency(item.unitPrice, invoice.currency)}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
                     {formatCurrency(item.quantity * item.unitPrice, invoice.currency)}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
 
         {/* Totals */}
@@ -301,15 +311,17 @@ export default async function InvoiceDetailPage({ params }: Props) {
             )}
           </dl>
         </div>
-      </div>
+      </Card>
 
       {/* Attachments */}
-      <div className="rounded-lg border border-border bg-card p-6">
-        <InvoiceAttachments invoiceId={invoice.id} />
-      </div>
+      <Card>
+        <CardContent className="p-6">
+          <InvoiceAttachments invoiceId={invoice.id} />
+        </CardContent>
+      </Card>
 
       {/* Payments History */}
-      <div className="rounded-lg border border-border bg-card">
+      <Card>
         <div className="border-b border-border px-6 py-4">
           <h2 className="text-sm font-semibold">
             Payment History
@@ -323,49 +335,46 @@ export default async function InvoiceDetailPage({ params }: Props) {
             No payments recorded yet.
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Date</th>
-                <th className="px-4 py-3 font-medium text-right">Amount</th>
-                <th className="px-4 py-3 font-medium">Method</th>
-                <th className="px-4 py-3 font-medium">Reference</th>
-                <th className="px-4 py-3 font-medium">Fund Source</th>
-                <th className="px-4 py-3 font-medium">Recorded By</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Method</TableHead>
+                <TableHead>Reference</TableHead>
+                <TableHead>Fund Source</TableHead>
+                <TableHead>Recorded By</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {completedPayments.map((payment) => (
-                <tr
-                  key={payment.id}
-                  className="border-b border-border last:border-0"
-                >
-                  <td className="px-4 py-3 text-muted-foreground">
+                <TableRow key={payment.id}>
+                  <TableCell className="text-muted-foreground">
                     {formatDate(payment.paidAt)}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-primary">
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-primary">
                     {formatCurrency(payment.amount, payment.currency)}
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell>
                     {METHOD_LABELS[payment.method] ?? payment.method}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                  </TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
                     {payment.referenceNumber !== null ? payment.referenceNumber : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
                     {payment.fundSource !== null ? payment.fundSource.name : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
                     {payment.recordedBy !== null
                       ? `${payment.recordedBy.firstName} ${payment.recordedBy.lastName}`
                       : "—"}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

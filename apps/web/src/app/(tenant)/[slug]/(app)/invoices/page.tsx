@@ -1,7 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { FileText } from "lucide-react";
 import { prisma } from "@orqafy/db";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const metadata: Metadata = { title: "Invoices" };
 
@@ -93,91 +107,90 @@ export default async function InvoicesPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Invoices</h1>
-          <p className="text-sm text-muted-foreground">
+      <PageHeader
+        title="Invoices"
+        description={
+          <>
             {invoices.length} total · {paidCount} paid ·{" "}
             <span className="text-foreground">
               {formatCurrency(outstanding, "PHP")} outstanding
             </span>
-          </p>
-        </div>
-        <Link
-          href={`/${slug}/invoices/new`}
-          className="px-4 py-2 rounded-md bg-primary text-[#050507] text-sm font-medium hover:bg-primary/90 transition-colors"
-        >
-          New Invoice
-        </Link>
-      </div>
+          </>
+        }
+        actions={
+          <Button asChild>
+            <Link href={`/${slug}/invoices/new`}>New Invoice</Link>
+          </Button>
+        }
+      />
 
-      <div className="rounded-lg border border-border bg-card">
-        {invoices.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-            No invoices yet.
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Invoice #</th>
-                <th className="px-4 py-3 font-medium">Customer</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium text-right">Total</th>
-                <th className="px-4 py-3 font-medium text-right">Balance</th>
-                <th className="px-4 py-3 font-medium">Due</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoices.map((inv) => {
-                const statusClass =
-                  STATUS_COLORS[inv.status] ??
-                  "text-muted-foreground bg-muted border-border";
-                const statusLabel = STATUS_LABELS[inv.status] ?? inv.status;
-                const customerName =
-                  inv.customer.companyName ??
-                  `${inv.customer.firstName} ${inv.customer.lastName}`;
-                return (
-                  <tr
-                    key={inv.id}
-                    className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                  >
-                    <td className="px-4 py-3 font-mono text-xs">
-                      <Link
-                        href={`/${slug}/invoices/${inv.id}`}
-                        className="text-primary hover:underline"
-                      >
-                        {inv.invoiceNumber}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium">{customerName}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full border px-2 py-0.5 text-xs font-medium ${statusClass}`}
-                      >
-                        {statusLabel}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      {formatCurrency(inv.totalAmount, inv.currency)}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                      {Number(inv.balance) > 0
-                        ? formatCurrency(inv.balance, inv.currency)
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {formatDate(inv.dueDate)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          {invoices.length === 0 ? (
+            <div className="p-6">
+              <EmptyState icon={FileText} title="No invoices yet." />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Invoice #</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">Balance</TableHead>
+                  <TableHead>Due</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invoices.map((inv) => {
+                  const statusClass =
+                    STATUS_COLORS[inv.status] ??
+                    "text-muted-foreground bg-muted border-border";
+                  const statusLabel = STATUS_LABELS[inv.status] ?? inv.status;
+                  const customerName =
+                    inv.customer.companyName ??
+                    `${inv.customer.firstName} ${inv.customer.lastName}`;
+                  return (
+                    <TableRow key={inv.id}>
+                      <TableCell className="font-mono text-xs">
+                        <Link
+                          href={`/${slug}/invoices/${inv.id}`}
+                          className="text-primary hover:underline"
+                        >
+                          {inv.invoiceNumber}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{customerName}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`rounded-full ${statusClass}`}
+                        >
+                          {statusLabel}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatCurrency(inv.totalAmount, inv.currency)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {Number(inv.balance) > 0
+                          ? formatCurrency(inv.balance, inv.currency)
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(inv.dueDate)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
