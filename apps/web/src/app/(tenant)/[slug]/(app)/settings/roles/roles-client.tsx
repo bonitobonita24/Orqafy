@@ -3,13 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { Plus, ShieldCheck } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { FEATURE_KEYS, type FeatureKey } from "@orqafy/shared/rbac";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -19,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 const ACTIONS = ["view", "create", "update", "delete"] as const;
 type Action = (typeof ACTIONS)[number];
@@ -102,6 +106,15 @@ function featureLabel(key: FeatureKey): string {
   return featureLabels[key] ?? key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Permission count summary for a role — presentational only, derived purely
+// from the role's own `permissions` array (no new data fetched).
+function countGranted(permissions: PermissionRow[]): number {
+  return permissions.reduce(
+    (sum, row) => sum + (row.view ? 1 : 0) + (row.create ? 1 : 0) + (row.update ? 1 : 0) + (row.delete ? 1 : 0),
+    0,
+  );
+}
+
 // ── Permission matrix editor ────────────────────────────────────────────────
 // Mounted fresh (via `key`) per selection, so its local state initializes
 // once from `initial` with no effect/sync needed to react to selection changes.
@@ -163,9 +176,14 @@ function RoleEditor({
           />
         </div>
       ) : (
-        <div>
-          <p className="text-sm font-medium">{name}</p>
-          <p className="text-xs text-muted-foreground">Editing permissions for this custom role.</p>
+        <div className="flex items-center gap-2">
+          <div className="flex size-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+            <ShieldCheck className="size-4" />
+          </div>
+          <div>
+            <p className="text-sm font-medium leading-tight">{name}</p>
+            <p className="text-xs text-muted-foreground">Editing permissions for this custom role.</p>
+          </div>
         </div>
       )}
 
@@ -189,20 +207,22 @@ function RoleEditor({
                   <TableCell className="font-medium">
                     {featureLabel(featureKey)}
                     {forbidden && (
-                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                      <Badge
+                        variant="outline"
+                        className="ml-2 border-border bg-muted text-[10px] font-normal text-muted-foreground"
+                      >
                         Reserved for owner
-                      </span>
+                      </Badge>
                     )}
                   </TableCell>
                   {ACTIONS.map((action) => (
                     <TableCell key={action} className="text-center">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         disabled={forbidden}
                         checked={forbidden ? false : matrix[featureKey][action]}
-                        onChange={() => toggleCell(featureKey, action)}
+                        onCheckedChange={() => toggleCell(featureKey, action)}
                         aria-label={`${featureLabel(featureKey)} — ${action}`}
-                        className="size-4 rounded border-input accent-primary disabled:cursor-not-allowed disabled:opacity-40"
+                        className="mx-auto"
                       />
                     </TableCell>
                   ))}
@@ -289,9 +309,20 @@ export function RolesClient() {
 
   if (isPending) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-9 w-64" />
-        <Skeleton className="h-64 w-full" />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
+        <Card className="h-fit">
+          <CardContent className="space-y-3 p-4">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <Skeleton className="h-64 w-full" />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -299,98 +330,122 @@ export function RolesClient() {
   const isSaving = createMut.isPending || updateMut.isPending || deleteMut.isPending;
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
       {/* Left: role list */}
-      <Card className="h-fit p-4">
-        <p className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Custom roles
-        </p>
-        <div className="space-y-1">
-          {editableRoles.length === 0 && (
-            <p className="text-sm text-muted-foreground">No custom roles yet.</p>
-          )}
-          {editableRoles.map((role) => (
-            <button
-              key={role.id}
-              type="button"
-              onClick={() => setSelection({ kind: "existing", roleId: role.id })}
-              className={`block w-full rounded-md px-3 py-1.5 text-left text-sm ${
-                selection?.kind === "existing" && selection.roleId === role.id
-                  ? "bg-primary/10 font-medium text-primary"
-                  : "text-foreground hover:bg-muted/40"
-              }`}
-            >
-              {role.name}
-            </button>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setSelection({ kind: "new" })}
-          className={`mt-3 flex w-full items-center gap-1.5 rounded-md border border-dashed px-3 py-1.5 text-xs ${
-            selection?.kind === "new"
-              ? "border-primary text-primary"
-              : "border-border text-muted-foreground hover:border-primary hover:text-primary"
-          }`}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          New role
-        </button>
-
-        {systemRoles.length > 0 && (
-          <>
-            <p className="mb-2 mt-5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              System roles
-            </p>
-            <div className="space-y-1">
-              {systemRoles.map((role) => (
-                <div
+      <Card className="h-fit">
+        <CardHeader className="p-4 pb-0">
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Custom roles
+          </p>
+        </CardHeader>
+        <CardContent className="p-4 pt-3">
+          <div className="space-y-1.5">
+            {editableRoles.length === 0 && (
+              <p className="text-sm text-muted-foreground">No custom roles yet.</p>
+            )}
+            {editableRoles.map((role) => {
+              const isSelected = selection?.kind === "existing" && selection.roleId === role.id;
+              const granted = countGranted(role.permissions);
+              return (
+                <button
                   key={role.id}
-                  className="flex items-center justify-between rounded-md px-3 py-1.5 text-sm text-muted-foreground"
+                  type="button"
+                  onClick={() => setSelection({ kind: "existing", roleId: role.id })}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition-colors",
+                    isSelected
+                      ? "border-primary/30 bg-primary/10 font-medium text-primary"
+                      : "border-transparent text-foreground hover:bg-muted/40",
+                  )}
                 >
-                  <span>{role.name}</span>
-                  <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-medium">
-                    system
-                  </span>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+                  <span className="truncate">{role.name}</span>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "shrink-0 text-[10px] font-normal",
+                      isSelected
+                        ? "border-primary/30 bg-primary/10 text-primary"
+                        : "border-border bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {granted}
+                  </Badge>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setSelection({ kind: "new" })}
+            className={cn(
+              "mt-3 flex w-full items-center gap-1.5 rounded-md border border-dashed px-3 py-1.5 text-xs",
+              selection?.kind === "new"
+                ? "border-primary text-primary"
+                : "border-border text-muted-foreground hover:border-primary hover:text-primary",
+            )}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New role
+          </button>
+
+          {systemRoles.length > 0 && (
+            <>
+              <Separator className="my-4" />
+              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                System roles
+              </p>
+              <div className="space-y-1">
+                {systemRoles.map((role) => (
+                  <div
+                    key={role.id}
+                    className="flex items-center justify-between rounded-md px-3 py-1.5 text-sm text-muted-foreground"
+                  >
+                    <span>{role.name}</span>
+                    <Badge variant="outline" className="border-border bg-muted text-[10px] font-medium">
+                      system
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </CardContent>
       </Card>
 
       {/* Right: permission matrix editor */}
-      <Card className="p-5">
-        {selection === null && (
-          <p className="text-sm text-muted-foreground">
-            Select a custom role to edit, or create a new one.
-          </p>
-        )}
+      <Card>
+        <CardContent className="p-5">
+          {selection === null && (
+            <p className="text-sm text-muted-foreground">
+              Select a custom role to edit, or create a new one.
+            </p>
+          )}
 
-        {selection?.kind === "new" && (
-          <RoleEditor
-            key="new"
-            initial={{ mode: "new" }}
-            onCreate={(data) => createMut.mutate(data)}
-            onUpdate={() => undefined}
-            onCancel={() => setSelection(null)}
-            isSaving={isSaving}
-          />
-        )}
+          {selection?.kind === "new" && (
+            <RoleEditor
+              key="new"
+              initial={{ mode: "new" }}
+              onCreate={(data) => createMut.mutate(data)}
+              onUpdate={() => undefined}
+              onCancel={() => setSelection(null)}
+              isSaving={isSaving}
+            />
+          )}
 
-        {selection?.kind === "existing" && selectedRole && (
-          <RoleEditor
-            key={selectedRole.id}
-            initial={{ mode: "existing", role: selectedRole }}
-            onCreate={() => undefined}
-            onUpdate={(data) => updateMut.mutate(data)}
-            onCancel={() => setSelection(null)}
-            isSaving={isSaving}
-            onDelete={() => deleteMut.mutate({ roleId: selectedRole.id })}
-            isDeleting={deleteMut.isPending}
-          />
-        )}
+          {selection?.kind === "existing" && selectedRole && (
+            <RoleEditor
+              key={selectedRole.id}
+              initial={{ mode: "existing", role: selectedRole }}
+              onCreate={() => undefined}
+              onUpdate={(data) => updateMut.mutate(data)}
+              onCancel={() => setSelection(null)}
+              isSaving={isSaving}
+              onDelete={() => deleteMut.mutate({ roleId: selectedRole.id })}
+              isDeleting={deleteMut.isPending}
+            />
+          )}
+        </CardContent>
       </Card>
     </div>
   );

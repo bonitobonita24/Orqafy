@@ -4,6 +4,8 @@ import { createServerCaller } from "@/server/trpc/server";
 import { guardPage } from "@/server/rbac/guard-page";
 import { auth } from "@/server/auth";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -18,6 +20,13 @@ import { TransferOwnership } from "./transfer-ownership";
 export const metadata: Metadata = { title: "Users" };
 
 export const dynamic = "force-dynamic";
+
+function initials(displayName: string): string {
+  const parts = displayName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return `${parts[0]![0]}${parts[parts.length - 1]![0]}`.toUpperCase();
+}
 
 export default async function UsersSettingsPage({
   params,
@@ -63,18 +72,20 @@ export default async function UsersSettingsPage({
       </div>
 
       {isCurrentUserOwner && (
-        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-          <div>
+        <Card>
+          <CardHeader className="pb-0">
             <h2 className="text-sm font-medium">Ownership</h2>
             <p className="text-xs text-muted-foreground">
               You are the tenant owner. Transfer ownership to another member.
             </p>
-          </div>
-          <TransferOwnership candidates={candidates} />
-        </div>
+          </CardHeader>
+          <CardContent className="pt-3">
+            <TransferOwnership candidates={candidates} />
+          </CardContent>
+        </Card>
       )}
 
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <Card className="overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -86,59 +97,67 @@ export default async function UsersSettingsPage({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell className="font-medium">
-                  {user.displayName ?? `${user.firstName} ${user.lastName}`.trim()}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {user.email}
-                </TableCell>
-                <TableCell>
-                  <span className="text-xs text-muted-foreground">
-                    {user.role?.name ?? "—"}
-                  </span>
-                  {user.isTenantOwner && (
-                    <Badge
-                      variant="outline"
-                      className="ml-2 border-primary/30 bg-primary/10 text-primary text-xs"
-                    >
-                      Owner
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {user.isActive ? (
-                    <Badge
-                      variant="outline"
-                      className="border-primary/30 bg-primary/10 text-primary text-xs"
-                    >
-                      Active
-                    </Badge>
-                  ) : (
-                    <Badge
-                      variant="outline"
-                      className="border-border bg-muted text-muted-foreground text-xs"
-                    >
-                      Inactive
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                  {user.isActive ? (
-                    <DeactivateButton
-                      userId={user.id}
-                      displayName={
-                        user.displayName ??
-                        `${user.firstName} ${user.lastName}`.trim()
-                      }
-                    />
-                  ) : (
-                    <span className="text-xs text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
+            {users.map((user) => {
+              const displayName =
+                user.displayName ?? `${user.firstName} ${user.lastName}`.trim();
+              return (
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2.5">
+                      <Avatar className="h-7 w-7">
+                        <AvatarFallback className="text-[10px] font-medium">
+                          {initials(displayName || user.email)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>{displayName}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {user.email}
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-xs text-muted-foreground">
+                      {user.role?.name ?? "—"}
+                    </span>
+                    {user.isTenantOwner && (
+                      <Badge
+                        variant="outline"
+                        className="ml-2 border-primary/30 bg-primary/10 text-primary text-xs"
+                      >
+                        Owner
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {user.isActive ? (
+                      <Badge
+                        variant="outline"
+                        className="border-primary/30 bg-primary/10 text-primary text-xs"
+                      >
+                        Active
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="border-border bg-muted text-muted-foreground text-xs"
+                      >
+                        Inactive
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {user.isActive ? (
+                      <DeactivateButton
+                        userId={user.id}
+                        displayName={displayName}
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
             {users.length === 0 && (
               <TableRow>
                 <TableCell
@@ -151,7 +170,7 @@ export default async function UsersSettingsPage({
             )}
           </TableBody>
         </Table>
-      </div>
+      </Card>
 
       {total > 50 && (
         <p className="text-xs text-muted-foreground text-center">

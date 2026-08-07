@@ -4,6 +4,8 @@ import { Building2, CreditCard, FolderTree, Mail, ShieldCheck, Tag, Users } from
 import { prisma } from "@orqafy/db";
 import { guardPage } from "@/server/rbac/guard-page";
 import { auth } from "@/server/auth";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -104,35 +106,37 @@ export default async function SettingsPage({
       </div>
 
       {/* Workspace context card */}
-      <div className="rounded-lg border border-border bg-card px-6 py-5">
-        <p className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Workspace
-        </p>
-        <div className="flex flex-wrap gap-8">
-          <div>
-            <p className="text-xs text-muted-foreground">Name</p>
-            <p className="mt-0.5 font-medium">{tenant?.name ?? "—"}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Slug</p>
-            <p className="mt-0.5 font-mono text-xs">{tenant?.slug ?? "—"}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Status</p>
-            <div className="mt-0.5">
-              {tenant?.status === "active" ? (
-                <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                  Active
-                </span>
-              ) : (
-                <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                  {tenant?.status ?? "—"}
-                </span>
-              )}
+      <Card>
+        <CardContent className="px-6 py-5">
+          <p className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Workspace
+          </p>
+          <div className="flex flex-wrap gap-8">
+            <div>
+              <p className="text-xs text-muted-foreground">Name</p>
+              <p className="mt-0.5 font-medium">{tenant?.name ?? "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Slug</p>
+              <p className="mt-0.5 font-mono text-xs">{tenant?.slug ?? "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Status</p>
+              <div className="mt-0.5">
+                {tenant?.status === "active" ? (
+                  <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+                    Active
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-border bg-muted text-muted-foreground">
+                    {tenant?.status ?? "—"}
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Configuration areas */}
       <div>
@@ -143,24 +147,28 @@ export default async function SettingsPage({
           {cards.map((card) => {
             const Icon = card.icon;
             const inner = (
-              <div className="flex h-full flex-col rounded-lg border border-border bg-card p-5 transition-colors hover:bg-muted/20">
-                <Icon className="h-5 w-5 text-muted-foreground" />
-                <p className="mt-3 font-medium">{card.title}</p>
-                <p className="mt-1 flex-1 text-sm text-muted-foreground">
-                  {card.description}
-                </p>
-                <div className="mt-4 flex justify-end">
-                  {card.live ? (
-                    <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                      Live
-                    </span>
-                  ) : (
-                    <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                      Coming soon
-                    </span>
-                  )}
-                </div>
-              </div>
+              <Card className="h-full transition-colors hover:bg-muted/20">
+                <CardContent className="flex h-full flex-col p-5">
+                  <div className="flex size-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <p className="mt-3 font-medium">{card.title}</p>
+                  <p className="mt-1 flex-1 text-sm text-muted-foreground">
+                    {card.description}
+                  </p>
+                  <div className="mt-4 flex justify-end">
+                    {card.live ? (
+                      <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+                        Live
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-border bg-muted text-muted-foreground">
+                        Coming soon
+                      </Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             );
 
             return card.live && card.href !== null ? (
