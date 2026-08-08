@@ -168,4 +168,22 @@ describe("middleware public paths", () => {
     const { isPublic } = await import("@/lib/public-paths");
     expect(isPublic("/dashboard")).toBe(false);
   });
+
+  // SEO infrastructure + public marketing surfaces must be crawler-reachable
+  // without auth, else the auth middleware 307-redirects them to /login and
+  // search engines can never read the robots directives / sitemap. (Rule 35)
+  it("allows /robots.txt as a public path", async () => {
+    const { isPublic } = await import("@/lib/public-paths");
+    expect(isPublic("/robots.txt")).toBe(true);
+  });
+
+  it("allows /sitemap.xml as a public path", async () => {
+    const { isPublic } = await import("@/lib/public-paths");
+    expect(isPublic("/sitemap.xml")).toBe(true);
+  });
+
+  it("allows /privacy (public policy page, indexable) as a public path", async () => {
+    const { isPublic } = await import("@/lib/public-paths");
+    expect(isPublic("/privacy")).toBe(true);
+  });
 });
