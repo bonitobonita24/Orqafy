@@ -1,7 +1,7 @@
 # Stage 1 — install dependencies
 FROM node:22-alpine AS deps
 WORKDIR /app
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.11.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/shared/package.json ./packages/shared/
@@ -15,7 +15,7 @@ RUN pnpm install --frozen-lockfile
 # Stage 2 — build
 FROM node:22-alpine AS builder
 WORKDIR /app
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.11.0
 COPY --from=deps /app/ ./
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
