@@ -64,3 +64,13 @@ no RSC errors). DECISIONS_LOG record `e761e4c`. Branch feat/admincn-adoption = 3
 3. Merge feat/admincn-adoption (+ feat/seo-foundation + framework-sync branch) → local main → owner's call (HARD HOLD).
 4. Pre-existing (NOT AdminCN): notifications realtime — /api/sse Valkey "Stream isn't writeable" + notification.list conn errors → separate triage.
 Reminders: restart Claude Code (V32.45.1 hooks); repo carries paid AdminCN slice → keep private.
+
+---
+
+## MERGED TO LOCAL MAIN (owner "merge it to main", 2026-08-08) — NOT pushed
+`feat/admincn-adoption` FF'd into `main` (framework V32.45.1 + full AdminCN), then `feat/seo-foundation` merged
+(2 overlapping layout files auto-combined cleanly: root layout.tsx = ThemeProvider + metadataBase/OG; (app)/layout.tsx
+= SidebarProvider shell + noindex). main HEAD `8cfa127`, typecheck + build GREEN. main is **68 commits ahead of
+origin/main — LOCAL only, HARD HOLD (NOT pushed).** Merged branches retained (optional `git branch -d` cleanup).
+Pending owner: storefront shop-design · E DESIGN.md/MOCKUP re-baseline sign-off · push→staging when ready ·
+pre-existing notifications/Valkey realtime bug. Restart Claude Code for V32.45.1 hooks; repo carries paid AdminCN slice → private.
