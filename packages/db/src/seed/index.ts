@@ -10,22 +10,35 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Seeding database...');
 
-  // ── Demo tenant (must exist before roles/users — they reference tenantId) ──
+  // ── Seed configuration (env-parameterized; defaults = dev values, fully
+  //   backward-compatible — dev/staging/demo seeds behave exactly as before).
+  //   Prod first stand-up sets SEED_TENANT_SLUG/NAME + SEED_SUPERADMIN_EMAIL and
+  //   APP_ENV=production, which yields an 'active' tenant with the owner account
+  //   only and NO demo showcase data. ──
+  const appEnv = process.env['APP_ENV'] ?? 'development';
+  const isProd = appEnv === 'production';
+  const tenantSlug = process.env['SEED_TENANT_SLUG'] ?? 'demo';
+  const tenantName = process.env['SEED_TENANT_NAME'] ?? 'Orqafy Demo';
+  const tenantSchema = `t_${tenantSlug}`;
+  const tenantStatus = process.env['SEED_TENANT_STATUS'] ?? (isProd ? 'active' : 'demo');
+  const superAdminEmail = process.env['SEED_SUPERADMIN_EMAIL'] ?? 'webmaster@orqafy.local';
+
+  // ── Primary tenant (must exist before roles/users — they reference tenantId) ──
   const demoTenant = await prisma.tenant.upsert({
-    where: { slug: 'demo' },
+    where: { slug: tenantSlug },
     update: {},
     create: {
-      name: 'Orqafy Demo',
-      slug: 'demo',
-      schemaName: 't_demo',
-      status: 'demo',
+      name: tenantName,
+      slug: tenantSlug,
+      schemaName: tenantSchema,
+      status: tenantStatus,
       maxUsers: 999,
       currency: 'PHP',
       timezone: 'Asia/Manila',
       locale: 'en-PH',
     },
   });
-  console.log(`  ✅ Demo tenant created (id: ${demoTenant.id})`);
+  console.log(`  ✅ Tenant created (slug: ${tenantSlug}, id: ${demoTenant.id}, status: ${tenantStatus})`);
 
   // ── Roles (canonical set shared with tenant provisioning — see ./roles.ts) ──
   const roleData = STANDARD_ROLES;
@@ -96,13 +109,13 @@ async function main() {
     throw new Error('tenant_super_admin role not found');
   }
 
-  // Webmaster lives in public.users (User model is @@schema("public")).
+  // Super admin lives in public.users (User model is @@schema("public")).
   // Prisma upsert respects @@schema mapping, so this targets public regardless of current search_path.
   await prisma.user.upsert({
-    where: { email: 'webmaster@orqafy.local' },
+    where: { email: superAdminEmail },
     update: {},
     create: {
-      email: 'webmaster@orqafy.local',
+      email: superAdminEmail,
       passwordHash,
       firstName: 'Web',
       lastName: 'Master',
@@ -114,7 +127,7 @@ async function main() {
       isTenantOwner: true,
     },
   });
-  console.log('  ✅ Webmaster account seeded (webmaster@orqafy.local)');
+  console.log(`  ✅ Super admin account seeded (${superAdminEmail})`);
 
   // ── DEV-ONLY standardized login accounts ──
   // Owner directive: predictable weak credentials for local development ONLY.
@@ -122,7 +135,6 @@ async function main() {
   // env via process.env (tsx loads packages/db/.env, which is the dev env file
   // and intentionally omits APP_ENV — absent ⇒ development). Any non-dev value
   // (staging/production) skips this block entirely.
-  const appEnv = process.env['APP_ENV'] ?? 'development';
   const isDevEnv = appEnv !== 'staging' && appEnv !== 'production';
   if (isDevEnv) {
     // admin@mail.com / admin — full tenant super admin (same role as webmaster)
@@ -218,15 +230,21 @@ async function main() {
   //   accounts auto-mapped. Shared with tenant provisioning so demo == real tenants. ──
   const fin = await provisionTenantFinancials(prisma, {
     tenantId: demoTenant.id,
-    schemaName: 't_demo',
+    schemaName: tenantSchema,
   });
   console.log(
     `  ✅ Finance baseline seeded (${fin.accountsSeeded} accounts, ${fin.statutorySeeded} statutory rates, defaults auto-mapped)`,
   );
 
   // ── Demo showcase: populate every module with realistic dummy data so a
-  //   reviewer sees each list-page filled (idempotent; per-module guarded). ──
-  await seedDemoShowcase(prisma, demoTenant.id);
+  //   reviewer sees each list-page filled (idempotent; per-module guarded).
+  //   GATED: never runs in production — a real prod tenant must stay empty
+  //   (owner account only). Dev/staging/demo behave exactly as before. ──
+  if (isProd) {
+    console.log('  ⏭️  Demo showcase skipped (APP_ENV=production — real tenant stays empty)');
+  } else {
+    await seedDemoShowcase(prisma, demoTenant.id);
+  }
 
   console.log('\n✅ Seeding complete!');
 }
