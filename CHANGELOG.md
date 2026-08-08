@@ -4,6 +4,15 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.12.1 — 2026-08-08
+
+### [FIXED]
+- pin pnpm to 10.11.0 in web+worker images (`d7fc629`)
+
+### [DOCS]
+- 2026-08-08 build program + gitignore paid _tempfiles (`d95569f`)
+
+
 ## v0.12.0 — 2026-08-08
 
 ### [FEATURE]
