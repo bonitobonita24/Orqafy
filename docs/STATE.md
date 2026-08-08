@@ -1,7 +1,53 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-08-08 by CLAUDE_CODE (Wave 0 ship: main PUSHED @ e528326 v0.12.2; staging+demo LIVE on orqafy.com; PROD pending owner inputs.)
+> Last updated: 2026-08-08 by CLAUDE_CODE (Wave 0 COMPLETE: PROD LIVE @ orqafy.com; staging+demo LIVE; e528326 v0.12.2.)
+
+---
+
+## ⭐ SESSION 2026-08-08 (LATE PM) — PROD first stand-up COMPLETE → https://orqafy.com LIVE
+
+Owner-authorized irreversible first stand-up (super_admin = webmaster@powerbyteitsolutions.com confirmed).
+
+**✅ DONE — PROD LIVE + verified end-to-end:**
+- **Seed prod-safe fix** (`fix/seed-prod-safe` branch, commit `b8bc912`, LOCAL/UNMERGED, HARD HOLD):
+  `packages/db/src/seed/index.ts` — gate `seedDemoShowcase()` behind `APP_ENV !== 'production'`; parameterize
+  tenant + super admin via env (`SEED_TENANT_SLUG/NAME`, `SEED_SUPERADMIN_EMAIL`, `SEED_TENANT_STATUS`;
+  defaults = dev values, backward-compatible; prod status→'active', schemaName→`t_<slug>`). Verified vs 2
+  throwaway DBs: prod path = 1 tenant(powerbyte/active)+1 super admin+13 roles+5 plans+0 showcase rows; dev
+  default = demo tenant + dev accounts + showcase (products=8). typecheck+lint clean.
+- **Stack** `/etc/komodo/stacks/orqafy-prod/` (5 compose files copied from staging + `.env` built server-side,
+  49 keys, mode 600). Network `orqafy_prod_network` created. Ports: **DB 5444** (5441 taken by ferrybook →
+  changed), redis 6388, minio 9020/9021. Fresh secrets generated server-side (DB/REDIS/AUTH_SECRET/
+  APP_ENCRYPTION_KEY[base64-32, boot health-check passed]/MOBILE_JWT_SECRET[64ch]/STORAGE_*). Copied from
+  staging: TELEGRAM_* (shared channel), WEBMASTER_PASSWORD (staging_prod vault tier), Turnstile TEST keys.
+- **Image** pinned `APP_IMAGE_TAG=sha-e528326` (same immutable image as staging/demo — no retag).
+- **DNS** Cloudflare zone orqafy.com: A `orqafy.com` + `www` → 72.62.74.203 proxied (created this session).
+- **Migrate** 38 migrations applied via SSH tunnel (manual, `db:migrate:deploy` → "schema up to date").
+- **Seed** prod path run over tunnel → powerbyte tenant + webmaster@powerbyteitsolutions.com owner ONLY.
+- **🐞 Traefik router-name collision fixed:** app compose hardcodes router name `orqafy_staging_app` (NOT
+  env-driven — the STATE plan was wrong). Copying staging verbatim collided with the LIVE staging router →
+  404. Fixed: sed `orqafy_staging_app`→`orqafy_prod_app` in prod docker-compose.app.yml; recreated app.
+  Global lesson candidate: traefik router/service names hardcoded in orqafy app compose (should be
+  `${COMPOSE_PROJECT_NAME}`-scoped) — bit us on demo? (demo worked, so demo's compose differs).
+- **www→apex 301** redirect middleware added (`orqafy_prod_www` router + `wwwredir` redirectregex).
+- **VERIFIED (evidence, Rule 32):** `/api/health`=200 · `/login`=200 · `www`→301→apex(200) · DB row
+  webmaster@powerbyteitsolutions.com active/tenant-owner/tenant_super_admin/powerbyte-active/60ch-bcrypt ·
+  **real end-to-end login POST → 302 /powerbyte/dashboard, session cookie set, no error.**
+  Login: orqafy.com/login, tenantSlug=`powerbyte`, email=webmaster@powerbyteitsolutions.com, pw=vault.
+
+**⏳ REMAINING (0.6 cleanup + owner-gated) — NEXT:**
+1. **[WHAT owner-gated] Merge `fix/seed-prod-safe` → main** = a new release (v0.12.3, version+changelog+push,
+   HARD HOLD). The prod seed used the local branch working-tree; main/CI still have the unconditional seed.
+2. **[HOW] Store prod secrets in vault** (Server-Setups/Powerbyte-Hostinger) — fresh prod DB/REDIS/AUTH/
+   ENC/MOBILE_JWT/STORAGE secrets currently ONLY in server `.env` (disaster-recovery gap). Also MOBILE_JWT_SECRET
+   for staging+demo.
+3. **[HOW] Turnstile** — prod uses staging TEST keys (captcha always-passes = security downgrade). Create an
+   orqafy.com Turnstile site + swap NEXT_PUBLIC_TURNSTILE_SITE_KEY/TURNSTILE_SECRET_KEY.
+4. **[HOW] SMTP** — prod SMTP_HOST=localhost placeholder (no real transactional email). Wire real SMTP.
+5. **[HOW] Rule 39 dev-freshness** — rebuild local DEV off e528326 (app+worker) so dev isn't stale vs prod.
+6. **[HOW] Old *.powerbyte.app** (staging/demo/any prod) → 301 redirects (now 404 after host-rule swap).
+7. **[WHAT standing] RBAC 3-tier retrofit** (Scenario 42) + notifications/Valkey SSE realtime bug triage.
 
 ---
 
