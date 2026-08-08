@@ -1,7 +1,39 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-07-19 by CLAUDE_CODE (SESSION END — saved + rebooting. LOCAL main @ bcb69a4, 26 ahead of origin, UNPUSHED/HARD HOLD. 3 bodies of work this session: (1) gated-queue staging ship (v0.11.0-rc.1 LIVE); (2) 2-feature program uploads-compression+Telegram + mobile-app-made-real; (3) mobile PUSH-sync endpoint built full-stack (server /api/sync/* + mobile client; caught+fixed a WatermelonDB nested-writer runtime deadlock). Web 1418 tests green. GATED QUEUE: push→staging, M7 prod, RBAC slug promotion. OPEN: mobile task-sync needs PULL/down-sync (deferred); tRPC AnyRouter typing; RBAC migration timestamp collision. FULL HANDOFF: .cline/handoffs/2026-07-19-session-end-full.md. Memories: feature_program_compression_mobile_2026-07-19, full_auto_gated_queue_ship_2026-07-19.)
+> Last updated: 2026-08-08 by CLAUDE_CODE (SESSION END — saved. LOCAL main @ d70dabd, 71 ahead of origin, UNPUSHED/HARD HOLD, tree clean.)
+
+---
+
+## ⭐ SESSION 2026-08-08 — resume + verify/ratify AdminCN & SEO, fix SEO middleware bug
+
+**✅ DONE THIS SESSION:**
+- **Owner RATIFIED** (post-hoc) the overnight full-auto work already merged to local main (`8cfa127`):
+  AdminCN full-site adoption (23 authed modules + platform-admin D) + SEO Foundation (Rule 35). Logged
+  in `docs/DECISIONS_LOG.md` (2026-08-08); PENDING_DECISIONS AdminCN + D-SEO items closed.
+- **QA verify-all-pages gate run** (Rule 16/32): typecheck 0 · lint clean · prod build exit 0 ·
+  **1439 web tests pass** (added 3). Live drive via `next start` + demo-login:
+  - SEO: index posture correct per page (public=index, authed/utility=noindex). robots.txt/sitemap.xml/
+    privacy now serve 200 with correct content-types.
+  - AdminCN: dashboard + CRM/inventory/accounting/settings render the idiom (sidebar shell, PageHeader,
+    Card/Table, KPI cards) with real data + `v0.9.0`/Powerbyte white-label footer. **0 console errors**
+    (only cosmetic favicon 404). platform-admin correctly access-gated.
+- **🐞 REAL BUG found + fixed** (`fix(seo)` `775e6ce`, FF-merged to main): `/robots.txt` + `/sitemap.xml`
+  were 307-redirecting crawlers to `/login` — auth middleware allow-list (`isPublic`/`PUBLIC_PATHS`) omitted
+  them, silently defeating the whole SEO retrofit. Added `/robots.txt`,`/sitemap.xml`,`/privacy` to
+  `apps/web/src/lib/public-paths.ts` + 3 unit tests. Global lesson `nextjs.seo.robots-sitemap-blocked-by-auth-middleware`.
+
+**⏳ OPEN [WHAT] (owner-gated — surfaced, not blocking):**
+- **Storefront `/[slug]/store/products` is index:true but auth-gated** (307→login) — deferred D-SEO
+  tenant-store nuance AND a "is the public shop actually public?" question. Not fixed unilaterally.
+- **D-1 Customer Portal** MVP scope (biggest net-new feature, unbuilt).
+- **Storefront restyle** (AdminCN has no shop scaffold) + **E design re-baseline** sign-off (DESIGN.md/MOCKUP, Rule 31).
+- **Deploy gate:** 71 commits ahead of origin/main, HARD HOLD. PROD M7 first-time stand-up + RBAC slug
+  promotion still gated on explicit owner word. Also standing: 3-tier RBAC retrofit offer; notifications/
+  Valkey SSE realtime bug (pre-existing, separate triage).
+
+**NEXT UN-GATED WORK** if resuming: none pressing — verify complete, tree clean. Await owner decision on the
+[WHAT] items above. ⚠ Restart Claude Code for V32.45.1 hooks.
 
 ---
 
