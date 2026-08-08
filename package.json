@@ -1,6 +1,6 @@
 {
   "name": "orqafy",
-  "version": "0.12.1",
+  "version": "0.12.2",
   "private": true,
   "packageManager": "pnpm@10.11.0",
   "engines": {

@@ -4,6 +4,12 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.12.2 — 2026-08-08
+
+### [FIXED]
+- patch critical/high advisories (Auth.js fail-open, next, toolchain) (`9af4f52`)
+
+
 ## v0.12.1 — 2026-08-08
 
 ### [FIXED]
