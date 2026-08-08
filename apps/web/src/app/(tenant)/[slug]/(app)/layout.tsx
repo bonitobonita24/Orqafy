@@ -5,7 +5,10 @@ import { ContentContainer } from "@/components/layout/content-container";
 import { AppDownloadInterstitial } from "@/components/app-download-interstitial";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
-export const metadata: Metadata = { title: "Orqafy" };
+export const metadata: Metadata = {
+  title: "Orqafy",
+  robots: { index: false, follow: false },
+};
 
 interface AppLayoutProps {
   children: React.ReactNode;

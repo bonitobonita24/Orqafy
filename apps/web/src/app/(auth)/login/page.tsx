@@ -3,7 +3,10 @@ import { AuthError } from "next-auth";
 import { signIn } from "@/server/auth";
 import { LoginForm } from "./login-form";
 
-export const metadata: Metadata = { title: "Sign In — Orqafy" };
+export const metadata: Metadata = {
+  title: "Sign In — Orqafy",
+  robots: { index: false, follow: true },
+};
 
 type LoginState = { error: string } | null;
 

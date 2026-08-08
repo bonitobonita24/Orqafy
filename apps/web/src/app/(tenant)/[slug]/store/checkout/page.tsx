@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { CheckoutForm } from "./checkout-form";
+
+export const metadata: Metadata = {
+  title: "Checkout",
+  robots: { index: false, follow: true },
+};
 
 interface PageProps {
   params: Promise<{ slug: string }>;

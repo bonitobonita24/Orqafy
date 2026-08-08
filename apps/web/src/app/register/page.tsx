@@ -2,7 +2,17 @@ import type { Metadata } from "next";
 import { prisma } from "@orqafy/db";
 import { RegisterForm } from "./register-form";
 
-export const metadata: Metadata = { title: "Create your workspace" };
+export const metadata: Metadata = {
+  title: "Create your workspace",
+  description: "Set up your Orqafy workspace in under 2 minutes.",
+  robots: { index: true, follow: true },
+  alternates: { canonical: "/register" },
+  openGraph: {
+    title: "Create your workspace — Orqafy",
+    description: "Set up your Orqafy workspace in under 2 minutes.",
+    url: "/register",
+  },
+};
 
 export const dynamic = "force-dynamic";
 

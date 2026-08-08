@@ -5,12 +5,37 @@ import { prisma } from "@orqafy/db";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { formatCurrency } from "@/lib/quotation-build";
 
-export const metadata: Metadata = { title: "Product" };
-
 export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ slug: string; id: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { slug, id } = await params;
+  const product = await prisma.product.findFirst({
+    where: { id, isActive: true, ecommerceVisible: true },
+    select: { name: true, description: true, ecommerceDescription: true },
+  });
+
+  const title = product?.name ?? "Product";
+  const description =
+    (product?.ecommerceDescription !== null &&
+    product?.ecommerceDescription !== undefined &&
+    product.ecommerceDescription.length > 0
+      ? product.ecommerceDescription
+      : product?.description) ?? "View product details.";
+  const canonical = `/${slug}/store/products/${id}`;
+
+  return {
+    title,
+    description,
+    robots: { index: true, follow: true },
+    alternates: { canonical },
+    openGraph: { title, description, url: canonical },
+  };
 }
 
 function imageUrls(images: unknown): string[] {
