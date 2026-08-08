@@ -1667,3 +1667,17 @@ PENDING (owner):
 - **Merge** `feat/admincn-adoption` (+ `feat/seo-foundation`, framework-sync) → local `main`: owner's call (HARD HOLD).
 - Pre-existing (NOT AdminCN): notifications realtime — `/api/sse` Valkey "Stream isn't writeable" +
   `notification.list` connection errors. Separate bug to triage.
+
+---
+
+## 2026-08-08 — Owner RATIFIED AdminCN adoption + SEO indexing (post-hoc approval)
+
+Owner returned this session and **ratified both** bodies of overnight full-auto work that had been
+merged to LOCAL main (`8cfa127`) while their gating `[WHAT]` decisions were still open:
+- **AdminCN full-site adoption** (Scenario 49, 23 authed modules + platform-admin D) — KEEP.
+- **SEO Foundation** (Rule 35 / Scenario 44) — public marketing landing + storefront indexable; all
+  authed/utility surfaces stay `noindex`. KEEP.
+
+Decision: accept as-is; owner requested a verify-all-pages QA spot-check before any push. Still HARD
+HOLD (unpushed, 69 ahead of origin). D-A…D-E (theme mode, preset, token arch) accepted as the loop
+chose them. Storefront restyle, E re-baseline, PROD M7, RBAC promotion remain separately gated.

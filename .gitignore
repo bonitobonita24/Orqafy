@@ -91,3 +91,4 @@ tests/visual/diff/
 
 # Harness agent worktrees (ephemeral, never commit)
 .claude/worktrees/
+screenshots/
