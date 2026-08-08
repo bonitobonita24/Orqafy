@@ -71,6 +71,16 @@ Sequential + stateful (git → CI → deploy → DNS → verify); not parallel-s
 ## Out of scope (this program)
 - RBAC 3-tier slug retrofit (standing offer, separate). Notifications/Valkey SSE realtime bug (separate triage).
 
+## Tracked security exception (revisit)
+- `pnpm.auditConfig.ignoreGhsas` = `GHSA-w3rx-r6r6-pgpr`, `GHSA-5p2g-fcmc-qvqq` — two HIGH advisories in
+  `image-size` (transitive: `apps/mobile > react-native > metro > image-size`). **No upstream patch exists**
+  (2.0.2 is latest; advisory "patched: <0.0.0"). Not in the deployed web/worker runtime (mobile ships via EAS,
+  not this Docker image). Scoped ignore of exactly these two GHSAs keeps CI green while any NEW advisory still
+  fails. **Revisit when metro/image-size publishes a fix, then remove the ignore.**
+
 ## Status log
 - 2026-08-08 — Program authored; owner confirmed ship-now + root+subdomains + swarm one-wave-at-a-time.
-  Wave 0 starting at 0.1 pre-ship gate.
+- 2026-08-08 — Wave 0: pre-ship gate green (1439 tests) → v0.12.0 pushed → CI Docker fail (unpinned pnpm)
+  → pinned pnpm@10.11.0, v0.12.1, image sha-4b5ea8f built → CI audit gate caught critical Auth.js fail-open
+  → security bump (next-auth β32, @auth/core 0.41.3, next 15.5.23 + toolchain floors), 1439 tests still green,
+  audit 0 critical + 2 mobile-only highs ignored → v0.12.2 next. Then domain cutover 0.3→0.6.
