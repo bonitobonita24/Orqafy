@@ -122,3 +122,7 @@ done
 echo "  orqafy-staging /api/health = ${CODE}"
 [ "$CODE" = "200" ] || { echo "  ✗ staging did NOT come up healthy — check 'docker compose -p ${PROJ} logs app'"; exit 1; }
 echo "✅ Staging refreshed + deployed on '${SRC}'. Promote to prod only after a manual verify."
+
+# Rule 39 — keep local dev fresh after a staging ship (app + worker).
+# NOTE: this script lives in deploy/, so the helper is under deploy/compose/.
+bash "$(dirname "$0")/compose/ensure-dev-fresh.sh" || true

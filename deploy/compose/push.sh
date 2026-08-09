@@ -129,6 +129,8 @@ case "$TARGET" in
     echo "   docker compose -f deploy/compose/stage/docker-compose.app.yml up -d"
     echo ""
     echo "▶  To promote to prod: bash deploy/compose/push.sh prod"
+    # Rule 39 — keep local dev fresh after a staging ship (app + worker).
+    bash "$(dirname "$0")/ensure-dev-fresh.sh" || true
     ;;
 
   prod)
@@ -157,6 +159,8 @@ case "$TARGET" in
     echo ""
     echo "🔄 To rollback: edit docker-compose.app.yml image tag to a previous sha tag"
     echo "   e.g. image: ${IMAGE_BASE}:prod-sha-{previous-sha}"
+    # Rule 39 — keep local dev fresh after a prod ship (app + worker).
+    bash "$(dirname "$0")/ensure-dev-fresh.sh" || true
     ;;
 
   *)

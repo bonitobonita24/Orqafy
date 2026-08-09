@@ -55,3 +55,6 @@ echo "▶ 5/5 Verify"
 sleep 5
 curl -s -o /dev/null -w "  orqafy-demo health = %{http_code}\n" https://orqafy-demo.powerbyte.app/api/health
 echo "✅ push-to-demo done. Demo: https://orqafy-demo.powerbyte.app (admin@demo.com)"
+
+# Rule 39 — keep local dev fresh after a demo ship (app + worker).
+bash "$(dirname "$0")/ensure-dev-fresh.sh" || true
