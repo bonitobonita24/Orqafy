@@ -26,14 +26,15 @@ async function loadEmployeeForTenant(id: string, ctx: { tenantId: string }) {
 // Roles with authority to terminate an employee. Inline gate (vs. shared
 // middleware) keeps the role list visible at the call site — matches the
 // approver-gate convention used in dtr.ts. The roster mirrors dtr.ts
-// APPROVER_ROLES so line Managers can terminate as well as approve DTR/leave.
-const TERMINATE_ROLES = ["HR Manager", "Manager", "Administrator"] as const;
+// APPROVER_ROLES so the delegated Admin tier can terminate as well as
+// approve DTR/leave.
+const TERMINATE_ROLES = ["HR Manager", "Admin"] as const;
 
 function requireTerminateAuthority(roles: ReadonlyArray<string>): void {
   if (!roles.some((r) => (TERMINATE_ROLES as ReadonlyArray<string>).includes(r))) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Only an HR Manager, Manager, or Administrator can terminate an employee.",
+      message: "Only an HR Manager or Admin can terminate an employee.",
     });
   }
 }

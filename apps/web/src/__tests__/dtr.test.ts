@@ -292,8 +292,19 @@ describe("dtrRouter", () => {
       expect(result.status).toBe("approved");
     });
 
+    it("approves a present attendance record when called by Admin", async () => {
+      mockDb.attendanceRecord.findUnique.mockResolvedValue(fakeAttendance);
+      mockDb.attendanceRecord.update.mockResolvedValue({
+        ...fakeAttendance,
+        status: "approved",
+      });
+      const caller = createCaller(authenticatedCtx("Admin"));
+      const result = await caller.dtr.attendanceApprove({ attendanceId: "att-1" });
+      expect(result.status).toBe("approved");
+    });
+
     it("throws FORBIDDEN when called by a non-approver role", async () => {
-      const caller = createCaller(authenticatedCtx("Employee"));
+      const caller = createCaller(authenticatedCtx("Staff"));
       await expect(
         caller.dtr.attendanceApprove({ attendanceId: "att-1" })
       ).rejects.toMatchObject({ code: "FORBIDDEN" });
@@ -323,8 +334,22 @@ describe("dtrRouter", () => {
       expect(result.status).toBe("rejected");
     });
 
+    it("rejects an attendance record when called by Admin", async () => {
+      mockDb.attendanceRecord.findUnique.mockResolvedValue(fakeAttendance);
+      mockDb.attendanceRecord.update.mockResolvedValue({
+        ...fakeAttendance,
+        status: "rejected",
+      });
+      const caller = createCaller(authenticatedCtx("Admin"));
+      const result = await caller.dtr.attendanceReject({
+        attendanceId: "att-1",
+        reason: "Outside geofence",
+      });
+      expect(result.status).toBe("rejected");
+    });
+
     it("throws FORBIDDEN when called by a non-approver role", async () => {
-      const caller = createCaller(authenticatedCtx("Employee"));
+      const caller = createCaller(authenticatedCtx("Staff"));
       await expect(
         caller.dtr.attendanceReject({ attendanceId: "att-1" })
       ).rejects.toMatchObject({ code: "FORBIDDEN" });
@@ -431,8 +456,22 @@ describe("dtrRouter", () => {
       expect(result.status).toBe("approved");
     });
 
+    it("approves a pending leave request when called by Admin", async () => {
+      mockDb.leaveRequest.findUnique.mockResolvedValue(fakeLeave);
+      mockDb.leaveRequest.update.mockResolvedValue({
+        ...fakeLeave,
+        status: "approved",
+        approvedAt: new Date(),
+      });
+      const caller = createCaller(authenticatedCtx("Admin"));
+      const result = await caller.dtr.leaveRequestApprove({
+        leaveRequestId: "leave-1",
+      });
+      expect(result.status).toBe("approved");
+    });
+
     it("throws FORBIDDEN when called by a non-approver role", async () => {
-      const caller = createCaller(authenticatedCtx("Employee"));
+      const caller = createCaller(authenticatedCtx("Staff"));
       await expect(
         caller.dtr.leaveRequestApprove({ leaveRequestId: "leave-1" })
       ).rejects.toMatchObject({ code: "FORBIDDEN" });
@@ -462,8 +501,22 @@ describe("dtrRouter", () => {
       expect(result.status).toBe("rejected");
     });
 
+    it("rejects a pending leave request when called by Admin", async () => {
+      mockDb.leaveRequest.findUnique.mockResolvedValue(fakeLeave);
+      mockDb.leaveRequest.update.mockResolvedValue({
+        ...fakeLeave,
+        status: "rejected",
+      });
+      const caller = createCaller(authenticatedCtx("Admin"));
+      const result = await caller.dtr.leaveRequestReject({
+        leaveRequestId: "leave-1",
+        reason: "Insufficient leave balance",
+      });
+      expect(result.status).toBe("rejected");
+    });
+
     it("throws FORBIDDEN when called by a non-approver role", async () => {
-      const caller = createCaller(authenticatedCtx("Employee"));
+      const caller = createCaller(authenticatedCtx("Staff"));
       await expect(
         caller.dtr.leaveRequestReject({ leaveRequestId: "leave-1" })
       ).rejects.toMatchObject({ code: "FORBIDDEN" });

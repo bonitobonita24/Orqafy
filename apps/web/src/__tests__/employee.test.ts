@@ -368,7 +368,7 @@ describe("employee router", () => {
       mockDb.employee.findUnique.mockResolvedValue({ id: VALID_CUID, tenantId: "acme-tenant-id" });
       const terminationDate = new Date("2026-06-01");
       mockDb.employee.update.mockResolvedValue({ id: VALID_CUID, dateTerminated: terminationDate });
-      const caller = createCaller(authenticatedCtx());
+      const caller = createCaller(authenticatedCtx(["HR Manager"]));
       await caller.employee.terminate({ id: VALID_CUID, dateTerminated: terminationDate });
       expect(mockDb.employee.update).toHaveBeenCalledWith({
         where: { id: VALID_CUID },
@@ -378,7 +378,7 @@ describe("employee router", () => {
 
     it("throws NOT_FOUND when employee missing", async () => {
       mockDb.employee.findUnique.mockResolvedValue(null);
-      const caller = createCaller(authenticatedCtx());
+      const caller = createCaller(authenticatedCtx(["HR Manager"]));
       await expect(
         caller.employee.terminate({ id: VALID_CUID, dateTerminated: new Date() })
       ).rejects.toMatchObject({ code: "NOT_FOUND" });
@@ -398,7 +398,7 @@ describe("employee router", () => {
         tenantId: "acme-tenant-id",
         dateTerminated: new Date("2026-01-01"),
       });
-      const caller = createCaller(authenticatedCtx());
+      const caller = createCaller(authenticatedCtx(["HR Manager"]));
       await expect(
         caller.employee.terminate({ id: VALID_CUID, dateTerminated: new Date("2026-06-01") })
       ).rejects.toMatchObject({ code: "BAD_REQUEST" });
@@ -429,9 +429,9 @@ describe("employee router", () => {
       });
     });
 
-    // Owner decision (Phase 7): line Managers may terminate too, so the
-    // terminate roster matches the dtr.ts approver list.
-    it("allows termination for a Manager role", async () => {
+    // Owner decision (D-RBAC-DEADGATE): the delegated Admin tier may terminate
+    // too, so the terminate roster matches the dtr.ts approver list.
+    it("allows termination for an Admin role", async () => {
       mockDb.employee.findUnique.mockResolvedValue({
         id: VALID_CUID,
         tenantId: "acme-tenant-id",
@@ -439,7 +439,7 @@ describe("employee router", () => {
       });
       const terminationDate = new Date("2026-06-01");
       mockDb.employee.update.mockResolvedValue({ id: VALID_CUID, dateTerminated: terminationDate });
-      const caller = createCaller(authenticatedCtx(["Manager"]));
+      const caller = createCaller(authenticatedCtx(["Admin"]));
       await caller.employee.terminate({ id: VALID_CUID, dateTerminated: terminationDate });
       expect(mockDb.employee.update).toHaveBeenCalledOnce();
     });

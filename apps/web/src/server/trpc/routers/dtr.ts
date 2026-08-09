@@ -48,13 +48,13 @@ const LEAVE_TYPE = z.enum(["vacation", "sick", "emergency", "maternity", "patern
 // Roles permitted to approve/reject attendance + leave requests.
 // Inline gate (vs. shared middleware) — keeps the role list visible at the
 // call site and matches the small number of approver procedures here.
-const APPROVER_ROLES = ["HR Manager", "Manager", "Administrator"] as const;
+const APPROVER_ROLES = ["HR Manager", "Admin"] as const;
 
 function requireApproverRole(roles: ReadonlyArray<string>): void {
   if (!roles.some((r) => (APPROVER_ROLES as ReadonlyArray<string>).includes(r))) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Only HR Manager, Manager, or Administrator can approve or reject.",
+      message: "Only an HR Manager or Admin can approve or reject.",
     });
   }
 }
