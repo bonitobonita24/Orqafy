@@ -4,6 +4,17 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.12.3 — 2026-08-09
+
+### [FIXED]
+- make seed prod-safe — gate demo showcase off in production, parameterize tenant + super admin (`b8bc912`)
+
+### [DOCS]
+- flag Item#1 (seed-fix merge/release) as owner-authorized next-session resume point (`2aa2277`)
+- PROD first stand-up complete — https://orqafy.com LIVE + verified (`9459343`)
+- Wave 0 ship done (v0.12.2, staging+demo LIVE on orqafy.com); PROD resume checklist (`20d20f8`)
+
+
 ## v0.12.2 — 2026-08-08
 
 ### [FIXED]
