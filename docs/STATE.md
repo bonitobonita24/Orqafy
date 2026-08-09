@@ -37,8 +37,11 @@ Owner-authorized irreversible first stand-up (super_admin = webmaster@powerbytei
   Login: orqafy.com/login, tenantSlug=`powerbyte`, email=webmaster@powerbyteitsolutions.com, pw=vault.
 
 **⏳ REMAINING (0.6 cleanup + owner-gated) — NEXT:**
-1. **[WHAT owner-gated] Merge `fix/seed-prod-safe` → main** = a new release (v0.12.3, version+changelog+push,
-   HARD HOLD). The prod seed used the local branch working-tree; main/CI still have the unconditional seed.
+1. **▶ RESUME HERE — OWNER-AUTHORIZED (2026-08-09) to proceed NEXT session:** Merge `fix/seed-prod-safe` → main
+   = release **v0.12.3** (version+changelog via `gen-release-notes`, then push to main = staging tier). Branch
+   has 2 commits: `b8bc912` (prod-safe seed) + `9459343` (this STATE doc). Owner already said "proceed on Item#1
+   on the next session" — this is CLEARED to act, not waiting on a decision. Confirm bump (patch → v0.12.3) at
+   the release step. The prod seed used the local branch working-tree; main/CI still have the unconditional seed.
 2. **[HOW] Store prod secrets in vault** (Server-Setups/Powerbyte-Hostinger) — fresh prod DB/REDIS/AUTH/
    ENC/MOBILE_JWT/STORAGE secrets currently ONLY in server `.env` (disaster-recovery gap). Also MOBILE_JWT_SECRET
    for staging+demo.
