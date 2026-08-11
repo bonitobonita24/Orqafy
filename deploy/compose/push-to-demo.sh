@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # push-to-demo.sh — MANUAL promote of a chosen build to the Orqafy client DEMO
-# stack (orqafy-demo.powerbyte.app). Model B: the demo is a deliberate-push
+# stack (demo.orqafy.com). Model B: the demo is a deliberate-push
 # environment, NOT auto-deploy.
 #
 #   Local dev  →  { demo (manual) · staging (auto on main) · production (manual) }
@@ -53,8 +53,8 @@ kill $TUN 2>/dev/null || true
 
 echo "▶ 5/5 Verify"
 sleep 5
-curl -s -o /dev/null -w "  orqafy-demo health = %{http_code}\n" https://orqafy-demo.powerbyte.app/api/health
-echo "✅ push-to-demo done. Demo: https://orqafy-demo.powerbyte.app (admin@demo.com)"
+curl -s -o /dev/null -w "  orqafy-demo health = %{http_code}\n" https://demo.orqafy.com/api/health
+echo "✅ push-to-demo done. Demo: https://demo.orqafy.com (admin@demo.com)"
 
 # Rule 39 — keep local dev fresh after a demo ship (app + worker).
 bash "$(dirname "$0")/ensure-dev-fresh.sh" || true

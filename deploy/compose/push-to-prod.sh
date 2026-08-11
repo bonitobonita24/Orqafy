@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # push-to-prod.sh — MANUAL promote of a VERIFIED staging build to Orqafy
-# PRODUCTION (orqafy.powerbyte.app). Tier 3: production is NEVER automatic —
+# PRODUCTION (orqafy.com). Tier 3: production is NEVER automatic —
 # explicit owner word only, and only after the staging data-first gate is GREEN
 # (deploy/staging-refresh-and-deploy.sh).
 #
@@ -56,5 +56,5 @@ kill $TUN 2>/dev/null || true
 
 echo "▶ 5/5 Verify"
 sleep 5
-curl -s -o /dev/null -w "  orqafy-prod health = %{http_code}\n" https://orqafy.powerbyte.app/api/health
-echo "✅ push-to-prod done (${SRC} → latest/prod-sha-${SHA}). Prod: https://orqafy.powerbyte.app"
+curl -s -o /dev/null -w "  orqafy-prod health = %{http_code}\n" https://orqafy.com/api/health
+echo "✅ push-to-prod done (${SRC} → latest/prod-sha-${SHA}). Prod: https://orqafy.com"

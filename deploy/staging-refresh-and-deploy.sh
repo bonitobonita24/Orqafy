@@ -115,7 +115,7 @@ ssh_vps "cd ${STACK}; docker compose -p ${PROJ} --env-file .env ${CF} up -d app 
 echo "▶ 6/6 Verify (poll /api/health up to ~60s — the app needs a moment after 'up -d')"
 CODE=000
 for _ in $(seq 1 20); do
-  CODE=$(curl -s -o /dev/null -w "%{http_code}" https://orqafy-staging.powerbyte.app/api/health || echo 000)
+  CODE=$(curl -s -o /dev/null -w "%{http_code}" https://staging.orqafy.com/api/health || echo 000)
   [ "$CODE" = "200" ] && break
   sleep 3
 done
