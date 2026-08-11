@@ -4,6 +4,12 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.13.0 — 2026-08-11
+
+### [FEATURE]
+- couple dev-rebuild to every ship (Rule 39 dev-freshness) (`298fec4`)
+
+
 ## v0.12.3 — 2026-08-09
 
 ### [FIXED]
