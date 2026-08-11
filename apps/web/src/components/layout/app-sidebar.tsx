@@ -65,7 +65,7 @@ const NAV_ITEMS = [
   { label: "Settings", href: "settings", icon: Settings, featureKey: "settings" },
 ] as const satisfies readonly { label: string; href: string; icon: typeof LayoutDashboard; featureKey: FeatureKey }[];
 
-const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.13.0";
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.13.1";
 
 interface AppSidebarProps {
   slug: string;

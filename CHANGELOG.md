@@ -4,6 +4,12 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.13.1 — 2026-08-11
+
+### [FIXED]
+- correct dead-name gates — Admin regains DTR approval + employee termination (`00db013`)
+
+
 ## v0.13.0 — 2026-08-11
 
 ### [FEATURE]
