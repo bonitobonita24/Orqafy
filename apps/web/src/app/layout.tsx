@@ -1,14 +1,28 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Geist, Source_Serif_4, Source_Code_Pro } from "next/font/google";
 import { TRPCProvider } from "@/lib/trpc-provider";
 import { ThemeProvider } from "@/components/theme-provider";
+import { cn } from "@/lib/utils";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
+// shadcn/studio "orqafy" theme fonts. All three are variable fonts, so we omit
+// the weight array (loads the full variable range at one file each) and keep
+// subsets tight (latin/latin-ext) to protect LCP/CWV (Rule 35 SEO).
+const geist = Geist({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-geist",
   display: "swap",
   preload: true,
+});
+const sourceSerif4 = Source_Serif_4({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-source-serif-4",
+  display: "swap",
+});
+const sourceCodePro = Source_Code_Pro({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-source-code-pro",
+  display: "swap",
 });
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -37,11 +51,19 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={cn(
+        geist.variable,
+        sourceSerif4.variable,
+        sourceCodePro.variable,
+      )}
+      suppressHydrationWarning
+    >
       <head>
         <link rel="preconnect" href="https://challenges.cloudflare.com" />
       </head>
-      <body className="min-h-screen bg-background font-sans antialiased">
+      <body className="min-h-screen bg-background antialiased">
         <ThemeProvider>
           <TRPCProvider>{children}</TRPCProvider>
         </ThemeProvider>

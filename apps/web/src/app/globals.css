@@ -1,64 +1,181 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
 
+/* Monorepo: scan the shared UI package so its class names are generated. */
 @source '../../../../packages/ui/src/**/*.{ts,tsx}';
 
 @custom-variant dark (&:is(.dark *));
 
-@theme {
-  --font-sans: var(--font-inter), Inter, system-ui, sans-serif;
+/* =============================================================================
+   shadcn/studio "orqafy" theme — Tailwind v4 (oklch). Adopted 2026-08-13.
+   Palette + radius/shadow scale + typography (Geist / Source Serif 4 /
+   Source Code Pro) from the owner's shadcn/studio registry (registry:base).
+   App-specific extensions (brand/surface tokens, accordion, signal-glow,
+   heading utilities, reduced-motion) are preserved below the theme blocks.
+   ========================================================================== */
 
+:root {
+  --radius: 0.625rem;
+
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.141 0.005 285.823);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.141 0.005 285.823);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.141 0.005 285.823);
+  --primary: oklch(0.21 0.006 285.885);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.967 0.001 286.375);
+  --muted-foreground: oklch(0.552 0.016 285.938);
+  --accent: oklch(0.967 0.001 286.375);
+  --accent-foreground: oklch(0.21 0.006 285.885);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
+  --ring: oklch(0.705 0.015 286.067);
+  --chart-1: oklch(0.871 0.006 286.286);
+  --chart-2: oklch(0.552 0.016 285.938);
+  --chart-3: oklch(0.442 0.017 285.786);
+  --chart-4: oklch(0.37 0.013 285.805);
+  --chart-5: oklch(0.274 0.006 286.033);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.141 0.005 285.823);
+  --sidebar-primary: oklch(0.21 0.006 285.885);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.967 0.001 286.375);
+  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+  --sidebar-border: oklch(0.92 0.004 286.32);
+  --sidebar-ring: oklch(0.705 0.015 286.067);
+
+  /* App-extended tokens consumed by packages/ui (brand / elevated surface). */
+  --brand-muted: oklch(0.967 0.001 286.375);
+  --surface: oklch(0.967 0.001 286.375);
+
+  --shadow-2xs: 0 1px 3px 0px oklch(0.00 0 0 / 0.05);
+  --shadow-xs: 0 1px 3px 0px oklch(0.00 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 1px 2px -1px oklch(0.00 0 0 / 0.10);
+  --shadow: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 1px 2px -1px oklch(0.00 0 0 / 0.10);
+  --shadow-md: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 2px 4px -1px oklch(0.00 0 0 / 0.10);
+  --shadow-lg: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 4px 6px -1px oklch(0.00 0 0 / 0.10);
+  --shadow-xl: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 8px 10px -1px oklch(0.00 0 0 / 0.10);
+  --shadow-2xl: 0 1px 3px 0px oklch(0.00 0 0 / 0.25);
+}
+
+.dark {
+  --background: oklch(0.141 0.005 285.823);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.21 0.006 285.885);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.21 0.006 285.885);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.92 0.004 286.32);
+  --primary-foreground: oklch(0.21 0.006 285.885);
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.274 0.006 286.033);
+  --muted-foreground: oklch(0.705 0.015 286.067);
+  --accent: oklch(0.274 0.006 286.033);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.552 0.016 285.938);
+  --chart-1: oklch(0.871 0.006 286.286);
+  --chart-2: oklch(0.552 0.016 285.938);
+  --chart-3: oklch(0.442 0.017 285.786);
+  --chart-4: oklch(0.37 0.013 285.805);
+  --chart-5: oklch(0.274 0.006 286.033);
+  --sidebar: oklch(0.21 0.006 285.885);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.274 0.006 286.033);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.552 0.016 285.938);
+
+  /* App-extended tokens consumed by packages/ui (brand / elevated surface). */
+  --brand-muted: oklch(0.274 0.006 286.033);
+  --surface: oklch(0.274 0.006 286.033);
+
+  --shadow-2xs: 0 1px 3px 0px oklch(0.00 0 0 / 0.05);
+  --shadow-xs: 0 1px 3px 0px oklch(0.00 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 1px 2px -1px oklch(0.00 0 0 / 0.10);
+  --shadow: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 1px 2px -1px oklch(0.00 0 0 / 0.10);
+  --shadow-md: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 2px 4px -1px oklch(0.00 0 0 / 0.10);
+  --shadow-lg: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 4px 6px -1px oklch(0.00 0 0 / 0.10);
+  --shadow-xl: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 8px 10px -1px oklch(0.00 0 0 / 0.10);
+  --shadow-2xl: 0 1px 3px 0px oklch(0.00 0 0 / 0.25);
+}
+
+@theme inline {
+  /* Fonts (resolved from next/font vars in layout.tsx). */
+  --font-sans: var(--font-geist);
+  --font-heading: var(--font-geist);
+  --font-serif: var(--font-source-serif-4);
+  --font-body: var(--font-source-serif-4);
+  --font-mono: var(--font-source-code-pro);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* App-extended aliases used by packages/ui utilities (bg-brand, bg-surface). */
+  --color-brand: var(--primary);
+  --color-brand-muted: var(--brand-muted);
+  --color-surface: var(--surface);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
+  --shadow-2xs: var(--shadow-2xs);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
 
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
-
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
-
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
-
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
-
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
-
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-
-  --color-chart-1: hsl(var(--chart-1));
-  --color-chart-2: hsl(var(--chart-2));
-  --color-chart-3: hsl(var(--chart-3));
-  --color-chart-4: hsl(var(--chart-4));
-  --color-chart-5: hsl(var(--chart-5));
-
-  --color-sidebar: hsl(var(--sidebar-background));
-  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
-  --color-sidebar-primary: hsl(var(--sidebar-primary));
-  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
-  --color-sidebar-accent: hsl(var(--sidebar-accent));
-  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
-  --color-sidebar-border: hsl(var(--sidebar-border));
-  --color-sidebar-ring: hsl(var(--sidebar-ring));
-
-  --color-brand: hsl(var(--primary));
-  --color-brand-muted: hsl(var(--brand-muted));
-
-  --color-surface: hsl(var(--surface));
-
+  /* Radix accordion animation (app-defined; not provided by tw-animate-css). */
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
 
@@ -80,23 +197,79 @@
   }
 }
 
-/*
-  The default border color has changed to `currentcolor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
-
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
 @layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    line-height: 1.65;
+    font-feature-settings: "calt", "rlig";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  html {
+    @apply font-sans;
+  }
+  :root {
+    --font-heading: var(--font-geist);
+    --font-body: var(--font-source-serif-4);
+    --font-mono: var(--font-source-code-pro);
+  }
+
+  h1 {
+    font-family: var(--font-heading);
+    font-size: 2.25rem;
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    font-weight: 700;
+  }
+  h2 {
+    font-family: var(--font-heading);
+    font-size: 1.875rem;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+  h3 {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+    font-weight: 600;
+  }
+  h4 {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+    font-weight: 500;
+  }
+  h5 {
+    font-family: var(--font-heading);
+    font-size: 1.125rem;
+    line-height: 1.5;
+    letter-spacing: 0;
+    font-weight: 500;
+  }
+  h6 {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    line-height: 1.5;
+    letter-spacing: 0;
+    font-weight: 500;
+  }
+
+  code,
+  pre {
+    font-family: var(--font-mono);
   }
 }
+
+/* =============================================================================
+   App-specific utilities & motion (preserved across the theme swap).
+   ========================================================================== */
 
 @utility w-510 {
   /* Typography weight utilities */
@@ -108,31 +281,30 @@
 }
 
 @utility heading-display {
-  /* Heading compression tokens (DESIGN.md §3 Hierarchy — tight letter-spacing creates density) */
-  /* Display / Hero: 60px, lh 1.00, ls -0.65px */
-  font-size: 3.75rem; /* 60px */
+  /* Display / Hero: 60px, lh 1.00, ls -0.65px (DESIGN.md §3 Hierarchy) */
+  font-size: 3.75rem;
   line-height: 1;
   letter-spacing: -0.65px;
 }
 
 @utility heading-section {
   /* Section Heading: 36px, lh 1.11, ls -0.9px */
-  font-size: 2.25rem; /* 36px */
+  font-size: 2.25rem;
   line-height: 1.11;
   letter-spacing: -0.9px;
 }
 
 @utility heading-sub {
   /* Sub-heading: 24px, weight 700, lh 1.33, ls -0.6px */
-  font-size: 1.5rem; /* 24px */
+  font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.33;
   letter-spacing: -0.6px;
 }
 
 @utility heading-overline {
-  /* Tag / Overline Tiny: 14px, weight 600, lh 1.43, ls +2.52px — uppercase required */
-  font-size: 0.875rem; /* 14px */
+  /* Tag / Overline Tiny: 14px, weight 600, lh 1.43, ls +2.52px — uppercase */
+  font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.43;
   letter-spacing: 2.52px;
@@ -140,174 +312,32 @@
 }
 
 @utility signal-glow {
-  /* signal-glow animation — neutral-dark palette: pulsing ring-color drop-shadow     */
-  /* Applied to: header logo, login screen logo, active disbursement pipeline step     */
-  /* Uses --ring (neutral gray in current theme; swap to brand color if theme changes) */
+  /* Pulsing ring-color drop-shadow — header/login logo, active pipeline step. */
   animation: signal-glow 2.5s ease-in-out infinite;
 }
 
 @utility font-code {
-  /* Monospace / code surfaces */
-  font-family:
-    SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
-    monospace;
+  /* Explicit monospace fallback surface. */
+  font-family: var(--font-mono), SFMono-Regular, Menlo, Monaco, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
 }
 
-@layer base {
-  :root {
-    /* ── shadcn/ui default LIGHT theme — neutral base ── */
-    /* NEW (AdminCN Phase A2 — theme infrastructure). The app previously had no light  */
-    /* mode; DARK remains the default surface (next-themes defaultTheme="dark") — see  */
-    /* the .dark block below, which is byte-identical to the pre-A2 :root values.      */
-
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-
-    --radius: 0.5rem;
-
-    /* Extended tokens — used by packages/ui tailwind.config.ts brand/surface aliases */
-    /* brand-muted: a slightly-elevated neutral surface for muted brand contexts       */
-    --brand-muted: 0 0% 96.1%;
-    /* surface: elevated surface one step above --card (used by bg-surface utilities)  */
-    --surface: 0 0% 96.1%;
-
-    /* Chart tokens — shadcn light stock */
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-
-    /* Sidebar — neutral light to match stock theme */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 0 0% 3.9%;
-    --sidebar-primary: 0 0% 9%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 0 0% 96.1%;
-    --sidebar-accent-foreground: 0 0% 9%;
-    --sidebar-border: 0 0% 89.8%;
-    --sidebar-ring: 0 0% 3.9%;
-  }
-
-  .dark {
-    /* ── shadcn/ui default dark theme — neutral base ── */
-    /* Canonical theme: shadcn neutral-dark (owner-approved reskin 2026-06-18).      */
-    /* Previous: VoltAgent emerald (archived in docs/archive/DESIGN-linear-sunset.md) */
-    /* AdminCN Phase A2: this block is BYTE-IDENTICAL to the pre-A2 :root values —    */
-    /* dark stays the default rendered theme (next-themes defaultTheme="dark").      */
-
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-
-    --radius: 0.5rem;
-
-    /* Extended tokens — used by packages/ui tailwind.config.ts brand/surface aliases */
-    /* brand-muted: a slightly-elevated neutral surface for muted brand contexts       */
-    --brand-muted: 0 0% 14.9%;
-    /* surface: elevated surface one step above --card (used by bg-surface utilities)  */
-    --surface: 0 0% 14.9%;
-
-    /* Chart tokens — shadcn dark stock */
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-
-    /* Sidebar — neutral dark to match stock theme */
-    --sidebar-background: 0 0% 3.9%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 0 0% 98%;
-    --sidebar-primary-foreground: 0 0% 9%;
-    --sidebar-accent: 0 0% 14.9%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 14.9%;
-    --sidebar-ring: 0 0% 83.1%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-    font-family: var(--font-inter, Inter, system-ui, sans-serif);
-    font-feature-settings: "calt", "rlig";
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  /* Heading elements use system-ui for native authority (DESIGN.md §3 Typography) */
-  h1, h2, h3 {
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", Helvetica, Arial, sans-serif;
-  }
-}
-
-/* ── @keyframes ── */
+/* signal-glow keyframes — oklch-safe alpha via color-mix on the theme ring color. */
 @keyframes signal-glow {
-  0%, 100% {
-    filter: drop-shadow(0 0 2px hsl(var(--ring) / 0.6));
+  0%,
+  100% {
+    filter: drop-shadow(
+      0 0 2px color-mix(in oklch, var(--color-ring) 60%, transparent)
+    );
   }
   50% {
-    filter: drop-shadow(0 0 8px hsl(var(--ring) / 0.9));
+    filter: drop-shadow(
+      0 0 8px color-mix(in oklch, var(--color-ring) 90%, transparent)
+    );
   }
 }
 
-/* ── Reduced motion (WCAG 2.3.3 / motion.md gate) ──
-   Respect the user's OS-level "reduce motion" preference app-wide: neutralize
-   animations and transitions so vestibular-sensitive users aren't harmed. */
+/* Reduced motion (WCAG 2.3.3 / motion.md gate) — respect OS "reduce motion". */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
