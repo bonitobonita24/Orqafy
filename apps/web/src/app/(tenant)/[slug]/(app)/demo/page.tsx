@@ -179,7 +179,7 @@ export default async function DemoPage({ params }: { params: Promise<Params> }) 
         <ul className="grid grid-cols-1 gap-1.5 text-xs text-muted-foreground sm:grid-cols-2">
           {RESTRICTIONS.map((r) => (
             <li key={r} className="flex items-start gap-2">
-              <span className="mt-1 h-1 w-1 flex-shrink-0 rounded-full bg-yellow-400/60" />
+              <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-yellow-400/60" />
               {r}
             </li>
           ))}

@@ -39,7 +39,7 @@ export function DashboardKpiCard({
 }: DashboardKpiCardProps) {
   return (
     <Link href={href} className="group">
-      <Card className="relative overflow-hidden transition-all group-hover:border-primary/30 group-hover:shadow-sm">
+      <Card className="relative overflow-hidden transition-all group-hover:border-primary/30 group-hover:shadow-xs">
         <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
           <BorderBeam
             size={60}

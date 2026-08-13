@@ -125,7 +125,7 @@ export function CreateTaskDialog({
             </label>
             <input
               id="task-title"
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
               placeholder="Task title"
               value={title}
               onChange={(e) => { setTitle(e.target.value); }}
@@ -141,7 +141,7 @@ export function CreateTaskDialog({
             </label>
             <textarea
               id="task-desc"
-              className="flex min-h-[72px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="flex min-h-[72px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
               placeholder="Optional description"
               value={description}
               onChange={(e) => { setDescription(e.target.value); }}
@@ -179,7 +179,7 @@ export function CreateTaskDialog({
               <input
                 id="task-due"
                 type="date"
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                 value={dueDate}
                 onChange={(e) => { setDueDate(e.target.value); }}
               />

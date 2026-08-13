@@ -322,7 +322,7 @@ function Rating({
       data-disabled={disabled}
       data-readonly={readOnly}
       className={cn(
-        'focus-visible:ring-ring/50 flex gap-px focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
+        'focus-visible:ring-ring/50 flex gap-px focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden',
         disabled && 'opacity-50',
         className
       )}

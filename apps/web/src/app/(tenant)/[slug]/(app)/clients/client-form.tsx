@@ -172,7 +172,7 @@ export function ClientForm(props: Props) {
   }
 
   const inputCls =
-    "w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none";
+    "w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-hidden";
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">

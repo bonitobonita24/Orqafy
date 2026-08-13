@@ -29,7 +29,7 @@ export function NewTicketForm({ slug }: NewTicketFormProps) {
   });
 
   const fieldClass =
-    "mt-1 block w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary";
+    "mt-1 block w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-hidden focus:ring-1 focus:ring-primary";
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

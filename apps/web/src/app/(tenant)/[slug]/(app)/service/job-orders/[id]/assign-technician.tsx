@@ -69,7 +69,7 @@ export function AssignTechnician({
       <select
         value={selectedId}
         onChange={(e) => setSelectedId(e.target.value)}
-        className="block rounded-md border border-border bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+        className="block rounded-md border border-border bg-background px-2 py-1 text-sm focus:outline-hidden focus:ring-1 focus:ring-primary"
         autoFocus
       >
         <option value="">— Select technician —</option>

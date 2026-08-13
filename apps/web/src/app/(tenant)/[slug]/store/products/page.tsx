@@ -125,7 +125,7 @@ export default async function PublicStorefrontProductsPage({
             name="q"
             defaultValue={search ?? ""}
             placeholder="Search by name or SKU…"
-            className="w-64 rounded-md border border-border bg-card px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-64 rounded-md border border-border bg-card px-3 py-1.5 text-sm focus:outline-hidden focus:ring-1 focus:ring-primary"
           />
           <button
             type="submit"

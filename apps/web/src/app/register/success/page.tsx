@@ -54,7 +54,7 @@ export default async function RegisterSuccessPage({
         <div className="rounded-lg border border-border bg-card p-6 space-y-4 text-left">
           <div className="space-y-3">
             <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
                 1
               </span>
               <div>
@@ -66,7 +66,7 @@ export default async function RegisterSuccessPage({
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
                 2
               </span>
               <div>
@@ -77,7 +77,7 @@ export default async function RegisterSuccessPage({
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">
                 3
               </span>
               <div>

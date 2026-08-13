@@ -58,7 +58,7 @@ const timelineDotVariants = cva(
   {
     variants: {
       status: {
-        default: 'size-4 [&>*]:hidden',
+        default: 'size-4 *:hidden',
         current:
           'size-4 [&>*:not(.timeline-icon-circle)]:hidden [&>.timeline-icon-circle>svg]:fill-current [&>.timeline-icon-circle>svg]:text-current',
         done: 'bg-primary [&>.timeline-icon-check>svg]:text-background size-4 [&>*:not(.timeline-icon-check)]:hidden',

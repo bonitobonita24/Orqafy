@@ -147,7 +147,7 @@ export function QuickAddContactLog({ customerId }: QuickAddContactLogProps) {
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="Brief summary"
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-hidden"
               maxLength={255}
             />
           </div>
@@ -161,7 +161,7 @@ export function QuickAddContactLog({ customerId }: QuickAddContactLogProps) {
               onChange={(e) => setBody(e.target.value)}
               placeholder="Details, follow-ups, etc."
               rows={4}
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-hidden"
               maxLength={5000}
             />
           </div>
@@ -174,7 +174,7 @@ export function QuickAddContactLog({ customerId }: QuickAddContactLogProps) {
               type="date"
               value={occurredAt}
               onChange={(e) => setOccurredAt(e.target.value)}
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-hidden"
             />
           </div>
 

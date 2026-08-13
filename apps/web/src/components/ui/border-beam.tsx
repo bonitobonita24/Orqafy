@@ -44,7 +44,7 @@ function BorderBeam({
       <motion.div
         className={cn(
           'absolute aspect-square',
-          'rounded-full bg-linear-to-l from-[var(--color-from)] via-[var(--color-to)] to-transparent',
+          'rounded-full bg-linear-to-l from-(--color-from) via-(--color-to) to-transparent',
           className
         )}
         style={

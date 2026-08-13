@@ -189,7 +189,7 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
   ];
 
   const inputClass =
-    "h-7 rounded-md border border-border bg-background px-2.5 text-xs outline-none focus:border-primary/50";
+    "h-7 rounded-md border border-border bg-background px-2.5 text-xs outline-hidden focus:border-primary/50";
 
   return (
     // ── Pro wrapper: Card replaces raw <section> (charts-component-3 pattern) ──
@@ -242,7 +242,7 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
                 className={[
                   "rounded px-2.5 py-1 text-xs font-medium transition-colors",
                   activeRange === p.key
-                    ? "bg-background text-foreground shadow-sm"
+                    ? "bg-background text-foreground shadow-xs"
                     : "text-muted-foreground hover:text-foreground",
                 ].join(" ")}
                 aria-pressed={activeRange === p.key}
@@ -255,7 +255,7 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
               className={[
                 "rounded px-2.5 py-1 text-xs font-medium transition-colors",
                 activeRange === "custom"
-                  ? "bg-background text-foreground shadow-sm"
+                  ? "bg-background text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground",
               ].join(" ")}
               aria-pressed={activeRange === "custom"}

@@ -125,7 +125,7 @@ export function RegisterForm({ plans, defaultPlan }: Props) {
           required
           minLength={3}
           maxLength={63}
-          className={`w-full rounded-md border ${slugBorderColor} bg-background px-3 py-2 text-sm outline-none ring-offset-background transition-colors focus:ring-1 focus:ring-ring`}
+          className={`w-full rounded-md border ${slugBorderColor} bg-background px-3 py-2 text-sm outline-hidden ring-offset-background transition-colors focus:ring-1 focus:ring-ring`}
         />
         {slugMessage !== "" && (
           <p
@@ -156,7 +156,7 @@ export function RegisterForm({ plans, defaultPlan }: Props) {
           onChange={(e) => setOrgName(e.target.value)}
           placeholder="Acme Corp"
           required
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background transition-colors focus:ring-1 focus:ring-ring"
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-hidden ring-offset-background transition-colors focus:ring-1 focus:ring-ring"
         />
       </div>
 
@@ -172,7 +172,7 @@ export function RegisterForm({ plans, defaultPlan }: Props) {
           onChange={(e) => setOwnerName(e.target.value)}
           placeholder="Juan dela Cruz"
           required
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background transition-colors focus:ring-1 focus:ring-ring"
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-hidden ring-offset-background transition-colors focus:ring-1 focus:ring-ring"
         />
       </div>
 
@@ -188,7 +188,7 @@ export function RegisterForm({ plans, defaultPlan }: Props) {
           onChange={(e) => setOwnerEmail(e.target.value)}
           placeholder="juan@acmecorp.com"
           required
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background transition-colors focus:ring-1 focus:ring-ring"
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-hidden ring-offset-background transition-colors focus:ring-1 focus:ring-ring"
         />
       </div>
 
@@ -205,7 +205,7 @@ export function RegisterForm({ plans, defaultPlan }: Props) {
           placeholder="Min 8 characters"
           required
           minLength={8}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background transition-colors focus:ring-1 focus:ring-ring"
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-hidden ring-offset-background transition-colors focus:ring-1 focus:ring-ring"
         />
       </div>
 
@@ -219,7 +219,7 @@ export function RegisterForm({ plans, defaultPlan }: Props) {
             id="plan"
             value={selectedPlan}
             onChange={(e) => setSelectedPlan(e.target.value)}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background transition-colors focus:ring-1 focus:ring-ring"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-hidden ring-offset-background transition-colors focus:ring-1 focus:ring-ring"
           >
             {plans.map((p) => {
               const price = Number(p.priceMonthly);

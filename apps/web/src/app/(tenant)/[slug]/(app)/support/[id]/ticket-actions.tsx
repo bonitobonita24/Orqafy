@@ -126,7 +126,7 @@ export function TicketActions({
               value={assignTo}
               onChange={(e) => setAssignTo(e.target.value)}
               placeholder="User ID or leave empty to unassign"
-              className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-hidden focus:ring-1 focus:ring-primary"
             />
           </div>
           <button
@@ -152,7 +152,7 @@ export function TicketActions({
           onChange={(e) => setCommentContent(e.target.value)}
           placeholder="Write a comment…"
           rows={3}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-hidden focus:ring-1 focus:ring-primary"
         />
         <div className="flex items-center justify-between">
           <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">

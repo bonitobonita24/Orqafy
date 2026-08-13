@@ -168,7 +168,7 @@ function RecordBreachForm({ onCreated }: { onCreated: (r: CreateResult) => void 
               onChange={(e) =>
                 setSeverity(e.target.value as "low" | "medium" | "high" | "critical")
               }
-              className="mt-0 block w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="mt-0 block w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
               required
             >
               <option value="low">Low</option>
@@ -268,7 +268,7 @@ function BreachRowActions({ id, status }: { id: string; status: string }) {
           type="button"
           onClick={() => npcMut.mutate({ id })}
           disabled={npcMut.isPending}
-          className="rounded border border-border px-2 py-1 text-xs hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="rounded border border-border px-2 py-1 text-xs hover:bg-muted/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
         >
           Mark NPC notified
         </button>
@@ -278,7 +278,7 @@ function BreachRowActions({ id, status }: { id: string; status: string }) {
           type="button"
           onClick={() => subjMut.mutate({ id })}
           disabled={subjMut.isPending}
-          className="rounded border border-border px-2 py-1 text-xs hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="rounded border border-border px-2 py-1 text-xs hover:bg-muted/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
         >
           Mark subjects notified
         </button>
@@ -288,7 +288,7 @@ function BreachRowActions({ id, status }: { id: string; status: string }) {
           type="button"
           onClick={() => reportMut.mutate({ id })}
           disabled={reportMut.isPending}
-          className="rounded border border-border px-2 py-1 text-xs hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="rounded border border-border px-2 py-1 text-xs hover:bg-muted/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
         >
           File full report
         </button>
@@ -298,7 +298,7 @@ function BreachRowActions({ id, status }: { id: string; status: string }) {
           type="button"
           onClick={() => closeMut.mutate({ id })}
           disabled={closeMut.isPending}
-          className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
         >
           Close
         </button>

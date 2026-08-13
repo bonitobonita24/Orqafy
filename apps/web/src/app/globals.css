@@ -1,6 +1,157 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@source '../../../../packages/ui/src/**/*.{ts,tsx}';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-sans: var(--font-inter), Inter, system-ui, sans-serif;
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+
+  --color-sidebar: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  --color-brand: hsl(var(--primary));
+  --color-brand-muted: hsl(var(--brand-muted));
+
+  --color-surface: hsl(var(--surface));
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility w-510 {
+  /* Typography weight utilities */
+  font-weight: 500;
+}
+
+@utility w-590 {
+  font-weight: 600;
+}
+
+@utility heading-display {
+  /* Heading compression tokens (DESIGN.md §3 Hierarchy — tight letter-spacing creates density) */
+  /* Display / Hero: 60px, lh 1.00, ls -0.65px */
+  font-size: 3.75rem; /* 60px */
+  line-height: 1;
+  letter-spacing: -0.65px;
+}
+
+@utility heading-section {
+  /* Section Heading: 36px, lh 1.11, ls -0.9px */
+  font-size: 2.25rem; /* 36px */
+  line-height: 1.11;
+  letter-spacing: -0.9px;
+}
+
+@utility heading-sub {
+  /* Sub-heading: 24px, weight 700, lh 1.33, ls -0.6px */
+  font-size: 1.5rem; /* 24px */
+  font-weight: 700;
+  line-height: 1.33;
+  letter-spacing: -0.6px;
+}
+
+@utility heading-overline {
+  /* Tag / Overline Tiny: 14px, weight 600, lh 1.43, ls +2.52px — uppercase required */
+  font-size: 0.875rem; /* 14px */
+  font-weight: 600;
+  line-height: 1.43;
+  letter-spacing: 2.52px;
+  text-transform: uppercase;
+}
+
+@utility signal-glow {
+  /* signal-glow animation — neutral-dark palette: pulsing ring-color drop-shadow     */
+  /* Applied to: header logo, login screen logo, active disbursement pipeline step     */
+  /* Uses --ring (neutral gray in current theme; swap to brand color if theme changes) */
+  animation: signal-glow 2.5s ease-in-out infinite;
+}
+
+@utility font-code {
+  /* Monospace / code surfaces */
+  font-family:
+    SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+}
 
 @layer base {
   :root {
@@ -141,52 +292,6 @@
   /* Heading elements use system-ui for native authority (DESIGN.md §3 Typography) */
   h1, h2, h3 {
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", Helvetica, Arial, sans-serif;
-  }
-}
-
-@layer utilities {
-  /* Typography weight utilities */
-  .w-510 { font-weight: 500; }
-  .w-590 { font-weight: 600; }
-
-  /* Heading compression tokens (DESIGN.md §3 Hierarchy — tight letter-spacing creates density) */
-  /* Display / Hero: 60px, lh 1.00, ls -0.65px */
-  .heading-display {
-    font-size: 3.75rem;        /* 60px */
-    line-height: 1;
-    letter-spacing: -0.65px;
-  }
-  /* Section Heading: 36px, lh 1.11, ls -0.9px */
-  .heading-section {
-    font-size: 2.25rem;        /* 36px */
-    line-height: 1.11;
-    letter-spacing: -0.9px;
-  }
-  /* Sub-heading: 24px, weight 700, lh 1.33, ls -0.6px */
-  .heading-sub {
-    font-size: 1.5rem;         /* 24px */
-    font-weight: 700;
-    line-height: 1.33;
-    letter-spacing: -0.6px;
-  }
-  /* Tag / Overline Tiny: 14px, weight 600, lh 1.43, ls +2.52px — uppercase required */
-  .heading-overline {
-    font-size: 0.875rem;       /* 14px */
-    font-weight: 600;
-    line-height: 1.43;
-    letter-spacing: 2.52px; text-transform: uppercase;
-  }
-
-  /* signal-glow animation — neutral-dark palette: pulsing ring-color drop-shadow     */
-  /* Applied to: header logo, login screen logo, active disbursement pipeline step     */
-  /* Uses --ring (neutral gray in current theme; swap to brand color if theme changes) */
-  .signal-glow {
-    animation: signal-glow 2.5s ease-in-out infinite;
-  }
-
-  /* Monospace / code surfaces */
-  .font-code {
-    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   }
 }
 

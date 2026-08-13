@@ -96,10 +96,10 @@ export function AppDownloadInterstitial() {
   return (
     <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-[100] bg-background" />
+        <DialogPrimitive.Overlay className="fixed inset-0 z-100 bg-background" />
         <DialogPrimitive.Content
           className={cn(
-            "fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 bg-background px-6 py-10 text-center",
+            "fixed inset-0 z-100 flex flex-col items-center justify-center gap-6 bg-background px-6 py-10 text-center",
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
           )}
           onOpenAutoFocus={(e) => {

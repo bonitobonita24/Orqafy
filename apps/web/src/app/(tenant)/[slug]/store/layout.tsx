@@ -18,7 +18,7 @@ export default async function StoreLayout({
   return (
     <CartProvider tenantSlug={slug}>
       <div className="min-h-screen bg-background">
-        <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm supports-backdrop-filter:bg-background/80">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
             <Link
               href={`/${slug}/store/products`}

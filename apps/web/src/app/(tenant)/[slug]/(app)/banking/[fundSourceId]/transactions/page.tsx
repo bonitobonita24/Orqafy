@@ -217,7 +217,7 @@ export default async function AccountTransactionsPage({ params, searchParams }: 
             id="type"
             name="type"
             defaultValue={typeFilter ?? ""}
-            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm focus:outline-hidden focus:ring-1 focus:ring-ring"
           >
             <option value="">All types</option>
             {Object.entries(TYPE_LABELS).map(([value, label]) => (
@@ -230,7 +230,7 @@ export default async function AccountTransactionsPage({ params, searchParams }: 
 
         <button
           type="submit"
-          className="rounded-md border border-border bg-card px-3 py-1.5 text-sm hover:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring"
+          className="rounded-md border border-border bg-card px-3 py-1.5 text-sm hover:bg-muted/50 focus:outline-hidden focus:ring-1 focus:ring-ring"
         >
           Filter
         </button>

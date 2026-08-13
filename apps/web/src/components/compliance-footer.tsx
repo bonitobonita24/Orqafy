@@ -97,7 +97,7 @@ export function ComplianceFooter() {
         <div className="flex flex-col items-center gap-1 text-xs text-muted-foreground sm:flex-row sm:justify-center sm:gap-3">
           <a
             href="/privacy"
-            className="hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded-sm transition-colors"
+            className="hover:text-foreground hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded-sm transition-colors"
           >
             Privacy Policy
           </a>

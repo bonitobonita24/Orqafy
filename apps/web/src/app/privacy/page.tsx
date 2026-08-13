@@ -43,7 +43,7 @@ export default function PrivacyPage() {
             Data Protection Officer contact:{" "}
             <a
               href="mailto:bonitobonita24@gmail.com"
-              className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+              className="text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
             >
               bonitobonita24@gmail.com
             </a>
@@ -153,7 +153,7 @@ export default function PrivacyPage() {
                 href="https://www.privacy.gov.ph"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+                className="text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
               >
                 www.privacy.gov.ph
               </a>
@@ -217,7 +217,7 @@ export default function PrivacyPage() {
             Email:{" "}
             <a
               href="mailto:bonitobonita24@gmail.com"
-              className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+              className="text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
             >
               bonitobonita24@gmail.com
             </a>

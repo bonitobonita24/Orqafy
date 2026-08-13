@@ -188,7 +188,7 @@ export function CustomerForm(props: Props) {
   }
 
   const inputCls =
-    "w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none";
+    "w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-hidden";
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -300,7 +300,7 @@ export function CustomerForm(props: Props) {
           value={values.notes}
           onChange={set("notes")}
           rows={4}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-hidden"
           maxLength={5000}
           placeholder="Internal notes…"
         />

@@ -81,7 +81,7 @@ export function validateCart(args: {
     paymentMethod === "cash" || amountPaid === totals.totalAmount;
 
   let reason: string | null = null;
-  if (!hasSession) reason = "Select an open session to ring against.";
+  if (!hasSession) reason = "Select an open session to ring-3 against.";
   else if (!hasItems) reason = "Add at least one product to the cart.";
   else if (!totalNonNegative) reason = "Discount cannot exceed subtotal + tax.";
   else if (!amountPaidSufficient) reason = "Amount paid is less than the total due.";

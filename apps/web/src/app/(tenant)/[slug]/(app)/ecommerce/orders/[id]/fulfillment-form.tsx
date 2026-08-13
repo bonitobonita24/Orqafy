@@ -82,7 +82,7 @@ export function FulfillmentForm({
             onChange={(e) => setTrackingNumber(e.target.value)}
             placeholder="e.g. LBC-123456789"
             maxLength={200}
-            className="mt-1 block w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className="mt-1 block w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-hidden focus:ring-1 focus:ring-primary"
           />
         </label>
         <label className="block">
@@ -95,7 +95,7 @@ export function FulfillmentForm({
             onChange={(e) => setPaymentMethod(e.target.value)}
             placeholder="e.g. bank_transfer, gcash, credit_card"
             maxLength={100}
-            className="mt-1 block w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className="mt-1 block w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-hidden focus:ring-1 focus:ring-primary"
           />
         </label>
       </div>
