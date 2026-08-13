@@ -1,7 +1,12 @@
 # Tailwind v4 Migration + shadcn/studio "orqafy" Theme Adoption — Plan of Record
 
 **Branch:** `feat/tailwind-v4-shadcnstudio-theme` (off `main` @ v0.13.2)
-**Status:** IN PROGRESS · **HARD HOLD** (local dev only — no staging/prod/demo deploy without explicit owner word)
+**Status:** Phases 0–3 DONE + visually verified (login, dark) · Phases 4–7 remaining · **HARD HOLD** (local dev only — no staging/prod/demo deploy without explicit owner word)
+
+**Progress log:**
+- `5893e7b` plan · `69dbcc7` Phase 1 (v3.4→v4 codemod + 3 variant-literal fixes) · `742670b` Phase 2+3 (oklch theme + Geist/Serif/Mono fonts + hugeicons/tw-animate deps).
+- Gates green: typecheck + `next build` (102 routes) after each phase. Dev app rebuilt; `/login` renders the theme (screenshot `screenshots/orqafy-theme-login-dark.png`).
+- **Review flags for the full QA pass:** (1) theme chart tokens are greyscale zinc — multi-series data-viz may need distinguishable hues; (2) Source Serif 4 body across dense ERP tables/forms — confirm legibility on authed screens.
 **Owner decisions (2026-08-13):** Path A = migrate `apps/web` to Tailwind v4 then adopt natively · Blocks/templates = pull via shadcn-studio Pro MCP.
 
 ## Goal
