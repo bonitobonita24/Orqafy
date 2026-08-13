@@ -13,12 +13,12 @@ import {
   AttachmentIcon as _AttachmentIcon,
   BankIcon as _BankIcon,
   BookOpen01Icon as _BookOpen01Icon,
-  BookmarkCheck01Icon as _BookmarkCheck01Icon,
+  BookOpenCheckIcon as _BookOpenCheckIcon,
   Briefcase01Icon as _Briefcase01Icon,
   Building03Icon as _Building03Icon,
   Calculator01Icon as _Calculator01Icon,
-  Calendar03Icon as _Calendar03Icon,
-  CalendarSetting01Icon as _CalendarSetting01Icon,
+  CalendarClockIcon as _CalendarClockIcon,
+  CalendarRangeIcon as _CalendarRangeIcon,
   Cancel01Icon as _Cancel01Icon,
   ChartColumnIcon as _ChartColumnIcon,
   ChartDecreaseIcon as _ChartDecreaseIcon,
@@ -106,12 +106,12 @@ export const ArrowUpRight = makeIcon(_ArrowUpRight01Icon);
 export const BarChart3 = makeIcon(_ChartColumnIcon);
 export const Bell = makeIcon(_Notification03Icon);
 export const BookOpen = makeIcon(_BookOpen01Icon);
-export const BookOpenCheck = makeIcon(_BookmarkCheck01Icon);
+export const BookOpenCheck = makeIcon(_BookOpenCheckIcon);
 export const Briefcase = makeIcon(_Briefcase01Icon);
 export const Building2 = makeIcon(_Building03Icon);
 export const Calculator = makeIcon(_Calculator01Icon);
-export const CalendarClock = makeIcon(_CalendarSetting01Icon);
-export const CalendarRange = makeIcon(_Calendar03Icon);
+export const CalendarClock = makeIcon(_CalendarClockIcon);
+export const CalendarRange = makeIcon(_CalendarRangeIcon);
 export const ChartColumnIncreasing = makeIcon(_ChartIncreaseIcon);
 export const Check = makeIcon(_Tick02Icon);
 export const CheckIcon = makeIcon(_Tick02Icon);
