@@ -54,7 +54,17 @@ if ! DATABASE_URL="$DBURL_LOCAL" pnpm --filter @orqafy/db db:migrate:deploy; the
 fi
 kill $TUN 2>/dev/null || true
 
-echo "▶ 5/5 Verify"
-sleep 5
-curl -s -o /dev/null -w "  orqafy-prod health = %{http_code}\n" https://orqafy.com/api/health
+echo "▶ 5/5 Verify (poll prod health until 200 — a large deploy needs longer than a single check)"
+HEALTH_URL="https://orqafy.com/api/health"
+code=000
+for i in $(seq 1 24); do              # up to 24×5s = 120s
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$HEALTH_URL" || echo 000)
+  [ "$code" = "200" ] && { echo "  orqafy-prod health = 200 (healthy after $((i*5))s)"; break; }
+  printf "  … attempt %d/24: health=%s — waiting 5s\n" "$i" "$code"
+  sleep 5
+done
+if [ "$code" != "200" ]; then
+  echo "  ⚠ orqafy-prod health = ${code} after 120s — NOT confirmed healthy."
+  echo "     Inspect: ssh ${VPS} 'docker compose -p ${PROJ} logs --tail=80 app'"
+fi
 echo "✅ push-to-prod done (${SRC} → latest/prod-sha-${SHA}). Prod: https://orqafy.com"
