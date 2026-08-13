@@ -1,7 +1,7 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-08-13 by CLAUDE_CODE (Tailwind v4 migration + shadcn/studio theme Phases 0-3 DONE+verified; v0.13.3 queue worked; prod v0.13.2 untouched.)
+> Last updated: 2026-08-13 (pm) by CLAUDE_CODE (Phase 4 lucide→hugeicons DONE+verified via shim; theme Phases 0-3 done earlier; prod v0.13.2 untouched.)
 
 ---
 
@@ -14,21 +14,22 @@
 1. [ ] THEME Phase 5 — browse owner's shadcn/studio library via shadcn-studio MCP; integrate
        components/blocks/templates onto branch feat/tailwind-v4-shadcnstudio-theme (INHERIT-not-REPLACE,
        keep tRPC/Prisma/Auth). done/verify: typecheck + next build green (102 routes) + visual QA.
-2. [ ] THEME Phase 4 — migrate 69 lucide-react files → hugeicons (deps @hugeicons/react +
-       core-free-icons already installed; sidebar still lucide). done/verify: build green, icons render;
-       swarm-dispatch (69 files = own wave).
-3. [ ] THEME Phase 7 — reconcile design-contract baseline (docs/DESIGN.md / tokens / MOCKUP) to the new
+2. [ ] THEME Phase 7 — reconcile design-contract baseline (docs/DESIGN.md / tokens / MOCKUP) to the new
        oklch theme + governance (CHANGELOG_AI, DECISIONS_LOG). done/verify: Rule-31 fidelity gate targets
        new theme, not stale baseline.
-4. [ ] v0.13.3 #2 push-to-prod polling fix — committed on fix/push-to-prod-health-poll (2bbdba3); awaits
-       merge authorization (see open decisions). #3 dev-worker rebuild = DONE this session.
+3. [ ] v0.13.3 #2 push-to-prod polling fix — committed on fix/push-to-prod-health-poll (2bbdba3); awaits
+       merge authorization (see open decisions). #3 dev-worker rebuild = DONE.
+~~THEME Phase 4 (lucide→hugeicons)~~ = ✅ DONE this session (see below).
 
 ## ⚖️ OPEN DECISIONS (owner) — surface FIRST on resume
 - [ ] fc1a777 (branch fix/ensure-dev-fresh-worker-compose) — verified-correct Rule-39 worker-compose fix,
       UNMERGED. "Failed live" in v0.13.2 gate only because main ran the OLD unmerged version (proven at
       config layer: main invocation → "undefined service valkey"; fc1a777 → valid). Merge to main? (push = owner-gated)
 - [ ] THEME look approval — serif body (Source Serif 4) + zinc-dark + Geist headings. Screenshots delivered
-      (login/dashboard/invoices/reports). Keep as-is or adjust?
+      (login/dashboard/invoices/reports). Keep as-is or adjust? NOW ALSO covers hugeicon glyphs (Phase 4):
+      a few mappings are taste (Landmark→Bank, Receipt/ReceiptText→Invoice01/03, ShieldAlert→SecurityWarning,
+      ShieldCheck→SecurityCheck, ClipboardList→TaskDaily01, FolderTree→FolderLibrary). Any glyph = 1-line
+      change in src/components/ui/icons.tsx (the single shim/mapping file).
 - [ ] THEME chart palette — theme ships GREYSCALE zinc chart tokens (chart-1..5). Fine for single-series;
       add distinct multi-hue palette for multi-series/category charts? (couldn't visually confirm — demo data outside 30d window)
 - [ ] ORPHANED STASH stash@{0} "framework docs update - pre item 3" (2026-05-08, 13 files, STALE v31
@@ -37,6 +38,15 @@
 - [ ] Merge/push to main of all 3 held branches (theme + 2 fixes) — HARD HOLD, owner word needed.
 
 ## ✅ DONE THIS SESSION (built AND verified — evidence)
+- THEME Phase 4 — lucide-react → hugeicons, 83 icons / 69 files, via SHIM src/components/ui/icons.tsx
+  (owner-approved strategy: call-site JSX untouched, import source only swaps; 1 reviewable mapping file;
+  every hugeicons name validated vs the real 6,124 export set). lucide-react removed (app + unused
+  packages/ui; lockfile pruned to 0 refs). 2 type seams LucideIcon→IconType. Commits 052152d (migration) +
+  517b222 (3 exact-glyph fixes). Gates: tsc ✓ · next build 102 routes ✓ · 0 lucide refs ✓. LIVE-verified:
+  dev app rebuilt off 517b222 (port 42951, healthy), /demo/dashboard renders 19 sidebar + 31 total hugeicon
+  SVGs, anyLucideClass=false (DOM-confirmed; screenshot tool timed out on this box).
+  ⚠ ENV (not code): ~/.docker contexts/meta I/O error + missing docker-credential-desktop.exe broke
+  docker build → worked around w/ throwaway DOCKER_CONFIG + legacy builder; may recur until Docker Desktop/WSL restart.
 - v0.13.3 #1: DIAGNOSED fc1a777 (correct; proven at config layer). #2: push-to-prod.sh sleep-5+single-curl
   → bounded health-poll (2bbdba3, fix/push-to-prod-health-poll; shellcheck+bash-n green). #3: dev worker
   REBUILT via fc1a777's fixed cmd → running healthy, freshness FRESH.
@@ -48,11 +58,13 @@
   border/layout regressions. Plan-of-record: docs/TAILWIND_V4_THEME_ADOPTION_PLAN.md.
 
 ## 🔒 STATE / GROUND TRUTH
-- git: on feat/tailwind-v4-shadcnstudio-theme @8073b0f · 4 ahead of origin/main · UNMERGED HARD HOLD.
-  Also fix/push-to-prod-health-poll @2bbdba3 (1 ahead) · fix/ensure-dev-fresh-worker-compose @fc1a777 (1 ahead).
+- git: on feat/tailwind-v4-shadcnstudio-theme @517b222 · 7 ahead of origin/main · UNMERGED HARD HOLD.
+  (Phase 4 added 052152d + 517b222 on top of the theme commits.) Also fix/push-to-prod-health-poll @2bbdba3
+  (1 ahead) · fix/ensure-dev-fresh-worker-compose @fc1a777 (1 ahead). Working tree CLEAN.
 - origin/main @18999f7 = v0.13.2 LIVE on orqafy.com — PROD UNTOUCHED this session.
-- dev env: all orqafy_dev containers healthy; app+worker rebuilt off theme branch (FRESH). Login: workspace
-  demo / admin@mail.com / pw admin (dev seed).
+- dev env: all orqafy_dev containers healthy; dev APP rebuilt off 517b222 (FRESH, port 42951). WORKER NOT
+  rebuilt this session (apps/web-only change, worker unaffected; its standalone rebuild is the fc1a777-gated
+  broken path). Login: workspace demo / webmaster@orqafy.local (owner) or admin@mail.com / pw admin (dev seed).
 - deferred/owner-gated: theme merge, 2 fix merges, stash disposition, chart palette, look approval.
 - next un-gated action: THEME Phase 5 (MCP blocks) on the theme branch.
 - ⚠ ALREADY-DONE guard: #3 dev-worker rebuild + Phases 0-3 are DONE (evidence above) — do not re-run; verify vs git before repeating.
