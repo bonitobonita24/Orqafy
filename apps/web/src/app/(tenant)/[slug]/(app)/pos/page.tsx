@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";

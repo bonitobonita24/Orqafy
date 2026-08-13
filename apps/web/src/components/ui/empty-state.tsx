@@ -1,10 +1,10 @@
-import type { LucideIcon } from "lucide-react";
+import { type IconType } from "@/components/ui/icons";
 
 import { cn } from "@/lib/utils";
 
 interface EmptyStateProps {
   /** Lucide icon shown above the title. */
-  icon: LucideIcon;
+  icon: IconType;
   /** Short, primary message — what's missing. */
   title: string;
   /** Optional secondary line — why, or what to do next. */

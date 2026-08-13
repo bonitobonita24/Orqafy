@@ -2,27 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  BarChart3,
-  BookOpen,
-  Calculator,
-  CheckSquare,
-  ClipboardList,
-  Clock,
-  DollarSign,
-  FileText,
-  FolderOpen,
-  HeartHandshake,
-  Landmark,
-  LayoutDashboard,
-  LifeBuoy,
-  Package,
-  Receipt,
-  Settings,
-  ShoppingBag,
-  ShoppingCart,
-  UserCheck,
-} from "lucide-react";
+import { BarChart3, BookOpen, Calculator, CheckSquare, ClipboardList, Clock, DollarSign, FileText, FolderOpen, HeartHandshake, Landmark, LayoutDashboard, LifeBuoy, Package, Receipt, Settings, ShoppingBag, ShoppingCart, UserCheck } from "@/components/ui/icons";
 import { trpc } from "@/lib/trpc";
 import type { FeatureKey } from "@orqafy/shared/rbac";
 import {

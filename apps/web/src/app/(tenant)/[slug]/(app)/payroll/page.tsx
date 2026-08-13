@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Wallet } from "lucide-react";
+import { Wallet } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";

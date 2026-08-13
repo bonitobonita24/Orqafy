@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, Trash2, FileText, Loader2 } from "lucide-react";
+import { Download, FileText, Loader2, Trash2 } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { FileUpload } from "@/components/file-upload";
 import { trpc } from "@/lib/trpc";

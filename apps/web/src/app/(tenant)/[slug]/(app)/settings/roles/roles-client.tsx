@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, ShieldCheck } from "lucide-react";
+import { Plus, ShieldCheck } from "@/components/ui/icons";
 import { trpc } from "@/lib/trpc";
 import { FEATURE_KEYS, type FeatureKey } from "@orqafy/shared/rbac";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";

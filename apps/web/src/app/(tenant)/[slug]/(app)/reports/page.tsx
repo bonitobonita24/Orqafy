@@ -2,14 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 import { auth } from "@/server/auth";
-import {
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  FileText,
-  Wrench,
-  Receipt,
-} from "lucide-react";
+import { FileText, Minus, Receipt, TrendingDown, TrendingUp, Wrench } from "@/components/ui/icons";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";

@@ -14,12 +14,7 @@
 
 import { useState } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
-import {
-  ArrowDownRight,
-  ArrowUpRight,
-  ChartColumnIncreasing,
-  TrendingUp,
-} from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, ChartColumnIncreasing, TrendingUp } from "@/components/ui/icons";
 import { trpc } from "@/lib/trpc";
 import {
   ChartContainer,

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "@/components/ui/icons";
 import { trpc } from "@/lib/trpc";
 
 type CatRow = {

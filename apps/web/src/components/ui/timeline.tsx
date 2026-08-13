@@ -2,7 +2,7 @@ import * as React from 'react'
 
 import { cva, type VariantProps } from 'class-variance-authority'
 
-import { CheckIcon, CircleIcon, XIcon } from 'lucide-react'
+import { CheckIcon, CircleIcon, XIcon } from "@/components/ui/icons";
 
 import { cn } from '@/lib/utils'
 

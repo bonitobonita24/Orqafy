@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Paperclip, Trash2 } from "lucide-react";
+import { Paperclip, Trash2 } from "@/components/ui/icons";
 import {
   Dialog,
   DialogContent,

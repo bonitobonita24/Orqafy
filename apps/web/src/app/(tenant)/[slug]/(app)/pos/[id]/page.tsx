@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Receipt } from "lucide-react";
+import { Receipt } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";

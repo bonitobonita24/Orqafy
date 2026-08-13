@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";

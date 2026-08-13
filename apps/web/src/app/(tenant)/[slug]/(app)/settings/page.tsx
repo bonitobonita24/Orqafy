@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Building2, CreditCard, FolderTree, Mail, ShieldCheck, Tag, Users } from "lucide-react";
+import { Building2, CreditCard, FolderTree, Mail, ShieldCheck, Tag, Users } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
 import { guardPage } from "@/server/rbac/guard-page";
 import { auth } from "@/server/auth";

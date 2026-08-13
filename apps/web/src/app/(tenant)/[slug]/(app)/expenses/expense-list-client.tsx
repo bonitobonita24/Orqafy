@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Paperclip } from "lucide-react";
+import { Paperclip } from "@/components/ui/icons";
 import {
   Dialog,
   DialogContent,

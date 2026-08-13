@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { Users } from "@/components/ui/icons";
 import { trpc } from "@/lib/trpc";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";

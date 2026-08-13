@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
-import { Upload, X, FileText, Loader2 } from "lucide-react";
+import { FileText, Loader2, Upload, X } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { prepareUploadFile, prepareThumbnail } from "@/lib/upload";

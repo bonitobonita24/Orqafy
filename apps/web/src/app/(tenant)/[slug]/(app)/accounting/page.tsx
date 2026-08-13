@@ -1,12 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  BookOpenCheck,
-  Calculator,
-  CalendarRange,
-  NotebookText,
-  Settings2,
-} from "lucide-react";
+import { BookOpenCheck, Calculator, CalendarRange, NotebookText, Settings2 } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";

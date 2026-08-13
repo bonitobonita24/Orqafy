@@ -2,17 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@/server/auth";
 import { prisma } from "@orqafy/db";
-import {
-  LayoutDashboard,
-  HeartHandshake,
-  FolderOpen,
-  FileText,
-  Receipt,
-  BarChart3,
-  RefreshCw,
-  ShieldAlert,
-  Sparkles,
-} from "lucide-react";
+import { BarChart3, FileText, FolderOpen, HeartHandshake, LayoutDashboard, Receipt, RefreshCw, ShieldAlert, Sparkles } from "@/components/ui/icons";
 
 export const metadata: Metadata = { title: "Demo Workspace" };
 export const dynamic = "force-dynamic";

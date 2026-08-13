@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
 import { formatCurrency } from "@/lib/quotation-build";
 import { PageHeader } from "@/components/layout/page-header";

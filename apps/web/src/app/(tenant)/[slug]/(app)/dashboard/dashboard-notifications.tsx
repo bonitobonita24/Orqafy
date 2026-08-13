@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import { Bell } from "@/components/ui/icons";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Clock3, CalendarClock } from "lucide-react";
+import { CalendarClock, Clock3 } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
 import { auth } from "@/server/auth";
 import { PageHeader } from "@/components/layout/page-header";

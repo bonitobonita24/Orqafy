@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PackageSearch } from "lucide-react";
+import { PackageSearch } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
 import { formatCurrency } from "@/lib/quotation-build";
 import { Badge } from "@/components/ui/badge";

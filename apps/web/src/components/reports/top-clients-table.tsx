@@ -8,7 +8,7 @@
 // only plain serializable data (numbers), and we format on the client.
 
 import { type ColumnDef, type HeaderContext } from "@tanstack/react-table";
-import { ArrowUpDown, Users } from "lucide-react";
+import { ArrowUpDown, Users } from "@/components/ui/icons";
 
 import { DataTable } from "@/components/ui/data-table";
 

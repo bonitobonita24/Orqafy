@@ -14,7 +14,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useState } from "react";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, type IconType } from "@/components/ui/icons";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import {
@@ -25,10 +25,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { LucideIcon } from "lucide-react";
 
 export interface DataTableEmptyConfig {
-  icon: LucideIcon;
+  icon: IconType;
   title: string;
   description: string;
 }

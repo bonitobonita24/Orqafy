@@ -3,13 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { prisma } from "@orqafy/db";
-import {
-  FileText,
-  Receipt,
-  Users,
-  Briefcase,
-  ArrowRight,
-} from "lucide-react";
+import { ArrowRight, Briefcase, FileText, Receipt, Users } from "@/components/ui/icons";
 import { CircularProgress } from "@/components/ui/circular-progress";
 import { DashboardKpiCard } from "./dashboard-kpi-card";
 import { DashboardNotifications } from "./dashboard-notifications";

@@ -13,7 +13,7 @@
 
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from "recharts";
-import { ArrowDownRight, ArrowUpRight, Receipt } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Receipt } from "@/components/ui/icons";
 import { trpc } from "@/lib/trpc";
 import {
   ChartContainer,

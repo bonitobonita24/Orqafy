@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ShoppingCart, Trash2 } from "lucide-react";
+import { ShoppingCart, Trash2 } from "@/components/ui/icons";
 
 import {
   Sheet,
