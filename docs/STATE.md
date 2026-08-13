@@ -1,7 +1,62 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-08-08 by CLAUDE_CODE (Wave 0 COMPLETE: PROD LIVE @ orqafy.com; staging+demo LIVE; e528326 v0.12.2.)
+> Last updated: 2026-08-13 by CLAUDE_CODE (Tailwind v4 migration + shadcn/studio theme Phases 0-3 DONE+verified; v0.13.3 queue worked; prod v0.13.2 untouched.)
+
+---
+
+## ⭐ SESSION 2026-08-13 — Tailwind v4 + shadcn/studio "orqafy" theme (Phases 0-3) + v0.13.3 queue
+
+```
+[FOCUS: Orqafy]  ·  2026-08-13 ~13:35  ·  cold-start authority: docs/memory/MEMORY.md + this block
+
+## ⏳ TODO — next session works these IN ORDER
+1. [ ] THEME Phase 5 — browse owner's shadcn/studio library via shadcn-studio MCP; integrate
+       components/blocks/templates onto branch feat/tailwind-v4-shadcnstudio-theme (INHERIT-not-REPLACE,
+       keep tRPC/Prisma/Auth). done/verify: typecheck + next build green (102 routes) + visual QA.
+2. [ ] THEME Phase 4 — migrate 69 lucide-react files → hugeicons (deps @hugeicons/react +
+       core-free-icons already installed; sidebar still lucide). done/verify: build green, icons render;
+       swarm-dispatch (69 files = own wave).
+3. [ ] THEME Phase 7 — reconcile design-contract baseline (docs/DESIGN.md / tokens / MOCKUP) to the new
+       oklch theme + governance (CHANGELOG_AI, DECISIONS_LOG). done/verify: Rule-31 fidelity gate targets
+       new theme, not stale baseline.
+4. [ ] v0.13.3 #2 push-to-prod polling fix — committed on fix/push-to-prod-health-poll (2bbdba3); awaits
+       merge authorization (see open decisions). #3 dev-worker rebuild = DONE this session.
+
+## ⚖️ OPEN DECISIONS (owner) — surface FIRST on resume
+- [ ] fc1a777 (branch fix/ensure-dev-fresh-worker-compose) — verified-correct Rule-39 worker-compose fix,
+      UNMERGED. "Failed live" in v0.13.2 gate only because main ran the OLD unmerged version (proven at
+      config layer: main invocation → "undefined service valkey"; fc1a777 → valid). Merge to main? (push = owner-gated)
+- [ ] THEME look approval — serif body (Source Serif 4) + zinc-dark + Geist headings. Screenshots delivered
+      (login/dashboard/invoices/reports). Keep as-is or adjust?
+- [ ] THEME chart palette — theme ships GREYSCALE zinc chart tokens (chart-1..5). Fine for single-series;
+      add distinct multi-hue palette for multi-series/category charts? (couldn't visually confirm — demo data outside 30d window)
+- [ ] ORPHANED STASH stash@{0} "framework docs update - pre item 3" (2026-05-08, 13 files, STALE v31
+      framework docs — Master_Prompt_v31.md/.clinerules era, superseded by V32.45.1; NOT this session's).
+      Drop as stale or keep? git-guard blocks stash ops → needs explicit owner call. DO NOT auto-drop.
+- [ ] Merge/push to main of all 3 held branches (theme + 2 fixes) — HARD HOLD, owner word needed.
+
+## ✅ DONE THIS SESSION (built AND verified — evidence)
+- v0.13.3 #1: DIAGNOSED fc1a777 (correct; proven at config layer). #2: push-to-prod.sh sleep-5+single-curl
+  → bounded health-poll (2bbdba3, fix/push-to-prod-health-poll; shellcheck+bash-n green). #3: dev worker
+  REBUILT via fc1a777's fixed cmd → running healthy, freshness FRESH.
+- THEME Phases 0-3 on feat/tailwind-v4-shadcnstudio-theme (4 commits): plan (5893e7b) · v3.4→v4 codemod +
+  3 variant-literal fixes (69dbcc7) · oklch theme + @theme inline + radius/shadow + Geist/Serif/Mono fonts +
+  hugeicons/tw-animate deps + components.json zinc/hugeicons (742670b) · plan status (8073b0f). Gates green
+  every phase (typecheck + next build 102 routes). Dev rebuilt; visual QA passed on login/dashboard/table/
+  reports (screenshots/ orqafy-theme-login-dark, qa-dashboard, qa-invoices-table, qa-reports-charts). No v4
+  border/layout regressions. Plan-of-record: docs/TAILWIND_V4_THEME_ADOPTION_PLAN.md.
+
+## 🔒 STATE / GROUND TRUTH
+- git: on feat/tailwind-v4-shadcnstudio-theme @8073b0f · 4 ahead of origin/main · UNMERGED HARD HOLD.
+  Also fix/push-to-prod-health-poll @2bbdba3 (1 ahead) · fix/ensure-dev-fresh-worker-compose @fc1a777 (1 ahead).
+- origin/main @18999f7 = v0.13.2 LIVE on orqafy.com — PROD UNTOUCHED this session.
+- dev env: all orqafy_dev containers healthy; app+worker rebuilt off theme branch (FRESH). Login: workspace
+  demo / admin@mail.com / pw admin (dev seed).
+- deferred/owner-gated: theme merge, 2 fix merges, stash disposition, chart palette, look approval.
+- next un-gated action: THEME Phase 5 (MCP blocks) on the theme branch.
+- ⚠ ALREADY-DONE guard: #3 dev-worker rebuild + Phases 0-3 are DONE (evidence above) — do not re-run; verify vs git before repeating.
+```
 
 ---
 
