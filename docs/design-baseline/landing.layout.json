@@ -1,0 +1,86 @@
+[
+  {
+    "fdl": "site-header",
+    "box": {
+      "x": 0,
+      "y": 0,
+      "w": 1,
+      "h": 0.07111111111111111
+    },
+    "order": 0,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "hero",
+    "box": {
+      "x": 0,
+      "y": 0.07111111111111111,
+      "w": 1,
+      "h": 0.7030902777777778
+    },
+    "order": 1,
+    "display": {
+      "display": "flex",
+      "flexDirection": "column"
+    }
+  },
+  {
+    "fdl": "features",
+    "box": {
+      "x": 0,
+      "y": 0.7742013888888889,
+      "w": 1,
+      "h": 0.8684027777777777
+    },
+    "order": 2,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "pricing",
+    "box": {
+      "x": 0,
+      "y": 1.6426041666666666,
+      "w": 1,
+      "h": 0.9371006944444444
+    },
+    "order": 3,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "cta",
+    "box": {
+      "x": 0,
+      "y": 2.5797048611111113,
+      "w": 1,
+      "h": 0.36444444444444446
+    },
+    "order": 4,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "site-footer",
+    "box": {
+      "x": 0,
+      "y": 2.9441493055555554,
+      "w": 1,
+      "h": 0.13666666666666666
+    },
+    "order": 5,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  }
+]
