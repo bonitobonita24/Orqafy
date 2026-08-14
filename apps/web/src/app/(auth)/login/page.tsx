@@ -45,7 +45,7 @@ export default function LoginPage() {
         <AuthBackgroundShape />
       </div>
 
-      <Card className="z-1 w-full border-none shadow-md sm:max-w-lg">
+      <Card data-fdl="auth-card" className="z-1 w-full border-none shadow-md sm:max-w-lg">
         <CardHeader className="gap-6">
           <Logo className="gap-3" />
 

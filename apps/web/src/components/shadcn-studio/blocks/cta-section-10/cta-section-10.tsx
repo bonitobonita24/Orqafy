@@ -12,7 +12,7 @@ type CTASectionProps = {
 
 const CTASection = ({ heading, description, ctaLabel, ctaHref }: CTASectionProps) => {
   return (
-    <section className='bg-primary py-8 sm:py-16 lg:py-24'>
+    <section data-fdl='cta' className='bg-primary py-8 sm:py-16 lg:py-24'>
       <div className='mx-auto max-w-5xl px-4 sm:px-6 lg:px-8'>
         <Card className='bg-primary rounded-none border-0 shadow-none'>
           <CardContent

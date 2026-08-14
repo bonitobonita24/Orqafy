@@ -51,6 +51,7 @@ export function ComplianceFooter() {
 
   return (
     <footer
+      data-fdl="site-footer"
       aria-label="Compliance and legal information"
       className="border-t border-border bg-background px-6 py-8"
     >

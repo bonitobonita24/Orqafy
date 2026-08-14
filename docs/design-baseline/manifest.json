@@ -1,0 +1,4 @@
+{
+  "landing": { "mockupRoute": "/", "appRoute": "/" },
+  "login": { "mockupRoute": "/login", "appRoute": "/login" }
+}

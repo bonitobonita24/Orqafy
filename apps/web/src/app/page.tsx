@@ -132,7 +132,7 @@ export default async function LandingPage() {
       />
 
       {/* Pricing */}
-      <section aria-labelledby="pricing-heading" className="border-t border-border py-20">
+      <section data-fdl="pricing" aria-labelledby="pricing-heading" className="border-t border-border py-20">
         <div className="mx-auto max-w-5xl px-6">
           <div className="mb-12 text-center">
             <h2 id="pricing-heading" className="mb-3 text-3xl font-bold">Simple, transparent pricing</h2>

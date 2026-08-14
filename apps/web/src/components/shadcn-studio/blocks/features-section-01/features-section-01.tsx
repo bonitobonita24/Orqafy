@@ -27,7 +27,7 @@ type FeaturesSectionProps = {
 
 const Features = ({ heading, description, featuresList, ctaLabel, ctaHref = '#' }: FeaturesSectionProps) => {
   return (
-    <section className='py-8 sm:py-16 lg:py-24'>
+    <section data-fdl='features' className='py-8 sm:py-16 lg:py-24'>
       <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:px-8'>
         {/* Header */}
         <div className='mb-12 space-y-4 sm:mb-16 lg:mb-24'>
