@@ -12,6 +12,7 @@ import {
   ArrowUpRight01Icon as _ArrowUpRight01Icon,
   AttachmentIcon as _AttachmentIcon,
   BankIcon as _BankIcon,
+  BanknoteIcon as _BanknoteIcon,
   BookOpen01Icon as _BookOpen01Icon,
   BookOpenCheckIcon as _BookOpenCheckIcon,
   Briefcase01Icon as _Briefcase01Icon,
@@ -58,6 +59,7 @@ import {
   PackageIcon as _PackageIcon,
   PackageSearchIcon as _PackageSearchIcon,
   PencilEdit02Icon as _PencilEdit02Icon,
+  PrinterIcon as _PrinterIcon,
   RefreshIcon as _RefreshIcon,
   Search01Icon as _Search01Icon,
   SecurityCheckIcon as _SecurityCheckIcon,
@@ -107,6 +109,7 @@ export const ArrowRight = makeIcon(_ArrowRight01Icon);
 export const ArrowRightIcon = makeIcon(_ArrowRight01Icon);
 export const ArrowUpDown = makeIcon(_ArrowUpDownIcon);
 export const ArrowUpRight = makeIcon(_ArrowUpRight01Icon);
+export const Banknote = makeIcon(_BanknoteIcon);
 export const BarChart3 = makeIcon(_ChartColumnIcon);
 export const Bell = makeIcon(_Notification03Icon);
 export const BookOpen = makeIcon(_BookOpen01Icon);
@@ -165,6 +168,7 @@ export const PanelLeft = makeIcon(_SidebarLeft01Icon);
 export const Paperclip = makeIcon(_AttachmentIcon);
 export const Pencil = makeIcon(_PencilEdit02Icon);
 export const Plus = makeIcon(_Add01Icon);
+export const Printer = makeIcon(_PrinterIcon);
 export const Receipt = makeIcon(_Invoice01Icon);
 export const ReceiptText = makeIcon(_Invoice03Icon);
 export const RefreshCw = makeIcon(_RefreshIcon);

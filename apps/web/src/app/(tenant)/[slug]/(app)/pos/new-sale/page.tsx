@@ -53,32 +53,52 @@ export default async function POSNewSalePage({
         name: true,
         unit: true,
         tier1Price: true,
+        // Additive select — grid card image + category chip (V32.37 R3 graft).
+        categoryId: true,
+        category: { select: { id: true, name: true } },
+        ecommerceImageUrls: true,
+        warehouseStocks: { select: { warehouseId: true, quantity: true } },
       },
     }),
   ]);
 
   // Serialize Decimal → number so the Client Component receives plain JSON.
-  const products = productsRaw.map((p) => ({
-    id: p.id,
-    sku: p.sku,
-    name: p.name,
-    unit: p.unit,
-    tier1Price: p.tier1Price === null ? null : Number(p.tier1Price),
-  }));
+  const products = productsRaw.map((p) => {
+    const imageUrls = Array.isArray(p.ecommerceImageUrls)
+      ? (p.ecommerceImageUrls as unknown[]).filter(
+          (u): u is string => typeof u === "string",
+        )
+      : [];
+    return {
+      id: p.id,
+      sku: p.sku,
+      name: p.name,
+      unit: p.unit,
+      tier1Price: p.tier1Price === null ? null : Number(p.tier1Price),
+      categoryId: p.categoryId,
+      categoryName: p.category?.name ?? null,
+      imageUrl: imageUrls[0] ?? null,
+      stockByWarehouse: p.warehouseStocks.map((s) => ({
+        warehouseId: s.warehouseId,
+        quantity: Number(s.quantity),
+      })),
+    };
+  });
 
   return (
-    <div className="space-y-6">
-      <div>
-        <Link
-          href={`/${slug}/pos`}
-          className="text-xs text-muted-foreground hover:text-foreground"
-        >
-          ← POS Sessions
-        </Link>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight">New Sale</h1>
-        <p className="text-sm text-muted-foreground">
-          Ring up products, accept payment, and the sale will post to{" "}
-          <code className="font-mono text-primary">pos.sale.create</code>{" "}
+    <div className="flex h-[calc(100vh-9rem)] min-h-[640px] flex-col gap-3">
+      <div className="flex shrink-0 items-baseline justify-between gap-2">
+        <div>
+          <Link
+            href={`/${slug}/pos`}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            ← POS Sessions
+          </Link>
+          <h1 className="mt-1 text-xl font-bold tracking-tight">New Sale</h1>
+        </div>
+        <p className="hidden text-xs text-muted-foreground sm:block">
+          Posts to <code className="font-mono text-primary">pos.sale.create</code>{" "}
           atomically with inventory decrement.
         </p>
       </div>

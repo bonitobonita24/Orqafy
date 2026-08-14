@@ -1,10 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+// New Sale register — re-grafted onto the RestroPOS main-screen layout
+// (starter/restropos/src/views/apps/pos/index.tsx + left-panel/index.tsx +
+// right-panel/index.tsx, interaction reference ONLY — never imported).
+// Wiring + cart math stay OURS: lib/pos-cart.ts + server/trpc/routers/pos.ts
+// (sale.create, atomic inventory decrement). Out of scope: tables/seating/
+// KDS/reservations/addons/coupons/FoodType — none of that is grafted here.
+
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import {
-  PAYMENT_METHODS,
   addOrIncrementItem,
   computeCartTotals,
   computeChange,
@@ -15,6 +21,17 @@ import {
   type CartLineItem,
   type PaymentMethod,
 } from "@/lib/pos-cart";
+import { Badge } from "@/components/ui/badge";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Minus, Plus, Search, ShoppingCart, Trash2, X } from "@/components/ui/icons";
+import { ProductCard } from "./product-card";
+import { CheckoutDialog } from "./checkout-dialog";
+import { ReceiptDialog, type ReceiptSale } from "./receipt-dialog";
+
+const ALL = "all";
 
 interface SessionOption {
   id: string;
@@ -35,6 +52,10 @@ interface ProductOption {
   name: string;
   unit: string;
   tier1Price: number | null;
+  categoryId: string | null;
+  categoryName: string | null;
+  imageUrl: string | null;
+  stockByWarehouse: Array<{ warehouseId: string; quantity: number }>;
 }
 
 interface Props {
@@ -47,29 +68,47 @@ export function CartClient({ openSessions, warehouses, products }: Props) {
   const [sessionId, setSessionId] = useState<string | null>(
     openSessions.length === 1 ? (openSessions[0]?.id ?? null) : null,
   );
-  const defaultWarehouseId =
-    warehouses.find((w) => w.isDefault)?.id ?? warehouses[0]?.id ?? null;
+  const defaultWarehouseId = warehouses.find((w) => w.isDefault)?.id ?? warehouses[0]?.id ?? null;
   const [warehouseId, setWarehouseId] = useState<string | null>(defaultWarehouseId);
   const [items, setItems] = useState<CartLineItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeCategoryId, setActiveCategoryId] = useState<string>(ALL);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [amountPaid, setAmountPaid] = useState<number>(0);
   const [taxAmount, setTaxAmount] = useState<number>(0);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [notes, setNotes] = useState("");
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [receiptSale, setReceiptSale] = useState<ReceiptSale | null>(null);
+  const pendingItemsRef = useRef<CartLineItem[]>([]);
+
+  const categories = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const p of products) {
+      if (p.categoryId !== null && p.categoryName !== null) seen.set(p.categoryId, p.categoryName);
+    }
+    return Array.from(seen, ([id, name]) => ({ id, name })).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+  }, [products]);
 
   const filteredProducts = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (term === "") return products.slice(0, 30);
-    return products
-      .filter((p) => {
-        return (
-          p.name.toLowerCase().includes(term) ||
-          (p.sku?.toLowerCase().includes(term) ?? false)
-        );
-      })
-      .slice(0, 30);
-  }, [products, searchTerm]);
+    let list = products;
+    if (activeCategoryId !== ALL) list = list.filter((p) => p.categoryId === activeCategoryId);
+    if (term !== "") {
+      list = list.filter(
+        (p) => p.name.toLowerCase().includes(term) || (p.sku?.toLowerCase().includes(term) ?? false),
+      );
+    }
+    return list;
+  }, [products, searchTerm, activeCategoryId]);
+
+  const cartQtyByProduct = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const i of items) m.set(i.productId, i.quantity);
+    return m;
+  }, [items]);
 
   const totals = useMemo(
     () => computeCartTotals(items, { taxAmount, discountAmount }),
@@ -87,6 +126,19 @@ export function CartClient({ openSessions, warehouses, products }: Props) {
   const createSale = trpc.pos.sale.create.useMutation({
     onSuccess: (sale) => {
       toast.success(`Sale ${sale.saleNumber} recorded.`);
+      setReceiptSale({
+        saleNumber: sale.saleNumber,
+        createdAt: sale.createdAt.toString(),
+        items: pendingItemsRef.current,
+        subtotal: Number(sale.subtotal),
+        taxAmount: Number(sale.taxAmount),
+        discountAmount: Number(sale.discountAmount),
+        totalAmount: Number(sale.totalAmount),
+        amountPaid: Number(sale.amountPaid),
+        changeAmount: Number(sale.changeAmount),
+        paymentMethod: sale.paymentMethod as PaymentMethod,
+      });
+      setCheckoutOpen(false);
       setItems([]);
       setAmountPaid(0);
       setTaxAmount(0);
@@ -97,6 +149,12 @@ export function CartClient({ openSessions, warehouses, products }: Props) {
       toast.error(err.message);
     },
   });
+
+  function availableQtyFor(p: ProductOption): number | null {
+    if (p.stockByWarehouse.length === 0) return null;
+    const row = p.stockByWarehouse.find((s) => s.warehouseId === warehouseId);
+    return row ? row.quantity : 0;
+  }
 
   function handleAddProduct(p: ProductOption) {
     const unitPrice = p.tier1Price ?? 0;
@@ -111,9 +169,18 @@ export function CartClient({ openSessions, warehouses, products }: Props) {
     );
   }
 
-  function handleSubmit() {
+  function handleDecrementProduct(productId: string) {
+    setItems((prev) => {
+      const existing = prev.find((i) => i.productId === productId);
+      if (!existing) return prev;
+      return setQuantity(prev, productId, existing.quantity - 1);
+    });
+  }
+
+  function handleConfirmCheckout() {
     if (!validation.canCheckout) return;
     if (sessionId === null || warehouseId === null) return;
+    pendingItemsRef.current = items;
     createSale.mutate({
       sessionId,
       warehouseId,
@@ -131,46 +198,56 @@ export function CartClient({ openSessions, warehouses, products }: Props) {
     });
   }
 
+  const totalCartQty = items.reduce((sum, i) => sum + i.quantity, 0);
+
   return (
-    <div className="space-y-6">
-      {/* Header controls — session + warehouse */}
-      <section className="grid gap-4 rounded-lg border border-border bg-card p-4 md:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">
-            Open Session
-          </label>
-          {openSessions.length === 0 ? (
-            <p className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-              No open sessions. Open one in POS Sessions first.
-            </p>
-          ) : (
+    <div className="grid min-h-0 flex-1 gap-3 overflow-hidden lg:grid-cols-[1fr_380px]">
+      {/* LEFT — product grid */}
+      <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
+        <header className="shrink-0 space-y-2 border-b border-border p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <InputGroup className="w-full max-w-64">
+              <InputGroupAddon>
+                <Search className="size-4" />
+              </InputGroupAddon>
+              <InputGroupInput
+                placeholder="Search by name or SKU"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm !== "" && (
+                <InputGroupAddon align="inline-end">
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm("")}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="size-4" />
+                    <span className="sr-only">Clear search</span>
+                  </button>
+                </InputGroupAddon>
+              )}
+            </InputGroup>
+
+            {/* Session + warehouse — compact selects */}
             <select
               value={sessionId ?? ""}
               onChange={(e) => setSessionId(e.target.value === "" ? null : e.target.value)}
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              disabled={openSessions.length === 0}
+              className="h-9 rounded-md border border-input bg-background px-2 text-xs disabled:opacity-50"
             >
-              <option value="">— Select session —</option>
+              <option value="">— Session —</option>
               {openSessions.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.sessionNumber} · {s.cashier}
                 </option>
               ))}
             </select>
-          )}
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">
-            Warehouse
-          </label>
-          {warehouses.length === 0 ? (
-            <p className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-              No active warehouses configured.
-            </p>
-          ) : (
             <select
               value={warehouseId ?? ""}
               onChange={(e) => setWarehouseId(e.target.value === "" ? null : e.target.value)}
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              disabled={warehouses.length === 0}
+              className="h-9 rounded-md border border-input bg-background px-2 text-xs disabled:opacity-50"
             >
               {warehouses.map((w) => (
                 <option key={w.id} value={w.id}>
@@ -179,250 +256,222 @@ export function CartClient({ openSessions, warehouses, products }: Props) {
                 </option>
               ))}
             </select>
-          )}
+          </div>
+
+          <Tabs value={activeCategoryId} onValueChange={setActiveCategoryId}>
+            <ScrollArea>
+              <TabsList className="my-px">
+                <TabsTrigger value={ALL} className="px-3 text-xs">
+                  All
+                </TabsTrigger>
+                {categories.map((c) => (
+                  <TabsTrigger key={c.id} value={c.id} className="px-3 text-xs">
+                    {c.name}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </Tabs>
+        </header>
+
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="p-3">
+            {filteredProducts.length === 0 ? (
+              <div className="flex h-48 items-center justify-center text-xs text-muted-foreground">
+                No products match.
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {filteredProducts.map((p) => (
+                  <ProductCard
+                    key={p.id}
+                    product={p}
+                    quantityInCart={cartQtyByProduct.get(p.id) ?? 0}
+                    availableQty={availableQtyFor(p)}
+                    onAdd={() => handleAddProduct(p)}
+                    onDecrement={() => handleDecrementProduct(p.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+
+        <div className="shrink-0 border-t border-border px-4 py-2 text-xs text-muted-foreground">
+          {filteredProducts.length} {filteredProducts.length === 1 ? "item" : "items"}
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
-        {/* LEFT — Product picker */}
-        <section className="rounded-lg border border-border bg-card">
-          <header className="border-b border-border px-4 py-3">
-            <h2 className="text-sm font-semibold">Add Products</h2>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by name or SKU"
-              className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-            />
-          </header>
-          <ul className="max-h-[400px] divide-y divide-border overflow-y-auto">
-            {filteredProducts.length === 0 ? (
-              <li className="px-4 py-6 text-center text-xs text-muted-foreground">
-                No products match.
-              </li>
-            ) : (
-              filteredProducts.map((p) => (
-                <li
-                  key={p.id}
-                  className="flex items-center justify-between px-4 py-2 transition-colors hover:bg-muted/30"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{p.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {p.sku ?? "no sku"} · {p.unit} ·{" "}
-                      {p.tier1Price !== null
-                        ? formatCurrency(p.tier1Price)
-                        : "no price"}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleAddProduct(p)}
-                    className="ml-3 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium hover:bg-muted"
-                  >
-                    + Add
-                  </button>
-                </li>
-              ))
-            )}
-          </ul>
-        </section>
-
-        {/* RIGHT — Cart + payment */}
-        <section className="rounded-lg border border-border bg-card">
-          <header className="border-b border-border px-4 py-3">
-            <h2 className="text-sm font-semibold">Cart</h2>
-            <p className="text-xs text-muted-foreground">
-              {items.length} {items.length === 1 ? "item" : "items"}
-            </p>
-          </header>
-
-          {items.length === 0 ? (
-            <div className="px-4 py-10 text-center text-xs text-muted-foreground">
-              Cart is empty. Add products from the left.
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">Item</th>
-                  <th className="px-3 py-2 text-right font-medium">Qty</th>
-                  <th className="px-3 py-2 text-right font-medium">Unit Price</th>
-                  <th className="px-3 py-2 text-right font-medium">Total</th>
-                  <th className="w-8" />
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((i) => (
-                  <tr key={i.productId} className="border-b border-border last:border-0">
-                    <td className="px-3 py-2">
-                      <div className="font-medium">{i.description}</div>
-                      <div className="text-xs text-muted-foreground">{i.unit}</div>
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={i.quantity}
-                        onChange={(e) => {
-                          const q = Number(e.target.value);
-                          setItems((prev) =>
-                            setQuantity(prev, i.productId, Number.isFinite(q) ? q : 0),
-                          );
-                        }}
-                        className="w-20 rounded-md border border-border bg-background px-2 py-1 text-right text-sm"
-                      />
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={i.unitPrice}
-                        onChange={(e) => {
-                          const p = Number(e.target.value);
-                          setItems((prev) =>
-                            prev.map((it) =>
-                              it.productId === i.productId
-                                ? { ...it, unitPrice: Number.isFinite(p) ? p : 0 }
-                                : it,
-                            ),
-                          );
-                        }}
-                        className="w-24 rounded-md border border-border bg-background px-2 py-1 text-right text-sm"
-                      />
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono text-xs">
-                      {formatCurrency(i.quantity * i.unitPrice)}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <button
-                        type="button"
-                        aria-label="Remove item"
-                        onClick={() =>
-                          setItems((prev) => removeItem(prev, i.productId))
-                        }
-                        className="text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        ✕
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-
-          {/* Totals + payment block */}
-          <div className="space-y-3 border-t border-border px-4 py-4">
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-xs">
-                <span className="block text-muted-foreground">Tax</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={taxAmount}
-                  onChange={(e) => setTaxAmount(Number(e.target.value) || 0)}
-                  className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1 text-right text-sm"
-                />
-              </label>
-              <label className="text-xs">
-                <span className="block text-muted-foreground">Discount</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={discountAmount}
-                  onChange={(e) => setDiscountAmount(Number(e.target.value) || 0)}
-                  className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1 text-right text-sm"
-                />
-              </label>
-            </div>
-
-            <dl className="space-y-1 rounded-md bg-muted/30 px-3 py-2 font-mono text-xs">
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Subtotal</dt>
-                <dd>{formatCurrency(totals.subtotal)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Tax</dt>
-                <dd>{formatCurrency(totals.taxAmount)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Discount</dt>
-                <dd>− {formatCurrency(totals.discountAmount)}</dd>
-              </div>
-              <div className="flex justify-between border-t border-border pt-1 text-sm font-semibold">
-                <dt>Total</dt>
-                <dd>{formatCurrency(totals.totalAmount)}</dd>
-              </div>
-            </dl>
-
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-xs">
-                <span className="block text-muted-foreground">Payment Method</span>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) =>
-                    setPaymentMethod(e.target.value as PaymentMethod)
-                  }
-                  className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1 text-sm"
-                >
-                  {PAYMENT_METHODS.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-xs">
-                <span className="block text-muted-foreground">Amount Paid</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={amountPaid}
-                  onChange={(e) => setAmountPaid(Number(e.target.value) || 0)}
-                  className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1 text-right text-sm"
-                />
-              </label>
-            </div>
-
-            {paymentMethod === "cash" && (
-              <div className="flex justify-between rounded-md bg-muted/30 px-3 py-2 font-mono text-xs">
-                <span className="text-muted-foreground">Change</span>
-                <span className="font-semibold">{formatCurrency(change)}</span>
-              </div>
-            )}
-
-            <label className="block text-xs">
-              <span className="block text-muted-foreground">Notes</span>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-                className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1 text-sm"
-              />
-            </label>
-
-            {validation.reason !== null && (
-              <p className="text-xs text-amber-500">{validation.reason}</p>
-            )}
-
+      {/* RIGHT — cart */}
+      <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold">Cart</span>
+            {totalCartQty > 0 && <Badge>{totalCartQty}</Badge>}
+          </div>
+          {items.length > 0 && (
             <button
               type="button"
-              onClick={handleSubmit}
-              disabled={!validation.canCheckout || createSale.isPending}
-              className="w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Clear cart"
+              onClick={() => setItems([])}
+              className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             >
-              {createSale.isPending ? "Processing…" : "Complete Sale"}
+              <Trash2 className="size-4" />
             </button>
+          )}
+        </header>
+
+        {items.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8">
+            <div className="flex size-16 items-center justify-center rounded-full bg-muted">
+              <ShoppingCart className="size-7 text-muted-foreground" />
+            </div>
+            <div className="text-center">
+              <p className="font-medium">Cart is empty</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Tap products on the left to add them here
+              </p>
+            </div>
           </div>
-        </section>
-      </div>
+        ) : (
+          <>
+            <ScrollArea className="min-h-0 flex-1">
+              <div className="space-y-2 p-3">
+                {items.map((i) => (
+                  <div
+                    key={i.productId}
+                    className="flex items-center gap-2 rounded-md border border-border p-2"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{i.description}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatCurrency(i.unitPrice)} · {i.unit}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        type="button"
+                        aria-label={`Decrease ${i.description} quantity`}
+                        onClick={() => setItems((prev) => setQuantity(prev, i.productId, i.quantity - 1))}
+                        className="flex size-6 items-center justify-center rounded-md border border-input hover:bg-accent"
+                      >
+                        <Minus className="size-3" />
+                      </button>
+                      <span className="w-6 text-center text-sm tabular-nums">{i.quantity}</span>
+                      <button
+                        type="button"
+                        aria-label={`Increase ${i.description} quantity`}
+                        onClick={() => setItems((prev) => setQuantity(prev, i.productId, i.quantity + 1))}
+                        className="flex size-6 items-center justify-center rounded-md border border-input hover:bg-accent"
+                      >
+                        <Plus className="size-3" />
+                      </button>
+                    </div>
+                    <span className="w-16 shrink-0 text-right font-mono text-xs">
+                      {formatCurrency(i.quantity * i.unitPrice)}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${i.description}`}
+                      onClick={() => setItems((prev) => removeItem(prev, i.productId))}
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+
+            <Separator />
+
+            {/* Totals + tax/discount + checkout trigger */}
+            <div className="shrink-0 space-y-2 p-3">
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-xs">
+                  <span className="block text-muted-foreground">Tax</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={taxAmount}
+                    onChange={(e) => setTaxAmount(Number(e.target.value) || 0)}
+                    className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1 text-right text-sm"
+                  />
+                </label>
+                <label className="text-xs">
+                  <span className="block text-muted-foreground">Discount</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={discountAmount}
+                    onChange={(e) => setDiscountAmount(Number(e.target.value) || 0)}
+                    className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1 text-right text-sm"
+                  />
+                </label>
+              </div>
+
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Sub total</span>
+                  <span className="tabular-nums">{formatCurrency(totals.subtotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tax</span>
+                  <span className="tabular-nums">{formatCurrency(totals.taxAmount)}</span>
+                </div>
+                {totals.discountAmount > 0 && (
+                  <div className="flex justify-between text-primary">
+                    <span>Discount</span>
+                    <span className="tabular-nums">− {formatCurrency(totals.discountAmount)}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="font-semibold">Total</span>
+                <span className="text-lg font-bold tabular-nums">{formatCurrency(totals.totalAmount)}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCheckoutOpen(true)}
+                disabled={!validation.hasSession || !validation.hasItems || !validation.totalNonNegative}
+                className="w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Proceed to Payment
+              </button>
+
+              {validation.reason !== null && (
+                <p className="text-center text-xs text-amber-500">{validation.reason}</p>
+              )}
+            </div>
+          </>
+        )}
+      </section>
+
+      <CheckoutDialog
+        open={checkoutOpen}
+        onOpenChange={setCheckoutOpen}
+        itemCount={totalCartQty}
+        totals={totals}
+        paymentMethod={paymentMethod}
+        onPaymentMethodChange={setPaymentMethod}
+        amountPaid={amountPaid}
+        onAmountPaidChange={setAmountPaid}
+        change={change}
+        notes={notes}
+        onNotesChange={setNotes}
+        canCheckout={validation.canCheckout}
+        reason={validation.reason}
+        isPending={createSale.isPending}
+        onConfirm={handleConfirmCheckout}
+      />
+
+      <ReceiptDialog sale={receiptSale} onClose={() => setReceiptSale(null)} />
     </div>
   );
 }
+
