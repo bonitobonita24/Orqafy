@@ -68,7 +68,7 @@ const Header = ({
 
         {/* CTAs */}
         <div className='flex items-center gap-3 max-md:hidden'>
-          {secondaryCtaLabel && (
+          {secondaryCtaLabel !== undefined && secondaryCtaLabel.length > 0 && (
             <Button variant='outline' className='rounded-lg' asChild>
               <a href={secondaryCtaHref}>{secondaryCtaLabel}</a>
             </Button>
@@ -97,7 +97,7 @@ const Header = ({
                   <a href={item.href}>{item.title}</a>
                 </DropdownMenuItem>
               ))}
-              {secondaryCtaLabel && (
+              {secondaryCtaLabel !== undefined && secondaryCtaLabel.length > 0 && (
                 <DropdownMenuItem asChild>
                   <a href={secondaryCtaHref}>{secondaryCtaLabel}</a>
                 </DropdownMenuItem>

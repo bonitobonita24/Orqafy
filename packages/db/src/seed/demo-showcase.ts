@@ -573,7 +573,9 @@ async function seedInventory(
       where: { sku: p.sku },
       update: {
         categoryId: catIdBySlug[p.catSlug] ?? null,
-        brandId: p.brandName ? (brandIdByName[p.brandName] ?? null) : null,
+        brandId: p.brandName !== undefined && p.brandName.length > 0
+          ? (brandIdByName[p.brandName] ?? null)
+          : null,
         compareAtPrice: money(compareAtFor(p.sellPrice, i)),
         isFeatured: p.featured ?? false,
         ecommerceSlug: slugFor(p.name),
@@ -588,7 +590,9 @@ async function seedInventory(
         name: p.name,
         description: `${p.name} — demo showcase stock item.`,
         categoryId: catIdBySlug[p.catSlug] ?? null,
-        brandId: p.brandName ? (brandIdByName[p.brandName] ?? null) : null,
+        brandId: p.brandName !== undefined && p.brandName.length > 0
+          ? (brandIdByName[p.brandName] ?? null)
+          : null,
         unit: p.unit,
         baseCost: money(p.baseCost),
         tier1Price: money(p.sellPrice),

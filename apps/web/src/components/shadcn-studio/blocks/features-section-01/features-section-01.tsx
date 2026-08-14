@@ -33,7 +33,7 @@ const Features = ({ heading, description, featuresList, ctaLabel, ctaHref = '#' 
         <div className='mb-12 space-y-4 sm:mb-16 lg:mb-24'>
           <h2 className='text-2xl font-semibold md:text-3xl lg:text-4xl'>{heading}</h2>
           <p className='text-muted-foreground text-xl'>{description}</p>
-          {ctaLabel && (
+          {ctaLabel !== undefined && ctaLabel.length > 0 && (
             <Button variant='outline' className='rounded-lg text-base shadow-none has-[>svg]:px-6' size='lg' asChild>
               <a href={ctaHref}>
                 {ctaLabel}
