@@ -4,7 +4,7 @@
 // Adapted from: iuiPath dashboard-and-application/charts-component-3
 // Pro patterns adopted:
 //   • Card/CardHeader/CardContent wrapper (replaces raw <section>)
-//   • ChartConfig colors: hsl(var(--chart-N)) — theme stores bare HSL triplets, wrapper required
+//   • ChartConfig colors: var(--chart-N) — theme stores bare HSL triplets, wrapper required
 //   • Bar fill via var(--color-<dataKey>) CSS var injected by ChartStyle — no Cell + barFill()
 //   • Each category bar gets its own dataKey mapped to a config entry (Pro stacked/grouped style)
 //   • accessibilityLayer on BarChart
@@ -28,22 +28,22 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 
-// ─── chart colour config — hsl(var(--chart-N)) (theme stores bare HSL triplets) ─
+// ─── chart colour config — var(--chart-N) (theme stores bare HSL triplets) ─
 // shadcn ChartStyle injects --color-<key> automatically from each entry's color.
 // Keys cat0..cat7 map positionally to bars; fill is set via var(--color-catN).
 const CHART_KEYS = ["cat0", "cat1", "cat2", "cat3", "cat4", "cat5", "cat6", "cat7"] as const;
 type ChartKey = (typeof CHART_KEYS)[number];
 
 const chartConfig = {
-  cat0: { label: "Category 1", color: "hsl(var(--chart-1))" },
-  cat1: { label: "Category 2", color: "hsl(var(--chart-2))" },
-  cat2: { label: "Category 3", color: "hsl(var(--chart-3))" },
-  cat3: { label: "Category 4", color: "hsl(var(--chart-4))" },
-  cat4: { label: "Category 5", color: "hsl(var(--chart-5))" },
+  cat0: { label: "Category 1", color: "var(--chart-1)" },
+  cat1: { label: "Category 2", color: "var(--chart-2)" },
+  cat2: { label: "Category 3", color: "var(--chart-3)" },
+  cat3: { label: "Category 4", color: "var(--chart-4)" },
+  cat4: { label: "Category 5", color: "var(--chart-5)" },
   // chart-6..8 synthesised from theme hue steps — stays within CSS-var discipline
-  cat5: { label: "Category 6", color: "hsl(var(--chart-1))" },
-  cat6: { label: "Category 7", color: "hsl(var(--chart-2))" },
-  cat7: { label: "Category 8", color: "hsl(var(--chart-3))" },
+  cat5: { label: "Category 6", color: "var(--chart-1)" },
+  cat6: { label: "Category 7", color: "var(--chart-2)" },
+  cat7: { label: "Category 8", color: "var(--chart-3)" },
 } satisfies ChartConfig;
 
 // Map a 0-based bar index to its config key
@@ -320,7 +320,7 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
             >
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="hsl(var(--border))"
+                stroke="var(--border)"
                 vertical={false}
               />
               <XAxis
@@ -337,7 +337,7 @@ export function ExpensesChart({ slug: _slug }: ExpensesChartProps) {
                 tickFormatter={(v: number) => formatCurrencyShort(v)}
               />
               <ChartTooltip
-                cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
+                cursor={{ fill: "var(--muted)", opacity: 0.4 }}
                 content={
                   <ChartTooltipContent
                     formatter={(value, _name, item) => {

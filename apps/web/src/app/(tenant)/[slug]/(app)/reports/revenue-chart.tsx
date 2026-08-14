@@ -4,7 +4,7 @@
 // Adapted from: iuiPath dashboard-and-application/charts-component-2
 // Pro patterns adopted:
 //   • Card/CardHeader/CardContent wrapper (replaces raw <section>)
-//   • ChartConfig colors: hsl(var(--chart-N)) — THIS app's theme stores --chart-N
+//   • ChartConfig colors: var(--chart-N) — THIS app's theme stores --chart-N
 //     as bare HSL triplets (globals.css), so the hsl() wrapper is REQUIRED. (The
 //     shadcn-studio Pro source omits it only because its theme stores full colors.)
 //   • linearGradient: stopOpacity 0.4/0.05 (Pro values, not 0.3/0.02)
@@ -27,12 +27,12 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 
-// ─── chart colour config — hsl(var(--chart-N)) (theme stores bare HSL triplets)
+// ─── chart colour config — var(--chart-N) (theme stores bare HSL triplets)
 // shadcn ChartStyle injects --color-revenue automatically from this config
 const chartConfig = {
   revenue: {
     label: "Revenue",
-    color: "hsl(var(--chart-1))",
+    color: "var(--chart-1)",
   },
 } satisfies ChartConfig;
 
@@ -299,7 +299,7 @@ export function RevenueChart({ slug: _slug }: RevenueChartProps) {
 
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="hsl(var(--border))"
+                stroke="var(--border)"
                 vertical={false}
               />
               <XAxis
