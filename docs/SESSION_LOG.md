@@ -1,5 +1,24 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-08-14 (late night) — Template alignment BUILT: Shopix storefront + RestroPOS POS (P1–P4, verified)
+
+**In your words:** "Go template alignment and queue next tasks — plan it with your architect agent then swarm orchestration."
+
+✅ Done (all verified — architect-planned, 8-worker swarm, every gate green)
+- **P1 data layer:** additive migration `20260814133917` (Brand + MerchContent models; Product compareAtPrice/isFeatured/ecommerceSlug/ecommerceSpecs/brandId; Category.imageUrl — zero DROP/RENAME) · 87 licensed Shopix assets vendored (6.5 MB) · demo seed reshaped to **24 products / 6 brands / 6 categories / 5 merch rows**, double-run idempotency proven, old 8 SKUs' stock untouched.
+- **P2 storefront (Shopix):** NEW landing `/{slug}/store` (hero, announcement, promo countdown to real endsAt, category tiles, brand marquee, featured/new rails) · catalog re-graft (URL-param filters: category/brand/price/on-sale + sort, mobile Sheet) · product detail re-graft (3:4 gallery, specs table, related grid, slug-first/cuid-fallback URLs, canonical→slug) · client-side wishlist (tenant-keyed localStorage, heart toggles, drawer) · Product/Offer JSON-LD added (Rule 35).
+- **P3 POS (RestroPOS):** new-sale re-grafted onto the two-panel main screen — photo grid w/ hover steppers + OOS overlays, real-categoryId chips, search, re-skinned cart/5-tender checkout w/ cash change, printable receipt. Our pos-cart math + pos router kept verbatim. Tables/KDS excluded per scope.
+- **P4 gate:** typecheck 11/11 · lint clean · **1479/1479 tests** · build 124 routes · lucide=0 · starter-imports=0 · **fidelity 7/7 PASS** (2 new baselines: store-landing 19 anchors, store-product; landing/login/track byte-identical) · full guest QA walk + POS walk live-verified on transient :43999 · 4 screenshots sent to owner.
+- 🐛 **3 real bugs found+fixed en route:** old catalog page had an **unscoped cross-tenant Prisma read** (public leak — closed by tenant-scoped `browsePublicProducts`; ledgered) · `/demo/shopix/**` images 307-walled to /login for guests (4th fleet hit of the public-paths class) · seeded CTA hrefs pointed at nonexistent Shopix routes.
+
+💬 Decisions/notes
+- Branch **`feat/template-alignment` @ 695efa3** (16 commits incl. carried storefront-restyle work; LOCAL, HARD HOLD). Supersedes `feat/storefront-restyle`'s catalog/detail styling; its bug fix + footer + checkout/track chrome carried forward.
+- T1.1 found **pre-existing dev-DB schema drift** (~50 tables tenant_id nullability + 2 index names; predates this work) — queued as follow-up. schema.prisma "per-tenant schemas" header comment is stale (real: shared schema + tenant_id).
+- Reported, not fixed: `rateLimiters.public` 10/min/IP is undersized (one landing render ≈ 6 checks — a brisk real guest can 500) · seed has all-24-on-sale + no OOS product (filter/disabled-state not visually distinguishable) · 3 lint-design advisories (P1a/P1e/P1j) · pos-new-sale fidelity baseline skipped (no authed capture harness) · dev container on :42951 still serves pre-branch code until next rebuild.
+
+⏳ Next (owner)
+- (a) **Look approval** of the 4 screenshots / dev walk, (b) **merge + release** (~v0.16.0; folds in storefront-restyle), (c) rate-limiter bump go-ahead, (d) optional seed taste tweaks (1–2 OOS products, some non-sale items).
+
 ## 2026-08-14 (night) — Shopix/RestroPOS template audits + alignment spec (build HELD)
 
 **In your words:** "Not the design I expected — match the Shopix template's data sets per product (+ marketing banners/ads), and the POS to RestroPOS (main POS only, no tables/seating)." Then "save session, I need to reboot my PC."
