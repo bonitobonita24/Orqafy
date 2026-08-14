@@ -1,5 +1,16 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-08-14 (pm²) — v0.15.0 released + storefront queued
+
+**In your words:** "Yes merge push, then queue the storefront restyle to the todo list."
+
+✅ Done
+- **v0.15.0 released + pushed** (`a2df600` + tag; 13 commits — studio-blocks landing/auth, fidelity gate, chart-token fix; version-synced). No deploys; prod stays v0.13.2.
+- Phase 5-7 branch merged FF and deleted; dev rebuilt off released main — FRESH, footer shows v0.15.0.
+
+⏳ Queued
+- **Storefront restyle** → PENDING_DECISIONS.md 🛍️ entry with the recommended studio-eCommerce-blocks plan (effort M). Waiting on your shop-design go + any look preferences.
+
 ## 2026-08-14 (pm) — Theme Phase 5→7: studio blocks + design gate armed
 
 **In your words:** "Delete the 4 merged branches, then do the next queue — Theme Phase 5 to Phase 7."

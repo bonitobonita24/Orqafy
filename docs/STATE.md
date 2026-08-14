@@ -11,18 +11,16 @@
 [FOCUS: Orqafy]  ·  2026-08-14 ~15:40  ·  cold-start authority: docs/memory/MEMORY.md + this block
 
 ## ⏳ TODO — next session
-1. [ ] (owner-gated) Merge feat/theme-phase5-studio-blocks → main + push, together with unpushed
-       main@5a353be+8d931de (chart fix + docs). Suggest: merge branch → main, release v0.15.0
-       (feats) via gen-release-notes flow. HARD HOLD until owner word.
-2. [ ] Storefront restyle [WHAT] — studio eCommerce blocks (product-list/overview/cart/checkout)
-       are a strong fit for store/*; needs owner shop-design decision (open since 2026-08-08).
-3. [ ] Fidelity-gate authed screens — capture harness lacks auth-session support; extend to
+1. [ ] Storefront restyle — QUEUED by owner 2026-08-14; awaits shop-design go (see
+       PENDING_DECISIONS.md 🛍️ entry: studio eCommerce blocks path, effort M, plan sketched).
+2. [ ] Fidelity-gate authed screens — capture harness lacks auth-session support; extend to
        dashboard/reports/etc. (follow-up [HOW], not urgent).
 
 ## ⚖️ OPEN DECISIONS (owner)
-- [ ] Merge+push authorization: feat/theme-phase5-studio-blocks (9 commits) AND main's 2 unpushed
-      (5a353be chart fix + 8d931de docs). One release (v0.15.0) or hold?
-- [ ] Storefront shop-design (carried; see TODO 2).
+- [ ] Storefront shop-design go/no-go + look preferences (PENDING_DECISIONS.md).
+~~Merge+push~~ = ✅ DONE: **v0.15.0 released+pushed 2026-08-14 pm** (main 746f7b5→a2df600 + tag,
+13 commits, version-synced; branch feat/theme-phase5-studio-blocks merged FF + deleted; dev
+rebuilt off released main).
 
 ## ✅ DONE THIS SESSION (built AND verified — evidence)
 - 4 merged branches DELETED on owner word (theme, health-poll, ensure-dev-fresh, chart-hsl).
@@ -46,12 +44,13 @@
   Governance: DECISIONS_LOG (7a6a6de) + CHANGELOG_AI entries.
 - Squirlnote: 5 accomplishment rows posted (new fleet logging standard, first Orqafy use).
 
-## 🔒 STATE / GROUND TRUTH
-- Branch feat/theme-phase5-studio-blocks @ 5c20b21 (9 commits over main). main @ 8d931de
-  (2 unpushed over origin/main=746f7b5=v0.14.0). Tree clean.
-- dev containers: app+worker healthy, serving the PHASE 5 BRANCH build (not main!) — after
-  merge/next main work, rebuild dev off main again.
-- PROD orqafy.com: v0.13.2 untouched. Staging/demo untouched.
+## 🔒 STATE / GROUND TRUTH (updated post-release, 2026-08-14 ~16:00)
+- main @ a2df600 = **v0.15.0 tag, PUSHED** (origin/main in sync). Phase 5-7 branch merged FF +
+  deleted. Tree clean (docs commit pending at save).
+- dev containers: app+worker healthy + FRESH on released main v0.15.0 (rebuilt post-release;
+  sidebar footer shows v0.15.0).
+- PROD orqafy.com: v0.13.2 untouched. Staging/demo untouched — v0.14.0/v0.15.0 exist ONLY on
+  origin/main + local dev; promotion needs explicit owner word per tier.
 - KNOWN LIMITS: fidelity baselines = public screens only (no auth in capture harness);
   Enterprise plan card shows "Free" (seed data, pre-existing, not a UI bug).
 ```
