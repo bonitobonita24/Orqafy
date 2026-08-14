@@ -22,8 +22,78 @@ async function loadOrderForTenant(id: string, ctx: { tenantId: string }) {
   return order;
 }
 
+// ── Public catalog read helpers (template-alignment T2.1) ───────────────────
+// Shared by the admin-facing browseProducts/getProductById reads AND the new
+// publicProcedure storefront queries below, so both surfaces return the same
+// shape (brand/category relations + real WarehouseStock availability +
+// derived discountPercent + Decimal→number price fields).
+
+const PUBLIC_PRODUCT_INCLUDE = {
+  brand: { select: { id: true, name: true, logoUrl: true } },
+  category: { select: { id: true, name: true, slug: true, imageUrl: true } },
+} satisfies Prisma.ProductInclude;
+
+type PublicProduct = Prisma.ProductGetPayload<{ include: typeof PUBLIC_PRODUCT_INCLUDE }>;
+
+// Real availability from WarehouseStock: sum(quantity) - sum(reservedQuantity)
+// across every warehouse for the tenant, aggregated per productId.
+async function loadAvailabilityMap(
+  tenantId: string,
+  productIds: string[],
+): Promise<Map<string, number>> {
+  if (productIds.length === 0) return new Map();
+  const grouped = await db.warehouseStock.groupBy({
+    by: ["productId"],
+    where: { tenantId, productId: { in: productIds } },
+    _sum: { quantity: true, reservedQuantity: true },
+  });
+  return new Map(
+    grouped.map((g) => [
+      g.productId,
+      Number(g._sum.quantity ?? 0) - Number(g._sum.reservedQuantity ?? 0),
+    ]),
+  );
+}
+
+// Decimal→number conversion follows the existing display-price convention
+// (apps/web/src/app/(tenant)/[slug]/store/products/page.tsx `displayPrice`):
+// tier1Price wins when set and > 0, else baseCost. discountPercent is derived
+// here, never stored, and only set when compareAtPrice genuinely undercuts price.
+function mapPublicProduct(product: PublicProduct, availableQuantity: number) {
+  const baseCost = Number(product.baseCost);
+  const tier1Price = product.tier1Price === null ? null : Number(product.tier1Price);
+  const price = tier1Price !== null && tier1Price > 0 ? tier1Price : baseCost;
+  const compareAtPrice = product.compareAtPrice === null ? null : Number(product.compareAtPrice);
+  const discountPercent =
+    compareAtPrice !== null && compareAtPrice > price && price >= 0
+      ? Math.round((1 - price / compareAtPrice) * 100)
+      : null;
+
+  return {
+    ...product,
+    baseCost,
+    tier1Price,
+    compareAtPrice,
+    price,
+    discountPercent,
+    inStock: availableQuantity > 0,
+    availableQuantity,
+  };
+}
+
+async function requireActiveTenantBySlug(tenantSlug: string) {
+  const tenant = await db.tenant.findUnique({ where: { slug: tenantSlug } });
+  if (tenant === null || tenant.isActive === false) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Tenant not found or inactive" });
+  }
+  return tenant;
+}
+
 async function loadProductForTenant(id: string, ctx: { tenantId: string }) {
-  const product = await db.product.findFirst({ where: { id, tenantId: ctx.tenantId } });
+  const product = await db.product.findFirst({
+    where: { id, tenantId: ctx.tenantId },
+    include: PUBLIC_PRODUCT_INCLUDE,
+  });
   if (!product) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
   }
@@ -143,6 +213,40 @@ const placeOrderAsCustomerInputSchema = z
   })
   .strict();
 
+// ── Public catalog read schemas (template-alignment T2.1) ───────────────────
+
+const tenantSlugField = z.string().trim().min(1).max(100);
+
+const listBrandsInputSchema = z.object({ tenantSlug: tenantSlugField }).strict();
+
+const listMerchContentInputSchema = z
+  .object({
+    tenantSlug: tenantSlugField,
+    kind: z.enum(["announcement", "hero", "promo"]).optional(),
+  })
+  .strict();
+
+const getProductBySlugInputSchema = z
+  .object({
+    tenantSlug: tenantSlugField,
+    slug: z.string().trim().min(1).max(200),
+  })
+  .strict();
+
+const listFeaturedProductsInputSchema = z
+  .object({
+    tenantSlug: tenantSlugField,
+    take: z.number().int().min(1).max(50).default(12),
+  })
+  .strict();
+
+const listNewArrivalsInputSchema = z
+  .object({
+    tenantSlug: tenantSlugField,
+    take: z.number().int().min(1).max(50).default(12),
+  })
+  .strict();
+
 // ── Router ────────────────────────────────────────────────────────────────────
 
 export const storefrontRouter = createTRPCRouter({
@@ -170,19 +274,29 @@ export const storefrontRouter = createTRPCRouter({
       const [items, total] = await Promise.all([
         db.product.findMany({
           where,
+          include: PUBLIC_PRODUCT_INCLUDE,
           orderBy: { name: "asc" },
           skip: input.skip,
           take: input.take,
         }),
         db.product.count({ where }),
       ]);
-      return { items, total };
+      const availability = await loadAvailabilityMap(
+        ctx.tenantId,
+        items.map((p) => p.id),
+      );
+      return {
+        items: items.map((p) => mapPublicProduct(p, availability.get(p.id) ?? 0)),
+        total,
+      };
     }),
 
   getProductById: storefrontViewProcedure
     .input(z.object({ id: cuid }))
     .query(async ({ ctx, input }) => {
-      return loadProductForTenant(input.id, ctx);
+      const product = await loadProductForTenant(input.id, ctx);
+      const availability = await loadAvailabilityMap(ctx.tenantId, [product.id]);
+      return mapPublicProduct(product, availability.get(product.id) ?? 0);
     }),
 
   placeOrder: storefrontCreateProcedure
@@ -832,5 +946,135 @@ export const storefrontRouter = createTRPCRouter({
           },
         });
       });
+    }),
+
+  // ── Public storefront catalog reads (template-alignment T2.1) ─────────────
+  // publicProcedure, tenantSlug-scoped (no ctx.tenantId on the public path) —
+  // mirrors placeOrderAsCustomer/trackGuestOrder: resolve+validate the tenant
+  // by slug first, then rate-limit + scope every query to that tenant AND
+  // ecommerceVisible products only.
+
+  listBrands: publicProcedure
+    .input(listBrandsInputSchema)
+    .query(async ({ ctx, input }) => {
+      const ipHeader = ctx.req.headers.get("x-forwarded-for") ?? ctx.req.headers.get("x-real-ip");
+      const ip = ipHeader ?? "unknown";
+      rateLimiters.public.check(ip);
+
+      const tenant = await requireActiveTenantBySlug(input.tenantSlug);
+      return db.brand.findMany({
+        where: { tenantId: tenant.id, isActive: true },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      });
+    }),
+
+  listMerchContent: publicProcedure
+    .input(listMerchContentInputSchema)
+    .query(async ({ ctx, input }) => {
+      const ipHeader = ctx.req.headers.get("x-forwarded-for") ?? ctx.req.headers.get("x-real-ip");
+      const ip = ipHeader ?? "unknown";
+      rateLimiters.public.check(ip);
+
+      const tenant = await requireActiveTenantBySlug(input.tenantSlug);
+      const now = new Date();
+      return db.merchContent.findMany({
+        where: {
+          tenantId: tenant.id,
+          isActive: true,
+          ...(input.kind !== undefined && { kind: input.kind }),
+          AND: [
+            { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+            { OR: [{ endsAt: null }, { endsAt: { gte: now } }] },
+          ],
+        },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      });
+    }),
+
+  getProductBySlug: publicProcedure
+    .input(getProductBySlugInputSchema)
+    .query(async ({ ctx, input }) => {
+      const ipHeader = ctx.req.headers.get("x-forwarded-for") ?? ctx.req.headers.get("x-real-ip");
+      const ip = ipHeader ?? "unknown";
+      rateLimiters.public.check(ip);
+
+      const tenant = await requireActiveTenantBySlug(input.tenantSlug);
+      const baseWhere = { tenantId: tenant.id, isActive: true, ecommerceVisible: true };
+
+      let product = await db.product.findFirst({
+        where: { ...baseWhere, ecommerceSlug: input.slug },
+        include: PUBLIC_PRODUCT_INCLUDE,
+      });
+
+      // Legacy URL fallback — some /store/products/[id] links predate the
+      // ecommerceSlug field and still address the product by cuid. Only
+      // attempted when the slug is cuid-shaped, to avoid a wasted lookup on
+      // every genuine slug miss.
+      if (product === null && cuid.safeParse(input.slug).success) {
+        product = await db.product.findFirst({
+          where: { ...baseWhere, id: input.slug },
+          include: PUBLIC_PRODUCT_INCLUDE,
+        });
+      }
+
+      if (product === null) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
+      }
+
+      const availability = await loadAvailabilityMap(tenant.id, [product.id]);
+      return mapPublicProduct(product, availability.get(product.id) ?? 0);
+    }),
+
+  listFeaturedProducts: publicProcedure
+    .input(listFeaturedProductsInputSchema)
+    .query(async ({ ctx, input }) => {
+      const ipHeader = ctx.req.headers.get("x-forwarded-for") ?? ctx.req.headers.get("x-real-ip");
+      const ip = ipHeader ?? "unknown";
+      rateLimiters.public.check(ip);
+
+      const tenant = await requireActiveTenantBySlug(input.tenantSlug);
+      const products = await db.product.findMany({
+        where: {
+          tenantId: tenant.id,
+          isActive: true,
+          ecommerceVisible: true,
+          isFeatured: true,
+        },
+        include: PUBLIC_PRODUCT_INCLUDE,
+        orderBy: { name: "asc" },
+        take: input.take,
+      });
+      const availability = await loadAvailabilityMap(
+        tenant.id,
+        products.map((p) => p.id),
+      );
+      return products.map((p) => mapPublicProduct(p, availability.get(p.id) ?? 0));
+    }),
+
+  listNewArrivals: publicProcedure
+    .input(listNewArrivalsInputSchema)
+    .query(async ({ ctx, input }) => {
+      const ipHeader = ctx.req.headers.get("x-forwarded-for") ?? ctx.req.headers.get("x-real-ip");
+      const ip = ipHeader ?? "unknown";
+      rateLimiters.public.check(ip);
+
+      const tenant = await requireActiveTenantBySlug(input.tenantSlug);
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const products = await db.product.findMany({
+        where: {
+          tenantId: tenant.id,
+          isActive: true,
+          ecommerceVisible: true,
+          createdAt: { gte: thirtyDaysAgo },
+        },
+        include: PUBLIC_PRODUCT_INCLUDE,
+        orderBy: { createdAt: "desc" },
+        take: input.take,
+      });
+      const availability = await loadAvailabilityMap(
+        tenant.id,
+        products.map((p) => p.id),
+      );
+      return products.map((p) => mapPublicProduct(p, availability.get(p.id) ?? 0));
     }),
 });

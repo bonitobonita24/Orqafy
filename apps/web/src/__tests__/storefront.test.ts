@@ -40,6 +40,10 @@ vi.mock("@orqafy/db", async () => {
         findUnique: vi.fn(),
         findMany: vi.fn(),
         update: vi.fn(),
+        // T2.1 — browseProducts/getProductById now derive real availability
+        // via groupBy; default [] so existing assertions below (which don't
+        // care about availability) don't need per-test stubbing.
+        groupBy: vi.fn().mockResolvedValue([]),
       },
       stockMovement: {
         create: vi.fn(),

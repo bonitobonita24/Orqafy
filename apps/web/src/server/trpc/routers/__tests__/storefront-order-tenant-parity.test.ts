@@ -21,6 +21,12 @@ const {
   mockCustomerFindFirst,
   mockRoleFindFirst,
   mockRolePermissionFindUnique,
+  mockTenantFindUnique,
+  mockBrandFindMany,
+  mockMerchContentFindMany,
+  mockProductFindFirst,
+  mockProductFindMany,
+  mockWarehouseStockGroupBy,
 } = vi.hoisted(() => ({
   mockOrderFindUnique: vi.fn(),
   mockOrderFindFirst: vi.fn(),
@@ -30,6 +36,12 @@ const {
   mockCustomerFindFirst: vi.fn(),
   mockRoleFindFirst: vi.fn(),
   mockRolePermissionFindUnique: vi.fn(),
+  mockTenantFindUnique: vi.fn(),
+  mockBrandFindMany: vi.fn(),
+  mockMerchContentFindMany: vi.fn(),
+  mockProductFindFirst: vi.fn(),
+  mockProductFindMany: vi.fn(),
+  mockWarehouseStockGroupBy: vi.fn(),
 }));
 
 import type * as OrqafyDb from "@orqafy/db";
@@ -54,10 +66,20 @@ vi.mock("@orqafy/db", async () => {
         findFirst: mockCustomerFindFirst,
         findUnique: vi.fn(),
       },
-      tenant: { findUnique: vi.fn() },
+      tenant: { findUnique: mockTenantFindUnique },
       warehouse: { findFirst: vi.fn() },
-      warehouseStock: { findMany: vi.fn(), update: vi.fn() },
-      product: { findMany: vi.fn(), findUnique: vi.fn() },
+      warehouseStock: {
+        findMany: vi.fn(),
+        update: vi.fn(),
+        groupBy: mockWarehouseStockGroupBy,
+      },
+      product: {
+        findMany: mockProductFindMany,
+        findFirst: mockProductFindFirst,
+        findUnique: vi.fn(),
+      },
+      brand: { findMany: mockBrandFindMany },
+      merchContent: { findMany: mockMerchContentFindMany },
       stockMovement: { findMany: vi.fn(), create: vi.fn() },
       // RBAC matrix resolver mocks (tenant-rbac-standard.md §4). Defaulted
       // to a Platform Owner bypass in the top-level beforeEach so these
@@ -223,5 +245,131 @@ describe("Storefront EcommerceOrder tenant parity (K-prime Extended Phase 2)", (
     });
 
     expect(mockOrderUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("Storefront public catalog reads (T2.1) — tenant-scoped + ecommerceVisible-only", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockWarehouseStockGroupBy.mockResolvedValue([]);
+  });
+
+  function publicCaller() {
+    // publicProcedure ignores tenantId/roleId — the new queries resolve the
+    // tenant from input.tenantSlug instead, same as placeOrderAsCustomer.
+    return createCaller(ctxForTenant("unused"));
+  }
+
+  it("listBrands 404s on an unknown/inactive tenant and never queries brand", async () => {
+    mockTenantFindUnique.mockResolvedValueOnce(null);
+    const caller = publicCaller();
+    await expect(
+      caller.storefront.listBrands({ tenantSlug: "ghost" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockBrandFindMany).not.toHaveBeenCalled();
+  });
+
+  it("listBrands scopes by the resolved tenant id, not any ctx value", async () => {
+    mockTenantFindUnique.mockResolvedValueOnce({ id: "tenant-A", isActive: true });
+    mockBrandFindMany.mockResolvedValueOnce([]);
+    const caller = publicCaller();
+    await caller.storefront.listBrands({ tenantSlug: "acme" });
+    expect(mockTenantFindUnique).toHaveBeenCalledWith({ where: { slug: "acme" } });
+    const arg = mockBrandFindMany.mock.calls[0]![0];
+    expect(arg.where).toMatchObject({ tenantId: "tenant-A", isActive: true });
+  });
+
+  it("listMerchContent scopes by tenant id and optional kind filter", async () => {
+    mockTenantFindUnique.mockResolvedValueOnce({ id: "tenant-A", isActive: true });
+    mockMerchContentFindMany.mockResolvedValueOnce([]);
+    const caller = publicCaller();
+    await caller.storefront.listMerchContent({ tenantSlug: "acme", kind: "hero" });
+    const arg = mockMerchContentFindMany.mock.calls[0]![0];
+    expect(arg.where).toMatchObject({ tenantId: "tenant-A", isActive: true, kind: "hero" });
+  });
+
+  const rawProduct = {
+    id: "prod-1",
+    tenantId: "tenant-A",
+    name: "Widget",
+    baseCost: { toString: () => "100" } as unknown as number,
+    tier1Price: null,
+    compareAtPrice: { toString: () => "150" } as unknown as number,
+    isFeatured: true,
+    ecommerceSlug: "widget",
+    ecommerceVisible: true,
+    isActive: true,
+    brand: null,
+    category: null,
+  };
+
+  it("getProductBySlug scopes by tenantId + ecommerceVisible:true and derives discountPercent", async () => {
+    mockTenantFindUnique.mockResolvedValueOnce({ id: "tenant-A", isActive: true });
+    mockProductFindFirst.mockResolvedValueOnce(rawProduct);
+    mockWarehouseStockGroupBy.mockResolvedValueOnce([
+      { productId: "prod-1", _sum: { quantity: 10, reservedQuantity: 2 } },
+    ]);
+
+    const caller = publicCaller();
+    const result = await caller.storefront.getProductBySlug({
+      tenantSlug: "acme",
+      slug: "widget",
+    });
+
+    const arg = mockProductFindFirst.mock.calls[0]![0];
+    expect(arg.where).toMatchObject({
+      tenantId: "tenant-A",
+      isActive: true,
+      ecommerceVisible: true,
+      ecommerceSlug: "widget",
+    });
+    expect(result.price).toBe(100);
+    expect(result.compareAtPrice).toBe(150);
+    expect(result.discountPercent).toBe(33);
+    expect(result.inStock).toBe(true);
+    expect(result.availableQuantity).toBe(8);
+  });
+
+  it("getProductBySlug 404s when the product is not ecommerceVisible in that tenant, even with a cuid-shaped fallback", async () => {
+    mockTenantFindUnique.mockResolvedValueOnce({ id: "tenant-A", isActive: true });
+    mockProductFindFirst.mockResolvedValue(null);
+    const caller = publicCaller();
+    await expect(
+      caller.storefront.getProductBySlug({
+        tenantSlug: "acme",
+        slug: "clfallbackcuidxxxxxxxx1",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    // slug-lookup, then cuid-fallback lookup — both scoped to the same tenant
+    expect(mockProductFindFirst).toHaveBeenCalledTimes(2);
+    for (const call of mockProductFindFirst.mock.calls) {
+      expect(call[0].where).toMatchObject({
+        tenantId: "tenant-A",
+        ecommerceVisible: true,
+      });
+    }
+  });
+
+  it("listFeaturedProducts scopes by tenantId + ecommerceVisible + isFeatured", async () => {
+    mockTenantFindUnique.mockResolvedValueOnce({ id: "tenant-A", isActive: true });
+    mockProductFindMany.mockResolvedValueOnce([rawProduct]);
+    const caller = publicCaller();
+    await caller.storefront.listFeaturedProducts({ tenantSlug: "acme" });
+    const arg = mockProductFindMany.mock.calls[0]![0];
+    expect(arg.where).toMatchObject({
+      tenantId: "tenant-A",
+      ecommerceVisible: true,
+      isFeatured: true,
+    });
+  });
+
+  it("listNewArrivals scopes by tenantId + ecommerceVisible + a 30-day createdAt window", async () => {
+    mockTenantFindUnique.mockResolvedValueOnce({ id: "tenant-A", isActive: true });
+    mockProductFindMany.mockResolvedValueOnce([]);
+    const caller = publicCaller();
+    await caller.storefront.listNewArrivals({ tenantSlug: "acme" });
+    const arg = mockProductFindMany.mock.calls[0]![0];
+    expect(arg.where).toMatchObject({ tenantId: "tenant-A", ecommerceVisible: true });
+    expect(arg.where.createdAt.gte).toBeInstanceOf(Date);
   });
 });
