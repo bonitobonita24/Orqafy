@@ -219,6 +219,14 @@ describe("middleware public paths", () => {
     expect(isPublic("/demo/dashboard")).toBe(false);
   });
 
+  // Demo storefront static assets (public/demo/shopix/**) — the seeded Shopix
+  // catalog photos are plain /demo/shopix/... URLs; without this the auth
+  // middleware 307-walls every guest-visible product image to /login.
+  it("allows /demo/shopix/product-card/image-01.webp as a public path", async () => {
+    const { isPublic } = await import("@/lib/public-paths");
+    expect(isPublic("/demo/shopix/product-card/image-01.webp")).toBe(true);
+  });
+
   it("does not allow /store (no tenant slug) as a public path", async () => {
     const { isPublic } = await import("@/lib/public-paths");
     expect(isPublic("/store")).toBe(false);

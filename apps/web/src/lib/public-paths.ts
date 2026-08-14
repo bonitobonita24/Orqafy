@@ -18,6 +18,12 @@ export const PUBLIC_PATHS = [
   // robots directives or sitemap (Rule 35 SEO Foundation).
   "/robots.txt",
   "/sitemap.xml",
+  // Demo storefront static assets (apps/web/public/demo/**, e.g. the Shopix
+  // catalog photos seeded as /demo/shopix/... image URLs). Without this every
+  // guest-visible product/brand/hero image 307-redirects to /login and the
+  // storefront renders broken images for logged-out visitors + crawlers
+  // (same omission class as the /{slug}/store 88190c4 fix).
+  "/demo/shopix",
 ];
 
 // Guest storefront — /{tenantSlug}/store(/...) — must be crawlable + usable
