@@ -20,6 +20,16 @@ export const PUBLIC_PATHS = [
   "/sitemap.xml",
 ];
 
+// Guest storefront — /{tenantSlug}/store(/...) — must be crawlable + usable
+// without auth (guest cart, Turnstile guest checkout, order tracking) and
+// its pages set robots index:true, else the middleware 307-redirects guests
+// and crawlers to /login before they ever see the storefront (Rule 35 SEO
+// Foundation / D-SEO 2026-08-08).
+const STOREFRONT_PATH_RE = /^\/[^/]+\/store(\/.*)?$/;
+
 export function isPublic(pathname: string): boolean {
-  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+    return true;
+  }
+  return STOREFRONT_PATH_RE.test(pathname);
 }

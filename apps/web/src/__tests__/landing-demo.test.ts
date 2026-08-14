@@ -186,4 +186,46 @@ describe("middleware public paths", () => {
     const { isPublic } = await import("@/lib/public-paths");
     expect(isPublic("/privacy")).toBe(true);
   });
+
+  // Guest storefront — /{tenantSlug}/store(/...) must be crawlable + usable
+  // without auth (guest cart, guest checkout, guest order tracking). (Rule 35)
+  it("allows /demo/store/products as a public path", async () => {
+    const { isPublic } = await import("@/lib/public-paths");
+    expect(isPublic("/demo/store/products")).toBe(true);
+  });
+
+  it("allows /demo/store/products/abc123 as a public path", async () => {
+    const { isPublic } = await import("@/lib/public-paths");
+    expect(isPublic("/demo/store/products/abc123")).toBe(true);
+  });
+
+  it("allows /demo/store/checkout as a public path", async () => {
+    const { isPublic } = await import("@/lib/public-paths");
+    expect(isPublic("/demo/store/checkout")).toBe(true);
+  });
+
+  it("allows /demo/store/orders/track as a public path", async () => {
+    const { isPublic } = await import("@/lib/public-paths");
+    expect(isPublic("/demo/store/orders/track")).toBe(true);
+  });
+
+  it("does not allow /demo/dashboard as a public path", async () => {
+    const { isPublic } = await import("@/lib/public-paths");
+    expect(isPublic("/demo/dashboard")).toBe(false);
+  });
+
+  it("does not allow /store (no tenant slug) as a public path", async () => {
+    const { isPublic } = await import("@/lib/public-paths");
+    expect(isPublic("/store")).toBe(false);
+  });
+
+  it("does not allow /demo/storefront (must not loosely prefix-match store) as a public path", async () => {
+    const { isPublic } = await import("@/lib/public-paths");
+    expect(isPublic("/demo/storefront")).toBe(false);
+  });
+
+  it("does not allow /demo/store-x/anything as a public path", async () => {
+    const { isPublic } = await import("@/lib/public-paths");
+    expect(isPublic("/demo/store-x/anything")).toBe(false);
+  });
 });
