@@ -1,5 +1,23 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-08-14 (eve) — Storefront restyle BUILT (studio eCommerce blocks) + guest-access bug fixed
+
+**In your words:** "Go, plan-first" on the queued storefront restyle → plan approved ("ok shoot, go — that's all approved").
+
+✅ Done
+- **Plan produced + approved** → `docs/STOREFRONT_RESTYLE_PLAN.md` (route→block map, 4 sub-decision defaults: reviews OFF, banner skip, quick-view skip, look = orqafy theme).
+- **All 5 storefront surfaces restyled** on `feat/storefront-restyle` (9 commits, LOCAL/HARD HOLD): cart drawer (`shopping-cart-02`), catalog (`product-list-01`+`category-filter-04`), product detail (`product-overview-07`), checkout (`checkout-page-01`+`order-summary-04`), order track (`order-summary-03`), shell footer w/ Powerbyte credit (`mega-footer-05`). Wiring/SEO/logic verbatim; 0 lucide; no fabricated data.
+- **REAL BUG found + fixed:** guest storefront `/{slug}/store/*` was 307-walled to /login on dev AND prod (public-paths omission, contradicted ratified D-SEO). Regex allow + 8 unit tests. 3rd fleet hit of this fingerprint — global ledger escalated to standing gate.
+- **Verified end-to-end** (evidence, not self-reports): tsc clean · build 121 routes · **1451/1451 tests** · live walk of all 5 pages incl. add-to-cart→drawer→checkout flow (screenshots sent) · **fidelity gate 5/5 PASS** (9 new `data-fdl` anchors, 3 new committed baselines; landing/login recapture byte-identical = no drift).
+
+💬 Decisions/notes
+- Product-detail screen not baselined (dynamic DB id — unstable route); anchors landed for future use.
+- ⚠ Prod also carries the storefront-walled bug — fix reaches prod only at the next promote.
+
+⏳ Not yet / Next (owner)
+- Look approval / tweaks → then merge `feat/storefront-restyle` to main + release (version+changelog at push).
+- D-1 Customer Portal scope, D-2b/D-2-deploy, D-3, D-4, D-PROD-3 (Turnstile keys at next promote) still open.
+
 ## 2026-08-14 (pm²) — v0.15.0 released + storefront queued
 
 **In your words:** "Yes merge push, then queue the storefront restyle to the todo list."
