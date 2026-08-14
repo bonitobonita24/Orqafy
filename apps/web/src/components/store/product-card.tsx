@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
+import { WishlistToggleButton } from "@/components/store/wishlist-toggle-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/quotation-build";
@@ -88,6 +89,14 @@ export function StoreProductCard({
               </Badge>
             ) : null}
           </div>
+
+          <WishlistToggleButton
+            productId={product.id}
+            name={product.name}
+            price={product.price}
+            imageUrl={img}
+            className="absolute top-3 right-3"
+          />
         </div>
       </Link>
 

@@ -5,6 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { prisma } from "@orqafy/db";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { ProductGallery } from "@/components/store/product-gallery";
+import { WishlistToggleButton } from "@/components/store/wishlist-toggle-button";
 import { ProductSpecsTable, type ProductSpec } from "@/components/store/product-specs-table";
 import { RelatedProducts } from "@/components/store/related-products";
 import type { StoreProductCardProduct } from "@/components/store/product-card";
@@ -315,13 +316,24 @@ export default async function PublicStorefrontProductDetailPage({
                 ) : null}
               </dl>
 
-              <AddToCartButton
-                productId={product.id}
-                name={product.name}
-                price={product.price}
-                imageUrl={images[0] ?? null}
-                disabled={!product.inStock}
-              />
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <AddToCartButton
+                    productId={product.id}
+                    name={product.name}
+                    price={product.price}
+                    imageUrl={images[0] ?? null}
+                    disabled={!product.inStock}
+                  />
+                </div>
+                <WishlistToggleButton
+                  productId={product.id}
+                  name={product.name}
+                  price={product.price}
+                  imageUrl={images[0] ?? null}
+                  variant="labeled"
+                />
+              </div>
             </div>
           </div>
         </div>

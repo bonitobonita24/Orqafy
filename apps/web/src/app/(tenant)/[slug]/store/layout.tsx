@@ -2,8 +2,10 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { CartDrawer } from "@/components/cart/cart-drawer";
+import { WishlistDrawer } from "@/components/store/wishlist-drawer";
 import { Separator } from "@/components/ui/separator";
 import { CartProvider } from "@/lib/cart-store";
+import { WishlistProvider } from "@/lib/wishlist-store";
 
 interface LayoutProps {
   params: Promise<{ slug: string }>;
@@ -18,6 +20,7 @@ export default async function StoreLayout({
 
   return (
     <CartProvider tenantSlug={slug}>
+      <WishlistProvider tenantSlug={slug}>
       <div className="flex min-h-screen flex-col bg-background">
         <header
           data-fdl="store-header"
@@ -37,6 +40,7 @@ export default async function StoreLayout({
               >
                 Track order
               </Link>
+              <WishlistDrawer />
               <CartDrawer />
             </div>
           </div>
@@ -98,6 +102,7 @@ export default async function StoreLayout({
           </div>
         </footer>
       </div>
+      </WishlistProvider>
     </CartProvider>
   );
 }

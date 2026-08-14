@@ -42,6 +42,7 @@ import {
   FolderLibraryIcon as _FolderLibraryIcon,
   FolderOpenIcon as _FolderOpenIcon,
   HandshakeIcon as _HandshakeIcon,
+  HeartIcon as _HeartIcon,
   Invoice01Icon as _Invoice01Icon,
   Invoice03Icon as _Invoice03Icon,
   KanbanIcon as _KanbanIcon,
@@ -148,6 +149,7 @@ export const FolderKanban = makeIcon(_KanbanIcon);
 export const FolderOpen = makeIcon(_FolderOpenIcon);
 export const FolderTree = makeIcon(_FolderLibraryIcon);
 export const GripVertical = makeIcon(_DragDropVerticalIcon);
+export const Heart = makeIcon(_HeartIcon);
 export const HeartHandshake = makeIcon(_HandshakeIcon);
 export const Landmark = makeIcon(_BankIcon);
 export const LayoutDashboard = makeIcon(_DashboardSquare01Icon);
