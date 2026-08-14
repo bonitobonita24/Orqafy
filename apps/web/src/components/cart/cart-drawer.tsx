@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { ShoppingCart, Trash2 } from "@/components/ui/icons";
 
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
   SheetContent,
@@ -38,9 +40,9 @@ export function CartDrawer(): React.ReactNode {
           ) : null}
         </button>
       </SheetTrigger>
-      <SheetContent className="flex w-full flex-col gap-4 sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle>Your cart</SheetTitle>
+      <SheetContent className="flex w-full flex-col gap-6 p-6 sm:max-w-md">
+        <SheetHeader className="p-0">
+          <SheetTitle className="text-2xl">Your cart</SheetTitle>
           <SheetDescription>
             {hydrated && itemCount > 0
               ? `${itemCount} item${itemCount === 1 ? "" : "s"}`
@@ -48,94 +50,115 @@ export function CartDrawer(): React.ReactNode {
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex flex-1 flex-col overflow-y-auto">
           {!hydrated ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
               Loading…
             </p>
           ) : state.items.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              Add products to start shopping.
-            </p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <p className="text-lg font-medium text-muted-foreground">
+                Your cart is empty
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Add products to start shopping.
+              </p>
+            </div>
           ) : (
-            <ul className="divide-y divide-border">
-              {state.items.map((item) => (
-                <li
-                  key={item.productId}
-                  className="flex items-start gap-3 py-3"
-                >
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
-                    {item.imageUrl !== null && item.imageUrl !== undefined ? (
-                      <img
-                        src={item.imageUrl}
-                        alt={item.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <ShoppingCart className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatCurrency(item.price)} each
-                    </p>
-                    <div className="mt-1 flex items-center gap-2">
-                      <input
-                        type="number"
-                        min={1}
-                        max={999}
-                        value={item.quantity}
-                        onChange={(e) => {
-                          const next = Number.parseInt(e.target.value, 10);
-                          setQuantity(
-                            item.productId,
-                            Number.isFinite(next) && next > 0 ? next : 1,
-                          );
-                        }}
-                        className="w-16 rounded-md border border-input bg-background px-2 py-1 text-xs"
-                        aria-label={`Quantity for ${item.name}`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          removeItem(item.productId);
-                        }}
-                        className="text-muted-foreground transition hover:text-destructive"
-                        aria-label={`Remove ${item.name}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-sm font-semibold">
-                    {formatCurrency(item.price * item.quantity)}
+            state.items.map((item) => (
+              <div
+                key={item.productId}
+                className="flex items-start gap-4 border-b border-border py-4 last:border-b-0"
+              >
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
+                  {item.imageUrl !== null && item.imageUrl !== undefined ? (
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <ShoppingCart className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <h4 className="truncate text-sm font-medium">{item.name}</h4>
+                  <p className="text-xs text-muted-foreground">
+                    {formatCurrency(item.price)} each
                   </p>
-                </li>
-              ))}
-            </ul>
+                  <input
+                    type="number"
+                    min={1}
+                    max={999}
+                    value={item.quantity}
+                    onChange={(e) => {
+                      const next = Number.parseInt(e.target.value, 10);
+                      setQuantity(
+                        item.productId,
+                        Number.isFinite(next) && next > 0 ? next : 1,
+                      );
+                    }}
+                    className="w-20 rounded-md border border-input bg-background px-2.5 py-1.5 text-xs shadow-none"
+                    aria-label={`Quantity for ${item.name}`}
+                  />
+                </div>
+                <div className="flex flex-col items-end gap-3">
+                  <span className="text-sm font-semibold">
+                    {formatCurrency(item.price * item.quantity)}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      removeItem(item.productId);
+                    }}
+                    aria-label={`Remove ${item.name}`}
+                  >
+                    <Trash2 className="h-4 w-4 text-muted-foreground transition group-hover:text-destructive" />
+                  </Button>
+                </div>
+              </div>
+            ))
           )}
         </div>
 
-        <SheetFooter className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-col sm:space-x-0">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span className="font-semibold">{formatCurrency(subtotal)}</span>
+        <SheetFooter className="flex flex-col gap-2 p-0 sm:flex-col sm:space-x-0">
+          <div className="flex items-center justify-between gap-2.5">
+            <p className="text-muted-foreground">Subtotal</p>
+            <p className="text-lg font-semibold">{formatCurrency(subtotal)}</p>
           </div>
-          <Link
-            href={`/${tenantSlug}/store/checkout`}
-            onClick={() => {
-              setOpen(false);
-            }}
-            aria-disabled={!hydrated || state.items.length === 0}
-            className={`w-full rounded-md border border-primary/40 bg-primary/10 px-4 py-3 text-center text-sm font-medium text-primary transition hover:bg-primary/20 ${
-              !hydrated || state.items.length === 0
-                ? "pointer-events-none opacity-50"
-                : ""
-            }`}
-          >
-            Checkout
-          </Link>
+          <Separator />
+          <div className="mt-2 flex flex-col gap-2">
+            <Button asChild size="lg" className="w-full rounded-lg">
+              <Link
+                href={`/${tenantSlug}/store/checkout`}
+                onClick={() => {
+                  setOpen(false);
+                }}
+                aria-disabled={!hydrated || state.items.length === 0}
+                className={
+                  !hydrated || state.items.length === 0
+                    ? "pointer-events-none opacity-50"
+                    : ""
+                }
+              >
+                Checkout
+              </Link>
+            </Button>
+            <Button
+              type="button"
+              size="lg"
+              variant="outline"
+              className="w-full rounded-lg"
+              onClick={() => {
+                setOpen(false);
+              }}
+            >
+              Continue Shopping
+            </Button>
+          </div>
         </SheetFooter>
       </SheetContent>
     </Sheet>
