@@ -1,0 +1,142 @@
+[
+  {
+    "fdl": "store-header",
+    "box": {
+      "x": 0,
+      "y": 0,
+      "w": 1,
+      "h": 0.07
+    },
+    "order": 0,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "product-media",
+    "box": {
+      "x": 0.12222222222222222,
+      "y": 0.24333333333333335,
+      "w": 0.3638888888888889,
+      "h": 0.9306597222222223
+    },
+    "order": 1,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "product-info",
+    "box": {
+      "x": 0.5138888888888888,
+      "y": 0.24333333333333335,
+      "w": 0.3638888888888889,
+      "h": 0.9306597222222223
+    },
+    "order": 2,
+    "display": {
+      "display": "flex",
+      "flexDirection": "column"
+    }
+  },
+  {
+    "fdl": "product-specs",
+    "box": {
+      "x": 0.12222222222222222,
+      "y": 1.2451041666666667,
+      "w": 0.7555555555555555,
+      "h": 0.21
+    },
+    "order": 3,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "related-products",
+    "box": {
+      "x": 0.12222222222222222,
+      "y": 1.5262152777777778,
+      "w": 0.7555555555555555,
+      "h": 0.58
+    },
+    "order": 4,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "store-product-card",
+    "box": {
+      "x": 0.12222222222222222,
+      "y": 1.5884375,
+      "w": 0.18055555555555555,
+      "h": 0.5177777777777778
+    },
+    "order": 5,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "store-product-card",
+    "box": {
+      "x": 0.3138888888888889,
+      "y": 1.5884375,
+      "w": 0.18055555555555555,
+      "h": 0.5177777777777778
+    },
+    "order": 6,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "store-product-card",
+    "box": {
+      "x": 0.5055555555555555,
+      "y": 1.5884375,
+      "w": 0.18055555555555555,
+      "h": 0.5177777777777778
+    },
+    "order": 7,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "store-product-card",
+    "box": {
+      "x": 0.6972222222222222,
+      "y": 1.5884375,
+      "w": 0.18055555555555555,
+      "h": 0.5177777777777778
+    },
+    "order": 8,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "store-footer",
+    "box": {
+      "x": 0,
+      "y": 2.2128819444444443,
+      "w": 1,
+      "h": 0.2644444444444444
+    },
+    "order": 9,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  }
+]

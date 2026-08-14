@@ -1,7 +1,9 @@
 {
   "landing": { "mockupRoute": "/", "appRoute": "/" },
   "login": { "mockupRoute": "/login", "appRoute": "/login" },
+  "store-landing": { "mockupRoute": "/demo/store", "appRoute": "/demo/store" },
   "store-catalog": { "mockupRoute": "/demo/store/products", "appRoute": "/demo/store/products" },
+  "store-product": { "mockupRoute": "/demo/store/products/classic-cotton-t-shirt", "appRoute": "/demo/store/products/classic-cotton-t-shirt" },
   "store-checkout": { "mockupRoute": "/demo/store/checkout", "appRoute": "/demo/store/checkout" },
   "store-track": { "mockupRoute": "/demo/store/orders/track", "appRoute": "/demo/store/orders/track" }
 }

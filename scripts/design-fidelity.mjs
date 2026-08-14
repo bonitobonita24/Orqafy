@@ -318,7 +318,14 @@ function readJsonSafe(path) {
 
 function loadConfig(projectRoot) {
   const cfg = readJsonSafe(join(projectRoot, 'design-fidelity.config.json'));
-  return { ...DEFAULT_CONFIG, ...(cfg || {}) };
+  const merged = { ...DEFAULT_CONFIG, ...(cfg || {}) };
+  // FDL_BASE_URL env override — lets a transient QA server (e.g. a branch
+  // build on another port) be targeted without editing the committed config.
+  // Unset ⇒ behavior unchanged (config file, then DEFAULT_CONFIG).
+  if (typeof process.env.FDL_BASE_URL === 'string' && process.env.FDL_BASE_URL.length > 0) {
+    merged.baseUrl = process.env.FDL_BASE_URL;
+  }
+  return merged;
 }
 
 function baselinePathFor(projectRoot, screen) {
