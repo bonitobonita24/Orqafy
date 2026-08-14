@@ -2640,3 +2640,33 @@
                        crm-extras,ops-extras,compliance-settings,media,media-assets}.ts,
                        demo-showcase.ts, migrations/20260719000000_add_journal_entry_posted_reversal.
                        typecheck 0 / eslint clean. LOCAL (HARD HOLD, unpushed).
+
+## 2026-08-14 — Theme Phase 5 (shadcn/studio blocks) + Phase 7 DESIGN.md reconcile
+- Agent:               CLAUDE_CODE
+- Why:                 docs/DESIGN.md (238 lines, dated 2026-06-18) still documented the RETIRED
+                       "shadcn/ui default dark neutral-gray" theme (HSL tokens, system-ui/Inter/
+                       SFMono fonts, no chart palette, no icon-system section). The released theme
+                       (Tailwind v4 oklch "orqafy" theme, v0.14.0) diverged from the doc across
+                       color format, typography, radius/shadow scale, chart tokens, and the
+                       hugeicons icon shim — a Rule-32/spec-persistence gap. Reconciled per Phase 7
+                       (docs-only; no apps/ or packages/ code touched this session).
+- What:                Rewrote docs/DESIGN.md against ground truth (apps/web/src/app/globals.css,
+                       apps/web/src/app/layout.tsx, apps/web/src/components/ui/icons.tsx,
+                       docs/DECISIONS_LOG.md 2026-08-14 entry). Kept the doc's existing section
+                       structure; replaced all stale content: oklch zinc palette (light+dark pairs)
+                       replacing HSL neutral-gray; Geist (headings/UI) + Source Serif 4 (body) +
+                       Source Code Pro (mono) replacing system-ui/Inter/SFMono; new §2a Chart
+                       Palette (5-slot categorical, CVD-validated, fixed-assignment-order +
+                       light-mode <3:1 relief rule); new §6 Icon System documenting the hugeicons-
+                       via-lucide-named-shim convention (icons.tsx, lucide-react banned as a direct
+                       dependency); new §7 Landing + Auth Surfaces noting shadcn/studio Pro blocks
+                       (hero-section/features-section/cta-section/login-register) adapted to the
+                       token layer, INHERIT-not-REPLACE (Rule 12); updated radius/shadow scale
+                       (0.625rem base + dedicated shadow tokens, up from 0.5rem/no-shadow-tokens);
+                       updated oklch-safe .signal-glow keyframes (color-mix, not hsl-slash-alpha);
+                       header dated 2026-08-14, notes it supersedes the 2026-06-18 revision.
+- Files:               docs/DESIGN.md (rewritten, 238 → ~330 lines), docs/CHANGELOG_AI.md (this
+                       entry). No apps/ or packages/ files touched — docs-only task.
+- Gates:                N/A (docs-only; no build/typecheck/lint surface touched).
+- Scope:               Governance/doc reconciliation only. LOCAL (HARD HOLD, unpushed) —
+                       branch feat/theme-phase5-studio-blocks.
