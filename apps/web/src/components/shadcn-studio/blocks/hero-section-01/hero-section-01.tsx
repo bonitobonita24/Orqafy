@@ -3,19 +3,20 @@ import { Button } from '@/components/ui/button'
 
 const HeroSection = () => {
   return (
-    <section className='flex min-h-[calc(100dvh-4rem)] flex-1 flex-col justify-between gap-12 overflow-x-hidden pt-8 sm:gap-16 sm:pt-16 lg:gap-24 lg:pt-24'>
+    <section className='flex min-h-[calc(100dvh-4rem)] flex-1 flex-col justify-center gap-12 overflow-x-hidden pt-8 pb-16 sm:pt-16 lg:pt-24'>
       {/* Hero Content */}
       <div className='mx-auto flex max-w-7xl flex-col items-center gap-8 px-4 text-center sm:px-6 lg:px-8'>
         <div className='bg-muted flex items-center gap-2.5 rounded-full border px-2 py-1 text-sm'>
-          <Badge>AI-Powered</Badge>
-          <span className='text-muted-foreground'>Solution for client-facing businesses</span>
+          <Badge variant='outline'>Multi-tenant</Badge>
+          <span className='text-muted-foreground'>Operations platform for growing businesses</span>
         </div>
 
         <h1 className='text-3xl leading-[1.29167] font-bold text-balance sm:text-4xl lg:text-5xl'>
-          Sizzling Summer Delights
+          Run your entire business
           <br />
-          <span className='relative'>
-            Effortless
+          from{' '}
+          <span className='relative text-primary'>
+            one platform
             <svg
               width='223'
               height='12'
@@ -23,6 +24,7 @@ const HeroSection = () => {
               fill='none'
               xmlns='http://www.w3.org/2000/svg'
               className='absolute inset-x-0 bottom-0 w-full translate-y-1/2 max-sm:hidden'
+              aria-hidden='true'
             >
               <path
                 d='M1.11716 10.428C39.7835 4.97282 75.9074 2.70494 114.894 1.98894C143.706 1.45983 175.684 0.313587 204.212 3.31596C209.925 3.60546 215.144 4.59884 221.535 5.74551'
@@ -44,28 +46,23 @@ const HeroSection = () => {
                 </linearGradient>
               </defs>
             </svg>
-          </span>{' '}
-          Recipes for Parties!
+          </span>
         </h1>
 
-        <p className='text-muted-foreground'>
-          Dive into a world of flavor this summer with our collection of Sizzling Summer Delights!
-          <br />
-          From refreshing appetizers to delightful desserts
+        <p className='text-muted-foreground max-w-2xl'>
+          Field operations, HR, inventory, invoicing, and payroll — unified under one workspace. Built for teams
+          that operate in the real world.
         </p>
 
-        <Button size='lg' asChild>
-          <a href='#'>Try It Now</a>
-        </Button>
+        <div className='flex flex-col items-center gap-3 sm:flex-row'>
+          <Button size='lg' asChild>
+            <a href='/register'>Start free trial</a>
+          </Button>
+          <Button size='lg' variant='outline' asChild>
+            <a href='/demo-login'>Explore demo</a>
+          </Button>
+        </div>
       </div>
-
-      {/* Image */}
-      <img
-        src='https://cdn.shadcnstudio.com/ss-assets/blocks/marketing/hero/image-19.png'
-        alt='Dishes'
-        className='w-full object-cover'
-        style={{ minHeight: '268px!important' }}
-      />
     </section>
   )
 }
