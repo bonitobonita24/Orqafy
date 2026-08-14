@@ -95,3 +95,8 @@ screenshots/
 
 # Paid vendor templates (private — never commit source zips)
 _tempfiles/
+
+# Vendored template reference slices — local cherry-pick material, never committed (V32.48.1 pattern)
+starter/shopix/
+starter/restropos/
+_tempfiles/
