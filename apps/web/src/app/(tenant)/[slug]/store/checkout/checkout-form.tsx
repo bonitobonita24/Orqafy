@@ -5,9 +5,17 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Turnstile } from "@marsidev/react-turnstile";
 
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Package } from "@/components/ui/icons";
 import { useCart } from "@/lib/cart-store";
 import { formatCurrency } from "@/lib/quotation-build";
 import { trpc } from "@/lib/trpc";
@@ -127,10 +135,13 @@ export function CheckoutForm({
       className="grid gap-6 lg:grid-cols-[2fr_1fr]"
     >
       <div className="space-y-6">
-        <section className="rounded-lg border border-border bg-card p-5">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Contact
-          </h2>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Contact
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="firstName">First name *</Label>
@@ -185,12 +196,16 @@ export function CheckoutForm({
               />
             </div>
           </div>
-        </section>
+          </CardContent>
+        </Card>
 
-        <section className="rounded-lg border border-border bg-card p-5">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Shipping address
-          </h2>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Shipping address
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="line1">Address line 1 *</Label>
@@ -251,12 +266,16 @@ export function CheckoutForm({
               />
             </div>
           </div>
-        </section>
+          </CardContent>
+        </Card>
 
-        <section className="rounded-lg border border-border bg-card p-5">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Payment method
-          </h2>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Payment method
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
           <div className="space-y-2">
             <label className="flex items-start gap-3 rounded-md border border-border p-3 hover:bg-accent">
               <input
@@ -317,12 +336,16 @@ export function CheckoutForm({
               </span>
             </label>
           </div>
-        </section>
+          </CardContent>
+        </Card>
 
-        <section className="rounded-lg border border-border bg-card p-5">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Order notes
-          </h2>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Order notes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
           <Textarea
             value={form.notes}
             onChange={(e) => {
@@ -333,26 +356,41 @@ export function CheckoutForm({
             rows={3}
             disabled={disabled}
           />
-        </section>
+          </CardContent>
+        </Card>
       </div>
 
       <aside className="space-y-4">
-        <section className="sticky top-20 rounded-lg border border-border bg-card p-5">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Order summary
-          </h2>
+        <Card className="sticky top-20">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Order summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
           {!hydrated ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : state.items.length === 0 ? (
             <p className="text-sm text-muted-foreground">Your cart is empty.</p>
           ) : (
             <>
-              <ul className="space-y-3">
+              <ul className="space-y-4">
                 {state.items.map((item) => (
                   <li
                     key={item.productId}
-                    className="flex items-start justify-between gap-3 text-sm"
+                    className="flex items-start gap-3 text-sm"
                   >
+                    <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+                      {item.imageUrl !== null && item.imageUrl !== undefined && item.imageUrl !== "" ? (
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Package className="size-5 text-muted-foreground" />
+                      )}
+                    </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{item.name}</p>
                       <p className="text-xs text-muted-foreground">
@@ -365,7 +403,8 @@ export function CheckoutForm({
                   </li>
                 ))}
               </ul>
-              <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-sm">
+              <Separator className="my-4" />
+              <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="font-semibold">{formatCurrency(subtotal)}</span>
               </div>
@@ -387,7 +426,8 @@ export function CheckoutForm({
           >
             {placeOrder.isPending ? "Placing order…" : "Place order"}
           </button>
-        </section>
+          </CardContent>
+        </Card>
       </aside>
     </form>
   );
