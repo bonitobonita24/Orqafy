@@ -17,5 +17,14 @@
     "lib": "@/lib",
     "hooks": "@/hooks"
   },
-  "iconLibrary": "hugeicons"
+  "iconLibrary": "hugeicons",
+  "registries": {
+    "@shadcn-studio": {
+      "url": "https://shadcnstudio.com/r/new-york-v4/{name}.json",
+      "headers": {
+        "x-license-key": "${SHADCNSTUDIO_API_KEY}",
+        "x-email": "${SHADCNSTUDIO_EMAIL}"
+      }
+    }
+  }
 }
