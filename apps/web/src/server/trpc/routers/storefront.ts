@@ -219,6 +219,8 @@ const tenantSlugField = z.string().trim().min(1).max(100);
 
 const listBrandsInputSchema = z.object({ tenantSlug: tenantSlugField }).strict();
 
+const listCategoriesInputSchema = z.object({ tenantSlug: tenantSlugField }).strict();
+
 const listMerchContentInputSchema = z
   .object({
     tenantSlug: tenantSlugField,
@@ -965,6 +967,28 @@ export const storefrontRouter = createTRPCRouter({
       return db.brand.findMany({
         where: { tenantId: tenant.id, isActive: true },
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      });
+    }),
+
+  // Category tiles for the store landing (template-alignment T2.2) — only
+  // categories with at least one visible product, mirroring the filter
+  // store/products/page.tsx already applies for its category-filter chips.
+  listCategories: publicProcedure
+    .input(listCategoriesInputSchema)
+    .query(async ({ ctx, input }) => {
+      const ipHeader = ctx.req.headers.get("x-forwarded-for") ?? ctx.req.headers.get("x-real-ip");
+      const ip = ipHeader ?? "unknown";
+      rateLimiters.public.check(ip);
+
+      const tenant = await requireActiveTenantBySlug(input.tenantSlug);
+      return db.category.findMany({
+        where: {
+          tenantId: tenant.id,
+          isActive: true,
+          products: { some: { isActive: true, ecommerceVisible: true } },
+        },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        select: { id: true, name: true, slug: true, imageUrl: true },
       });
     }),
 

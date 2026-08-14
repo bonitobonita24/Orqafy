@@ -189,6 +189,11 @@ describe("middleware public paths", () => {
 
   // Guest storefront — /{tenantSlug}/store(/...) must be crawlable + usable
   // without auth (guest cart, guest checkout, guest order tracking). (Rule 35)
+  it("allows /demo/store (root store landing) as a public path", async () => {
+    const { isPublic } = await import("@/lib/public-paths");
+    expect(isPublic("/demo/store")).toBe(true);
+  });
+
   it("allows /demo/store/products as a public path", async () => {
     const { isPublic } = await import("@/lib/public-paths");
     expect(isPublic("/demo/store/products")).toBe(true);
