@@ -47,9 +47,14 @@ if ! $DC -f "$BASE/docker-compose.app.yml" up --build -d; then
   echo "  ✗ dev APP rebuild failed — rebuild manually: bash deploy/compose/start.sh dev up -d"
   exit 0
 fi
-if ! $DC -f "$BASE/docker-compose.worker.yml" up --build -d; then
+# The worker's depends_on names postgres + valkey, which are DEFINED in the db/cache
+# compose files — so `-f docker-compose.worker.yml` alone is an invalid compose project
+# ("undefined service valkey"). Include the defining files and target only `worker`
+# with --no-deps (infra is already up whenever dev is BEHIND, i.e. running-but-stale).
+WORKER_FILES=(-f "$BASE/docker-compose.db.yml" -f "$BASE/docker-compose.cache.yml" -f "$BASE/docker-compose.worker.yml")
+if ! $DC "${WORKER_FILES[@]}" up --build -d --no-deps worker; then
   echo "  ✗ dev WORKER rebuild failed — rebuild manually:"
-  echo "     docker compose --env-file $ENV_FILE -f $BASE/docker-compose.worker.yml up --build -d"
+  echo "     docker compose --env-file $ENV_FILE ${WORKER_FILES[*]} up --build -d --no-deps worker"
   exit 0
 fi
 echo "  ✓ dev rebuilt (app + worker). Re-checking freshness:"
