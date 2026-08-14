@@ -34,6 +34,8 @@ import {
   DollarCircleIcon as _DollarCircleIcon,
   Download04Icon as _Download04Icon,
   DragDropVerticalIcon as _DragDropVerticalIcon,
+  EyeIcon as _EyeIcon,
+  EyeOffIcon as _EyeOffIcon,
   File01Icon as _File01Icon,
   Flag01Icon as _Flag01Icon,
   FolderLibraryIcon as _FolderLibraryIcon,
@@ -131,6 +133,10 @@ export const Clock3 = makeIcon(_Clock03Icon);
 export const CreditCard = makeIcon(_CreditCardIcon);
 export const DollarSign = makeIcon(_DollarCircleIcon);
 export const Download = makeIcon(_Download04Icon);
+export const Eye = makeIcon(_EyeIcon);
+export const EyeIcon = makeIcon(_EyeIcon);
+export const EyeOff = makeIcon(_EyeOffIcon);
+export const EyeOffIcon = makeIcon(_EyeOffIcon);
 export const FileText = makeIcon(_File01Icon);
 export const FolderKanban = makeIcon(_KanbanIcon);
 export const FolderOpen = makeIcon(_FolderOpenIcon);

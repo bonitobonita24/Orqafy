@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { AuthError } from "next-auth";
 import { signIn } from "@/server/auth";
 import { LoginForm } from "./login-form";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import Logo from "@/components/shadcn-studio/logo";
+import AuthBackgroundShape from "@/assets/svg/auth-background-shape";
 
 export const metadata: Metadata = {
   title: "Sign In — Orqafy",
@@ -37,20 +40,27 @@ async function authenticate(
 
 export default function LoginPage() {
   return (
-    <div className="w-full max-w-sm space-y-6">
-      <div className="space-y-2 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg border border-primary bg-card signal-glow">
-          <span className="text-2xl font-bold text-primary">O</span>
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
-        <p className="text-sm text-muted-foreground">
-          Sign in to your Orqafy workspace.
-        </p>
+    <div className="relative flex h-auto min-h-screen w-full items-center justify-center overflow-x-hidden px-4 py-10 sm:px-6 lg:px-8">
+      <div className="absolute">
+        <AuthBackgroundShape />
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-6">
-        <LoginForm action={authenticate} />
-      </div>
+      <Card className="z-1 w-full border-none shadow-md sm:max-w-lg">
+        <CardHeader className="gap-6">
+          <Logo className="gap-3" />
+
+          <div>
+            <CardTitle className="mb-1.5 text-2xl">Welcome back</CardTitle>
+            <CardDescription className="text-base">
+              Sign in to your Orqafy workspace.
+            </CardDescription>
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          <LoginForm action={authenticate} />
+        </CardContent>
+      </Card>
     </div>
   );
 }
