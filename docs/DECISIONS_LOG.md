@@ -1708,3 +1708,31 @@ Owner resolved all 6 open [WHAT]s from the 2026-08-13 theme sessions in one dire
    tag+push. Push ≠ deploy (CI Model B/gated); staging/prod/demo untouched — separate owner word.
 
 — recorded by CLAUDE_CODE (PM/Opus), per owner directive 2026-08-14.
+
+---
+
+## 2026-08-14 (pm) — THEME Phase 5→7 executed (owner: "do the next queue Phase 5 to Phase 7")
+
+Scope calls made as [HOW] under the owner's go:
+- **Phase 5 integration set:** landing (studio hero-section-01 + features-section-01 + cta-section-10),
+  auth chrome (login-page-01 / register-01 adapted INTO existing forms — all logic verbatim), shared
+  logo branded "Orqafy". Dashboard-stats track found ALREADY DONE (de4fd2e, 2026-06-23 statistics
+  pattern) — skipped per already-done cross-check, no redo.
+- **Storefront eCommerce blocks NOT touched** — remains the separately-gated shop-design [WHAT]
+  (2026-08-08). The studio eCommerce category (product-list/overview/cart/checkout) is a strong fit;
+  recommended as the next design decision.
+- **lucide-react stayed banned:** stock blocks reintroduced it; all wired block icons re-routed through
+  the hugeicons shim (+5 shim entries: Eye/EyeOff pair, MenuIcon, ArrowRightIcon reuse, ChevronDown in
+  navigation-menu); dep removed again — 0 refs in app + lockfile. Unused block sources + all 6
+  installed demo routes deleted.
+- **Phase 7 fidelity gate ARMED (first time):** app had ZERO data-fdl anchors — the Rule-31 layout gate
+  had been silently fail-open since V32.36 sync. Armed for the 2 PUBLIC screens (landing: site-header/
+  hero/features/pricing/cta/site-footer · login: auth-card/login-form) + manifest + config
+  (baseUrl :42951). KNOWN LIMIT: authed screens (dashboard/reports/…) not baselined — the capture
+  harness has no auth-session support; extending it is follow-up work, recorded not hidden.
+- **DESIGN.md reconciled** (238→~350 lines) to the released v0.14.0 theme: oklch zinc tokens, real font
+  stack (Geist / Source Serif 4 / **Source Code Pro** — corrected vs earlier "Geist Mono" belief),
+  hugeicons shim doctrine, chart palette + relief rule, studio-blocks note. Supersedes 2026-06-18 doc.
+
+All LOCAL on feat/theme-phase5-studio-blocks — HARD HOLD; merge/push is a pending owner decision
+(together with unpushed main@5a353be chart fix).
