@@ -1,5 +1,20 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-08-14 (night) — Shopix/RestroPOS template audits + alignment spec (build HELD)
+
+**In your words:** "Not the design I expected — match the Shopix template's data sets per product (+ marketing banners/ads), and the POS to RestroPOS (main POS only, no tables/seating)." Then "save session, I need to reboot my PC."
+
+✅ Done
+- Both owned templates vendored from `_tempfiles/` → `starter/shopix/` + `starter/restropos/` (gitignored, AdminCN-style).
+- Full data-shape audits of both (2 agents) → unified **`docs/TEMPLATE_ALIGNMENT_SPEC.md`** committed: Brand + MerchContent models, Product compareAtPrice/isFeatured/slug/specs, Category.imageUrl, derived discount%/New-badge, real-stock wiring; POS KEEP/SKIP table (tables/KDS/food-type out).
+
+💬 Decisions/notes
+- **Owner: HOLD on the build** — D-i (demo catalog reshape ~24 products: YES) + D-ii (store landing: YES) confirmed; GO still pending → say "go template alignment".
+- Studio-blocks storefront look judged "too far" from Shopix → P2 re-graft will supersede this afternoon's catalog/detail cards (bug fix, anchors, footer, checkout/track chrome all carry forward).
+- Squirlnote down → 9 rows in offline queue.
+
+⛔ Blocked — template-alignment P1–P4 await owner GO; storefront merge/release awaits look decision.
+
 ## 2026-08-14 (eve) — Storefront restyle BUILT (studio eCommerce blocks) + guest-access bug fixed
 
 **In your words:** "Go, plan-first" on the queued storefront restyle → plan approved ("ok shoot, go — that's all approved").
