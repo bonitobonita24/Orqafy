@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@orqafy/db";
 import { ComplianceFooter } from "@/components/compliance-footer";
+import Header from "@/components/shadcn-studio/blocks/hero-section-01/header";
+import HeroSection from "@/components/shadcn-studio/blocks/hero-section-01/hero-section-01";
+import Features from "@/components/shadcn-studio/blocks/features-section-01/features-section-01";
+import CTASection from "@/components/shadcn-studio/blocks/cta-section-10/cta-section-10";
+import { Briefcase, Users, Package, Receipt, Wallet, BarChart3 } from "@/components/ui/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +42,62 @@ const jsonLd = [
   },
 ];
 
+const NAV_ITEMS = [
+  { title: "Try demo", href: "/demo-login" },
+  { title: "Privacy", href: "/privacy" },
+];
+
+const FEATURES_LIST = [
+  {
+    icon: Briefcase,
+    title: "Job Orders",
+    description: "Plan, dispatch, and track field work from a single operations board.",
+    cardBorderColor: "",
+    avatarTextColor: "text-primary",
+    avatarBgColor: "bg-primary/10",
+  },
+  {
+    icon: Users,
+    title: "Employees & HR",
+    description: "Attendance, DTR, and workforce records, unified across every team.",
+    cardBorderColor: "",
+    avatarTextColor: "text-primary",
+    avatarBgColor: "bg-primary/10",
+  },
+  {
+    icon: Package,
+    title: "Inventory",
+    description: "Real-time stock levels, purchase orders, and goods receipts.",
+    cardBorderColor: "",
+    avatarTextColor: "text-primary",
+    avatarBgColor: "bg-primary/10",
+  },
+  {
+    icon: Receipt,
+    title: "Invoicing",
+    description: "Create, send, and track invoices — synced straight to your books.",
+    cardBorderColor: "",
+    avatarTextColor: "text-primary",
+    avatarBgColor: "bg-primary/10",
+  },
+  {
+    icon: Wallet,
+    title: "Payroll",
+    description: "Run payroll with confidence — deductions, payslips, and disbursement.",
+    cardBorderColor: "",
+    avatarTextColor: "text-primary",
+    avatarBgColor: "bg-primary/10",
+  },
+  {
+    icon: BarChart3,
+    title: "Reports",
+    description: "Operational and financial reports that stay current, automatically.",
+    cardBorderColor: "",
+    avatarTextColor: "text-primary",
+    avatarBgColor: "bg-primary/10",
+  },
+];
+
 async function getPlans() {
   return prisma.plan.findMany({
     where: { isActive: true },
@@ -53,96 +114,22 @@ export default async function LandingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      {/* Nav */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded border border-primary bg-card signal-glow">
-            <span className="text-sm font-bold text-primary" aria-hidden="true">O</span>
-          </div>
-          <span className="font-semibold tracking-tight">Orqafy</span>
-        </div>
-        <nav aria-label="Main navigation">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/demo-login"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Try demo
-            </Link>
-            <Link
-              href="/privacy"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Privacy
-            </Link>
-            <Link
-              href="/login"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/register"
-              className="rounded-md border border-primary bg-transparent px-4 py-1.5 text-sm font-medium text-primary transition-all hover:bg-primary/10"
-            >
-              Get started
-            </Link>
-          </div>
-        </nav>
-      </header>
 
-      {/* Hero */}
-      <section className="mx-auto max-w-4xl px-6 py-24 text-center">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-3 py-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-primary signal-glow" aria-hidden="true" />
-          <span className="text-xs text-primary">Multi-tenant operations platform</span>
-        </div>
-        <h1 className="mb-6 text-5xl font-bold leading-tight tracking-tight">
-          Run your entire business
-          <br />
-          <span className="text-primary">from one platform</span>
-        </h1>
-        <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground">
-          Field operations, HR, inventory, invoicing, and payroll — unified under one workspace.
-          Built for teams that operate in the real world.
-        </p>
-        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-          <Link
-            href="/register"
-            className="rounded-md bg-primary px-6 py-3 text-sm font-semibold text-background transition-all hover:bg-primary hover:shadow-none"
-          >
-            Start free trial
-          </Link>
-          <Link
-            href="/demo-login"
-            className="rounded-md border border-border bg-card px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary/50 hover:text-primary"
-          >
-            Explore demo →
-          </Link>
-        </div>
-      </section>
+      <Header
+        navigationData={NAV_ITEMS}
+        secondaryCtaLabel="Sign in"
+        secondaryCtaHref="/login"
+        primaryCtaLabel="Get started"
+        primaryCtaHref="/register"
+      />
 
-      {/* Feature grid */}
-      <section className="mx-auto max-w-5xl px-6 pb-20">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          {[
-            { icon: "⚙️", label: "Job Orders" },
-            { icon: "👥", label: "Employees & HR" },
-            { icon: "📦", label: "Inventory" },
-            { icon: "🧾", label: "Invoicing" },
-            { icon: "💰", label: "Payroll" },
-            { icon: "📊", label: "Reports" },
-          ].map(({ icon, label }) => (
-            <div
-              key={label}
-              className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3"
-            >
-              <span className="text-lg">{icon}</span>
-              <span className="text-sm font-medium">{label}</span>
-            </div>
-          ))}
-        </div>
-      </section>
+      <HeroSection />
+
+      <Features
+        heading="Everything your business needs, in one place"
+        description="Field operations, HR, inventory, invoicing, and payroll — unified under one workspace built for teams that operate in the real world."
+        featuresList={FEATURES_LIST}
+      />
 
       {/* Pricing */}
       <section aria-labelledby="pricing-heading" className="border-t border-border py-20">
@@ -211,6 +198,13 @@ export default async function LandingPage() {
           )}
         </div>
       </section>
+
+      <CTASection
+        heading="Ready to move as one?"
+        description="Start free — no credit card required. Bring your whole operation onto one platform today."
+        ctaLabel="Start free trial"
+        ctaHref="/register"
+      />
 
       {/* Footer */}
       <ComplianceFooter />

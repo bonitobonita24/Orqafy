@@ -1,4 +1,4 @@
-import { MenuIcon } from 'lucide-react'
+import { MenuIcon } from '@/components/ui/icons'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -16,7 +16,7 @@ import {
 
 import { cn } from '@/lib/utils'
 
-import Logo from '@/assets/svg/logo'
+import Logo from '@/components/shadcn-studio/logo'
 
 export type NavigationSection = {
   title: string
@@ -26,19 +26,32 @@ export type NavigationSection = {
 type HeaderProps = {
   navigationData: NavigationSection[]
   className?: string
+  /** Secondary (outline) CTA — e.g. "Sign in" */
+  secondaryCtaLabel?: string
+  secondaryCtaHref?: string
+  /** Primary (filled) CTA — e.g. "Get started" */
+  primaryCtaLabel?: string
+  primaryCtaHref?: string
 }
 
-const Header = ({ navigationData, className }: HeaderProps) => {
+const Header = ({
+  navigationData,
+  className,
+  secondaryCtaLabel,
+  secondaryCtaHref = '#',
+  primaryCtaLabel = 'Login',
+  primaryCtaHref = '#'
+}: HeaderProps) => {
   return (
     <header className={cn('bg-background sticky top-0 z-50 h-16 border-b', className)}>
       <div className='mx-auto flex h-full max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:px-8'>
         {/* Logo */}
-        <a href='#'>
+        <a href='/' aria-label='Orqafy home'>
           <Logo className='gap-3' />
         </a>
 
         {/* Navigation */}
-        <NavigationMenu className='max-md:hidden'>
+        <NavigationMenu className='max-md:hidden' aria-label='Main navigation'>
           <NavigationMenuList className='flex-wrap justify-start gap-0'>
             {navigationData.map(navItem => (
               <NavigationMenuItem key={navItem.title}>
@@ -53,15 +66,22 @@ const Header = ({ navigationData, className }: HeaderProps) => {
           </NavigationMenuList>
         </NavigationMenu>
 
-        {/* Login Button */}
-        <Button className='rounded-lg max-md:hidden' asChild>
-          <a href='#'>Login</a>
-        </Button>
+        {/* CTAs */}
+        <div className='flex items-center gap-3 max-md:hidden'>
+          {secondaryCtaLabel && (
+            <Button variant='outline' className='rounded-lg' asChild>
+              <a href={secondaryCtaHref}>{secondaryCtaLabel}</a>
+            </Button>
+          )}
+          <Button className='rounded-lg' asChild>
+            <a href={primaryCtaHref}>{primaryCtaLabel}</a>
+          </Button>
+        </div>
 
         {/* Navigation for small screens */}
         <div className='flex gap-4 md:hidden'>
           <Button className='rounded-lg' asChild>
-            <a href='#'>Login</a>
+            <a href={primaryCtaHref}>{primaryCtaLabel}</a>
           </Button>
 
           <DropdownMenu>
@@ -73,10 +93,15 @@ const Header = ({ navigationData, className }: HeaderProps) => {
             </DropdownMenuTrigger>
             <DropdownMenuContent className='w-56' align='end'>
               {navigationData.map((item, index) => (
-                <DropdownMenuItem key={index}>
+                <DropdownMenuItem key={index} asChild>
                   <a href={item.href}>{item.title}</a>
                 </DropdownMenuItem>
               ))}
+              {secondaryCtaLabel && (
+                <DropdownMenuItem asChild>
+                  <a href={secondaryCtaHref}>{secondaryCtaLabel}</a>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

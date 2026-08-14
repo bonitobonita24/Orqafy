@@ -47,6 +47,7 @@ import {
   LifebuoyIcon as _LifebuoyIcon,
   Loading03Icon as _Loading03Icon,
   Mail01Icon as _Mail01Icon,
+  Menu01Icon as _Menu01Icon,
   Message01Icon as _Message01Icon,
   MinusSignIcon as _MinusSignIcon,
   Moon02Icon as _Moon02Icon,
@@ -103,6 +104,7 @@ const makeIcon =
 export const Apple = makeIcon(_AppleIcon);
 export const ArrowDownRight = makeIcon(_ArrowDownRight01Icon);
 export const ArrowRight = makeIcon(_ArrowRight01Icon);
+export const ArrowRightIcon = makeIcon(_ArrowRight01Icon);
 export const ArrowUpDown = makeIcon(_ArrowUpDownIcon);
 export const ArrowUpRight = makeIcon(_ArrowUpRight01Icon);
 export const BarChart3 = makeIcon(_ChartColumnIcon);
@@ -149,6 +151,7 @@ export const LifeBuoy = makeIcon(_LifebuoyIcon);
 export const ListTodo = makeIcon(_CheckListIcon);
 export const Loader2 = makeIcon(_Loading03Icon);
 export const Mail = makeIcon(_Mail01Icon);
+export const MenuIcon = makeIcon(_Menu01Icon);
 export const MessageSquare = makeIcon(_Message01Icon);
 export const Milestone = makeIcon(_Flag01Icon);
 export const Minus = makeIcon(_MinusSignIcon);
