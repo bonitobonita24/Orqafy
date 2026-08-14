@@ -19,7 +19,10 @@ export default async function StoreLayout({
   return (
     <CartProvider tenantSlug={slug}>
       <div className="flex min-h-screen flex-col bg-background">
-        <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm supports-backdrop-filter:bg-background/80">
+        <header
+          data-fdl="store-header"
+          className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm supports-backdrop-filter:bg-background/80"
+        >
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
             <Link
               href={`/${slug}/store/products`}
@@ -38,8 +41,8 @@ export default async function StoreLayout({
             </div>
           </div>
         </header>
-        <div className="flex-1">{children}</div>
-        <footer className="border-t border-border">
+        <div className="flex flex-1 flex-col">{children}</div>
+        <footer data-fdl="store-footer" className="border-t border-border">
           <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-4 py-10 sm:grid-cols-2">
             <div className="flex flex-col gap-3">
               <div className="text-sm font-semibold">Shop</div>

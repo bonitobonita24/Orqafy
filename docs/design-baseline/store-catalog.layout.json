@@ -1,0 +1,58 @@
+[
+  {
+    "fdl": "store-header",
+    "box": {
+      "x": 0,
+      "y": 0,
+      "w": 1,
+      "h": 0.07
+    },
+    "order": 0,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "store-filter",
+    "box": {
+      "x": 0.17291666666666666,
+      "y": 0.20333333333333334,
+      "w": 0.6541666666666667,
+      "h": 0.19777777777777777
+    },
+    "order": 1,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "store-grid",
+    "box": {
+      "x": 0.17291666666666666,
+      "y": 0.43666666666666665,
+      "w": 0.6541666666666667,
+      "h": 1.2433333333333334
+    },
+    "order": 2,
+    "display": {
+      "display": "grid",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "store-footer",
+    "box": {
+      "x": 0,
+      "y": 1.7155555555555555,
+      "w": 1,
+      "h": 0.2644444444444444
+    },
+    "order": 3,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  }
+]

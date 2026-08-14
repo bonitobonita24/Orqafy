@@ -1,0 +1,44 @@
+[
+  {
+    "fdl": "store-header",
+    "box": {
+      "x": 0,
+      "y": 0,
+      "w": 1,
+      "h": 0.07
+    },
+    "order": 0,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "track-form",
+    "box": {
+      "x": 0.35555555555555557,
+      "y": 0.25222222222222224,
+      "w": 0.28888888888888886,
+      "h": 0.2697569444444444
+    },
+    "order": 1,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "store-footer",
+    "box": {
+      "x": 0,
+      "y": 0.7355555555555555,
+      "w": 1,
+      "h": 0.2644444444444444
+    },
+    "order": 2,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  }
+]

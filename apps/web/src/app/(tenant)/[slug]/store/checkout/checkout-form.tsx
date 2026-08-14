@@ -134,7 +134,7 @@ export function CheckoutForm({
       onSubmit={handleSubmit}
       className="grid gap-6 lg:grid-cols-[2fr_1fr]"
     >
-      <div className="space-y-6">
+      <div data-fdl="checkout-form" className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -361,7 +361,7 @@ export function CheckoutForm({
       </div>
 
       <aside className="space-y-4">
-        <Card className="sticky top-20">
+        <Card data-fdl="checkout-summary" className="sticky top-20">
           <CardHeader>
             <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Order summary

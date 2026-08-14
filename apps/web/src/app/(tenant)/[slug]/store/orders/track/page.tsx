@@ -44,7 +44,7 @@ export default function OrderTrackPage(): React.ReactNode {
   const hasError = submitted && error !== null;
 
   return (
-    <section className="bg-muted py-8 sm:py-16">
+    <section className="flex-1 bg-muted py-8 sm:py-16">
       <main className="mx-auto max-w-md px-4">
         <div className="mb-6 flex items-start gap-3">
           <PackageSearch className="mt-0.5 size-6 shrink-0 text-muted-foreground" />
@@ -56,7 +56,7 @@ export default function OrderTrackPage(): React.ReactNode {
           </div>
         </div>
 
-        <Card>
+        <Card data-fdl="track-form">
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">

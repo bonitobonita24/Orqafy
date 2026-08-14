@@ -116,7 +116,7 @@ export default async function PublicStorefrontProductDetailPage({
         </nav>
 
         <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
-          <div className="space-y-3">
+          <div data-fdl="product-media" className="space-y-3">
             <div className="aspect-square overflow-hidden rounded-md bg-muted">
               {heroImage !== null ? (
                 <img
@@ -149,7 +149,7 @@ export default async function PublicStorefrontProductDetailPage({
             ) : null}
           </div>
 
-          <div className="flex flex-col justify-between gap-6">
+          <div data-fdl="product-info" className="flex flex-col justify-between gap-6">
             <div className="space-y-2">
               <h1 className="text-4xl font-semibold tracking-tight">
                 {product.name}

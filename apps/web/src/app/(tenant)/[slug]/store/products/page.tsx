@@ -121,7 +121,7 @@ export default async function PublicStorefrontProductsPage({
         </div>
       </header>
 
-      <Card className="shadow-none">
+      <Card data-fdl="store-filter" className="shadow-none">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <SearchIcon className="size-5" />
@@ -191,7 +191,10 @@ export default async function PublicStorefrontProductsPage({
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div
+          data-fdl="store-grid"
+          className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+        >
           {items.map((product) => {
             const img = firstImageUrl(product.ecommerceImageUrls);
             const desc =
