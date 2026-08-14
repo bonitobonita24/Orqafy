@@ -1,7 +1,60 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-08-14 by CLAUDE_CODE (v0.14.0 RELEASED+pushed — full decision queue cleared; multi-hue charts live; hsl(var()) bug fixed on main unpushed.)
+> Last updated: 2026-08-14 (pm) by CLAUDE_CODE (THEME Phase 5-7 DONE+verified on feat/theme-phase5-studio-blocks; v0.14.0 released earlier today; prod v0.13.2 untouched.)
+
+---
+
+## ⭐ SESSION 2026-08-14 (pm) — THEME Phase 5→7 complete (studio blocks + fidelity gate armed)
+
+```
+[FOCUS: Orqafy]  ·  2026-08-14 ~15:40  ·  cold-start authority: docs/memory/MEMORY.md + this block
+
+## ⏳ TODO — next session
+1. [ ] (owner-gated) Merge feat/theme-phase5-studio-blocks → main + push, together with unpushed
+       main@5a353be+8d931de (chart fix + docs). Suggest: merge branch → main, release v0.15.0
+       (feats) via gen-release-notes flow. HARD HOLD until owner word.
+2. [ ] Storefront restyle [WHAT] — studio eCommerce blocks (product-list/overview/cart/checkout)
+       are a strong fit for store/*; needs owner shop-design decision (open since 2026-08-08).
+3. [ ] Fidelity-gate authed screens — capture harness lacks auth-session support; extend to
+       dashboard/reports/etc. (follow-up [HOW], not urgent).
+
+## ⚖️ OPEN DECISIONS (owner)
+- [ ] Merge+push authorization: feat/theme-phase5-studio-blocks (9 commits) AND main's 2 unpushed
+      (5a353be chart fix + 8d931de docs). One release (v0.15.0) or hold?
+- [ ] Storefront shop-design (carried; see TODO 2).
+
+## ✅ DONE THIS SESSION (built AND verified — evidence)
+- 4 merged branches DELETED on owner word (theme, health-poll, ensure-dev-fresh, chart-hsl).
+- PHASE 5 (branch feat/theme-phase5-studio-blocks): studio blocks installed via MCP /cui
+  (1b2a3ed/427244e: hero-section-01, features-section-01, cta-section-10, login-page-01,
+  register-01, statistics-component-01; registry auth reverse-engineered → components.json
+  registries block w/ env-var keys). Landing rebuilt on hero/features/cta (800895c) — SEO
+  contract preserved (1 H1, H2 hierarchy, JSON-LD, OG, canonical; verified live), real Orqafy
+  copy, logo branded. Auth restyled (a41cf52) — ALL logic verbatim (workspace field, actions,
+  slug-debounce), eye-toggle added; live login → /demo/dashboard VERIFIED. Stats track
+  ALREADY-DONE (de4fd2e, June) — skipped. Cleanup (776a643): 6 demo routes deleted, unused
+  block sources deleted, lucide-react re-banned (0 refs app+lock; navigation-menu → shim).
+  Hero rhythm fix (372c0de). Gates: tsc + full build green.
+- PHASE 6: dev rebuilt off branch (app 42951 healthy); live QA landing/login/register/dashboard/
+  reports — login flow works, no placeholder leak, console error is PRE-EXISTING (also on old
+  build). Screenshots: qa-phase5-landing(-final).png, qa-phase5-login.png.
+- PHASE 7: DESIGN.md reconciled 238→~350 lines to released theme (ba72a30; corrected mono font =
+  Source Code Pro). Rule-31 fidelity gate ARMED FIRST TIME: app had 0 data-fdl anchors ever —
+  8 anchors added (landing 6 + login 2), manifest + config (baseUrl :42951), playwright root
+  devDep, baselines captured, --report-only 2/2 PASS 0 violations (5c20b21, f51ab38).
+  Governance: DECISIONS_LOG (7a6a6de) + CHANGELOG_AI entries.
+- Squirlnote: 5 accomplishment rows posted (new fleet logging standard, first Orqafy use).
+
+## 🔒 STATE / GROUND TRUTH
+- Branch feat/theme-phase5-studio-blocks @ 5c20b21 (9 commits over main). main @ 8d931de
+  (2 unpushed over origin/main=746f7b5=v0.14.0). Tree clean.
+- dev containers: app+worker healthy, serving the PHASE 5 BRANCH build (not main!) — after
+  merge/next main work, rebuild dev off main again.
+- PROD orqafy.com: v0.13.2 untouched. Staging/demo untouched.
+- KNOWN LIMITS: fidelity baselines = public screens only (no auth in capture harness);
+  Enterprise plan card shows "Free" (seed data, pre-existing, not a UI bug).
+```
 
 ---
 

@@ -1,5 +1,24 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-08-14 (pm) — Theme Phase 5→7: studio blocks + design gate armed
+
+**In your words:** "Delete the 4 merged branches, then do the next queue — Theme Phase 5 to Phase 7."
+
+✅ Done
+- 4 merged branches deleted.
+- **Phase 5:** landing page rebuilt on your shadcn/studio Pro blocks (hero + features + CTA) with real Orqafy copy and SEO fully preserved; login/register got the studio chrome with zero logic changes (login verified working end-to-end); demo routes and unused block sources cleaned out; lucide-react kept banned (0 refs). Dashboard-stats track was already done since June — skipped, not redone.
+- **Phase 6:** dev rebuilt on the branch; live QA across landing/login/register/dashboard/reports — all green, screenshots delivered.
+- **Phase 7:** DESIGN.md rewritten for the released theme (was describing the retired June design), and the Rule-31 design-fidelity gate is now **armed for the first time** — layout anchors + baselines for landing/login, verified passing.
+- Session logged to Squirlnote (5 rows — first use of the new fleet standard on this seat).
+
+💬 Decisions/notes
+- Discovered the fidelity gate had been silently inert since it was synced (zero anchors app-wide). Now armed for public screens; authed screens need capture-harness auth support (follow-up).
+- Storefront restyle stays your open shop-design call — the studio eCommerce blocks are a strong fit when you want it.
+- Dev currently serves the Phase 5 BRANCH build.
+
+⛔ Blocked / your word needed
+- Merge + push: `feat/theme-phase5-studio-blocks` (9 commits) and main's 2 unpushed commits (chart fix + docs). Suggest one v0.15.0 release when you're ready.
+
 ## 2026-08-14 — Decision queue cleared → v0.14.0 released (+ chart bugfix)
 
 **In your words:** "Do all Open owner decisions — plan it first, use swarm orchestration."
