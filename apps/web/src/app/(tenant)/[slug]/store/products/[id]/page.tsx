@@ -17,6 +17,11 @@ import { createServerCaller } from "@/server/trpc/server";
 
 export const dynamic = "force-dynamic";
 
+// Same absolute-URL fallback idiom as the marketing landing (app/page.tsx) —
+// metadataBase (app/layout.tsx) absolutizes Metadata fields, but JSON-LD is
+// raw markup and needs the origin inlined.
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
 interface PageProps {
   params: Promise<{ slug: string; id: string }>;
 }
@@ -51,10 +56,10 @@ async function loadProduct(
 ): Promise<StorefrontProduct | null> {
   const api = await createServerCaller();
   try {
-    return (await api.storefront.getProductBySlug({
+    return await api.storefront.getProductBySlug({
       tenantSlug,
       slug: id,
-    })) as StorefrontProduct;
+    });
   } catch (err) {
     if (err instanceof TRPCError && err.code === "NOT_FOUND") return null;
     throw err;
@@ -210,8 +215,42 @@ export default async function PublicStorefrontProductDetailPage({
     }
   }
 
+  // Rule 35 — schema.org Product/Offer JSON-LD, built from the same
+  // getProductBySlug payload the page renders. Mirrors the marketing
+  // landing's inline <script type="application/ld+json"> + JSON.stringify
+  // idiom (app/page.tsx). offers.url matches generateMetadata's canonical
+  // (slug form even when reached via the legacy cuid URL).
+  const canonicalId = product.ecommerceSlug ?? product.id;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    ...(desc !== null && desc.length > 0 ? { description: desc } : {}),
+    ...(images.length > 0 ? { image: images } : {}),
+    ...(product.brand !== null
+      ? { brand: { "@type": "Brand", name: product.brand.name } }
+      : {}),
+    ...(product.sku !== null ? { sku: product.sku } : {}),
+    offers: {
+      "@type": "Offer",
+      price: product.price.toFixed(2),
+      priceCurrency: "PHP",
+      availability: product.inStock
+        ? "https://schema.org/InStock"
+        : "https://schema.org/OutOfStock",
+      url: `${SITE_URL}/${slug}/store/products/${canonicalId}`,
+    },
+  };
+  // Escape "<" so tenant-entered text (e.g. "</script>" inside a product
+  // description) can never break out of the JSON-LD script element.
+  const jsonLdHtml = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
+
   return (
     <section className="py-8 sm:py-16 lg:py-24">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdHtml }}
+      />
       <div className="mx-auto max-w-6xl space-y-16 px-4 sm:px-6 lg:px-8">
         <div className="space-y-10">
           <nav className="flex items-center gap-2 text-sm text-muted-foreground">
