@@ -4,6 +4,27 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.14.0 — 2026-08-14
+
+### [FEATURE]
+- multi-hue categorical chart palette (chart-1..5, light+dark) (`f5c5885`)
+- migrate lucide-react → hugeicons via icon adapter (Phase 4) (`052152d`)
+- adopt shadcn/studio orqafy theme + fonts (Phase 2+3) (`742670b`)
+- migrate apps/web from Tailwind v3.4 to v4 (Phase 1 — plumbing) (`69dbcc7`)
+
+### [FIXED]
+- use exact hugeicons glyphs for calendar/book icons (`517b222`)
+- poll prod health until 200 in push-to-prod verify step (`2bbdba3`)
+- make ensure-dev-fresh worker rebuild a valid compose project (`fc1a777`)
+
+### [DOCS]
+- record owner ratification of full 2026-08-14 decision queue (`1759178`)
+- save session — Phase 4 lucide→hugeicons DONE + verified (`23ce3e7`)
+- save session 2026-08-13 — theme Phases 0-3 done + v0.13.3 queue + handoff (`99155b9`)
+- mark Phases 0-3 done + record QA review flags (`8073b0f`)
+- plan of record — Tailwind v4 migration + shadcn/studio orqafy theme adoption (`5893e7b`)
+
+
 ## v0.13.2 — 2026-08-12
 
 ### [FIXED]
