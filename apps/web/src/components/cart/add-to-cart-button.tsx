@@ -10,6 +10,9 @@ interface AddToCartButtonProps {
   name: string;
   price: number;
   imageUrl?: string | null;
+  /** Out-of-stock guard (template-alignment T2.4) — optional, defaults to
+   * enabled so existing callers (StoreProductCard) are unaffected. */
+  disabled?: boolean;
 }
 
 export function AddToCartButton({
@@ -17,6 +20,7 @@ export function AddToCartButton({
   name,
   price,
   imageUrl,
+  disabled = false,
 }: AddToCartButtonProps): React.ReactNode {
   const { addItem, hydrated } = useCart();
   const [quantity, setQuantity] = useState(1);
@@ -25,6 +29,18 @@ export function AddToCartButton({
     addItem({ productId, name, price, imageUrl: imageUrl ?? null, quantity });
     toast.success(`Added ${quantity} × ${name} to cart`);
     setQuantity(1);
+  }
+
+  if (disabled) {
+    return (
+      <button
+        type="button"
+        disabled
+        className="w-full rounded-md border border-input bg-muted px-4 py-3 text-sm font-medium text-muted-foreground disabled:cursor-not-allowed"
+      >
+        Out of stock
+      </button>
+    );
   }
 
   return (
