@@ -1,7 +1,60 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-08-13 (pm) by CLAUDE_CODE (Phase 4 lucide→hugeicons DONE+verified via shim; theme Phases 0-3 done earlier; prod v0.13.2 untouched.)
+> Last updated: 2026-08-14 by CLAUDE_CODE (v0.14.0 RELEASED+pushed — full decision queue cleared; multi-hue charts live; hsl(var()) bug fixed on main unpushed.)
+
+---
+
+## ⭐ SESSION 2026-08-14 — Decision queue cleared → v0.14.0 released + chart-token bugfix
+
+```
+[FOCUS: Orqafy]  ·  2026-08-14 ~14:40  ·  cold-start authority: docs/memory/MEMORY.md + this block
+
+## ⏳ TODO — next session works these IN ORDER
+1. [ ] THEME Phase 5 — browse owner's shadcn/studio library via shadcn-studio MCP; integrate
+       components/blocks/templates (INHERIT-not-REPLACE, keep tRPC/Prisma/Auth). Branch off main
+       (theme branch is MERGED+RELEASED — start fresh feat/ branch). done/verify: typecheck +
+       next build green + visual QA.
+2. [ ] THEME Phase 7 — reconcile design-contract baseline (docs/DESIGN.md / tokens / MOCKUP) to the
+       released oklch theme + multi-hue chart palette + governance (CHANGELOG_AI, DECISIONS_LOG).
+
+## ⚖️ OPEN DECISIONS (owner)
+- [ ] PUSH authorization for main@5a353be (fix/chart-hsl-var-oklch, merged to local main, 1 ahead of
+      origin) — the hsl(var(--token)) unwrap fix. New work AFTER the v0.14.0 release push; needs its
+      own owner word (patch release v0.14.1 or fold into next batch).
+
+## ✅ DONE THIS SESSION (built AND verified — evidence)
+- ALL 6 open decisions from 2026-08-13 CLEARED per owner directive ("do all Open owner decisions"):
+  theme look APPROVED as-is · multi-hue chart palette ADOPTED+built · fc1a777 MERGED · 2bbdba3
+  MERGED · stash@{0} DROPPED (patch archived .sessions/archive/stash0-v31-docs-2026-05-08.patch) ·
+  3 held branches MERGED+PUSHED. Recorded in DECISIONS_LOG 2026-08-14.
+- 🚀 v0.14.0 RELEASED: main 18999f7→746f7b5 pushed with tag (owner one-word OK on gen-release-notes
+  proposal). 12 commits: 4 FEATURE (chart palette f5c5885, hugeicons, theme+fonts, Tailwind v4) +
+  3 FIXED + 5 DOCS. Version-synced 10 package.json + sidebar footer. NO deploys (CI Model B) —
+  staging/prod/demo still on v0.13.2-era images.
+- Chart palette: 5-slot categorical (blue/orange/aqua/yellow/magenta), oklch light+dark, validated
+  (dataviz validator: all gates PASS on real surfaces #ffffff/#18181b; light chart-3/4/5 <3:1 →
+  relief rule = keep legends/tooltips, noted in globals.css comments).
+- fc1a777 LIVE-PROVEN: ensure-dev-fresh.sh ran clean end-to-end (detect stale → rebuild app+worker
+  → FRESH). Docker ~/.docker corruption did NOT recur (no workaround needed this run).
+- 🐛 NEW BUG found during verify + FIXED: hsl(var(--token)) wrappers invalid since v4/oklch theme
+  (silent CSS failure — charts never consumed theme tokens; part of why charts looked grey).
+  Fix 5a353be (3 files/17 unwraps: expenses-chart, revenue-chart, sidebar), gates green, merged to
+  LOCAL main (1 ahead, UNPUSHED). Lesson logged: css.tailwind-v4.hsl-var-oklch-wrapper.
+- E2E visual verify: dev rebuilt on 5a353be, login demo tenant, /demo/reports @ 90d — revenue area
+  stroke/fill oklch(0.622 0.161 255.1) blue + expenses bars oklch(0.622 0.173 40.1) orange
+  (DOM-computed). Screenshot screenshots/qa-reports-charts-multihue-90d.png.
+- Route-count baseline clarified: 102 = page.tsx pages; 121 = full build route table incl. 17 API
+  route.ts + generated meta routes. Both correct; not a regression.
+
+## 🔒 STATE / GROUND TRUTH
+- git: main @ 5a353be (v0.14.0 tag = 746f7b5 pushed; +1 unpushed fix). Tree clean.
+- Branches feat/tailwind-v4-shadcnstudio-theme, fix/push-to-prod-health-poll,
+  fix/ensure-dev-fresh-worker-compose, fix/chart-hsl-var-oklch: all MERGED into main (deletable
+  on owner word; git-guard blocks -D).
+- dev containers: app+worker FRESH on 5a353be, healthy (app 42951, worker 42952).
+- PROD orqafy.com: v0.13.2, untouched. Staging/demo: untouched.
+```
 
 ---
 

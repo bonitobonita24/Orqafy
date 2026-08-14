@@ -1,5 +1,23 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-08-14 — Decision queue cleared → v0.14.0 released (+ chart bugfix)
+
+**In your words:** "Do all Open owner decisions — plan it first, use swarm orchestration."
+
+✅ Done
+- All 6 open decisions executed: theme look approved · multi-hue chart palette built (CVD-validated, light+dark) · fc1a777 + 2bbdba3 merged · stale stash@{0} dropped (patch archived first) · all 3 held branches merged.
+- **v0.14.0 released + pushed** (tag `746f7b5`, 12 commits, changelog + version-sync). No deploys — prod stays v0.13.2.
+- fc1a777 live-proven: the fixed ensure-dev-fresh.sh rebuilt dev app+worker cleanly; dev FRESH on latest main.
+- Bonus bug found & fixed during verify: `hsl(var(--token))` wrappers were invalid CSS since the v4/oklch theme — charts never used real theme tokens. Fixed (`5a353be`, 3 files), verified end-to-end: reports charts now render blue/orange from the new palette (screenshot in screenshots/).
+
+💬 Decisions/notes
+- New [WHAT]: push authorization for the `5a353be` chart fix (merged to local main, 1 ahead — v0.14.1 patch or fold into next batch?).
+- Lesson logged globally: hsl(var()) fails silently after Tailwind v4 migration — grep must be 0.
+- 4 merged branches are now deletable on your word (git-guard blocks branch -D).
+
+⏳ Not yet / Next
+- THEME Phase 5 (shadcn/studio MCP blocks) · THEME Phase 7 (design-baseline reconcile).
+
 ## 2026-08-13 (pm) — Phase 4: lucide → hugeicons icon migration
 
 ✅ **Migrated all icons from lucide-react to hugeicons** (`apps/web`) — 83 distinct icons across 69 files. Used a lucide-shaped **shim** (`src/components/ui/icons.tsx`, your approved strategy): call-site JSX is untouched, only the import source swaps, so the whole migration is one reviewable mapping file. Every hugeicons name validated against the real 6,124-icon export set. `lucide-react` fully removed (app + unused `packages/ui`; lockfile pruned). Gates: `tsc` ✓ · `next build` 102 routes ✓ · 0 lucide refs ✓.
