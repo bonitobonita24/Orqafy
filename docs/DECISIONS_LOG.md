@@ -1681,3 +1681,30 @@ merged to LOCAL main (`8cfa127`) while their gating `[WHAT]` decisions were stil
 Decision: accept as-is; owner requested a verify-all-pages QA spot-check before any push. Still HARD
 HOLD (unpushed, 69 ahead of origin). D-A…D-E (theme mode, preset, token arch) accepted as the loop
 chose them. Storefront restyle, E re-baseline, PROD M7, RBAC promotion remain separately gated.
+
+---
+
+## 2026-08-14 — Owner cleared the FULL open-decision queue ("do all Open owner decisions")
+
+Owner resolved all 6 open [WHAT]s from the 2026-08-13 theme sessions in one directive:
+
+1. **THEME LOOK — APPROVED as-is.** Tailwind v4 + shadcn/studio "orqafy" theme (oklch zinc-dark,
+   Geist headings, Source Serif 4 body, Geist Mono) AND the Phase-4 hugeicon glyph mappings
+   (Landmark→Bank, Receipt/ReceiptText→Invoice01/03, ShieldAlert→SecurityWarning,
+   ShieldCheck→SecurityCheck, ClipboardList→TaskDaily01, FolderTree→FolderLibrary) are the
+   accepted design. Any future glyph change = 1-line edit in `apps/web/src/components/ui/icons.tsx`.
+2. **CHART PALETTE — multi-hue ADOPTED.** Greyscale zinc chart-1..5 replaced with a validated
+   5-slot categorical palette (blue/orange/aqua/yellow/magenta), separate light+dark steps,
+   CVD-validated (validator: worst adjacent ΔE 9.1 light / 8.4 dark on real surfaces #ffffff /
+   zinc-900 #18181b). Light-mode chart-3/4/5 sit <3:1 contrast → relief rule: charts keep
+   legends/tooltips (shadcn chart default). Also fixes latent light-mode bug (old chart-1
+   L 0.871 was near-invisible on white).
+3. **fc1a777 (fix/ensure-dev-fresh-worker-compose) — MERGE to main.** Verified-correct Rule-39 fix.
+4. **2bbdba3 (fix/push-to-prod-health-poll) — MERGE to main.** v0.13.3 #2 bounded health-poll.
+5. **stash@{0} ("framework docs update - pre item 3", 2026-05-08, stale v31 docs) — DROPPED.**
+   Patch archived first at `.sessions/archive/stash0-v31-docs-2026-05-08.patch` (zero-loss).
+6. **MERGE + PUSH authorized** for all 3 held branches → main (theme + 2 fixes). Release
+   discipline applies: gen-release-notes proposes version+changelog, owner one-word OK before
+   tag+push. Push ≠ deploy (CI Model B/gated); staging/prod/demo untouched — separate owner word.
+
+— recorded by CLAUDE_CODE (PM/Opus), per owner directive 2026-08-14.
