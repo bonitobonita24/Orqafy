@@ -4,6 +4,30 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.15.0 — 2026-08-14
+
+### [FEATURE]
+- capture design-fidelity baselines (landing+login) + playwright devDep (`5c20b21`)
+- arm design-fidelity gate — data-fdl anchors + baseline manifest (Phase 7) (`f51ab38`)
+- landing page on studio hero/features/cta blocks (Phase 5) (`800895c`)
+- auth pages on studio login/register blocks (Phase 5) (`a41cf52`)
+- install shadcn/studio blocks for Phase 5 (hero, features, cta, login, register, stats) (`1b2a3ed`)
+- install shadcn/studio blocks for Phase 5 (hero, features, cta, login, register, stats) (`427244e`)
+
+### [FIXED]
+- tighten landing hero vertical rhythm after image drop (`372c0de`)
+- unwrap hsl(var(--token)) — theme tokens are oklch since Tailwind v4 (`5a353be`)
+
+### [DOCS]
+- save session 2026-08-14 pm — THEME Phase 5-7 done+verified, fidelity gate armed (`d4baa1a`)
+- record Phase 5-7 scope calls + fidelity-gate arming (`7a6a6de`)
+- reconcile DESIGN.md to released orqafy theme + studio blocks (Phase 7) (`ba72a30`)
+- save session 2026-08-14 — v0.14.0 released, decision queue cleared, chart-token fix on main (`8d931de`)
+
+### [CHORE]
+- Phase 5 cleanup — remove demo routes + unused block sources, drop lucide-react again (`776a643`)
+
+
 ## v0.14.0 — 2026-08-14
 
 ### [FEATURE]
