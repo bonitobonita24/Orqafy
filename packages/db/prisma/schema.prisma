@@ -84,6 +84,8 @@ model Tenant {
   warehouseStocks              WarehouseStock[]              @relation("TenantWarehouseStocks")
   stockMovements               StockMovement[]               @relation("TenantStockMovements")
   categories                   Category[]                    @relation("TenantCategories")
+  brands                       Brand[]                       @relation("TenantBrands")
+  merchContent                 MerchContent[]                @relation("TenantMerchContent")
   inventoryDisbursements       InventoryDisbursement[]       @relation("TenantInventoryDisbursements")
   inventoryDisbursementItems   InventoryDisbursementItem[]   @relation("TenantInventoryDisbursementItems")
   posSessions                  POSSession[]                  @relation("TenantPOSSessions")
@@ -1215,6 +1217,8 @@ model Product {
   description          String?
   categoryId           String?   @map("category_id")
   category             Category? @relation(fields: [categoryId], references: [id])
+  brandId              String?   @map("brand_id")
+  brand                Brand?    @relation(fields: [brandId], references: [id])
   unit                 String    @default("pcs")
   baseCost             Decimal   @default(0) @map("base_cost") @db.Decimal(12, 2)
   tier1Price           Decimal?  @map("tier1_price") @db.Decimal(12, 2)
@@ -1234,6 +1238,10 @@ model Product {
   ecommerceVisible     Boolean   @default(false) @map("ecommerce_visible")
   ecommerceDescription String?   @map("ecommerce_description")
   ecommerceImageUrls   Json?     @map("ecommerce_image_urls")
+  compareAtPrice       Decimal?  @map("compare_at_price") @db.Decimal(12, 2)
+  isFeatured           Boolean   @default(false) @map("is_featured")
+  ecommerceSlug        String?   @map("ecommerce_slug")
+  ecommerceSpecs       Json?     @map("ecommerce_specs")
   weight               Decimal?  @db.Decimal(10, 4)
   dimensions           Json?
   metadata             Json?
@@ -1252,7 +1260,9 @@ model Product {
   jobOrderParts              JobOrderPart[]
   inventoryDisbursementItems InventoryDisbursementItem[]
 
+  @@unique([tenantId, ecommerceSlug])
   @@index([tenantId])
+  @@index([brandId])
   @@map("products")
   @@schema("public")
 }
@@ -1289,6 +1299,7 @@ model Category {
   parentId    String?    @map("parent_id")
   parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
   children    Category[] @relation("CategoryHierarchy")
+  imageUrl    String?    @map("image_url")
   sortOrder   Int        @default(0) @map("sort_order")
   isActive    Boolean    @default(true) @map("is_active")
   createdAt   DateTime   @default(now()) @map("created_at")
@@ -1299,6 +1310,60 @@ model Category {
   @@unique([tenantId, slug])
   @@index([tenantId])
   @@map("categories")
+  @@schema("public")
+}
+
+// Storefront brand/manufacturer directory (template-alignment §2 — Shopix parity).
+model Brand {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  tenant    Tenant   @relation("TenantBrands", fields: [tenantId], references: [id])
+  name      String
+  logoUrl   String?  @map("logo_url")
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  products Product[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("brands")
+  @@schema("public")
+}
+
+enum MerchContentKind {
+  announcement
+  hero
+  promo
+
+  @@schema("public")
+}
+
+// Storefront merchandising content — announcement bars, hero banners, promo
+// tiles (template-alignment §2 — Shopix parity). @@unique keeps a re-run
+// seed idempotent (upsert by tenant+kind+title).
+model MerchContent {
+  id             String            @id @default(cuid())
+  tenantId       String            @map("tenant_id")
+  tenant         Tenant            @relation("TenantMerchContent", fields: [tenantId], references: [id])
+  kind           MerchContentKind
+  title          String
+  subtitle       String?
+  ctaLabel       String?           @map("cta_label")
+  ctaHref        String?           @map("cta_href")
+  imageUrl       String?           @map("image_url")
+  sortOrder      Int               @default(0) @map("sort_order")
+  isActive       Boolean           @default(true) @map("is_active")
+  startsAt       DateTime?         @map("starts_at")
+  endsAt         DateTime?         @map("ends_at")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  @@unique([tenantId, kind, title])
+  @@index([tenantId, kind])
+  @@map("merch_content")
   @@schema("public")
 }
 
