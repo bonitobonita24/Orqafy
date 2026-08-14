@@ -69,6 +69,7 @@ import {
   ShoppingBag01Icon as _ShoppingBag01Icon,
   ShoppingCart01Icon as _ShoppingCart01Icon,
   SidebarLeft01Icon as _SidebarLeft01Icon,
+  SlidersHorizontalIcon as _SlidersHorizontalIcon,
   SmartPhone01Icon as _SmartPhone01Icon,
   SparklesIcon as _SparklesIcon,
   StarIcon as _StarIcon,
@@ -179,6 +180,7 @@ export const ShieldAlert = makeIcon(_SecurityWarningIcon);
 export const ShieldCheck = makeIcon(_SecurityCheckIcon);
 export const ShoppingBag = makeIcon(_ShoppingBag01Icon);
 export const ShoppingCart = makeIcon(_ShoppingCart01Icon);
+export const SlidersHorizontal = makeIcon(_SlidersHorizontalIcon);
 export const Smartphone = makeIcon(_SmartPhone01Icon);
 export const Sparkles = makeIcon(_SparklesIcon);
 export const StarIcon = makeIcon(_StarIcon);

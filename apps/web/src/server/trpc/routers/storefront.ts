@@ -249,6 +249,23 @@ const listNewArrivalsInputSchema = z
   })
   .strict();
 
+// Public storefront catalog browse (template-alignment T2.3 — Shopix shop
+// grid + filter sidebar). No rating/color/size filters (not modeled here).
+const browsePublicProductsInputSchema = z
+  .object({
+    tenantSlug: tenantSlugField,
+    categorySlug: z.string().trim().min(1).max(200).optional(),
+    brandId: cuid.optional(),
+    search: z.string().trim().min(1).max(200).optional(),
+    minPrice: z.number().nonnegative().optional(),
+    maxPrice: z.number().nonnegative().optional(),
+    onSale: z.boolean().optional(),
+    sort: z.enum(["newest", "price_asc", "price_desc"]).default("newest"),
+    skip: z.number().int().min(0).default(0),
+    take: z.number().int().min(1).max(48).default(24),
+  })
+  .strict();
+
 // ── Router ────────────────────────────────────────────────────────────────────
 
 export const storefrontRouter = createTRPCRouter({
@@ -1100,5 +1117,107 @@ export const storefrontRouter = createTRPCRouter({
         products.map((p) => p.id),
       );
       return products.map((p) => mapPublicProduct(p, availability.get(p.id) ?? 0));
+    }),
+
+  // Public storefront catalog browse — paginated/filterable/sortable grid
+  // read for the /store/products catalog page (template-alignment T2.3).
+  // Distinct from the staff-only `browseProducts` above (matrixProcedure,
+  // requires ctx.tenantId from an authenticated session): guests browsing
+  // the storefront have no session, so this mirrors the tenantSlug-scoped
+  // publicProcedure pattern already used by getProductBySlug /
+  // listFeaturedProducts / listNewArrivals above.
+  browsePublicProducts: publicProcedure
+    .input(browsePublicProductsInputSchema)
+    .query(async ({ ctx, input }) => {
+      const ipHeader = ctx.req.headers.get("x-forwarded-for") ?? ctx.req.headers.get("x-real-ip");
+      const ip = ipHeader ?? "unknown";
+      rateLimiters.public.check(ip);
+
+      const tenant = await requireActiveTenantBySlug(input.tenantSlug);
+
+      const and: Record<string, unknown>[] = [];
+      if (input.categorySlug !== undefined) {
+        and.push({ category: { slug: input.categorySlug } });
+      }
+      if (input.brandId !== undefined) {
+        and.push({ brandId: input.brandId });
+      }
+      if (input.search !== undefined) {
+        and.push({
+          OR: [
+            { name: { contains: input.search, mode: "insensitive" } },
+            { sku: { contains: input.search, mode: "insensitive" } },
+          ],
+        });
+      }
+      // "On sale" — approximated as "has a compareAtPrice set" (an exact
+      // compareAtPrice > effective-price comparison needs two Decimal
+      // columns compared row-wise, which Prisma's query builder can't
+      // express without raw SQL); mapPublicProduct still derives the real
+      // discountPercent per-row for display, so a false positive here (a
+      // compareAtPrice that doesn't actually undercut) just shows no badge.
+      if (input.onSale === true) {
+        and.push({ compareAtPrice: { not: null } });
+      }
+      // Effective price = tier1Price when set and > 0, else baseCost
+      // (mirrors mapPublicProduct / the legacy page's displayPrice helper).
+      if (input.minPrice !== undefined || input.maxPrice !== undefined) {
+        const range: Record<string, number> = {
+          ...(input.minPrice !== undefined && { gte: input.minPrice }),
+          ...(input.maxPrice !== undefined && { lte: input.maxPrice }),
+        };
+        and.push({
+          OR: [
+            { AND: [{ tier1Price: { gt: 0 } }, { tier1Price: range }] },
+            {
+              AND: [
+                { OR: [{ tier1Price: null }, { tier1Price: { lte: 0 } }] },
+                { baseCost: range },
+              ],
+            },
+          ],
+        });
+      }
+
+      const where: Record<string, unknown> = {
+        tenantId: tenant.id,
+        isActive: true,
+        ecommerceVisible: true,
+        ...(and.length > 0 && { AND: and }),
+      };
+
+      // Sort — "newest" orders by the real createdAt column. "price_asc" /
+      // "price_desc" approximate the derived effective-price ordering via
+      // tier1Price then baseCost (Prisma can't order by a two-column
+      // expression without raw SQL): accurate whenever a product either
+      // overrides tier1Price or doesn't, imprecise only when comparing a
+      // tier1Price-overridden product against a baseCost-only product whose
+      // values straddle the other's tier1Price. Known limitation, not a
+      // silent one — flagged here and in the T2.3 dispatch report.
+      const orderBy: Record<string, unknown>[] =
+        input.sort === "price_asc"
+          ? [{ tier1Price: "asc" }, { baseCost: "asc" }]
+          : input.sort === "price_desc"
+            ? [{ tier1Price: "desc" }, { baseCost: "desc" }]
+            : [{ createdAt: "desc" }];
+
+      const [items, total] = await Promise.all([
+        db.product.findMany({
+          where,
+          include: PUBLIC_PRODUCT_INCLUDE,
+          orderBy,
+          skip: input.skip,
+          take: input.take,
+        }),
+        db.product.count({ where }),
+      ]);
+      const availability = await loadAvailabilityMap(
+        tenant.id,
+        items.map((p) => p.id),
+      );
+      return {
+        items: items.map((p) => mapPublicProduct(p, availability.get(p.id) ?? 0)),
+        total,
+      };
     }),
 });
