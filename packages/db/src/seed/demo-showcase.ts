@@ -216,114 +216,67 @@ type ShowcaseProduct = {
   reorder: number;
   brandName?: string;
   featured?: boolean;
+  /** When true, a strikethrough compareAtPrice is derived; otherwise none (no "always on sale"). */
+  onSale?: boolean;
+  /** Age of the product in days (drives the "New" badge: <30d = New). Default 120. */
+  ageDays?: number;
   cardImage: string;
   gallery: readonly string[];
   specs: ReadonlyArray<{ label: string; value: string }>;
 };
 
-// Original 8 demo SKUs — sku/catSlug/baseCost/sellPrice/unit/qty/reorder are
-// UNTOUCHED (POS/accounting/purchase history already reference these). Only
-// the Shopix-parity fields (brand/compareAtPrice/featured/slug/specs/photos)
-// are new.
+// 24 demo products themed as a general consumer store, each matched to its
+// vendored Shopix product photo (cardImage). SKUs 0001–0008 keep their
+// sku/baseCost/sellPrice (POS/accounting/purchase-history reference these by
+// SKU/id) — name/category/brand/image/specs are cosmetic. `onSale` gates the
+// strikethrough compareAtPrice (no "everything on sale"); `ageDays` drives the
+// "New" badge (<30d); two items ship qty:0 to demo an out-of-stock state.
 const SHOWCASE_PRODUCTS: ShowcaseProduct[] = [
   {
-    sku: 'DEMO-SKU-0001', name: 'Business Ultrabook 14" i5/16GB', catSlug: 'electronics',
+    sku: 'DEMO-SKU-0001', name: 'Galaxy Pro 5G Smartphone 256GB', catSlug: 'electronics',
     baseCost: 32000, sellPrice: 41999, unit: 'pcs', qty: 25, reorder: 5,
-    brandName: 'Samsung', featured: true,
+    brandName: 'Samsung', featured: true, ageDays: 150,
     cardImage: `${PRODUCT_CARD_DIR}/image-01.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/product-detail-01.webp`, `${PRODUCT_DETAILS_DIR}/product-detail-02.webp`, `${PRODUCT_DETAILS_DIR}/gallery-1.webp`],
+    gallery: [],
     specs: [
-      { label: 'Processor', value: 'Intel Core i5, 12th Gen' },
-      { label: 'Memory', value: '16GB RAM' },
-      { label: 'Storage', value: '512GB SSD' },
-      { label: 'Display', value: '14" FHD IPS' },
-      { label: 'Warranty', value: '2 years parts & labor' },
+      { label: 'Display', value: '6.7" FHD+ AMOLED 120Hz' },
+      { label: 'Processor', value: 'Octa-core 5G' },
+      { label: 'Memory', value: '8GB RAM / 256GB' },
+      { label: 'Camera', value: '50MP triple camera' },
+      { label: 'Battery', value: '5000mAh, 45W fast charge' },
     ],
   },
   {
-    sku: 'DEMO-SKU-0002', name: 'Wireless Optical Mouse', catSlug: 'electronics',
+    sku: 'DEMO-SKU-0002', name: 'True Wireless Earbuds', catSlug: 'audio-wearables',
     baseCost: 350, sellPrice: 649, unit: 'pcs', qty: 150, reorder: 30,
+    featured: true, onSale: true, ageDays: 10,
     cardImage: `${PRODUCT_CARD_DIR}/image-02.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/product-detail-03.webp`, `${PRODUCT_DETAILS_DIR}/gallery-2.webp`],
+    gallery: [`${PRODUCT_DETAILS_DIR}/boat-buds-01.webp`, `${PRODUCT_DETAILS_DIR}/boat-buds-02.webp`, `${PRODUCT_DETAILS_DIR}/boat-buds-03.webp`, `${PRODUCT_DETAILS_DIR}/boat-buds-04.webp`],
     specs: [
-      { label: 'Connectivity', value: '2.4GHz Wireless' },
-      { label: 'Battery Life', value: 'Up to 12 months' },
-      { label: 'DPI', value: '1600 DPI' },
+      { label: 'Driver', value: '10mm dynamic' },
+      { label: 'Battery', value: '5h buds + 20h case' },
+      { label: 'Bluetooth', value: '5.3, ENC calling' },
+      { label: 'Charging', value: 'USB-C' },
     ],
   },
   {
-    sku: 'DEMO-SKU-0003', name: '24" LED Monitor 75Hz', catSlug: 'electronics',
+    sku: 'DEMO-SKU-0003', name: 'Premium Over-Ear Headphones', catSlug: 'audio-wearables',
     baseCost: 6500, sellPrice: 8999, unit: 'pcs', qty: 40, reorder: 8,
-    brandName: 'LG', featured: true,
-    cardImage: `${PRODUCT_CARD_DIR}/image-03.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/product-detail-04.webp`, `${PRODUCT_DETAILS_DIR}/gallery-3.webp`, `${PRODUCT_DETAILS_DIR}/gallery-4.webp`],
-    specs: [
-      { label: 'Panel', value: '24" IPS LED' },
-      { label: 'Refresh Rate', value: '75Hz' },
-      { label: 'Resolution', value: '1920 x 1080' },
-      { label: 'Ports', value: 'HDMI, VGA' },
-    ],
-  },
-  {
-    sku: 'DEMO-SKU-0004', name: 'Cordless Drill 18V Kit', catSlug: 'hardware-tools',
-    baseCost: 2800, sellPrice: 4299, unit: 'pcs', qty: 30, reorder: 6,
+    brandName: 'LG', featured: true, ageDays: 200,
     cardImage: `${PRODUCT_CARD_DIR}/image-04.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/gallery-5.webp`, `${PRODUCT_DETAILS_DIR}/gallery-6.webp`],
+    gallery: [],
     specs: [
-      { label: 'Voltage', value: '18V Li-ion' },
-      { label: 'Chuck Size', value: '10mm' },
-      { label: 'Includes', value: 'Battery, charger, carry case' },
+      { label: 'Type', value: 'Over-ear, closed-back' },
+      { label: 'Noise Cancelling', value: 'Active ANC' },
+      { label: 'Battery', value: 'Up to 40 hours' },
+      { label: 'Connectivity', value: 'Bluetooth 5.2 + 3.5mm' },
     ],
   },
   {
-    sku: 'DEMO-SKU-0005', name: 'Steel Measuring Tape 5m', catSlug: 'hardware-tools',
-    baseCost: 120, sellPrice: 249, unit: 'pcs', qty: 200, reorder: 40,
-    cardImage: `${PRODUCT_CARD_DIR}/image-05.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/gallery-7.webp`],
-    specs: [
-      { label: 'Length', value: '5 meters' },
-      { label: 'Material', value: 'Steel blade, ABS casing' },
-    ],
-  },
-  {
-    sku: 'DEMO-SKU-0006', name: 'A4 Bond Paper 80gsm (ream)', catSlug: 'office-supplies-cat',
-    baseCost: 180, sellPrice: 285, unit: 'ream', qty: 500, reorder: 100,
+    sku: 'DEMO-SKU-0004', name: 'Smart Watch Pro Series', catSlug: 'audio-wearables',
+    baseCost: 2800, sellPrice: 4299, unit: 'pcs', qty: 30, reorder: 6,
+    brandName: 'Samsung', featured: true, onSale: true, ageDays: 8,
     cardImage: `${PRODUCT_CARD_DIR}/image-06.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/gallery-8.webp`],
-    specs: [
-      { label: 'Size', value: 'A4 (210 x 297mm)' },
-      { label: 'Weight', value: '80gsm' },
-      { label: 'Sheets per ream', value: '500' },
-    ],
-  },
-  {
-    sku: 'DEMO-SKU-0007', name: 'Gigabit Network Switch 8-port', catSlug: 'networking',
-    baseCost: 1500, sellPrice: 2399, unit: 'pcs', qty: 60, reorder: 12,
-    cardImage: `${PRODUCT_CARD_DIR}/image-07.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/product-detail-01.webp`],
-    specs: [
-      { label: 'Ports', value: '8 x Gigabit RJ45' },
-      { label: 'Standard', value: '10/100/1000 Mbps' },
-      { label: 'Type', value: 'Unmanaged, plug & play' },
-    ],
-  },
-  {
-    sku: 'DEMO-SKU-0008', name: 'Ballpoint Pen (box of 12)', catSlug: 'consumables',
-    baseCost: 85, sellPrice: 149, unit: 'box', qty: 300, reorder: 60,
-    cardImage: `${PRODUCT_CARD_DIR}/image-08.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/product-detail-02.webp`],
-    specs: [
-      { label: 'Tip Size', value: '0.7mm' },
-      { label: 'Ink Color', value: 'Blue' },
-      { label: 'Per box', value: '12 pieces' },
-    ],
-  },
-  // ── Shopix-style catalog expansion (template-alignment §3) ────────────────
-  {
-    sku: 'DEMO-SKU-0009', name: 'Smart Watch Pro Series', catSlug: 'electronics',
-    baseCost: 6500, sellPrice: 8999, unit: 'pcs', qty: 35, reorder: 8,
-    brandName: 'Samsung', featured: true,
-    cardImage: `${PRODUCT_CARD_DIR}/image-09.webp`,
     gallery: [`${PRODUCT_DETAILS_DIR}/apple-watch-01.webp`, `${PRODUCT_DETAILS_DIR}/apple-watch-02.webp`, `${PRODUCT_DETAILS_DIR}/apple-watch-03.webp`, `${PRODUCT_DETAILS_DIR}/apple-watch-04.webp`],
     specs: [
       { label: 'Display', value: '1.9" AMOLED Always-On' },
@@ -333,190 +286,267 @@ const SHOWCASE_PRODUCTS: ShowcaseProduct[] = [
     ],
   },
   {
-    sku: 'DEMO-SKU-0010', name: 'Wireless Earbuds X2', catSlug: 'electronics',
+    sku: 'DEMO-SKU-0005', name: 'Basic Bluetooth Earbuds', catSlug: 'audio-wearables',
+    baseCost: 120, sellPrice: 249, unit: 'pcs', qty: 200, reorder: 40,
+    ageDays: 90,
+    cardImage: `${PRODUCT_CARD_DIR}/image-05.webp`,
+    gallery: [`${PRODUCT_DETAILS_DIR}/boat-buds-01.webp`, `${PRODUCT_DETAILS_DIR}/boat-buds-02.webp`],
+    specs: [
+      { label: 'Battery', value: '4h buds + 12h case' },
+      { label: 'Bluetooth', value: '5.1' },
+      { label: 'Controls', value: 'Touch, mono/stereo' },
+    ],
+  },
+  {
+    sku: 'DEMO-SKU-0006', name: 'LED String Lights 5m', catSlug: 'home-living',
+    baseCost: 180, sellPrice: 285, unit: 'pcs', qty: 500, reorder: 100,
+    onSale: true, ageDays: 40,
+    cardImage: `${PRODUCT_CARD_DIR}/image-22.webp`,
+    gallery: [],
+    specs: [
+      { label: 'Length', value: '5 meters, 50 LEDs' },
+      { label: 'Power', value: 'USB / battery' },
+      { label: 'Modes', value: '8 lighting modes' },
+    ],
+  },
+  {
+    sku: 'DEMO-SKU-0007', name: 'Sport GPS Smartwatch', catSlug: 'audio-wearables',
+    baseCost: 1500, sellPrice: 2399, unit: 'pcs', qty: 60, reorder: 12,
+    ageDays: 60,
+    cardImage: `${PRODUCT_CARD_DIR}/image-08.webp`,
+    gallery: [`${PRODUCT_DETAILS_DIR}/apple-watch-02.webp`, `${PRODUCT_DETAILS_DIR}/apple-watch-03.webp`],
+    specs: [
+      { label: 'GPS', value: 'Built-in multi-band' },
+      { label: 'Sport Modes', value: '100+' },
+      { label: 'Battery', value: 'Up to 14 days' },
+      { label: 'Water Resistance', value: '5 ATM' },
+    ],
+  },
+  {
+    sku: 'DEMO-SKU-0008', name: 'Ultra-Light Sunscreen SPF50', catSlug: 'home-living',
+    baseCost: 85, sellPrice: 149, unit: 'pcs', qty: 300, reorder: 60,
+    ageDays: 20,
+    cardImage: `${PRODUCT_CARD_DIR}/image-14.webp`,
+    gallery: [],
+    specs: [
+      { label: 'SPF', value: 'SPF 50 PA++++' },
+      { label: 'Volume', value: '100ml' },
+      { label: 'Skin Type', value: 'All, non-greasy' },
+    ],
+  },
+  // ── Shopix-style catalog expansion (template-alignment §3) ────────────────
+  {
+    sku: 'DEMO-SKU-0009', name: 'Galaxy A-Series 5G Smartphone', catSlug: 'electronics',
+    baseCost: 6500, sellPrice: 8999, unit: 'pcs', qty: 35, reorder: 8,
+    brandName: 'Samsung', featured: true, onSale: true, ageDays: 5,
+    cardImage: `${PRODUCT_CARD_DIR}/image-09.webp`,
+    gallery: [],
+    specs: [
+      { label: 'Display', value: '6.5" FHD+ 90Hz' },
+      { label: 'Memory', value: '6GB RAM / 128GB' },
+      { label: 'Camera', value: '50MP dual camera' },
+      { label: 'Battery', value: '5000mAh' },
+    ],
+  },
+  {
+    sku: 'DEMO-SKU-0010', name: 'Fitness Tracker Band', catSlug: 'audio-wearables',
     baseCost: 1800, sellPrice: 2599, unit: 'pcs', qty: 60, reorder: 12,
-    featured: true,
-    cardImage: `${PRODUCT_CARD_DIR}/image-10.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/boat-buds-01.webp`, `${PRODUCT_DETAILS_DIR}/boat-buds-02.webp`, `${PRODUCT_DETAILS_DIR}/boat-buds-03.webp`, `${PRODUCT_DETAILS_DIR}/boat-buds-04.webp`],
+    ageDays: 45,
+    cardImage: `${PRODUCT_CARD_DIR}/image-07.webp`,
+    gallery: [],
     specs: [
-      { label: 'Driver', value: '10mm dynamic driver' },
-      { label: 'Battery Life', value: '6h (buds) + 24h (case)' },
-      { label: 'Noise Cancellation', value: 'ENC calling' },
-      { label: 'Charging', value: 'USB-C, fast charge' },
+      { label: 'Display', value: '1.47" color AMOLED' },
+      { label: 'Tracking', value: 'Heart rate, SpO2, sleep' },
+      { label: 'Battery', value: 'Up to 14 days' },
+      { label: 'Water Resistance', value: '5 ATM' },
     ],
   },
   {
-    sku: 'DEMO-SKU-0011', name: 'Insulated Lunch Box Set', catSlug: 'consumables',
-    baseCost: 350, sellPrice: 599, unit: 'pcs', qty: 90, reorder: 18,
-    cardImage: `${PRODUCT_CARD_DIR}/image-11.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/lunch-box-01.webp`, `${PRODUCT_DETAILS_DIR}/lunch-box-02.webp`, `${PRODUCT_DETAILS_DIR}/lunch-box-03.webp`],
+    sku: 'DEMO-SKU-0011', name: 'Scented Candle Gift Set', catSlug: 'home-living',
+    baseCost: 350, sellPrice: 599, unit: 'set', qty: 90, reorder: 18,
+    onSale: true, ageDays: 70,
+    cardImage: `${PRODUCT_CARD_DIR}/image-20.webp`,
+    gallery: [],
     specs: [
-      { label: 'Capacity', value: '1.5L, 3 compartments' },
-      { label: 'Material', value: 'BPA-free, food-grade' },
-      { label: 'Includes', value: 'Insulated carry bag, utensils' },
+      { label: 'Includes', value: '5 soy-wax candles' },
+      { label: 'Scents', value: 'Vanilla, lavender, amber, linen' },
+      { label: 'Burn Time', value: '~25h each' },
     ],
   },
   {
-    sku: 'DEMO-SKU-0012', name: 'Classic Cotton T-Shirt', catSlug: 'fashion-apparel',
+    sku: 'DEMO-SKU-0012', name: 'Athletic Performance Tee', catSlug: 'fashion-apparel',
     baseCost: 280, sellPrice: 499, unit: 'pcs', qty: 120, reorder: 24,
-    brandName: 'H&M',
-    cardImage: `${PRODUCT_CARD_DIR}/image-12.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/t-shirt-1.webp`, `${PRODUCT_DETAILS_DIR}/t-shirt-2.webp`, `${PRODUCT_DETAILS_DIR}/t-shirt-3.webp`],
+    brandName: 'H&M', ageDays: 30,
+    cardImage: `${PRODUCT_CARD_DIR}/image-10.webp`,
+    gallery: [`${PRODUCT_DETAILS_DIR}/t-shirt-1.webp`, `${PRODUCT_DETAILS_DIR}/t-shirt-2.webp`, `${PRODUCT_DETAILS_DIR}/t-shirt-3.webp`, `${PRODUCT_DETAILS_DIR}/t-shirt-4.webp`],
     specs: [
-      { label: 'Material', value: '100% Combed Cotton' },
-      { label: 'Fit', value: 'Regular fit' },
+      { label: 'Material', value: 'Moisture-wicking polyester' },
+      { label: 'Fit', value: 'Athletic fit' },
       { label: 'Sizes', value: 'S, M, L, XL' },
       { label: 'Care', value: 'Machine washable' },
     ],
   },
   {
-    sku: 'DEMO-SKU-0013', name: 'Slim-Fit Denim Jacket', catSlug: 'fashion-apparel',
+    sku: 'DEMO-SKU-0013', name: 'Classic Denim Jacket', catSlug: 'fashion-apparel',
     baseCost: 950, sellPrice: 1699, unit: 'pcs', qty: 45, reorder: 10,
-    brandName: 'Zara', featured: true,
-    cardImage: `${PRODUCT_CARD_DIR}/image-13.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/gallery-1.webp`, `${PRODUCT_DETAILS_DIR}/gallery-2.webp`],
+    brandName: 'Zara', featured: true, onSale: true, ageDays: 12,
+    cardImage: `${PRODUCT_CARD_DIR}/image-12.webp`,
+    gallery: [],
     specs: [
-      { label: 'Material', value: 'Cotton denim blend' },
-      { label: 'Fit', value: 'Slim fit' },
+      { label: 'Material', value: 'Cotton denim' },
+      { label: 'Fit', value: 'Regular fit' },
       { label: 'Sizes', value: 'S, M, L, XL' },
     ],
   },
   {
-    sku: 'DEMO-SKU-0014', name: 'Leather Crossbody Bag', catSlug: 'fashion-apparel',
-    baseCost: 2200, sellPrice: 3999, unit: 'pcs', qty: 25, reorder: 5,
-    brandName: 'Chanel',
-    cardImage: `${PRODUCT_CARD_DIR}/image-14.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/gallery-3.webp`, `${PRODUCT_DETAILS_DIR}/gallery-4.webp`],
-    specs: [
-      { label: 'Material', value: 'Genuine leather' },
-      { label: 'Dimensions', value: '24 x 18 x 8 cm' },
-      { label: 'Strap', value: 'Adjustable, detachable' },
-    ],
-  },
-  {
-    sku: 'DEMO-SKU-0015', name: 'Everyday Running Sneakers', catSlug: 'fashion-apparel',
-    baseCost: 1400, sellPrice: 2499, unit: 'pcs', qty: 55, reorder: 12,
-    brandName: 'Zara', featured: true,
-    cardImage: `${PRODUCT_CARD_DIR}/image-15.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/gallery-5.webp`, `${PRODUCT_DETAILS_DIR}/gallery-6.webp`],
-    specs: [
-      { label: 'Upper', value: 'Breathable mesh' },
-      { label: 'Sole', value: 'Cushioned EVA midsole' },
-      { label: 'Sizes', value: '38 – 45' },
-    ],
-  },
-  {
-    sku: 'DEMO-SKU-0016', name: 'Classic Aviator Sunglasses', catSlug: 'fashion-apparel',
-    baseCost: 1100, sellPrice: 1999, unit: 'pcs', qty: 40, reorder: 8,
-    brandName: 'Louis Vuitton',
-    cardImage: `${PRODUCT_CARD_DIR}/image-16.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/gallery-7.webp`, `${PRODUCT_DETAILS_DIR}/gallery-8.webp`],
-    specs: [
-      { label: 'Lens', value: 'UV400 polarized' },
-      { label: 'Frame', value: 'Metal alloy' },
-      { label: 'Includes', value: 'Hard case, cleaning cloth' },
-    ],
-  },
-  {
-    sku: 'DEMO-SKU-0017', name: 'Portable Bluetooth Speaker Mini', catSlug: 'electronics',
-    baseCost: 650, sellPrice: 999, unit: 'pcs', qty: 75, reorder: 15,
-    brandName: 'LG',
+    sku: 'DEMO-SKU-0014', name: 'Power Juicer & Blender Set', catSlug: 'home-kitchen',
+    baseCost: 2200, sellPrice: 3999, unit: 'set', qty: 25, reorder: 5,
+    brandName: 'LG', ageDays: 100,
     cardImage: `${PRODUCT_CARD_DIR}/image-17.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/product-detail-03.webp`, `${PRODUCT_DETAILS_DIR}/product-detail-04.webp`],
+    gallery: [],
     specs: [
-      { label: 'Output', value: '10W RMS' },
-      { label: 'Battery Life', value: 'Up to 10 hours' },
-      { label: 'Connectivity', value: 'Bluetooth 5.0' },
-      { label: 'Water Resistance', value: 'IPX6' },
+      { label: 'Motor', value: '1200W' },
+      { label: 'Includes', value: 'Juicer jug + 4 grinder jars' },
+      { label: 'Speed', value: '2 speeds + pulse' },
     ],
   },
   {
-    sku: 'DEMO-SKU-0018', name: 'USB-C Fast Charger 65W', catSlug: 'electronics',
+    sku: 'DEMO-SKU-0015', name: 'Digital Air Fryer 5L', catSlug: 'home-kitchen',
+    baseCost: 1400, sellPrice: 2499, unit: 'pcs', qty: 55, reorder: 12,
+    brandName: 'LG', featured: true, onSale: true, ageDays: 18,
+    cardImage: `${PRODUCT_CARD_DIR}/image-15.webp`,
+    gallery: [],
+    specs: [
+      { label: 'Capacity', value: '5L basket' },
+      { label: 'Power', value: '1500W' },
+      { label: 'Control', value: 'Digital touch, 8 presets' },
+      { label: 'Temp Range', value: '80–200°C' },
+    ],
+  },
+  {
+    sku: 'DEMO-SKU-0016', name: '2-Slice Retro Toaster', catSlug: 'home-kitchen',
+    baseCost: 1100, sellPrice: 1999, unit: 'pcs', qty: 0, reorder: 8,
+    brandName: 'LG', ageDays: 80,
+    cardImage: `${PRODUCT_CARD_DIR}/image-16.webp`,
+    gallery: [],
+    specs: [
+      { label: 'Slots', value: '2 wide slots' },
+      { label: 'Settings', value: '6 browning levels' },
+      { label: 'Features', value: 'Defrost, reheat, cancel' },
+    ],
+  },
+  {
+    sku: 'DEMO-SKU-0017', name: 'Pullover Hoodie', catSlug: 'fashion-apparel',
+    baseCost: 650, sellPrice: 999, unit: 'pcs', qty: 75, reorder: 15,
+    brandName: 'H&M', onSale: true, ageDays: 55,
+    cardImage: `${PRODUCT_CARD_DIR}/image-11.webp`,
+    gallery: [],
+    specs: [
+      { label: 'Material', value: 'Cotton-blend fleece' },
+      { label: 'Fit', value: 'Relaxed fit' },
+      { label: 'Sizes', value: 'S, M, L, XL' },
+      { label: 'Features', value: 'Kangaroo pocket, drawstring hood' },
+    ],
+  },
+  {
+    sku: 'DEMO-SKU-0018', name: 'Slim-Fit Jeans', catSlug: 'fashion-apparel',
     baseCost: 480, sellPrice: 799, unit: 'pcs', qty: 100, reorder: 20,
-    brandName: 'Samsung',
-    cardImage: `${PRODUCT_CARD_DIR}/image-18.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/product-detail-01.webp`],
+    brandName: 'Zara', ageDays: 65,
+    cardImage: `${PRODUCT_CARD_DIR}/image-13.webp`,
+    gallery: [],
     specs: [
-      { label: 'Output', value: '65W USB-C PD' },
-      { label: 'Ports', value: '1 x USB-C, 1 x USB-A' },
-      { label: 'Includes', value: '1.2m braided cable' },
+      { label: 'Material', value: 'Stretch denim' },
+      { label: 'Fit', value: 'Slim fit' },
+      { label: 'Sizes', value: '28 – 38 waist' },
     ],
   },
   {
-    sku: 'DEMO-SKU-0019', name: 'Mechanical Keyboard RGB', catSlug: 'electronics',
+    sku: 'DEMO-SKU-0019', name: 'Wireless Game Controller', catSlug: 'electronics',
     baseCost: 1800, sellPrice: 2799, unit: 'pcs', qty: 40, reorder: 8,
+    onSale: true, ageDays: 25,
+    cardImage: `${PRODUCT_CARD_DIR}/image-03.webp`,
+    gallery: [],
+    specs: [
+      { label: 'Connectivity', value: '2.4GHz + Bluetooth' },
+      { label: 'Compatibility', value: 'PC, Android, iOS' },
+      { label: 'Battery', value: 'Rechargeable, ~20h' },
+      { label: 'Features', value: 'Dual vibration, turbo' },
+    ],
+  },
+  {
+    sku: 'DEMO-SKU-0020', name: 'Abstract Wall Art (Set of 3)', catSlug: 'home-living',
+    baseCost: 1500, sellPrice: 2299, unit: 'set', qty: 0, reorder: 6,
+    ageDays: 110,
     cardImage: `${PRODUCT_CARD_DIR}/image-19.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/product-detail-02.webp`, `${PRODUCT_DETAILS_DIR}/gallery-1.webp`],
+    gallery: [],
     specs: [
-      { label: 'Switch Type', value: 'Blue mechanical switches' },
-      { label: 'Backlight', value: '16.8M RGB colors' },
-      { label: 'Layout', value: 'Full-size, 104 keys' },
+      { label: 'Set', value: '3 framed prints' },
+      { label: 'Size', value: 'A3 each' },
+      { label: 'Finish', value: 'Matte, ready to hang' },
     ],
   },
   {
-    sku: 'DEMO-SKU-0020', name: '4K Ultra HD Webcam', catSlug: 'electronics',
-    baseCost: 1500, sellPrice: 2299, unit: 'pcs', qty: 30, reorder: 6,
-    cardImage: `${PRODUCT_CARD_DIR}/image-20.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/gallery-2.webp`],
-    specs: [
-      { label: 'Resolution', value: '4K @ 30fps' },
-      { label: 'Field of View', value: '90°' },
-      { label: 'Microphone', value: 'Dual stereo, noise reducing' },
-    ],
-  },
-  {
-    sku: 'DEMO-SKU-0021', name: 'Laptop Backpack 15.6"', catSlug: 'fashion-apparel',
-    baseCost: 750, sellPrice: 1299, unit: 'pcs', qty: 65, reorder: 14,
+    sku: 'DEMO-SKU-0021', name: 'Ceramic Vase Duo', catSlug: 'home-living',
+    baseCost: 750, sellPrice: 1299, unit: 'set', qty: 65, reorder: 14,
+    ageDays: 95,
     cardImage: `${PRODUCT_CARD_DIR}/image-21.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/gallery-3.webp`],
+    gallery: [],
     specs: [
-      { label: 'Capacity', value: '25L' },
-      { label: 'Fits', value: 'Laptops up to 15.6"' },
-      { label: 'Material', value: 'Water-resistant nylon' },
+      { label: 'Set', value: '2 ceramic vases' },
+      { label: 'Finish', value: 'Matte glazed' },
+      { label: 'Style', value: 'Modern minimalist' },
     ],
   },
   {
-    sku: 'DEMO-SKU-0022', name: 'Stainless Steel Water Bottle 750ml', catSlug: 'consumables',
+    sku: 'DEMO-SKU-0022', name: 'Framed Landscape Print', catSlug: 'home-living',
     baseCost: 220, sellPrice: 399, unit: 'pcs', qty: 140, reorder: 28,
-    cardImage: `${PRODUCT_CARD_DIR}/image-22.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/gallery-4.webp`],
+    onSale: true, ageDays: 50,
+    cardImage: `${PRODUCT_CARD_DIR}/image-18.webp`,
+    gallery: [],
     specs: [
-      { label: 'Capacity', value: '750ml' },
-      { label: 'Insulation', value: 'Double-wall vacuum, keeps cold 24h' },
-      { label: 'Material', value: '18/8 stainless steel' },
+      { label: 'Size', value: 'A3 (30 x 42cm)' },
+      { label: 'Frame', value: 'Wood-finish, glass front' },
+      { label: 'Mount', value: 'Tabletop stand + wall hook' },
     ],
   },
   {
-    sku: 'DEMO-SKU-0023', name: 'Desk Organizer Set', catSlug: 'office-supplies-cat',
+    sku: 'DEMO-SKU-0023', name: 'City Building Blocks (500 pcs)', catSlug: 'toys-games',
     baseCost: 380, sellPrice: 649, unit: 'set', qty: 70, reorder: 14,
-    cardImage: `${PRODUCT_CARD_DIR}/image-23.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/gallery-5.webp`],
+    ageDays: 75,
+    cardImage: `${PRODUCT_CARD_DIR}/image-24.webp`,
+    gallery: [],
     specs: [
-      { label: 'Pieces', value: '5-piece set' },
-      { label: 'Material', value: 'Mesh steel' },
-      { label: 'Includes', value: 'Pen holder, tray, file sorter' },
+      { label: 'Pieces', value: '500 blocks' },
+      { label: 'Age', value: '6+' },
+      { label: 'Theme', value: 'City builder set' },
     ],
   },
   {
-    sku: 'DEMO-SKU-0024', name: 'LED Adjustable Desk Lamp', catSlug: 'hardware-tools',
-    baseCost: 620, sellPrice: 999, unit: 'pcs', qty: 55, reorder: 11,
-    cardImage: `${PRODUCT_CARD_DIR}/image-24.webp`,
-    gallery: [`${PRODUCT_DETAILS_DIR}/gallery-6.webp`],
+    sku: 'DEMO-SKU-0024', name: 'Motorized Race Track Set', catSlug: 'toys-games',
+    baseCost: 620, sellPrice: 999, unit: 'set', qty: 55, reorder: 11,
+    featured: true, onSale: true, ageDays: 35,
+    cardImage: `${PRODUCT_CARD_DIR}/image-23.webp`,
+    gallery: [],
     specs: [
-      { label: 'Brightness Levels', value: '5 levels + 3 color modes' },
-      { label: 'Power', value: 'USB powered, 8W' },
-      { label: 'Adjustable', value: 'Folding arm, rotating head' },
+      { label: 'Track', value: 'Multi-level loop track' },
+      { label: 'Includes', value: '2 motorized cars' },
+      { label: 'Age', value: '4+' },
     ],
   },
 ];
 
+// Consumer/lifestyle taxonomy that matches the vendored Shopix product photos.
+// The 4 legacy B2B slugs (hardware-tools/office-supplies-cat/networking/consumables)
+// are no longer referenced by any showcase product; they go empty on reseed and are
+// hidden from the storefront (listCategories filters to categories that HAVE a visible
+// product), so no destructive cleanup is needed.
 const SHOWCASE_CATEGORIES: Array<{ name: string; slug: string; imageUrl: string }> = [
   { name: 'Electronics', slug: 'electronics', imageUrl: '/demo/shopix/category-listing/electronic-01.webp' },
-  { name: 'Hardware & Tools', slug: 'hardware-tools', imageUrl: '/demo/shopix/category-listing/category-hero-01.webp' },
-  { name: 'Office Supplies', slug: 'office-supplies-cat', imageUrl: '/demo/shopix/category-listing/category-hero-02.webp' },
-  { name: 'Networking', slug: 'networking', imageUrl: '/demo/shopix/category-listing/category-hero-03.webp' },
-  { name: 'Consumables', slug: 'consumables', imageUrl: '/demo/shopix/category-listing/bag.webp' },
+  { name: 'Audio & Wearables', slug: 'audio-wearables', imageUrl: '/demo/shopix/category-listing/category-hero-01.webp' },
+  { name: 'Home & Kitchen', slug: 'home-kitchen', imageUrl: '/demo/shopix/category-listing/category-hero-02.webp' },
+  { name: 'Home & Living', slug: 'home-living', imageUrl: '/demo/shopix/category-listing/category-hero-03.webp' },
   { name: 'Fashion & Apparel', slug: 'fashion-apparel', imageUrl: '/demo/shopix/category-listing/clothing-01.webp' },
+  { name: 'Toys & Games', slug: 'toys-games', imageUrl: '/demo/shopix/category-listing/bag.webp' },
 ];
 
 async function seedInventory(
@@ -555,6 +585,16 @@ async function seedInventory(
     catIdBySlug[c.slug] = cat.id;
   }
 
+  // Clear stale ecommerceSlugs first. A retheme reshuffles product identities
+  // (e.g. SKU-0004's new name was SKU-0009's old name), so a per-row upsert can
+  // otherwise hit the (tenant_id, ecommerce_slug) unique index against a
+  // not-yet-updated row's OLD slug mid-loop. NULLing them first (NULLs don't
+  // collide in Postgres) lets the loop re-assign fresh unique slugs cleanly.
+  await prisma.product.updateMany({
+    where: { tenantId, sku: { in: SHOWCASE_PRODUCTS.map((sp) => sp.sku) } },
+    data: { ecommerceSlug: null },
+  });
+
   // Dedupe ecommerceSlug across the catalog (append -2, -3, … on collision).
   const slugSeen: Record<string, number> = {};
   const slugFor = (name: string): string => {
@@ -572,11 +612,17 @@ async function seedInventory(
     const product = await prisma.product.upsert({
       where: { sku: p.sku },
       update: {
+        // name/unit/createdAt re-asserted so a retheme (rename, recategorize,
+        // backdate for the "New" badge) applies on reseed without a full wipe.
+        name: p.name,
+        description: `${p.name} — demo showcase stock item.`,
+        unit: p.unit,
+        createdAt: dateAgo(p.ageDays ?? 120),
         categoryId: catIdBySlug[p.catSlug] ?? null,
         brandId: p.brandName !== undefined && p.brandName.length > 0
           ? (brandIdByName[p.brandName] ?? null)
           : null,
-        compareAtPrice: money(compareAtFor(p.sellPrice, i)),
+        compareAtPrice: p.onSale === true ? money(compareAtFor(p.sellPrice, i)) : null,
         isFeatured: p.featured ?? false,
         ecommerceSlug: slugFor(p.name),
         ecommerceSpecs: p.specs.map((s) => ({ label: s.label, value: s.value })),
@@ -598,7 +644,8 @@ async function seedInventory(
         tier1Price: money(p.sellPrice),
         tier2Price: money(Math.round(p.sellPrice * 0.95)),
         tier3Price: money(Math.round(p.sellPrice * 0.9)),
-        compareAtPrice: money(compareAtFor(p.sellPrice, i)),
+        compareAtPrice: p.onSale === true ? money(compareAtFor(p.sellPrice, i)) : null,
+        createdAt: dateAgo(p.ageDays ?? 120),
         isFeatured: p.featured ?? false,
         ecommerceSlug: slugFor(p.name),
         ecommerceSpecs: p.specs.map((s) => ({ label: s.label, value: s.value })),
@@ -630,6 +677,13 @@ async function seedInventory(
           notes: 'Opening balance (demo showcase seed)',
           createdById: adminId,
         },
+      });
+    } else {
+      // Re-assert opening stock on reseed so qty changes (e.g. the out-of-stock
+      // demo items) take effect without a full wipe. No new movement recorded.
+      await prisma.warehouseStock.updateMany({
+        where: { tenantId, warehouseId, productId: product.id },
+        data: { quantity: money(p.qty) },
       });
     }
   }
