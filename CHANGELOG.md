@@ -4,6 +4,47 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.16.0 — 2026-08-25
+
+### [FEATURE]
+- add Product/Offer JSON-LD to product detail page (Rule 35) (`0ea5343`)
+- client-side wishlist (localStorage, cart-store pattern) (`9cb888f`)
+- re-graft catalog onto Shopix shop grid + filter sidebar (`8e77d3f`)
+- re-graft product detail onto Shopix gallery/specs/related (`fd98cef`)
+- Shopix-style store landing at /{slug}/store (hero, categories, deals, rails) (`e49c351`)
+- re-graft new-sale onto RestroPOS main screen (grid, right panel, checkout, receipt) (`6e45777`)
+- storefront router reads for brands, merch content, slugs, availability (`cce422b`)
+- reshape demo catalog to Shopix-style 24 products w/ brands, merch content, real photos (`0d3a4f7`)
+- add Brand + MerchContent models and ecommerce product/category fields (additive) (`c986656`)
+- vendor licensed Shopix demo assets for storefront seed (`666e581`)
+- Rule-31 fidelity anchors + baselines for storefront (9 anchors, 3 screens) (`dc76108`)
+- add storefront footer per studio mega-footer-05 idiom + white-label credit (`8744c0b`)
+- restyle checkout per studio checkout-page-01 + order-summary-04 chrome (`e81db69`)
+- restyle order tracking per studio order-summary-03 idiom (`b0b9026`)
+- restyle product detail per studio product-overview-07 idiom (`eb8d9cf`)
+- restyle catalog per studio product-list-01 + category-filter-04 idiom (`cc10032`)
+- restyle cart drawer per studio shopping-cart-02 idiom (`8aeb470`)
+
+### [FIXED]
+- retheme demo catalog to match product photos + realistic merchandising (`79b43b3`)
+- raise public storefront rate limit 10→60/min per IP (`7470a27`)
+- handle nullable-string conditionals explicitly (db seed + studio blocks) (`b6751fd`)
+- un-wall /demo/shopix static assets + correct seeded Shopix CTA hrefs (`c0f76f9`)
+- allow guest storefront through auth middleware (public-paths regex) (`88190c4`)
+
+### [DOCS]
+- add fleet-standard task queue; record seed + rate-limit fixes done (`0033280`)
+- template-alignment build session log 2026-08-14 late night (`20d5942`)
+- template-audit session log + save-session handoff 2026-08-14 night (`402e3a4`)
+- template-alignment spec (Shopix + RestroPOS audits) — HELD pending owner go (`ebe5685`)
+- storefront restyle session log 2026-08-14 eve (`95e1c13`)
+- storefront restyle execution plan (owner-approved, all defaults) (`e7a7a08`)
+- post-release ground truth — v0.15.0 pushed, storefront queued (`bc11124`)
+
+### [TEST]
+- extend fidelity anchors + re-capture baselines for template-aligned screens (`695efa3`)
+
+
 ## v0.15.0 — 2026-08-14
 
 ### [FEATURE]
