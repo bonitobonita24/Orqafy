@@ -35,8 +35,13 @@ function rateLimit(options?: Options) {
 
 // 9 named tiers matching inputs.yml rate_limiting config
 export const rateLimiters = {
-  // Unauthenticated public pages — 10/min per IP
-  public: rateLimit({ interval: 60_000, limit: 10 }),
+  // Unauthenticated public pages (storefront) — 60/min per IP.
+  // A single storefront page fans out to ~5-6 public procedure calls
+  // (listBrands + listCategories + listMerchContent + listFeaturedProducts +
+  // listNewArrivals, plus browse/getProductBySlug), so a 10/min budget locked
+  // out normal browsing after ~2 page views. 60/min fits ~10 data-dense page
+  // views/min per IP while staying bounded; edge/WAF handles real abuse.
+  public: rateLimit({ interval: 60_000, limit: 60 }),
   // Authenticated API — 120/min per (tenantSlug+userId)
   api: rateLimit({ interval: 60_000, limit: 120 }),
   // File upload — 20/min per user

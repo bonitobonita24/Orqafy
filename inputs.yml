@@ -91,7 +91,7 @@ security:
     L5_audit_log: true          # AuditLog per tenant + TenantAuditLog (global)
     L6_query_guardrails: true   # Prisma extension
   rate_limiting:
-    public: { window_seconds: 60, max_requests: 10 }
+    public: { window_seconds: 60, max_requests: 60 }   # storefront pages fan out to ~5-6 public calls/view; 10 locked out normal browsing
     auth: { window_seconds: 60, max_requests: 10 }
     api: { window_seconds: 60, max_requests: 120 }
     upload: { window_seconds: 60, max_requests: 20 }
