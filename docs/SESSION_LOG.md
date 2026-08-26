@@ -1,5 +1,18 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-08-26 — POS grid images fixed → v0.16.1 released
+
+**In your words:** "resume session" → then "yes please do" (merge the POS fix + cut the release).
+
+✅ Done (verified end-to-end)
+- **POS grid product images no longer blank.** Reconciled a wrong diagnosis: the task-queue blamed 404s / a different image source, but POS resolves `imageUrl` from `ecommerceImageUrls[0]` — *identical* to the storefront catalog, which loads fine. Real cause was an **opacity-0 onLoad race**: a cached `<img>` reaches `complete` before React attaches `onLoad`, so `onLoad` never fires and the tile stays invisible forever. Fixed with a ref callback that flips `imgLoaded` on the already-complete case.
+- **Verified on dev** (rebuilt off the branch): Playwright at `/demo/pos/new-sale` — 24/24 tiles opacity=1, naturalWidth=1024, 0 stuck, 0 broken; screenshot shows real product photos with correct out-of-stock overlays. Typecheck green.
+- **Released v0.16.1** — squash-merged to `main` (`53ccbae`), version-synced 10 packages + sidebar tag, CHANGELOG, annotated tag; pushed `origin/main` (`c0765b4`) + `v0.16.1`. CI builds the image; **Model B → no auto-deploy** (staging/prod untouched, HARD HOLD).
+
+💬 Decisions/notes
+- `docs/TASK_QUEUE.md` open list is now **empty** (last 🔴 closed).
+- Still open, awaiting your direction (not touched): AdminCN adoption (D-A…D-E) and Customer Portal MVP (D-1) in `PENDING_DECISIONS.md`; and the fleet 3-tier RBAC retrofit (Scenario 42) Orqafy isn't yet on.
+
 ## 2026-08-14 (late night) — Template alignment BUILT: Shopix storefront + RestroPOS POS (P1–P4, verified)
 
 **In your words:** "Go template alignment and queue next tasks — plan it with your architect agent then swarm orchestration."
