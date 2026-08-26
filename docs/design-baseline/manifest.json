@@ -5,5 +5,6 @@
   "store-catalog": { "mockupRoute": "/demo/store/products", "appRoute": "/demo/store/products" },
   "store-product": { "mockupRoute": "/demo/store/products/smart-watch-pro-series", "appRoute": "/demo/store/products/smart-watch-pro-series" },
   "store-checkout": { "mockupRoute": "/demo/store/checkout", "appRoute": "/demo/store/checkout" },
-  "store-track": { "mockupRoute": "/demo/store/orders/track", "appRoute": "/demo/store/orders/track" }
+  "store-track": { "mockupRoute": "/demo/store/orders/track", "appRoute": "/demo/store/orders/track" },
+  "dashboard": { "mockupRoute": "/demo/dashboard", "appRoute": "/demo/dashboard", "auth": true }
 }
