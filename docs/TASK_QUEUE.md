@@ -6,12 +6,16 @@ Not a decisions log — owner-gated `[WHAT]`s live in `PENDING_DECISIONS.md`.
 
 ## 🔴 / 🟡 Open
 
-- 🔴 **POS grid product images blank** — `apps/web/src/app/(tenant)/[slug]/(app)/pos/**` tiles render
-  empty gray boxes (storefront images load fine; ~370 image-404s in console). Wire the POS product-tile
-  image source to the same asset the storefront uses. `agent-found 2026-08-25`
+_(none)_
 
 ## ✅ Done recently
 
+- ✅ **POS grid product images blank** — root cause was NOT 404s/wrong source (POS resolves `imageUrl`
+  from `ecommerceImageUrls[0]`, identical to the storefront catalog — always correct). Real cause: an
+  opacity-0 **onLoad race** — a cached `<img>` reaches `complete` before React attaches `onLoad`, so the
+  tile stays invisible/skeleton-stuck forever. Fixed with a ref callback flipping `imgLoaded` on the
+  already-complete case. Verified on dev: 24/24 tiles visible, 0 stuck, 0 broken. (`1435c96`,
+  branch `fix/pos-image-onload-race`, 2026-08-26)
 - ✅ **Storefront demo seed coherence** — rethemed 24 demo products so name/brand/specs/category match
   each Shopix photo; 6 coherent categories; `onSale` gate (11/24 on sale); `ageDays` backdate (7/24 New);
   2 out-of-stock; idempotent reseed (UPDATE re-asserts name/createdAt/stock + slug pre-clear). Verified

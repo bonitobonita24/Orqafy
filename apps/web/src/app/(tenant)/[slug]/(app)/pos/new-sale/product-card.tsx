@@ -57,6 +57,14 @@ export function ProductCard({ product, quantityInCart, availableQty, onAdd, onDe
               <Skeleton className="absolute inset-0 h-full w-full rounded-none" />
             )}
             <img
+              // A cached/instant image can finish loading BEFORE React attaches
+              // onLoad, so onLoad never fires and the image stays opacity-0
+              // (invisible) forever. The ref catches the already-complete case on
+              // mount; onLoad covers the not-yet-loaded case. setState is a no-op
+              // when already true, so the inline ref can't loop.
+              ref={(node) => {
+                if (node?.complete && node.naturalWidth > 0) setImgLoaded(true);
+              }}
               src={product.imageUrl}
               alt={product.name}
               className={cn(
