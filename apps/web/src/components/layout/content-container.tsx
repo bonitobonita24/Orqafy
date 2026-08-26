@@ -17,6 +17,7 @@ export function ContentContainer({ children }: { children: React.ReactNode }) {
   const fluid = IMMERSIVE_PATTERNS.some((re) => re.test(pathname));
   return (
     <div
+      data-fdl="app-content"
       className={
         fluid
           ? "w-full px-4 sm:px-6 lg:px-8"

@@ -65,7 +65,7 @@ export function AppSidebar({ slug }: AppSidebarProps) {
     : NAV_ITEMS.filter((item) => perms?.view.includes(item.featureKey) ?? false);
 
   return (
-    <Sidebar>
+    <Sidebar data-fdl="app-sidebar">
       <SidebarHeader>
         {/* Logo — matches mockup header block; color neutral (reskin) */}
         <div className="flex h-10 items-center gap-2 px-2">

@@ -223,7 +223,7 @@ export default async function DashboardPage({
 
   return (
     <div className="space-y-6">
-      <div>
+      <div data-fdl="dashboard-header">
         <h1 className="text-2xl font-bold tracking-tight">
           {data.tenant?.name ?? "Dashboard"}
         </h1>
@@ -236,7 +236,7 @@ export default async function DashboardPage({
           animated (NumberTicker) value, separator, badge sub-label, and a
           hover-revealed BorderBeam accent. All values/links are unchanged
           from the original dashboard — presentation only. */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div data-fdl="dashboard-stats" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
@@ -258,7 +258,7 @@ export default async function DashboardPage({
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-lg border border-border bg-card">
+        <div data-fdl="dashboard-recent-invoices" className="rounded-lg border border-border bg-card">
           <div className="flex items-center justify-between border-b border-border px-5 py-3">
             <h2 className="text-sm font-semibold">Recent invoices</h2>
             <Link
@@ -312,7 +312,7 @@ export default async function DashboardPage({
           )}
         </div>
 
-        <div className="rounded-lg border border-border bg-card">
+        <div data-fdl="dashboard-recent-expenses" className="rounded-lg border border-border bg-card">
           <div className="flex items-center justify-between border-b border-border px-5 py-3">
             <h2 className="text-sm font-semibold">Recent expenses</h2>
             <Link
