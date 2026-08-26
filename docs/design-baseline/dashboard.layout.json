@@ -1,0 +1,100 @@
+[
+  {
+    "fdl": "app-sidebar",
+    "box": {
+      "x": 0,
+      "y": 0,
+      "w": 0.17777777777777778,
+      "h": 1
+    },
+    "order": 0,
+    "display": {
+      "display": "flex",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "app-header",
+    "box": {
+      "x": 0.17777777777777778,
+      "y": 0,
+      "w": 0.8222222222222222,
+      "h": 0.06222222222222222
+    },
+    "order": 1,
+    "display": {
+      "display": "flex",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "app-content",
+    "box": {
+      "x": 0.17777777777777778,
+      "y": 0.08888888888888889,
+      "w": 0.8222222222222222,
+      "h": 0.8944444444444445
+    },
+    "order": 2,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "dashboard-header",
+    "box": {
+      "x": 0.2,
+      "y": 0.08888888888888889,
+      "w": 0.7777777777777778,
+      "h": 0.057777777777777775
+    },
+    "order": 3,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "dashboard-stats",
+    "box": {
+      "x": 0.2,
+      "y": 0.17333333333333334,
+      "w": 0.7777777777777778,
+      "h": 0.16722222222222222
+    },
+    "order": 4,
+    "display": {
+      "display": "grid",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "dashboard-recent-invoices",
+    "box": {
+      "x": 0.2,
+      "y": 0.3672222222222222,
+      "w": 0.38055555555555554,
+      "h": 0.4483333333333333
+    },
+    "order": 5,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  },
+  {
+    "fdl": "dashboard-recent-expenses",
+    "box": {
+      "x": 0.5972222222222222,
+      "y": 0.3672222222222222,
+      "w": 0.38055555555555554,
+      "h": 0.4483333333333333
+    },
+    "order": 6,
+    "display": {
+      "display": "block",
+      "flexDirection": "row"
+    }
+  }
+]
