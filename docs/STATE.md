@@ -1,7 +1,45 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-08-14 (pm) by CLAUDE_CODE (THEME Phase 5-7 DONE+verified on feat/theme-phase5-studio-blocks; v0.14.0 released earlier today; prod v0.13.2 untouched.)
+> Last updated: 2026-08-27 by CLAUDE_CODE (full-auto: AdminCN decision-#1 confirmed already-done; Phase E re-baseline + acceptance QA done+verified; branch feat/admincn-e-rebaseline HARD HOLD).
+
+---
+
+## ⭐ SESSION 2026-08-27 — AdminCN decision-#1 already complete; Phase E re-baseline + QA (full-auto)
+
+```
+[FOCUS: Orqafy]  ·  2026-08-27 ~02:15  ·  cold-start authority: docs/memory/MEMORY.md + this block
+
+## ⏳ TODO — next session works these IN ORDER
+1. [ ] (owner-gated) Merge feat/admincn-e-rebaseline → main after D-ADMINCN-E sign-off — done/verify:
+       fidelity gate 8/8 green post-merge; then it's a normal held branch awaiting a release word.
+2. [ ] (optional polish) favicon.ico 404 — add apps/web/src/app/favicon.ico (agent-found). Trivial.
+   — No other decision-#1 work remains: adoption was already built+ratified; Phase E DONE+verified.
+
+## ⚖️ OPEN DECISIONS (owner) — surface FIRST on resume
+- [ ] D-ADMINCN-E — approve the admin-surface fidelity baseline + merge feat/admincn-e-rebaseline → main
+      (rec: approve; inert anchors + test-harness only, zero app-behavior change). → PENDING_DECISIONS.md
+- [ ] (pre-existing, NOT decision #1) Customer Portal MVP (D-1); tenant_super_admin→tenant_superadmin
+      fleet-naming reconcile. Both separate from tonight's scope.
+
+## ✅ DONE THIS SESSION (built AND verified — evidence)
+- FINDING: AdminCN adoption (decision #1) was already built+MERGED to main+ratified 2026-08-08
+  (feat/admincn-adoption is an ancestor of main; D-A…D-E resolved). Stale "open" tracking corrected. NOT re-built.
+- Phase E re-baseline: authed fidelity gate — design-fidelity.mjs authed capture + data-fdl anchors
+  (shell+dashboard) + /demo/dashboard baseline. VERIFIED: web typecheck exit 0; gate re-run 8/8 PASS.
+  Commits 5a299b0 + 7b442df + fcdd765 (feat/admincn-e-rebaseline).
+- Acceptance QA sweep: 19/19 authed modules render clean (no console errors, AdminCN shell, real content);
+  light/dark toggle PASS. Only benign favicon 404 (logged).
+- Docs recorded: DECISIONS_LOG (2026-08-27), TASK_QUEUE, SESSION_LOG, this block, PENDING_DECISIONS D-ADMINCN-E.
+
+## 🔒 STATE / GROUND TRUTH
+- git: feat/admincn-e-rebaseline @3fdc6dc (+ this docs commit) · main clean, 1 docs-commit ahead of origin
+  (pre-existing, intentional) · HARD HOLD (branch LOCAL, never pushed). origin/main = v0.16.1 c0765b4.
+- deferred / owner-attention: D-ADMINCN-E sign-off + merge | next un-gated action: none within decision #1
+  scope — awaiting owner (loop --hold, re-surface).
+- ⚠ ALREADY-DONE guard: AdminCN adoption + RBAC 3-tier are DONE — do NOT re-build/re-retrofit; the
+  SessionStart AdminCN/RBAC offers are STALE. Verified in code + git ancestry this session.
+```
 
 ---
 

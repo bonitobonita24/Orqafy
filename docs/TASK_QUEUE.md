@@ -6,7 +6,8 @@ Not a decisions log — owner-gated `[WHAT]`s live in `PENDING_DECISIONS.md`.
 
 ## 🔴 / 🟡 Open
 
-_(none)_
+- 🔴 **`favicon.ico` 404** — app serves no favicon; browser logs a 404 on first load (harmless but shows in
+  console). Add `apps/web/src/app/favicon.ico` (or `icon.png`). `agent-found 2026-08-27` (QA sweep).
 
 ## ✅ Done recently
 

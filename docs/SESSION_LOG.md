@@ -1,5 +1,40 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-08-27 — "Do decision #1 (AdminCN) in full auto" → it was already done; completed its last loose end
+
+**In your words:** "resume session" → "ok do the decision #1 in full auto mode, i need to sleep."
+
+🔎 The important finding first
+- **Decision #1 (AdminCN adoption) was already BUILT, MERGED to `main`, and ratified by you "as-is" on
+  2026-08-08** — all 23 authed modules + platform-admin. `feat/admincn-adoption` is a full ancestor of
+  `main`. My resume summary called it "open/blocked on 5 decisions" because `PENDING_DECISIONS.md` was
+  stale; the real record (DECISIONS_LOG) already showed D-A…D-E resolved. **I did NOT re-build it** — that
+  would have been a wasteful re-run. Corrected the stale tracking instead.
+- (Also corrected: the SessionStart note claiming Orqafy "isn't on the 3-tier RBAC standard" is **stale** —
+  the RBAC 3-tier retrofit is present in code, `platform_owner`/`tenant_super_admin` + one-owner index +
+  succession + guardrails.)
+
+✅ Done (verified)
+- **AdminCN Phase E re-baseline** — the adoption's one explicitly-PENDING loose end. The authed admin
+  surface had no Rule-31 fidelity baseline (only public routes did) and the capture harness had no login
+  support. Added authed capture to `design-fidelity.mjs` (log in once, reuse session), `data-fdl` landmark
+  anchors on the AdminCN shell + dashboard, and captured the `/demo/dashboard` baseline. **Verified by me:**
+  web typecheck exit 0; fidelity gate re-run **8/8 PASS** (was 7 public-only). Closes STATE.md's authed-
+  fidelity TODO. Commits `5a299b0`+`7b442df`+`fcdd765` on `feat/admincn-e-rebaseline` (LOCAL, HARD HOLD).
+- **AdminCN acceptance QA sweep** (the verify-all-pages you asked for on 08-08) — logged in as demo super-
+  admin, walked all **19 authed modules**: **19/19 render clean, no console errors, AdminCN shell present,
+  real content/empty-states**; light/dark toggle works. Only a benign `favicon.ico` 404 (logged as a
+  polish item).
+
+💬 Decisions / notes
+- **Open for you (1):** sign off the admin-surface fidelity baseline + merge `feat/admincn-e-rebaseline` →
+  `main` (PENDING_DECISIONS "D-ADMINCN-E"). My rec: approve — it's inert anchors + a test-harness
+  improvement, zero app-behavior change. Push/deploy stays a separate word (HARD HOLD, Model B).
+- Not touched (still your call, separate from decision #1): Customer Portal MVP (D-1), and whether to
+  reconcile the `tenant_super_admin` slug to the fleet `tenant_superadmin` naming.
+- `docs/MOCKUP.jsx` deliberately not authored — this app's fidelity tooling snapshots the live route, not a
+  MOCKUP.jsx, so one would be dead weight.
+
 ## 2026-08-26 — POS grid images fixed → v0.16.1 released
 
 **In your words:** "resume session" → then "yes please do" (merge the POS fix + cut the release).
