@@ -4,6 +4,12 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.16.1 — 2026-08-26
+
+### [FIXED]
+- show POS grid images stuck invisible from onLoad race (`53ccbae`)
+
+
 ## v0.16.0 — 2026-08-25
 
 ### [FEATURE]
