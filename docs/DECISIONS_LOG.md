@@ -1736,3 +1736,40 @@ Scope calls made as [HOW] under the owner's go:
 
 All LOCAL on feat/theme-phase5-studio-blocks — HARD HOLD; merge/push is a pending owner decision
 (together with unpushed main@5a353be chart fix).
+
+---
+
+## 2026-08-27 — AdminCN "decision #1" ALREADY COMPLETE; Phase E re-baseline done (full-auto)
+
+**Context / finding.** Owner said "do decision #1 (AdminCN adoption) in full auto." The resume-routine
+already-done cross-check found decision #1 was **already BUILT, MERGED to `main`, and owner-RATIFIED
+"as-is" 2026-08-08** — `feat/admincn-adoption` is a full ancestor of `main` (0 commits ahead); all 23
+authed modules + platform-admin were reskinned to the AdminCN idiom. D-A…D-E were resolved 08-08/08-14
+(light/dark default-dark · shadcn/studio "orqafy" preset · tokens folded into globals.css · ERP+platform
+done, storefront went Shopix · AdminCN executed first). The `PENDING_DECISIONS.md` ⭐ entry still showed
+it "open/blocked on 5 decisions" — **stale**; corrected. No re-build performed (would have been a wasteful
+re-run of a ratified feature).
+
+**Work done — Phase E re-baseline (the adoption's one explicitly-PENDING loose end).** The authed AdminCN
+surface had NO Rule-31 `design:fidelity` baseline (only public routes did) and the capture harness had no
+auth support — recorded as the open item in both the 08-08 AdminCN record and STATE.md TODO#2. Closed it:
+- `scripts/design-fidelity.mjs` — added authed-capture: logs in once (`#tenantSlug`/`#email`/`#password`
+  + "Sign in") reusing storageState for every `"auth": true` manifest entry; env-overridable creds
+  (`DEMO_ADMIN_EMAIL`/`DEMO_ADMIN_PASSWORD` default `admin@mail.com`/`admin`, `WEBMASTER_PASSWORD`
+  fallback) — no secret committed. Public entries unchanged.
+- `data-fdl` landmark anchors added (inert attributes, zero render change) to the AdminCN shell
+  (`app-sidebar`/`app-header`/`content-container`) + dashboard (`dashboard-header`/`-stats`/
+  `-recent-invoices`/`-recent-expenses`).
+- `docs/design-baseline/manifest.json` + `dashboard.layout.json` (7 anchors) captured.
+- **Verified (PM/Opus, ground-truth):** web typecheck exit 0; `node scripts/design-fidelity.mjs` gate
+  re-run = **8/8 PASS, exit 0** (7 public + authed dashboard). Note: dev app container was rebuilt
+  (Rule-39 — prebuilt image, no bind-mount) so anchors were visible to the capture.
+- Commits on `feat/admincn-e-rebaseline` (LOCAL, HARD HOLD, not pushed): `5a299b0` (harness),
+  `7b442df` (anchors), `fcdd765` (baseline).
+
+**Remaining ([WHAT], deferred to PENDING_DECISIONS "D-ADMINCN-E"):** owner sign-off on this admin-surface
+fidelity baseline as the accepted design contract (Rule 31 §6). Also `docs/MOCKUP.jsx` was deliberately
+NOT authored — this app's fidelity tooling snapshots `mockupRoute` and does not consume a MOCKUP.jsx, so
+adding one would be an unused artifact.
+
+— recorded by CLAUDE_CODE (PM/Opus), full-auto, 2026-08-27.
