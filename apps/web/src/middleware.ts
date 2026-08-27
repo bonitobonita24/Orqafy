@@ -47,6 +47,18 @@ export default auth(function middleware(req) {
     return NextResponse.next();
   }
 
+  // Principal isolation (W1-T1.4) — staff never sees the customer portal
+  // surface, customers never see the staff (app) surface. MUST run BEFORE the
+  // demo fast-path below: that fast-path waves any authed user onto any /demo/*
+  // route, so leaving isolation after it let a demo-tenant CUSTOMER load the
+  // staff app shell (caught in the W2 E2E browser walk). Isolation depends only
+  // on principalType + whether the path is a /portal/* path, not on tenant match.
+  const principalType = (session as { principalType?: "staff" | "customer" }).principalType;
+  const isolationRedirect = resolvePrincipalIsolationRedirect(pathname, urlSlug, principalType);
+  if (isolationRedirect !== null) {
+    return NextResponse.redirect(new URL(isolationRedirect, req.url));
+  }
+
   const sessionSlug = (session.user as { tenantSlug?: string })?.tenantSlug;
 
   // Demo tenant fast-path — any authenticated user may visit /demo
@@ -57,15 +69,6 @@ export default auth(function middleware(req) {
   // Cross-tenant access attempt — redirect to own tenant
   if (sessionSlug !== undefined && urlSlug !== sessionSlug) {
     return NextResponse.redirect(new URL(`/${sessionSlug}/dashboard`, req.url));
-  }
-
-  // Principal isolation (W1-T1.4) — staff never sees the customer portal
-  // surface, customers never see the staff (app) surface. Runs only once the
-  // request is confirmed authed + same-tenant above.
-  const principalType = (session as { principalType?: "staff" | "customer" }).principalType;
-  const isolationRedirect = resolvePrincipalIsolationRedirect(pathname, urlSlug, principalType);
-  if (isolationRedirect !== null) {
-    return NextResponse.redirect(new URL(isolationRedirect, req.url));
   }
 
   // Suspended tenant — redirect to login with error

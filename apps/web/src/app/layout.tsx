@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Source_Serif_4, Source_Code_Pro } from "next/font/google";
 import { TRPCProvider } from "@/lib/trpc-provider";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
@@ -66,6 +67,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background antialiased">
         <ThemeProvider>
           <TRPCProvider>{children}</TRPCProvider>
+          {/* App-wide toast host — previously unmounted, so every toast.*()
+              call (copy-link, portal invite, transfer-ownership, …) rendered
+              nothing. Mounted here inside ThemeProvider so it's theme-aware. */}
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

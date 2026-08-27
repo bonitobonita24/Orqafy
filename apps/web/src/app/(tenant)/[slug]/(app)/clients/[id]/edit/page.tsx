@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
 import { PageHeader } from "@/components/layout/page-header";
 import { ClientForm } from "../../client-form";
+import { PortalAccessCard } from "../portal-access-card";
 
 export const metadata: Metadata = { title: "Edit Client" };
 
@@ -37,6 +38,8 @@ export default async function EditClientPage({ params }: Props) {
       taxId: true,
       tier: true,
       notes: true,
+      portalEnabled: true,
+      portalEmail: true,
     },
   });
   if (!client) notFound();
@@ -63,6 +66,11 @@ export default async function EditClientPage({ params }: Props) {
         mode="edit"
         clientId={client.id}
         initialValues={client}
+      />
+      <PortalAccessCard
+        customerId={client.id}
+        portalEnabled={client.portalEnabled}
+        portalEmail={client.portalEmail}
       />
     </div>
   );

@@ -49,6 +49,7 @@ import {
   KanbanIcon as _KanbanIcon,
   LifebuoyIcon as _LifebuoyIcon,
   Loading03Icon as _Loading03Icon,
+  Logout01Icon as _Logout01Icon,
   Mail01Icon as _Mail01Icon,
   Menu01Icon as _Menu01Icon,
   Message01Icon as _Message01Icon,
@@ -158,6 +159,7 @@ export const LayoutDashboard = makeIcon(_DashboardSquare01Icon);
 export const LifeBuoy = makeIcon(_LifebuoyIcon);
 export const ListTodo = makeIcon(_CheckListIcon);
 export const Loader2 = makeIcon(_Loading03Icon);
+export const LogOut = makeIcon(_Logout01Icon);
 export const Mail = makeIcon(_Mail01Icon);
 export const MenuIcon = makeIcon(_Menu01Icon);
 export const MessageSquare = makeIcon(_Message01Icon);
