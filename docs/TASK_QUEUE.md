@@ -6,6 +6,10 @@ Not a decisions log — owner-gated `[WHAT]`s live in `PENDING_DECISIONS.md`.
 
 ## 🔴 / 🟡 Open
 
+- 🔴 **Demo/seed invoices have null `publicToken`** — the demo seed inserts invoices directly (not via the
+  `invoice.create` mutation that generates the token), so all seeded invoices show "No public link available"
+  on the new D-4 Copy-share-link button and can't demo the public `/invoice/[token]` view. Fix: backfill
+  `publicToken = crypto.randomUUID()` for seeded invoices in the demo seed. `agent-found 2026-08-27` (D-4 build).
 - 🔴 **`favicon.ico` 404** — app serves no favicon; browser logs a 404 on first load (harmless but shows in
   console). Add `apps/web/src/app/favicon.ico` (or `icon.png`). `agent-found 2026-08-27` (QA sweep).
 
