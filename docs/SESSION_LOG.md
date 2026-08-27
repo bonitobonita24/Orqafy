@@ -1,5 +1,32 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-08-27 (eve) — D-4 public invoice view built + released; Full-Auto A→C; Customer Portal (D-1) started
+
+**In your words:** resume → "start D-4" (standalone) → "do all options A to C in Full Auto Mode, summon Architect orchestration."
+
+✅ Done (verified)
+- **D-4 — public invoice view + Copy-share-link.** New public `/invoice/[token]` page (noindex; `notFound()`
+  on bad/unknown token, no enumeration), a shared sanitized `getPublicInvoiceByToken()` (single source of
+  truth for customer-facing fields; the REST route now delegates to it), `/invoice` added to the middleware
+  public allow-list, and a staff "Copy share link" button. **Verified against real runtime** (transient
+  next-dev on the dev DB): valid token → 200 renders + noindex + not auth-walled; bad token → 404; API
+  refactor leaks zero sensitive fields. Full suite **1491/1491**, typecheck clean.
+- **(A) Merged D-4 → `main` + released v0.17.0** locally (tag + categorized CHANGELOG + version-sync across
+  10 packages). LOCAL / HARD HOLD — not pushed.
+- **(C) Demo-seed `publicToken` backfill** — seeded customer invoices now get a token so the share feature is
+  demoable (was null because the seed bypasses `invoice.create`). Typecheck clean.
+
+🔨 In progress
+- **(B) D-1 Customer Portal MVP** — Architect is designing the plan against the real codebase. Scope defaults
+  taken (Full Auto, recorded in PENDING_DECISIONS, not asked): **Dashboard + Invoices + Online Orders +
+  Repairs/Job Orders**, **invite-only** auth (staff creates customer login). Build proceeds wave-by-wave.
+
+💬 Decisions / notes
+- `main` now **11 commits ahead of `origin/main`** — LOCAL / HARD HOLD, nothing pushed, no env touched.
+- Reconciled a stale backlog checkbox: template-alignment ship decisions were already shipped as v0.16.0.
+
+---
+
 ## 2026-08-27 — Approve + merge the AdminCN Phase E fidelity baseline; stop the loop
 
 **In your words:** "handle D-ADMINCN-E" → chose Approve + merge → "save session and handoff all pending tasks and decisions. stop reboot loop."
