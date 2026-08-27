@@ -16,7 +16,19 @@
 - **(C) Demo-seed `publicToken` backfill** — seeded customer invoices now get a token so the share feature is
   demoable (was null because the seed bypasses `invoice.create`). Typecheck clean.
 
-🔨 In progress
+✅ Done (verified) — **(B) D-1 Customer Portal MVP — COMPLETE + E2E-verified**
+- Architect-orchestrated, 3 waves, on `feat/d1-customer-portal` (HARD HOLD). Invite-only, MVP =
+  Dashboard + Invoices + Online Orders + Repairs. Full E2E browser walk passed: staff invites a customer →
+  copy link → customer sets password → logs in → sees a dashboard with real scoped counts and only their
+  own invoices/orders/repairs; staff routes are blocked for customers.
+- **6 defects caught by verification that unit tests missed** — 3 security (invalidated-session bypass;
+  stale-invite re-enable; inactive-customer activation), 2 integration (`<Toaster>` never mounted app-wide;
+  middleware demo-fast-path let a customer load the staff shell), 1 consistency (dashboard status constants
+  drift). All fixed.
+- Deferred to v2: Proposals/Projects/Subscriptions/Credit, emailed magic-link invites (no mailer yet —
+  copy-link MVP), separate portal cookie, a setPassword TOCTOU hardening. Details: `docs/CUSTOMER_PORTAL_PLAN.md`.
+
+🔨 (superseded — details above)
 - **(B) D-1 Customer Portal MVP** — Architect-orchestrated, 5-wave plan (`docs/CUSTOMER_PORTAL_PLAN.md`).
   Scope defaults taken (Full Auto, not asked): Dashboard + Invoices + Online Orders + Repairs, invite-only.
   - ✅ **Wave 1 (auth foundation)** — schema/migration (applied to dev), portal Auth.js provider +

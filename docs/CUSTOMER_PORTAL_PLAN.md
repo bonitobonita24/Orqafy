@@ -73,7 +73,18 @@ Route home: new segment `(tenant)/[slug]/portal/*` (sibling of `store` and `(app
   (all toasts silent) → mounted in root layout; (b) middleware demo fast-path ran before principal
   isolation → a demo customer could load the staff shell → isolation moved above the fast-path. E2E
   verified end-to-end (accept→set-password→login→home→staff-route isolation redirect). Commit 2d3b93b.
-- [ ] W3 — Sections (T3.1 Invoices · T3.2 Orders · T3.3 Repairs — parallel; then T3.4 Dashboard summary)
+- [x] **W3 — Sections** (2026-08-28) — W3a customer-scoped `portal` data router (invoices/orders/repairs/
+  dashboard; every query `where { tenantId, customerId }`, byId→NOT_FOUND, 13 isolation tests), W3b the
+  three section list+detail UIs (reusing D-4 invoice / storefront order-track / staff job-order
+  presentations) + a real dashboard summary (shared `portal-status.ts` constants). **E2E browser-verified**
+  with a data-bearing demo customer: dashboard counts match the DB, each section lists only the customer's
+  own rows, detail (byId) renders. Commits 5865e7d, f600216.
+
+## ✅ MVP COMPLETE (2026-08-28)
+All 3 waves done + E2E-verified. Invite-only customer portal live on dev (branch feat/d1-customer-portal,
+HARD HOLD). Deferred to v2 (per locked scope): Proposals/Quotations, Projects, Subscriptions, Payments/
+Credit; magic-link invites (emailed — no mailer in repo yet, copy-link MVP); separate portal-session
+cookie; the setPassword TOCTOU hardening (see Follow-ups).
 
 ## Follow-ups (hardening, non-blocking)
 - setPassword TOCTOU: narrow race between the `isActive` read and the final transaction — harden with a
