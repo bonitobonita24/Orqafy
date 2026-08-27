@@ -4,6 +4,24 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.17.0 — 2026-08-27
+
+### [FEATURE]
+- D-4 public invoice view page + Copy-share-link (`353aeba`)
+- add data-fdl landmark anchors to authed app shell + dashboard (`7b442df`)
+- add authed-capture support to design-fidelity.mjs (`5a299b0`)
+
+### [DOCS]
+- log demo-invoice null publicToken follow-up (D-4) (`309cb54`)
+- D-ADMINCN-E approved+merged; handoff + loop stop (`22456c2`)
+- AdminCN decision-#1 already-done finding + Phase E + QA sweep handoff (`ea81e99`)
+- record AdminCN decision-#1 already-complete finding + Phase E re-baseline (`3fdc6dc`)
+- log v0.16.1 POS image-race fix + release (`6d5345f`)
+
+### [CHORE]
+- capture dashboard layout-fidelity baseline (`fcdd765`)
+
+
 ## v0.16.1 — 2026-08-26
 
 ### [FIXED]
