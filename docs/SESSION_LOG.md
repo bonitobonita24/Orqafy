@@ -17,9 +17,17 @@
   demoable (was null because the seed bypasses `invoice.create`). Typecheck clean.
 
 🔨 In progress
-- **(B) D-1 Customer Portal MVP** — Architect is designing the plan against the real codebase. Scope defaults
-  taken (Full Auto, recorded in PENDING_DECISIONS, not asked): **Dashboard + Invoices + Online Orders +
-  Repairs/Job Orders**, **invite-only** auth (staff creates customer login). Build proceeds wave-by-wave.
+- **(B) D-1 Customer Portal MVP** — Architect-orchestrated, 5-wave plan (`docs/CUSTOMER_PORTAL_PLAN.md`).
+  Scope defaults taken (Full Auto, not asked): Dashboard + Invoices + Online Orders + Repairs, invite-only.
+  - ✅ **Wave 1 (auth foundation)** — schema/migration (applied to dev), portal Auth.js provider +
+    `principalType` + `portalProcedure`, middleware isolation, invite/accept/reset router. **3 security
+    issues caught + fixed** (invalidated-session bypass by me; stale-invite re-enable + inactive-customer
+    activation by the background reviewer). Full suite green; both providers register at runtime.
+  - ✅ **Wave 2 (shell + auth UI)** — portal login/accept/home + customer shell, staff invite card.
+    **E2E browser walk** (accept→set-password→login→portal home→staff-route isolation) passed after fixing
+    2 integration bugs the units missed: `<Toaster>` never mounted (all toasts silent, app-wide) + a
+    middleware ordering hole letting a demo customer see the staff shell.
+  - ⏳ **Wave 3 (the 4 sections)** — Invoices/Orders/Repairs/Dashboard — next.
 
 💬 Decisions / notes
 - `main` now **11 commits ahead of `origin/main`** — LOCAL / HARD HOLD, nothing pushed, no env touched.

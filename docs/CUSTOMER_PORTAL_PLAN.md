@@ -67,8 +67,13 @@ Route home: new segment `(tenant)/[slug]/portal/*` (sibling of `store` and `(app
   T1.4 middleware isolation, T1.5 invite/accept/reset router (+ security-review fix: disable purges
   invites, setPassword refuses inactive customer). Full suite 1553/1553; runtime confirms both Auth.js
   providers register + `/portal/login` public + `/portal` auth-gated. Commits d170f43, 90a2541, 0d9c929.
-- [ ] W2 — Shell + auth UI
-- [ ] W3 — Sections
+- [x] **W2 — Shell + auth UI** (2026-08-27) — T2.1 portal login/accept/home pages + customer shell
+  (INHERIT app theme), T2.2 staff "Portal Access" invite/reset/disable card on the client edit page.
+  Two integration bugs found in the E2E browser walk + fixed: (a) `<Toaster>` was never mounted app-wide
+  (all toasts silent) → mounted in root layout; (b) middleware demo fast-path ran before principal
+  isolation → a demo customer could load the staff shell → isolation moved above the fast-path. E2E
+  verified end-to-end (accept→set-password→login→home→staff-route isolation redirect). Commit 2d3b93b.
+- [ ] W3 — Sections (T3.1 Invoices · T3.2 Orders · T3.3 Repairs — parallel; then T3.4 Dashboard summary)
 
 ## Follow-ups (hardening, non-blocking)
 - setPassword TOCTOU: narrow race between the `isActive` read and the final transaction — harden with a
