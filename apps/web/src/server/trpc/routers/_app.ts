@@ -34,6 +34,7 @@ import { smtpConfigRouter } from "./smtp-config";
 import { dsrRouter } from "./dsr";
 import { complianceRouter } from "./compliance";
 import { customerPortalRouter } from "./customer-portal";
+import { portalRouter } from "./portal";
 
 export const appRouter = createTRPCRouter({
   auth: authRouter,
@@ -71,6 +72,7 @@ export const appRouter = createTRPCRouter({
   dsr: dsrRouter,
   compliance: complianceRouter,
   customerPortal: customerPortalRouter,
+  portal: portalRouter,
 });
 
 export type AppRouter = typeof appRouter;
