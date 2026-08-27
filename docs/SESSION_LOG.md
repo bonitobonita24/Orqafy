@@ -2,7 +2,13 @@
 
 ## 2026-08-27 (eve) — D-4 public invoice view built + released; Full-Auto A→C; Customer Portal (D-1) started
 
-**In your words:** resume → "start D-4" (standalone) → "do all options A to C in Full Auto Mode, summon Architect orchestration."
+**In your words:** resume → "start D-4" (standalone) → "do all options A to C in Full Auto Mode, summon Architect orchestration." → "merge feat/d1-customer-portal → main (+ bump ~v0.18.0), then push main to origin."
+
+🚀 Shipped
+- **Merged the Customer Portal → main + released v0.18.0** (D-4 = v0.17.0), and **pushed main to origin**
+  (`origin/main` = `0431f75`). CI builds the image on push — **Model B, NO auto-deploy**; staging/prod/demo
+  untouched. Final gates green before push (1569/1569, typecheck, build). Dev container is behind main
+  (Model B = no env leads dev; rebuild when convenient).
 
 ✅ Done (verified)
 - **D-4 — public invoice view + Copy-share-link.** New public `/invoice/[token]` page (noindex; `notFound()`
