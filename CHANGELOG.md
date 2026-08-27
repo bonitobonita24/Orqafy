@@ -4,6 +4,28 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.18.0 — 2026-08-28
+
+### [FEATURE]
+- W3b — Invoices/Orders/Repairs section pages + real dashboard (`f600216`)
+- W3a — customer-scoped portal data router (invoices/orders/repairs/dashboard) (`5865e7d`)
+- W2 — portal shell + auth UI + staff invite control (`2d3b93b`)
+- W1-T1.4/T1.5 — route isolation + invite/accept/reset router (`0d9c929`)
+- W1 keystone — portal auth provider + principalType + portalProcedure (`90a2541`)
+- W1-T1.1 CustomerPortalInvite + customerSecurityVersion schema/migration (`d170f43`)
+
+### [FIXED]
+- give seeded customer invoices a publicToken (`6fb4e28`)
+
+### [DOCS]
+- D-1 MVP complete — milestone save (plan + session log) (`e9813fc`)
+- W2 done — milestone save (plan + session log) (`20a051a`)
+- W1 done — mark progress + log setPassword TOCTOU follow-up (`ecf84ec`)
+- D-1 Customer Portal MVP architecture + wave plan (`2f0506c`)
+- D-4 built+released v0.17.0; Full-Auto A/C done; D-1 started (`00acf04`)
+- close D-4 + demo-token items (`a1bfa06`)
+
+
 ## v0.17.0 — 2026-08-27
 
 ### [FEATURE]
