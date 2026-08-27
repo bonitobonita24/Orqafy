@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, portalProcedure } from "../trpc";
 import { prisma as db } from "@orqafy/db";
+import { ACTIVE_ORDER_STATUSES, OPEN_REPAIR_STATUSES } from "@/server/lib/portal-status";
 
 // Customer-facing data router (W3a) — Invoices, Orders, Repairs, Dashboard.
 // CARDINAL RULE (every procedure below): filter on BOTH
@@ -14,21 +15,6 @@ import { prisma as db } from "@orqafy/db";
 // invoice.ts's loadInvoiceForTenant / storefront.ts's getOrderById).
 
 const cuid = z.string().cuid();
-
-// Orders considered "active" (not yet delivered/cancelled/refunded) for the
-// dashboard's activeCount tile.
-const ACTIVE_ORDER_STATUSES = ["pending", "confirmed", "processing", "shipped"] as const;
-// Repairs considered "open" (not yet released or cancelled) for the
-// dashboard's openCount tile.
-const OPEN_REPAIR_STATUSES = [
-  "received",
-  "diagnosing",
-  "quoted",
-  "approved",
-  "in_progress",
-  "testing",
-  "completed",
-] as const;
 
 const invoicesRouter = createTRPCRouter({
   list: portalProcedure.query(({ ctx }) => {
