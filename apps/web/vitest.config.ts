@@ -7,6 +7,12 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  // Automatic JSX runtime (react/jsx-runtime) so a .test.ts can import a
+  // .tsx module (e.g. a server component) without every such module having
+  // to hand-import React — matches Next.js's own automatic-runtime build.
+  esbuild: {
+    jsx: 'automatic',
+  },
   test: {
     environment: 'node',
     globals: false,

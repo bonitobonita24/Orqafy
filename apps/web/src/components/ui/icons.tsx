@@ -29,6 +29,7 @@ import {
   CircleIcon as _CircleIcon,
   Clock01Icon as _Clock01Icon,
   Clock03Icon as _Clock03Icon,
+  CopyLinkIcon as _CopyLinkIcon,
   CreditCardIcon as _CreditCardIcon,
   DashboardSquare01Icon as _DashboardSquare01Icon,
   Delete02Icon as _Delete02Icon,
@@ -137,6 +138,7 @@ export const CircleIcon = makeIcon(_CircleIcon);
 export const ClipboardList = makeIcon(_TaskDaily01Icon);
 export const Clock = makeIcon(_Clock01Icon);
 export const Clock3 = makeIcon(_Clock03Icon);
+export const CopyLink = makeIcon(_CopyLinkIcon);
 export const CreditCard = makeIcon(_CreditCardIcon);
 export const DollarSign = makeIcon(_DollarCircleIcon);
 export const Download = makeIcon(_Download04Icon);

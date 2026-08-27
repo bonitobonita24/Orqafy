@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { CopyLink } from "@/components/ui/icons";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +57,7 @@ interface InvoiceActionsProps {
   status: string;
   outstandingBalance: number;
   fundSources: FundSource[];
+  publicToken?: string | null;
 }
 
 export function InvoiceActions({
@@ -63,8 +65,23 @@ export function InvoiceActions({
   status,
   outstandingBalance,
   fundSources,
+  publicToken,
 }: InvoiceActionsProps) {
   const router = useRouter();
+
+  async function handleCopyShareLink() {
+    if (publicToken === undefined || publicToken === null || publicToken === "") {
+      toast.error("No public link available for this invoice");
+      return;
+    }
+    const url = `${window.location.origin}/invoice/${publicToken}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Share link copied");
+    } catch {
+      toast.error("Could not copy link");
+    }
+  }
 
   // --- Mark Sent ---
   const [markSentOpen, setMarkSentOpen] = useState(false);
@@ -172,12 +189,18 @@ export function InvoiceActions({
   const canVoid =
     status === "draft" || status === "sent" || status === "partially_paid";
 
-  if (!canMarkSent && !canRecord && !canMarkPaid && !canVoid) {
-    return null;
-  }
-
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
+      {/* Copy share link — always available regardless of status */}
+      <button
+        type="button"
+        onClick={() => void handleCopyShareLink()}
+        className="inline-flex items-center gap-1 rounded border border-border bg-muted px-2 py-0.5 text-xs font-medium text-foreground hover:bg-muted/70"
+      >
+        <CopyLink className="size-3.5" />
+        Copy share link
+      </button>
+
       {/* Mark Sent */}
       {canMarkSent && (
         <Dialog open={markSentOpen} onOpenChange={setMarkSentOpen}>

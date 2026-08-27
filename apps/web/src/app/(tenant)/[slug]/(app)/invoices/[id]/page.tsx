@@ -84,6 +84,8 @@ async function getInvoice(id: string, tenantId: string) {
       },
       project: { select: { name: true } },
       createdBy: { select: { firstName: true, lastName: true } },
+      // publicToken powers the staff-side "Copy share link" button (D-4);
+      // never surfaced to any customer-facing endpoint from this include.
       payments: {
         orderBy: { paidAt: "desc" },
         include: {
@@ -176,6 +178,7 @@ export default async function InvoiceDetailPage({ params }: Props) {
               status={invoice.status}
               outstandingBalance={outstandingBalance}
               fundSources={fundSources}
+              publicToken={invoice.publicToken}
             />
           </>
         }

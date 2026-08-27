@@ -24,6 +24,10 @@ export const PUBLIC_PATHS = [
   // storefront renders broken images for logged-out visitors + crawlers
   // (same omission class as the /{slug}/store 88190c4 fix).
   "/demo/shopix",
+  // Public, token-authorised invoice view — /invoice/[token]. The token is
+  // the sole authorisation (unguessable, opaque); the page itself sets
+  // robots noindex,nofollow (D-4 Copy-share-link).
+  "/invoice",
 ];
 
 // Guest storefront — /{tenantSlug}/store(/...) — must be crawlable + usable

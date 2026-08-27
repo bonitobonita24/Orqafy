@@ -9,9 +9,9 @@
 //  4. Unknown / invalid token → 404 (not 401 — prevents enumeration via status-code differences).
 //  5. Rate-limited at 30 req/min per IP via the existing public_invoice tier.
 import { type NextRequest, NextResponse } from "next/server";
-import { prisma as db } from "@orqafy/db";
 import { rateLimiters } from "@/server/lib/rate-limit";
 import { logger } from "@/lib/logger";
+import { getPublicInvoiceByToken } from "@/server/lib/public-invoice";
 
 function notFound() {
   return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
@@ -45,50 +45,16 @@ export async function GET(
     "public invoice view requested",
   );
 
-  const invoice = await db.invoice.findUnique({
-    where: { publicToken },
-    include: {
-      // Customer display fields — no internal FK ids, no phone (owner field)
-      customer: {
-        select: {
-          firstName: true,
-          lastName: true,
-          companyName: true,
-          email: true,
-        },
-      },
-      // Project name for display only
-      project: { select: { name: true } },
-      // Tenant display name (business name shown on invoice header)
-      tenant: { select: { name: true, logoUrl: true, currency: true } },
-    },
-  });
+  // Shared sanitised lookup (also used by the /invoice/[token] page) — the
+  // single source of truth for which fields are customer-facing.
+  // EXCLUDED: tenantId, createdById, quotationId, amountPaid, balance,
+  //           signatureUrl, signerIp, signerName, metadata, termsAndConditions (internal),
+  //           updatedAt, audit columns, any relation FK strings.
+  const invoice = await getPublicInvoiceByToken(publicToken);
 
   if (!invoice) {
     return notFound();
   }
 
-  // Sanitised payload — mirrors invoice.publicView tRPC procedure shape,
-  // plus tenant display fields for the invoice header.
-  // EXCLUDED: tenantId, createdById, quotationId, amountPaid, balance,
-  //           signatureUrl, signerIp, signerName, metadata, termsAndConditions (internal),
-  //           updatedAt, audit columns, any relation FK strings.
-  const payload = {
-    id: invoice.id,
-    invoiceNumber: invoice.invoiceNumber,
-    status: invoice.status,
-    dueDate: invoice.dueDate,
-    issuedAt: invoice.issuedAt,
-    paidAt: invoice.paidAt,
-    totalAmount: invoice.totalAmount,
-    currency: invoice.currency,
-    notes: invoice.notes,
-    lineItems: invoice.lineItems,
-    customer: invoice.customer,
-    project: invoice.project,
-    tenant: invoice.tenant,
-    createdAt: invoice.createdAt,
-  };
-
-  return NextResponse.json(payload, { status: 200 });
+  return NextResponse.json(invoice, { status: 200 });
 }
