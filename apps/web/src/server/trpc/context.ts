@@ -17,6 +17,13 @@ export type TRPCContext = {
   securityVersion: number;
   isDemoTenant: boolean;
   session: Session | null;
+  // Customer-portal discriminator (T1.2/T1.3). Defaults to "staff" so every
+  // pre-existing context literal (bearer/unauthenticated/staff) keeps
+  // type-checking and behaving unmodified. portalProcedure requires
+  // "customer" + a non-null customerId; protectedProcedure/matrixProcedure
+  // are unaffected by this field (a customer ctx still has userId: null).
+  principalType?: "staff" | "customer";
+  customerId?: string | null;
 };
 
 /**
@@ -62,6 +69,10 @@ async function resolveMobileBearerContext(req: NextRequest): Promise<TRPCContext
     securityVersion: payload.securityVersion,
     isDemoTenant,
     session: null,
+    // Mobile bearer auth is staff-only (Wave 2 — trpc-bearer predates the
+    // customer portal); never a customer principal.
+    principalType: "staff",
+    customerId: null,
   };
 }
 
@@ -76,18 +87,62 @@ export async function createTRPCContext({ req }: { req: NextRequest }): Promise<
 
   const session = await auth();
 
-  if (!session?.user || session.user.error === "SESSION_INVALIDATED") {
+  const UNAUTHENTICATED_CTX: TRPCContext = {
+    req,
+    userId: null,
+    roles: [],
+    roleId: null,
+    tenantSlug: null,
+    tenantId: null,
+    securityVersion: 0,
+    isDemoTenant: false,
+    session: null,
+    principalType: "staff",
+    customerId: null,
+  };
+
+  if (!session?.user) {
+    return UNAUTHENTICATED_CTX;
+  }
+
+  // Uniform invalidation guard (top-level `session.error`) — BOTH the staff
+  // and customer session callbacks signal a revoked session via
+  // `{ ...session, error: "SESSION_INVALIDATED" }` (config.ts). Reject it here,
+  // before any principal branch, so an invalidated session can never fall
+  // through to build a real ctx. (tRPC is excluded from the middleware
+  // matcher, so this — not middleware — is the gate for /api/trpc.)
+  if (session.error === "SESSION_INVALIDATED") {
+    return UNAUTHENTICATED_CTX;
+  }
+
+  // Customer-portal principal — a SEPARATE branch from the staff check
+  // below so the staff `session.user.error === "SESSION_INVALIDATED"` check
+  // (unchanged) is never reached/altered for a customer session, and vice
+  // versa. Portal invalidation is signaled via the TOP-LEVEL `session.error`
+  // field (matches config.ts's `{ ...session, error: "SESSION_INVALIDATED" }`
+  // for both branches — see config.ts session callback).
+  if (session.principalType === "customer") {
+    if (session.error === "SESSION_INVALIDATED") {
+      return UNAUTHENTICATED_CTX;
+    }
     return {
       req,
       userId: null,
       roles: [],
       roleId: null,
-      tenantSlug: null,
-      tenantId: null,
+      tenantSlug: session.user.tenantSlug || null,
+      tenantId: session.user.tenantId || null,
       securityVersion: 0,
       isDemoTenant: false,
-      session: null,
+      session,
+      principalType: "customer",
+      customerId: session.customerId ?? null,
     };
+  }
+
+  // Staff session — UNCHANGED check + shape.
+  if (session.user.error === "SESSION_INVALIDATED") {
+    return UNAUTHENTICATED_CTX;
   }
 
   return {
@@ -100,5 +155,7 @@ export async function createTRPCContext({ req }: { req: NextRequest }): Promise<
     securityVersion: session.user.securityVersion,
     isDemoTenant: session.user.isDemoTenant,
     session,
+    principalType: "staff",
+    customerId: null,
   };
 }

@@ -44,6 +44,33 @@ export const protectedProcedure = t.procedure.use(({ ctx, type, next }) => {
 
 export const middleware = t.middleware;
 
+// Customer-portal procedure (T1.2/T1.3) — the portal counterpart to
+// protectedProcedure. Requires ctx.principalType === "customer" (a staff
+// session/context is deny-by-default here, mirroring how a customer ctx is
+// deny-by-default on protectedProcedure/matrixProcedure — neither procedure
+// family trusts the other's principal). Also denies an unauthenticated
+// request and an invalidated customer session (ctx.customerId is null in
+// both cases — createTRPCContext collapses "invalidated" to the same
+// unauthenticated shape as "never signed in").
+export const portalProcedure = t.procedure.use(({ ctx, next }) => {
+  if (
+    ctx.principalType !== "customer" ||
+    ctx.customerId === null ||
+    ctx.customerId === undefined ||
+    ctx.tenantSlug === null
+  ) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+  return next({
+    ctx: {
+      ...ctx,
+      customerId: ctx.customerId,
+      tenantSlug: ctx.tenantSlug,
+      tenantId: ctx.tenantId!,
+    },
+  });
+});
+
 // Platform Owner procedure — requires "Platform Owner" role; no tenant scoping
 export const platformProcedure = t.procedure.use(({ ctx, next }) => {
   if (ctx.userId === null) {
