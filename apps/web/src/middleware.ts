@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/server/auth";
 import { isPublic } from "@/lib/public-paths";
+import { resolvePrincipalIsolationRedirect } from "@/lib/portal-routing";
 
 export { isPublic } from "@/lib/public-paths";
 
@@ -56,6 +57,15 @@ export default auth(function middleware(req) {
   // Cross-tenant access attempt — redirect to own tenant
   if (sessionSlug !== undefined && urlSlug !== sessionSlug) {
     return NextResponse.redirect(new URL(`/${sessionSlug}/dashboard`, req.url));
+  }
+
+  // Principal isolation (W1-T1.4) — staff never sees the customer portal
+  // surface, customers never see the staff (app) surface. Runs only once the
+  // request is confirmed authed + same-tenant above.
+  const principalType = (session as { principalType?: "staff" | "customer" }).principalType;
+  const isolationRedirect = resolvePrincipalIsolationRedirect(pathname, urlSlug, principalType);
+  if (isolationRedirect !== null) {
+    return NextResponse.redirect(new URL(isolationRedirect, req.url));
   }
 
   // Suspended tenant — redirect to login with error

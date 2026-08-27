@@ -27,4 +27,21 @@ describe("isPublic", () => {
   it("an unrelated authed path stays private", () => {
     expect(isPublic("/some-slug/dashboard")).toBe(false);
   });
+
+  // W1-T1.4 — customer-portal auth pages (public) vs the rest of /portal (private)
+  it("/{slug}/portal/login is public (customer sets password / signs in)", () => {
+    expect(isPublic("/acme/portal/login")).toBe(true);
+  });
+
+  it("/{slug}/portal/accept is public (customer invite-accept flow)", () => {
+    expect(isPublic("/acme/portal/accept")).toBe(true);
+  });
+
+  it("bare /{slug}/portal (customer dashboard) stays private", () => {
+    expect(isPublic("/acme/portal")).toBe(false);
+  });
+
+  it("/{slug}/portal/invoices stays private", () => {
+    expect(isPublic("/acme/portal/invoices")).toBe(false);
+  });
 });

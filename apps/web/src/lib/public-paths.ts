@@ -37,9 +37,16 @@ export const PUBLIC_PATHS = [
 // Foundation / D-SEO 2026-08-08).
 const STOREFRONT_PATH_RE = /^\/[^/]+\/store(\/.*)?$/;
 
+// Customer-portal auth pages — /{tenantSlug}/portal/login + /{tenantSlug}/portal/accept
+// must be reachable WITHOUT a session (a customer sets their password / signs in
+// there). Every OTHER path under /{tenantSlug}/portal/* still requires auth —
+// this regex intentionally does NOT match bare /{slug}/portal or any other
+// /{slug}/portal/<sub> path (W1-T1.4).
+const PORTAL_AUTH_PATH_RE = /^\/[^/]+\/portal\/(login|accept)(\/.*)?$/;
+
 export function isPublic(pathname: string): boolean {
   if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
     return true;
   }
-  return STOREFRONT_PATH_RE.test(pathname);
+  return STOREFRONT_PATH_RE.test(pathname) || PORTAL_AUTH_PATH_RE.test(pathname);
 }
