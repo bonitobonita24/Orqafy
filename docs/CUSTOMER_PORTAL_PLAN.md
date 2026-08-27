@@ -62,4 +62,14 @@ Route home: new segment `(tenant)/[slug]/portal/*` (sibling of `store` and `(app
 - `portalEmail` uniqueness: partial unique `(tenantId, portalEmail)` where portalEnabled — confirm in T1.1.
 
 ## Progress
-- [ ] W1  - [ ] W2  - [ ] W3
+- [x] **W1 — Auth foundation** (2026-08-27) — T1.1 schema/migration (applied to dev), keystone T1.2/T1.3
+  (portal provider + principalType + portalProcedure; PM found+fixed an invalidated-session bypass),
+  T1.4 middleware isolation, T1.5 invite/accept/reset router (+ security-review fix: disable purges
+  invites, setPassword refuses inactive customer). Full suite 1553/1553; runtime confirms both Auth.js
+  providers register + `/portal/login` public + `/portal` auth-gated. Commits d170f43, 90a2541, 0d9c929.
+- [ ] W2 — Shell + auth UI
+- [ ] W3 — Sections
+
+## Follow-ups (hardening, non-blocking)
+- setPassword TOCTOU: narrow race between the `isActive` read and the final transaction — harden with a
+  conditional `updateMany` guarded on `isActive:true` (agent-found 2026-08-27, W1-T1.5 review).
