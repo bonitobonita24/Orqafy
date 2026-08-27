@@ -6,15 +6,16 @@ Not a decisions log — owner-gated `[WHAT]`s live in `PENDING_DECISIONS.md`.
 
 ## 🔴 / 🟡 Open
 
-- 🔴 **Demo/seed invoices have null `publicToken`** — the demo seed inserts invoices directly (not via the
-  `invoice.create` mutation that generates the token), so all seeded invoices show "No public link available"
-  on the new D-4 Copy-share-link button and can't demo the public `/invoice/[token]` view. Fix: backfill
-  `publicToken = crypto.randomUUID()` for seeded invoices in the demo seed. `agent-found 2026-08-27` (D-4 build).
 - 🔴 **`favicon.ico` 404** — app serves no favicon; browser logs a 404 on first load (harmless but shows in
   console). Add `apps/web/src/app/favicon.ico` (or `icon.png`). `agent-found 2026-08-27` (QA sweep).
 
 ## ✅ Done recently
 
+- ✅ **D-4 public invoice view + Copy-share-link** — public `/invoice/[token]` page (noindex, notFound on bad
+  token), shared sanitized fetch, allow-list flip, staff "Copy share link" button. Verified live (200/404/no
+  field leak) + full suite 1491/1491. Released **v0.17.0** (local, HARD HOLD). (`353aeba`, 2026-08-27)
+- ✅ **Demo invoices `publicToken` backfill** — seeded customer invoices now get a token so D-4 is demoable.
+  (`6fb4e28`, 2026-08-27)
 - ✅ **AdminCN Phase E re-baseline (authed admin fidelity gate)** — `design-fidelity.mjs` gained authed
   capture (login once, reuse storageState for `auth:true` entries); `data-fdl` landmark anchors on the
   AdminCN shell + dashboard; `/demo/dashboard` baseline captured. Gate now 8/8 PASS (was 7 public-only).
