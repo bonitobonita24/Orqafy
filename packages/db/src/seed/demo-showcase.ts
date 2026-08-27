@@ -29,6 +29,7 @@
  */
 
 import type { PrismaClient } from '@prisma/client';
+import { createId } from '@paralleldrive/cuid2';
 import { seedAccounting } from './demo-accounting';
 import { seedBankingExtras } from './demo-banking-extras';
 import { seedHrExtras } from './demo-hr-extras';
@@ -1777,6 +1778,9 @@ async function seedInvoicesExpenses(
         invoiceNumber: `DEMO-INV-${num(i + 1)}`,
         customerId: at(customerIds, i),
         createdById: adminId,
+        // Public share token (parity with invoice.create) so the D-4 public
+        // invoice view + Copy-share-link are demoable on seeded invoices.
+        publicToken: createId(),
         status: s.status,
         subtotal: money(subtotal),
         taxAmount: money(tax),

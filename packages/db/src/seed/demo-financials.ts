@@ -241,6 +241,9 @@ async function main() {
         invoiceNumber,
         customerId: customerIds[i % customerIds.length]!,
         createdById: userId,
+        // Public share token (parity with invoice.create) so the D-4 public
+        // invoice view + Copy-share-link are demoable on seeded invoices.
+        publicToken: createId(),
         status: 'paid',
         subtotal: new Prisma.Decimal(subtotal),
         taxAmount: new Prisma.Decimal(taxAmount),
