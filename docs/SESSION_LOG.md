@@ -1,5 +1,24 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-08-27 — Approve + merge the AdminCN Phase E fidelity baseline; stop the loop
+
+**In your words:** "handle D-ADMINCN-E" → chose Approve + merge → "save session and handoff all pending tasks and decisions. stop reboot loop."
+
+✅ Done (verified)
+- **D-ADMINCN-E approved + merged.** FF-merged `feat/admincn-e-rebaseline` → local `main` at `ea81e99`
+  (5 commits: authed fidelity harness + `data-fdl` anchors + `/demo/dashboard` baseline + docs). Clean
+  fast-forward, working tree clean. The admin-surface fidelity baseline is now the accepted Rule-31 contract.
+- Closed the decision record (PENDING_DECISIONS.md D-ADMINCN-E → RESOLVED; STATE.md updated).
+
+💬 Decisions / notes
+- `main` is now **6 commits ahead of `origin/main`** — LOCAL / HARD HOLD, nothing pushed, no env touched.
+  A push = release moment (version bump + changelog) and needs an explicit owner word.
+- **Loop STOPPED at owner request.** Next session start is a normal manual resume, not a loop iteration.
+
+⏳ Still open (next time)
+- **D-SEO** — should public surfaces (marketing landing, storefront) be search-indexable (flip blanket noindex)?
+- Optional: push `main` → origin (release), favicon.ico 404 polish, Customer Portal MVP (D-1), RBAC fleet-naming reconcile.
+
 ## 2026-08-27 — "Do decision #1 (AdminCN) in full auto" → it was already done; completed its last loose end
 
 **In your words:** "resume session" → "ok do the decision #1 in full auto mode, i need to sleep."

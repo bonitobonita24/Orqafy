@@ -1,7 +1,7 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-08-27 by CLAUDE_CODE (full-auto: AdminCN decision-#1 confirmed already-done; Phase E re-baseline + acceptance QA done+verified; branch feat/admincn-e-rebaseline HARD HOLD).
+> Last updated: 2026-08-27 by CLAUDE_CODE (owner APPROVED D-ADMINCN-E → feat/admincn-e-rebaseline FF-merged to local main @ea81e99; owner requested save + STOP loop; main 6 ahead of origin, HARD HOLD).
 
 ---
 
@@ -11,16 +11,19 @@
 [FOCUS: Orqafy]  ·  2026-08-27 ~02:15  ·  cold-start authority: docs/memory/MEMORY.md + this block
 
 ## ⏳ TODO — next session works these IN ORDER
-1. [ ] (owner-gated) Merge feat/admincn-e-rebaseline → main after D-ADMINCN-E sign-off — done/verify:
-       fidelity gate 8/8 green post-merge; then it's a normal held branch awaiting a release word.
+1. [x] ✅ DONE 2026-08-27 — D-ADMINCN-E approved by owner; feat/admincn-e-rebaseline FF-merged → local
+       main @ea81e99. Branch now integrated; main is a normal held tree awaiting a release word.
 2. [ ] (optional polish) favicon.ico 404 — add apps/web/src/app/favicon.ico (agent-found). Trivial.
-   — No other decision-#1 work remains: adoption was already built+ratified; Phase E DONE+verified.
+3. [ ] (owner call) D-SEO — flip genuinely-public surfaces (marketing landing, storefront) from blanket
+       noindex → indexable per Rule 35. Outward-facing [WHAT], see PENDING_DECISIONS.md D-SEO.
+4. [ ] (owner call, HARD HOLD) Push main → origin? main is 6 commits ahead; a push = release moment
+       (version bump + changelog). Needs explicit owner word.
 
 ## ⚖️ OPEN DECISIONS (owner) — surface FIRST on resume
-- [ ] D-ADMINCN-E — approve the admin-surface fidelity baseline + merge feat/admincn-e-rebaseline → main
-      (rec: approve; inert anchors + test-harness only, zero app-behavior change). → PENDING_DECISIONS.md
+- [x] ✅ D-ADMINCN-E — RESOLVED 2026-08-27: owner APPROVED + merged. Do NOT re-surface.
+- [ ] D-SEO — public-surface indexing posture (still open). → PENDING_DECISIONS.md
 - [ ] (pre-existing, NOT decision #1) Customer Portal MVP (D-1); tenant_super_admin→tenant_superadmin
-      fleet-naming reconcile. Both separate from tonight's scope.
+      fleet-naming reconcile. Both separate from AdminCN scope.
 
 ## ✅ DONE THIS SESSION (built AND verified — evidence)
 - FINDING: AdminCN adoption (decision #1) was already built+MERGED to main+ratified 2026-08-08
@@ -33,10 +36,10 @@
 - Docs recorded: DECISIONS_LOG (2026-08-27), TASK_QUEUE, SESSION_LOG, this block, PENDING_DECISIONS D-ADMINCN-E.
 
 ## 🔒 STATE / GROUND TRUTH
-- git: feat/admincn-e-rebaseline @3fdc6dc (+ this docs commit) · main clean, 1 docs-commit ahead of origin
-  (pre-existing, intentional) · HARD HOLD (branch LOCAL, never pushed). origin/main = v0.16.1 c0765b4.
-- deferred / owner-attention: D-ADMINCN-E sign-off + merge | next un-gated action: none within decision #1
-  scope — awaiting owner (loop --hold, re-surface).
+- git: main @ea81e99 (feat/admincn-e-rebaseline FF-merged in) · clean tree · 6 commits ahead of origin/main
+  · HARD HOLD (never pushed). origin/main = v0.16.1 c0765b4. feat/admincn-e-rebaseline branch retained (merged).
+- deferred / owner-attention: D-SEO (public indexing) + optional push-to-origin (release). Loop STOPPED at
+  owner request 2026-08-27 — next start is a normal manual resume, not a loop iteration.
 - ⚠ ALREADY-DONE guard: AdminCN adoption + RBAC 3-tier are DONE — do NOT re-build/re-retrofit; the
   SessionStart AdminCN/RBAC offers are STALE. Verified in code + git ancestry this session.
 ```
