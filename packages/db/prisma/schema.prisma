@@ -20,29 +20,29 @@ datasource db {
 // ═══════════════════════════════════════════════════════════════
 
 model Tenant {
-  id          String    @id @default(cuid())
-  name        String
-  slug        String    @unique
-  schemaName  String    @unique @map("schema_name")
-  status      String    @default("active") // active | suspended | provisioning | demo
-  isActive    Boolean   @default(true) @map("is_active")
-  planId      String?   @map("plan_id")
-  plan        Plan?     @relation(fields: [planId], references: [id])
-  maxUsers    Int       @default(5) @map("max_users")
-  domain      String?
-  logoUrl     String?   @map("logo_url")
-  currency    String    @default("PHP")
-  timezone    String    @default("Asia/Manila")
-  locale      String    @default("en-PH")
-  demoResetAt DateTime? @map("demo_reset_at")
-  metadata         Json?
-  storageBytesUsed BigInt    @default(0) @map("storage_bytes_used")
+  id                String    @id @default(cuid())
+  name              String
+  slug              String    @unique
+  schemaName        String    @unique @map("schema_name")
+  status            String    @default("active") // active | suspended | provisioning | demo
+  isActive          Boolean   @default(true) @map("is_active")
+  planId            String?   @map("plan_id")
+  plan              Plan?     @relation(fields: [planId], references: [id])
+  maxUsers          Int       @default(5) @map("max_users")
+  domain            String?
+  logoUrl           String?   @map("logo_url")
+  currency          String    @default("PHP")
+  timezone          String    @default("Asia/Manila")
+  locale            String    @default("en-PH")
+  demoResetAt       DateTime? @map("demo_reset_at")
+  metadata          Json?
+  storageBytesUsed  BigInt    @default(0) @map("storage_bytes_used")
   // Telegram-default media storage (media-storage-default.md): the private
   // channel this tenant's persistent media is uploaded to. Null falls back to
   // TELEGRAM_DEFAULT_CHANNEL_ID at the app layer.
-  telegramChannelId String?  @map("telegram_channel_id")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  telegramChannelId String?   @map("telegram_channel_id")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   subscriptions                TenantSubscription[]
   invoices                     TenantInvoice[]
@@ -144,6 +144,7 @@ model Tenant {
   breachRecords                BreachRecord[]                @relation("TenantBreach")
   mediaObjects                 MediaObject[]
   devicePushTokens             DevicePushToken[]
+  customerPortalInvites        CustomerPortalInvite[]
 
   @@map("tenants")
   @@schema("public")
@@ -165,7 +166,9 @@ model MediaObject {
   mimeType          String?   @map("mime_type")
   migratedAt        DateTime? @map("migrated_at")
   minioReclaimedAt  DateTime? @map("minio_reclaimed_at")
-  /** "original" (default) | "thumbnail". A thumbnail's parentId points at the original's id. */
+  /**
+   * "original" (default) | "thumbnail". A thumbnail's parentId points at the original's id.
+   */
   variant           String    @default("original")
   parentId          String?   @map("parent_id")
   createdAt         DateTime  @default(now()) @map("created_at")
@@ -440,7 +443,7 @@ model Role {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  users User[]
+  users           User[]
   rolePermissions RolePermission[]
 
   @@unique([tenantId, name])
@@ -454,14 +457,14 @@ model Role {
 // Strict CRUD split: view / create / update / delete are separate columns.
 // Scoped ≤ tenant_admin ceiling — enforced in application code, not here.
 model RolePermission {
-  id         String  @id @default(cuid())
-  tenantId   String  @map("tenant_id")
-  roleId     String  @map("role_id")
-  featureKey String  @map("feature_key")
-  view       Boolean @default(false) @map("can_view")
-  create     Boolean @default(false) @map("can_create")
-  update     Boolean @default(false) @map("can_update")
-  delete     Boolean @default(false) @map("can_delete")
+  id         String   @id @default(cuid())
+  tenantId   String   @map("tenant_id")
+  roleId     String   @map("role_id")
+  featureKey String   @map("feature_key")
+  view       Boolean  @default(false) @map("can_view")
+  create     Boolean  @default(false) @map("can_create")
+  update     Boolean  @default(false) @map("can_update")
+  delete     Boolean  @default(false) @map("can_delete")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
@@ -522,29 +525,31 @@ model AuditLog {
 // ═══════════════════════════════════════════════════════════════
 
 model Customer {
-  id                 String   @id @default(cuid())
-  tenantId           String   @map("tenant_id")
-  tenant             Tenant   @relation(fields: [tenantId], references: [id])
-  companyName        String?  @map("company_name")
-  firstName          String   @map("first_name")
-  lastName           String   @map("last_name")
-  email              String?
-  phone              String?
-  address            String?
-  city               String?
-  province           String?
-  postalCode         String?  @map("postal_code")
-  country            String   @default("PH")
-  taxId              String?  @map("tax_id")
-  tier               String   @default("regular") // regular | vip | authorized_dealer
-  notes              String?
-  isActive           Boolean  @default(true) @map("is_active")
-  portalEnabled      Boolean  @default(false) @map("portal_enabled")
-  portalEmail        String?  @map("portal_email")
-  portalPasswordHash String?  @map("portal_password_hash")
-  metadata           Json?
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  id                      String   @id @default(cuid())
+  tenantId                String   @map("tenant_id")
+  tenant                  Tenant   @relation(fields: [tenantId], references: [id])
+  companyName             String?  @map("company_name")
+  firstName               String   @map("first_name")
+  lastName                String   @map("last_name")
+  email                   String?
+  phone                   String?
+  address                 String?
+  city                    String?
+  province                String?
+  postalCode              String?  @map("postal_code")
+  country                 String   @default("PH")
+  taxId                   String?  @map("tax_id")
+  tier                    String   @default("regular") // regular | vip | authorized_dealer
+  notes                   String?
+  isActive                Boolean  @default(true) @map("is_active")
+  portalEnabled           Boolean  @default(false) @map("portal_enabled")
+  portalEmail             String?  @map("portal_email")
+  portalPasswordHash      String?  @map("portal_password_hash")
+  // portal email partial-unique enforced via raw index in migration
+  customerSecurityVersion Int      @default(1) @map("customer_security_version")
+  metadata                Json?
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
 
   contacts        CustomerContact[]
   creditAccount   CustomerCreditAccount?
@@ -556,9 +561,30 @@ model Customer {
   jobOrders       JobOrder[]
   documents       CustomerDocument[]
   contactLogs     ContactLog[]
+  portalInvites   CustomerPortalInvite[]
 
   @@index([tenantId])
   @@map("customers")
+  @@schema("public")
+}
+
+model CustomerPortalInvite {
+  id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  customerId  String    @map("customer_id")
+  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tokenHash   String    @unique @map("token_hash")
+  email       String
+  expiresAt   DateTime  @map("expires_at")
+  consumedAt  DateTime? @map("consumed_at")
+  createdById String    @map("created_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@map("customer_portal_invites")
   @@schema("public")
 }
 
@@ -1132,21 +1158,21 @@ model ShippingCostDistribution {
 }
 
 model GoodsReceipt {
-  id              String        @id @default(cuid())
-  grNumber        String        @unique @map("gr_number")
-  purchaseOrderId String        @map("purchase_order_id")
-  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
-  tenantId        String        @map("tenant_id")
-  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  receivedById    String        @map("received_by_id")
-  receivedBy      User          @relation("GRReceivedBy", fields: [receivedById], references: [id])
-  status          String        @default("pending") // pending | inspecting | accepted | rejected | partial
-  receivedAt      DateTime      @default(now()) @map("received_at")
-  notes           String?
+  id                String        @id @default(cuid())
+  grNumber          String        @unique @map("gr_number")
+  purchaseOrderId   String        @map("purchase_order_id")
+  purchaseOrder     PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  tenantId          String        @map("tenant_id")
+  tenant            Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  receivedById      String        @map("received_by_id")
+  receivedBy        User          @relation("GRReceivedBy", fields: [receivedById], references: [id])
+  status            String        @default("pending") // pending | inspecting | accepted | rejected | partial
+  receivedAt        DateTime      @default(now()) @map("received_at")
+  notes             String?
   // R3 (D-2): required justification when any line is received >10% over the ordered quantity.
-  overReceiptReason String?     @map("over_receipt_reason")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  overReceiptReason String?       @map("over_receipt_reason")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
 
   items GoodsReceiptItem[]
 
@@ -1345,21 +1371,21 @@ enum MerchContentKind {
 // tiles (template-alignment §2 — Shopix parity). @@unique keeps a re-run
 // seed idempotent (upsert by tenant+kind+title).
 model MerchContent {
-  id             String            @id @default(cuid())
-  tenantId       String            @map("tenant_id")
-  tenant         Tenant            @relation("TenantMerchContent", fields: [tenantId], references: [id])
-  kind           MerchContentKind
-  title          String
-  subtitle       String?
-  ctaLabel       String?           @map("cta_label")
-  ctaHref        String?           @map("cta_href")
-  imageUrl       String?           @map("image_url")
-  sortOrder      Int               @default(0) @map("sort_order")
-  isActive       Boolean           @default(true) @map("is_active")
-  startsAt       DateTime?         @map("starts_at")
-  endsAt         DateTime?         @map("ends_at")
-  createdAt      DateTime          @default(now()) @map("created_at")
-  updatedAt      DateTime          @updatedAt @map("updated_at")
+  id        String           @id @default(cuid())
+  tenantId  String           @map("tenant_id")
+  tenant    Tenant           @relation("TenantMerchContent", fields: [tenantId], references: [id])
+  kind      MerchContentKind
+  title     String
+  subtitle  String?
+  ctaLabel  String?          @map("cta_label")
+  ctaHref   String?          @map("cta_href")
+  imageUrl  String?          @map("image_url")
+  sortOrder Int              @default(0) @map("sort_order")
+  isActive  Boolean          @default(true) @map("is_active")
+  startsAt  DateTime?        @map("starts_at")
+  endsAt    DateTime?        @map("ends_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
 
   @@unique([tenantId, kind, title])
   @@index([tenantId, kind])
@@ -1738,7 +1764,9 @@ model Attachment {
   entityType       String   @map("entity_type") // customer | project | job_order | task | expense
   entityId         String   @map("entity_id")
   storageKey       String   @map("storage_key")
-  /** Storage key of the "thumbnail" variant MediaObject, if one was generated. Null = no thumbnail (list UI falls back to storageKey). */
+  /**
+   * Storage key of the "thumbnail" variant MediaObject, if one was generated. Null = no thumbnail (list UI falls back to storageKey).
+   */
   thumbnailKey     String?  @map("thumbnail_key")
   filename         String
   mimeType         String   @map("mime_type")
@@ -1980,32 +2008,32 @@ model Payroll {
 }
 
 model Payslip {
-  id                   String   @id @default(cuid())
-  tenantId             String   @map("tenant_id")
-  tenant               Tenant   @relation("TenantPayslips", fields: [tenantId], references: [id])
-  payrollId            String   @map("payroll_id")
-  payroll              Payroll  @relation(fields: [payrollId], references: [id])
-  employeeId           String   @map("employee_id")
-  employee             Employee @relation(fields: [employeeId], references: [id])
-  basicPay             Decimal  @map("basic_pay") @db.Decimal(12, 2)
-  overtimePay          Decimal  @default(0) @map("overtime_pay") @db.Decimal(12, 2)
-  allowances           Decimal  @default(0) @db.Decimal(12, 2)
-  grossPay             Decimal  @map("gross_pay") @db.Decimal(12, 2)
-  sssDeduction         Decimal  @default(0) @map("sss_deduction") @db.Decimal(12, 2)
-  philhealthDeduction  Decimal  @default(0) @map("philhealth_deduction") @db.Decimal(12, 2)
-  pagibigDeduction     Decimal  @default(0) @map("pagibig_deduction") @db.Decimal(12, 2)
-  taxDeduction         Decimal  @default(0) @map("tax_deduction") @db.Decimal(12, 2)
-  cashAdvanceDeduction Decimal  @default(0) @map("cash_advance_deduction") @db.Decimal(12, 2)
-  otherDeductions      Decimal  @default(0) @map("other_deductions") @db.Decimal(12, 2)
-  totalDeductions      Decimal  @map("total_deductions") @db.Decimal(12, 2)
-  netPay               Decimal  @map("net_pay") @db.Decimal(12, 2)
+  id                      String   @id @default(cuid())
+  tenantId                String   @map("tenant_id")
+  tenant                  Tenant   @relation("TenantPayslips", fields: [tenantId], references: [id])
+  payrollId               String   @map("payroll_id")
+  payroll                 Payroll  @relation(fields: [payrollId], references: [id])
+  employeeId              String   @map("employee_id")
+  employee                Employee @relation(fields: [employeeId], references: [id])
+  basicPay                Decimal  @map("basic_pay") @db.Decimal(12, 2)
+  overtimePay             Decimal  @default(0) @map("overtime_pay") @db.Decimal(12, 2)
+  allowances              Decimal  @default(0) @db.Decimal(12, 2)
+  grossPay                Decimal  @map("gross_pay") @db.Decimal(12, 2)
+  sssDeduction            Decimal  @default(0) @map("sss_deduction") @db.Decimal(12, 2)
+  philhealthDeduction     Decimal  @default(0) @map("philhealth_deduction") @db.Decimal(12, 2)
+  pagibigDeduction        Decimal  @default(0) @map("pagibig_deduction") @db.Decimal(12, 2)
+  taxDeduction            Decimal  @default(0) @map("tax_deduction") @db.Decimal(12, 2)
+  cashAdvanceDeduction    Decimal  @default(0) @map("cash_advance_deduction") @db.Decimal(12, 2)
+  otherDeductions         Decimal  @default(0) @map("other_deductions") @db.Decimal(12, 2)
+  totalDeductions         Decimal  @map("total_deductions") @db.Decimal(12, 2)
+  netPay                  Decimal  @map("net_pay") @db.Decimal(12, 2)
   // Employer statutory shares — tracked as employer cost, NOT deducted from employee net.
-  sssEmployerShare        Decimal @default(0) @map("sss_employer_share") @db.Decimal(12, 2)
-  philhealthEmployerShare Decimal @default(0) @map("philhealth_employer_share") @db.Decimal(12, 2)
-  pagibigEmployerShare    Decimal @default(0) @map("pagibig_employer_share") @db.Decimal(12, 2)
-  deductionDetails     Json?    @map("deduction_details")
-  createdAt            DateTime @default(now()) @map("created_at")
-  updatedAt            DateTime @updatedAt @map("updated_at")
+  sssEmployerShare        Decimal  @default(0) @map("sss_employer_share") @db.Decimal(12, 2)
+  philhealthEmployerShare Decimal  @default(0) @map("philhealth_employer_share") @db.Decimal(12, 2)
+  pagibigEmployerShare    Decimal  @default(0) @map("pagibig_employer_share") @db.Decimal(12, 2)
+  deductionDetails        Json?    @map("deduction_details")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
 
   cashAdvanceRecoveries CashAdvanceRecovery[]
 
@@ -2218,27 +2246,27 @@ model Account {
 }
 
 model JournalEntry {
-  id            String     @id @default(cuid())
-  tenantId      String     @map("tenant_id")
-  tenant        Tenant     @relation("TenantJournalEntries", fields: [tenantId], references: [id])
-  entryNumber   String     @unique @map("entry_number")
-  fiscalYearId  String     @map("fiscal_year_id")
-  fiscalYear    FiscalYear @relation(fields: [fiscalYearId], references: [id])
-  date          DateTime   @db.Date
+  id            String         @id @default(cuid())
+  tenantId      String         @map("tenant_id")
+  tenant        Tenant         @relation("TenantJournalEntries", fields: [tenantId], references: [id])
+  entryNumber   String         @unique @map("entry_number")
+  fiscalYearId  String         @map("fiscal_year_id")
+  fiscalYear    FiscalYear     @relation(fields: [fiscalYearId], references: [id])
+  date          DateTime       @db.Date
   description   String
-  referenceType String?    @map("reference_type")
-  referenceId   String?    @map("reference_id")
-  status        String     @default("draft") // draft | posted | void
-  createdById   String     @map("created_by_id")
-  createdBy     User       @relation("JournalCreatedBy", fields: [createdById], references: [id])
-  postedAt      DateTime?  @map("posted_at")
-  postedById    String?    @map("posted_by_id")
-  postedBy      User?      @relation("JournalPostedBy", fields: [postedById], references: [id])
-  reversalOfId  String?    @map("reversal_of_id")
+  referenceType String?        @map("reference_type")
+  referenceId   String?        @map("reference_id")
+  status        String         @default("draft") // draft | posted | void
+  createdById   String         @map("created_by_id")
+  createdBy     User           @relation("JournalCreatedBy", fields: [createdById], references: [id])
+  postedAt      DateTime?      @map("posted_at")
+  postedById    String?        @map("posted_by_id")
+  postedBy      User?          @relation("JournalPostedBy", fields: [postedById], references: [id])
+  reversalOfId  String?        @map("reversal_of_id")
   reversalOf    JournalEntry?  @relation("JournalReversals", fields: [reversalOfId], references: [id])
   reversals     JournalEntry[] @relation("JournalReversals")
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
 
   lines JournalLine[]
 
@@ -2308,18 +2336,18 @@ model FiscalYear {
 }
 
 model AccountingSettings {
-  id                   String   @id @default(cuid())
-  tenantId             String   @unique @map("tenant_id")
-  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  poApprovalThreshold  Decimal  @default(10000) @map("po_approval_threshold") @db.Decimal(12, 2)
+  id                        String   @id @default(cuid())
+  tenantId                  String   @unique @map("tenant_id")
+  tenant                    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  poApprovalThreshold       Decimal  @default(10000) @map("po_approval_threshold") @db.Decimal(12, 2)
   // Default GL account mapping for JE auto-post (goods receipt + payroll). Nullable until owner configures.
-  defaultInventoryAccountId String? @map("default_inventory_account_id")
-  defaultApAccountId        String? @map("default_ap_account_id")
-  defaultExpenseAccountId   String? @map("default_expense_account_id")
-  defaultInputVatAccountId  String? @map("default_input_vat_account_id")
-  defaultFiscalYearId       String? @map("default_fiscal_year_id")
-  createdAt            DateTime @default(now()) @map("created_at")
-  updatedAt            DateTime @updatedAt @map("updated_at")
+  defaultInventoryAccountId String?  @map("default_inventory_account_id")
+  defaultApAccountId        String?  @map("default_ap_account_id")
+  defaultExpenseAccountId   String?  @map("default_expense_account_id")
+  defaultInputVatAccountId  String?  @map("default_input_vat_account_id")
+  defaultFiscalYearId       String?  @map("default_fiscal_year_id")
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
 
   @@map("accounting_settings")
   @@schema("public")
@@ -2331,9 +2359,9 @@ model StatutoryRate {
   id            String   @id @default(cuid())
   tenantId      String   @map("tenant_id")
   tenant        Tenant   @relation("TenantStatutoryRates", fields: [tenantId], references: [id], onDelete: Cascade)
-  type          String   // sss | philhealth | pagibig | withholding
-  config        Json     // rate/bracket structure consumed by the payroll compute lib
-  source        String   // citation: issuing circular / year (e.g. "SSS Circular 2024-006, eff. Jan 2025")
+  type          String // sss | philhealth | pagibig | withholding
+  config        Json // rate/bracket structure consumed by the payroll compute lib
+  source        String // citation: issuing circular / year (e.g. "SSS Circular 2024-006, eff. Jan 2025")
   effectiveFrom DateTime @map("effective_from") @db.Date
   isActive      Boolean  @default(true) @map("is_active")
   createdAt     DateTime @default(now()) @map("created_at")
@@ -2724,18 +2752,18 @@ model CustomerDocument {
 // String-status convention); the canonical set lives in
 // apps/web/src/server/notifications/categories.ts (NOTIFICATION_CATEGORIES).
 model Notification {
-  id              String    @id @default(cuid())
-  tenantId        String    @map("tenant_id")
-  tenant          Tenant    @relation("TenantNotifications", fields: [tenantId], references: [id])
-  recipientUserId String    @map("recipient_user_id")
-  recipient       User      @relation("UserNotifications", fields: [recipientUserId], references: [id])
-  category        String
-  title           String
-  body            String
-  payload              Json?
-  readAt               DateTime? @map("read_at")
-  emailDigestSentAt    DateTime? @map("email_digest_sent_at")
-  createdAt            DateTime  @default(now()) @map("created_at")
+  id                String    @id @default(cuid())
+  tenantId          String    @map("tenant_id")
+  tenant            Tenant    @relation("TenantNotifications", fields: [tenantId], references: [id])
+  recipientUserId   String    @map("recipient_user_id")
+  recipient         User      @relation("UserNotifications", fields: [recipientUserId], references: [id])
+  category          String
+  title             String
+  body              String
+  payload           Json?
+  readAt            DateTime? @map("read_at")
+  emailDigestSentAt DateTime? @map("email_digest_sent_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
 
   @@index([tenantId, recipientUserId, readAt])
   @@index([tenantId, recipientUserId, createdAt])
@@ -2751,18 +2779,18 @@ model Notification {
 // Data Subject Request — covers all 6 RA 10173 rights:
 // access | rectify | erase | port | object | inform
 model DataSubjectRequest {
-  id           String    @id @default(cuid())
-  tenantId     String    @map("tenant_id")
-  tenant       Tenant    @relation("TenantDsr", fields: [tenantId], references: [id])
-  userId       String    @map("user_id")
-  user         User      @relation("UserDsr", fields: [userId], references: [id])
-  type         String    // access | rectify | erase | port | object | inform
-  status       String    @default("received") // received | in_progress | completed | rejected
-  details      Json?
-  resolution   String?
-  handledById  String?   @map("handled_by_id")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  resolvedAt   DateTime? @map("resolved_at")
+  id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  tenant      Tenant    @relation("TenantDsr", fields: [tenantId], references: [id])
+  userId      String    @map("user_id")
+  user        User      @relation("UserDsr", fields: [userId], references: [id])
+  type        String // access | rectify | erase | port | object | inform
+  status      String    @default("received") // received | in_progress | completed | rejected
+  details     Json?
+  resolution  String?
+  handledById String?   @map("handled_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  resolvedAt  DateTime? @map("resolved_at")
 
   @@index([tenantId])
   @@index([userId])
@@ -2773,22 +2801,22 @@ model DataSubjectRequest {
 
 // Breach Record — NPC 72-hour initial notification + 5-business-day full report
 model BreachRecord {
-  id                   String    @id @default(cuid())
-  tenantId             String    @map("tenant_id")
-  tenant               Tenant    @relation("TenantBreach", fields: [tenantId], references: [id])
-  title                String
-  description          String
-  discoveredAt         DateTime  @map("discovered_at")
-  severity             String    // low | medium | high | critical
-  affectedSubjects     Int?      @map("affected_subjects")
-  npcNotifiedAt        DateTime? @map("npc_notified_at")
-  subjectsNotifiedAt   DateTime? @map("subjects_notified_at")
-  fullReportDueAt      DateTime? @map("full_report_due_at")
-  fullReportFiledAt    DateTime? @map("full_report_filed_at")
-  status               String    @default("open") // open | notified | reported | closed
-  reportedById         String    @map("reported_by_id")
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
+  id                 String    @id @default(cuid())
+  tenantId           String    @map("tenant_id")
+  tenant             Tenant    @relation("TenantBreach", fields: [tenantId], references: [id])
+  title              String
+  description        String
+  discoveredAt       DateTime  @map("discovered_at")
+  severity           String // low | medium | high | critical
+  affectedSubjects   Int?      @map("affected_subjects")
+  npcNotifiedAt      DateTime? @map("npc_notified_at")
+  subjectsNotifiedAt DateTime? @map("subjects_notified_at")
+  fullReportDueAt    DateTime? @map("full_report_due_at")
+  fullReportFiledAt  DateTime? @map("full_report_filed_at")
+  status             String    @default("open") // open | notified | reported | closed
+  reportedById       String    @map("reported_by_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
   @@index([tenantId])
   @@index([tenantId, status])
