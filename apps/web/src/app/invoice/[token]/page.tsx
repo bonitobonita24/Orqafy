@@ -54,7 +54,7 @@ function toNumber(amount: unknown): number {
     typeof amount === "object" &&
     amount !== null &&
     "toNumber" in amount &&
-    typeof (amount as { toNumber: unknown }).toNumber === "function"
+    typeof amount.toNumber === "function"
   ) {
     return (amount as { toNumber: () => number }).toNumber();
   }
@@ -122,7 +122,6 @@ export default async function PublicInvoicePage({ params }: Props) {
             >
               <div className="flex items-start gap-3">
                 {invoice.tenant.logoUrl !== null && (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={invoice.tenant.logoUrl}
                     alt={invoice.tenant.name}

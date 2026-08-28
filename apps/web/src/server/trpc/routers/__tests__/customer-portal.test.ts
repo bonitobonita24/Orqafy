@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import crypto from "node:crypto";
-import { TRPCError } from "@trpc/server";
 import type { NextRequest } from "next/server";
+import type * as OrqafyDb from "@orqafy/db";
 
 // ── Mocks (declared before importing the router under test) ────────────────
 // vi.mock(...) factories are hoisted above imports/const declarations, so the
@@ -23,7 +23,7 @@ const mockDb = vi.hoisted(() => ({
 }));
 
 vi.mock("@orqafy/db", async () => {
-  const actual = await vi.importActual<typeof import("@orqafy/db")>("@orqafy/db");
+  const actual = await vi.importActual<typeof OrqafyDb>("@orqafy/db");
   return {
     ...actual,
     prisma: {

@@ -56,7 +56,13 @@ export function PortalLoginForm({ tenantSlug }: PortalLoginFormProps) {
   }
 
   return (
-    <form data-fdl="portal-login-form" onSubmit={handleSubmit} className="space-y-4">
+    <form
+      data-fdl="portal-login-form"
+      onSubmit={(e) => {
+        void handleSubmit(e);
+      }}
+      className="space-y-4"
+    >
       <FieldGroup className="gap-4">
         <Field className="gap-1">
           <FieldLabel htmlFor="email" className="leading-5">

@@ -63,7 +63,7 @@ export function ProductCard({ product, quantityInCart, availableQty, onAdd, onDe
               // mount; onLoad covers the not-yet-loaded case. setState is a no-op
               // when already true, so the inline ref can't loop.
               ref={(node) => {
-                if (node?.complete && node.naturalWidth > 0) setImgLoaded(true);
+                if (node !== null && node.complete && node.naturalWidth > 0) setImgLoaded(true);
               }}
               src={product.imageUrl}
               alt={product.name}

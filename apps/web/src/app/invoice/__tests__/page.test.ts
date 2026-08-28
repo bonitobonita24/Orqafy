@@ -93,7 +93,7 @@ describe("PublicInvoicePage", () => {
       params: Promise.resolve({ token: "clpublictoken0000000000001" }),
     });
 
-    const text = collectText(element as ReactNodeLike).join(" ");
+    const text = collectText(element).join(" ");
     expect(text).toContain("INV-2026-042");
     expect(text).toContain("Maria Santos");
     expect(text).toContain("Powerbyte IT Solutions");

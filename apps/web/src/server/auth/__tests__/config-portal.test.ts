@@ -55,8 +55,8 @@ const [staffProviderRaw, portalProviderRaw] = authConfig.providers as any[];
 const staffProvider = staffProviderRaw.options;
 const portalProvider = portalProviderRaw.options;
 
-const jwtCallback = (authConfig.callbacks as any).jwt as (args: any) => Promise<any> | any;
-const sessionCallback = (authConfig.callbacks as any).session as (args: any) => Promise<any> | any;
+const jwtCallback = (authConfig.callbacks as any).jwt as (args: any) => any;
+const sessionCallback = (authConfig.callbacks as any).session as (args: any) => any;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -111,8 +111,8 @@ describe("portal provider authorize()", () => {
       customerSecurityVersion: 1,
       email: "jane@customer.com",
     });
-    expect((result as any).roleId).toBeUndefined();
-    expect((result as any).roles).toBeUndefined();
+    expect(result.roleId).toBeUndefined();
+    expect(result.roles).toBeUndefined();
   });
 });
 

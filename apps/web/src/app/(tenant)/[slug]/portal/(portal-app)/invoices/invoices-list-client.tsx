@@ -45,7 +45,7 @@ function toNumber(amount: unknown): number {
     typeof amount === "object" &&
     amount !== null &&
     "toNumber" in amount &&
-    typeof (amount as { toNumber: unknown }).toNumber === "function"
+    typeof amount.toNumber === "function"
   ) {
     return (amount as { toNumber: () => number }).toNumber();
   }
