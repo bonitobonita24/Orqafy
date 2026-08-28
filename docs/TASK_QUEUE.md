@@ -3,15 +3,32 @@
 Fleet-standard task backlog (`task-capture-discipline.md`). Status: **TODO 🔴 · PARTIAL 🟡 · DONE ✅**.
 Captures owner-dumped asks AND agent-found out-of-scope items. Distilled spec only — never raw prose.
 Not a decisions log — owner-gated `[WHAT]`s live in `PENDING_DECISIONS.md`.
+Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `project_squirlnote_use_obligation`.
 
 ## 🔴 / 🟡 Open
 
-- 🔴 **`favicon.ico` 404** — app serves no favicon; browser logs a 404 on first load (harmless but shows in
-  console). Add `apps/web/src/app/favicon.ico` (or `icon.png`). `agent-found 2026-08-27` (QA sweep).
+- 🔴 **Add `mem_limit` to stage/prod compose (V32.10)** `[ORQ-11]` — stage/prod services have NO mem_limit
+  despite the V32.10 mandate; likely the OOM behind the prod exit-255 → 4-day outage. Add per-role limits to
+  `/etc/komodo/stacks/orqafy-{prod,staging,demo}` + repo templates. `agent-found 2026-08-28` (outage RCA).
+- 🔴 **Wire uptime monitoring/alert for orqafy.com** `[ORQ-12]` — orqafy.com was down ~4 days unnoticed. Add an
+  uptime-kuma check + alert for orqafy.com + staging.orqafy.com; consider `restart: always` for infra so a
+  reboot self-heals. `agent-found 2026-08-28` (outage RCA).
+- 🔴 **`favicon.ico` 404** `[ORQ-10]` — app serves no favicon; browser logs a 404 on first load (harmless but
+  shows in console). Add `apps/web/src/app/favicon.ico` (or `icon.png`). `agent-found 2026-08-27` (QA sweep).
 
 ## ✅ Done recently
 
-- ✅ **D-4 public invoice view + Copy-share-link** — public `/invoice/[token]` page (noindex, notFound on bad
+- ✅ **D-1 Customer Portal MVP (invite-only)** `[ORQ-1]` — 2nd Auth.js portal provider + principalType +
+  portalProcedure; Dashboard/Invoices/Orders/Repairs (customer-scoped) + staff invite card. E2E-verified;
+  6 defects caught in verification. Released **v0.18.0**, merged+pushed, deployed to staging. (2026-08-28)
+- ✅ **Deploy v0.18.0 portal to staging (data-first gate)** `[ORQ-3]` — refreshed staging from prod, migration
+  applied, schema HARD gate up-to-date, portal verified on staging.orqafy.com. Prod promote = separate owner
+  step. (`sha-0e7ba0f`, 2026-08-28)
+- ✅ **Production outage recovery** `[ORQ-4]` — prod/staging/demo down ~4 days after a VPS reboot; restored via
+  `docker start` (not compose up); orqafy.com back to 200, all stacks healthy. (2026-08-28)
+- ✅ **CI Turbo lint green** `[ORQ-5]` — cleared portal/D-4 ESLint errors (behavior-preserving); lint+typecheck+
+  suite green. `0e7ba0f`. (dep-audit CI job stays red — pre-existing.) (2026-08-28)
+- ✅ **D-4 public invoice view + Copy-share-link** `[ORQ-2]` — public `/invoice/[token]` page (noindex, notFound on bad
   token), shared sanitized fetch, allow-list flip, staff "Copy share link" button. Verified live (200/404/no
   field leak) + full suite 1491/1491. Released **v0.17.0** (local, HARD HOLD). (`353aeba`, 2026-08-27)
 - ✅ **Demo invoices `publicToken` backfill** — seeded customer invoices now get a token so D-4 is demoable.
