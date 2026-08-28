@@ -9,6 +9,10 @@ networks:
 services:
   app:
     image: ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${APP_IMAGE_TAG:-latest}
+    mem_limit: 768m
+    memswap_limit: 768m
+    mem_reservation: 256m
+    cpus: 1.0
     container_name: ${COMPOSE_PROJECT_NAME}_app
     hostname: ${COMPOSE_PROJECT_NAME}_app
     env_file: ../../../.env.prod

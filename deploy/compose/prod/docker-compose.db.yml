@@ -12,6 +12,10 @@ volumes:
 services:
   postgres:
     image: postgres:16-alpine
+    mem_limit: 512m
+    memswap_limit: 512m
+    mem_reservation: 128m
+    cpus: 0.5
     container_name: ${COMPOSE_PROJECT_NAME}_postgres
     hostname: ${COMPOSE_PROJECT_NAME}_postgres
     env_file: ../../../.env.prod
@@ -34,6 +38,10 @@ services:
 
   pgbouncer:
     image: edoburu/pgbouncer:latest
+    mem_limit: 128m
+    memswap_limit: 128m
+    mem_reservation: 32m
+    cpus: 0.25
     container_name: ${COMPOSE_PROJECT_NAME}_pgbouncer
     hostname: ${COMPOSE_PROJECT_NAME}_pgbouncer
     env_file: ../../../.env.prod

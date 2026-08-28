@@ -44,6 +44,10 @@ services:
   # ─── DATABASE ───
   postgres:
     image: postgres:16-alpine
+    mem_limit: 512m
+    memswap_limit: 512m
+    mem_reservation: 128m
+    cpus: 0.5
     container_name: ${COMPOSE_PROJECT_NAME}_postgres
     hostname: ${COMPOSE_PROJECT_NAME}_postgres
     env_file: .env
@@ -66,6 +70,10 @@ services:
 
   pgbouncer:
     image: edoburu/pgbouncer:latest
+    mem_limit: 128m
+    memswap_limit: 128m
+    mem_reservation: 32m
+    cpus: 0.25
     container_name: ${COMPOSE_PROJECT_NAME}_pgbouncer
     hostname: ${COMPOSE_PROJECT_NAME}_pgbouncer
     env_file: .env
@@ -86,6 +94,10 @@ services:
   # ─── CACHE ───
   valkey:
     image: valkey/valkey:7-alpine
+    mem_limit: 128m
+    memswap_limit: 128m
+    mem_reservation: 32m
+    cpus: 0.25
     container_name: ${COMPOSE_PROJECT_NAME}_valkey
     hostname: ${COMPOSE_PROJECT_NAME}_valkey
     env_file: .env
@@ -133,6 +145,10 @@ services:
   worker:
     # NO build: key — image pulled from Docker Hub only
     image: ${DOCKERHUB_USERNAME}/${WORKER_IMAGE_NAME}:${APP_IMAGE_TAG:-latest}
+    mem_limit: 384m
+    memswap_limit: 384m
+    mem_reservation: 128m
+    cpus: 0.5
     container_name: ${COMPOSE_PROJECT_NAME}_worker
     hostname: ${COMPOSE_PROJECT_NAME}_worker
     env_file: .env
@@ -157,6 +173,10 @@ services:
   app:
     # NO build: key — image pulled from Docker Hub only
     image: ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${APP_IMAGE_TAG:-latest}
+    mem_limit: 768m
+    memswap_limit: 768m
+    mem_reservation: 256m
+    cpus: 1.0
     container_name: ${COMPOSE_PROJECT_NAME}_app
     hostname: ${COMPOSE_PROJECT_NAME}_app
     env_file: .env
