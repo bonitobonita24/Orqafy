@@ -5,10 +5,27 @@
 **In your words:** resume → "start D-4" (standalone) → "do all options A to C in Full Auto Mode, summon Architect orchestration." → "merge feat/d1-customer-portal → main (+ bump ~v0.18.0), then push main to origin."
 
 🚀 Shipped
-- **Merged the Customer Portal → main + released v0.18.0** (D-4 = v0.17.0), and **pushed main to origin**
-  (`origin/main` = `0431f75`). CI builds the image on push — **Model B, NO auto-deploy**; staging/prod/demo
-  untouched. Final gates green before push (1569/1569, typecheck, build). Dev container is behind main
-  (Model B = no env leads dev; rebuild when convenient).
+- **Merged the Customer Portal → main + released v0.18.0** (D-4 = v0.17.0), and **pushed main to origin**.
+  CI builds the image on push — **Model B, NO auto-deploy**. Final gates green before push (1569/1569).
+
+🚨 Prod outage found + fixed (during the deploy)
+- Going to deploy the portal to staging, I found **all Orqafy stacks (prod/staging/demo) had been down ~4 days**
+  — orqafy.com offline since a VPS reboot (the prod app had OOM-exited first; no mem_limits; `unless-stopped`
+  won't restart an already-stopped container). **Restored all stacks** via `docker start` on their current
+  images (not `compose up`, which would've pulled the new portal onto prod). **orqafy.com is back online.**
+
+✅ Staging deploy of the portal (validated)
+- Ran the data-first gate: refreshed staging from a fresh **prod** copy → applied the portal migration →
+  **schema HARD gate "up to date"** → health 200. Verified the portal live on `staging.orqafy.com/powerbyte/portal`.
+- En route: pushed a behavior-preserving lint-fix so CI's Turbo lint is green (dep-audit stays red — pre-existing).
+
+📋 Squirlnote board
+- Populated the **Orqafy** task board (ORQ-1..12): this session's work + the queue → **For Review** (my terminal
+  lane; Done is your approval), the favicon + two outage follow-ups (mem_limit, uptime alert) → **Pending**.
+  Reconciled `docs/TASK_QUEUE.md` ↔ board.
+
+⚖️ Outstanding decision
+- **Promote v0.18.0 to production** — staging is validated green (same image). Separate, deliberate owner step.
 
 ✅ Done (verified)
 - **D-4 — public invoice view + Copy-share-link.** New public `/invoice/[token]` page (noindex; `notFound()`

@@ -1,7 +1,31 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-08-27 by CLAUDE_CODE (owner APPROVED D-ADMINCN-E → feat/admincn-e-rebaseline FF-merged to local main @ea81e99; owner requested save + STOP loop; main 6 ahead of origin, HARD HOLD).
+> Last updated: 2026-08-28 by CLAUDE_CODE (Full-Auto A→C shipped: D-4=v0.17.0, D-1 Customer Portal MVP=v0.18.0 merged+pushed; found+fixed a 4-day prod outage; deployed v0.18.0 to staging via data-first gate (validated); Squirlnote board populated ORQ-1..12. main @44e9d54 IN SYNC w/ origin. Handoff: .sessions/slot-23/next-session).
+
+---
+
+## ⭐ SESSION 2026-08-28 — Customer Portal shipped + prod outage recovery + staging deploy
+
+```
+[FOCUS: Orqafy]  ·  cold-start authority: docs/memory/MEMORY.md → session_d1_customer_portal_mvp_2026-08-28.md
+Full handoff (TODO + open decisions + ground truth): .sessions/slot-23/next-session
+
+## ⏳ TODO next session (IN ORDER) — full detail in the slot-23 handoff
+1. [ ] (OWNER CALL) Promote v0.18.0 portal to PRODUCTION — staging validated green; deploy/push-to-prod.sh sha-0e7ba0f.
+2. [ ] [ORQ-11] Add mem_limit to stage/prod compose (V32.10) — the OOM behind the outage.
+3. [ ] [ORQ-12] Wire uptime alert for orqafy.com (down 4 days unnoticed).
+4. [ ] [ORQ-10] favicon.ico 404 (trivial). 5. [ ] Rebuild dev off v0.18.0 (FYI).
+
+## ⚖️ OPEN DECISIONS — surface FIRST
+- [ ] Promote v0.18.0 to PROD? (staging green) · Deploy portal to DEMO? · D-1 v2 scope · pre-existing PENDING_DECISIONS (D-3, D-2b, D-PROD-3) · fleet adoptions.
+
+## 🔒 GROUND TRUTH
+- main @44e9d54 IN SYNC origin; v0.17.0+v0.18.0 tags pushed; clean tree.
+- PROD (orqafy.com) UP on OLD pre-portal image · STAGING UP on v0.18.0 (portal, validated) · DEMO UP old. All healthy. prod/staging tenant slug=powerbyte.
+- Model B no auto-deploy; prod/demo portal deploy = owner word. CI ci.yml red = pre-existing dep-audit only (lint/test/build green).
+- ⚠ ALREADY-DONE guard: D-1/D-4/deploy/outage DONE — do NOT re-run. Prod-promote is the only build-ish TODO.
+```
 
 ---
 
