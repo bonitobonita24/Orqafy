@@ -1,5 +1,28 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-08-28 (night) — Outage hardening: Compose resource limits + uptime monitoring (ORQ-11, ORQ-12)
+
+**In your words:** resume → you chose "harden infra first (ORQ-11/12), THEN promote v0.18.0 to prod."
+
+✅ Done (verified)
+- **ORQ-11 — Compose memory/CPU limits.** Root cause of the 4-day outage was clear: every Orqafy container
+  ran with NO memory limit on a densely-shared 7.8 GiB / 2-vCPU box (already swap-stressed), so an OOM took
+  the whole box down and containers didn't return. Added per-role limits (app 768M / worker 384M /
+  postgres 512M / valkey+pgbouncer 128M / minio 256M) two ways: **applied live to all 15 running containers
+  via `docker update`** (non-disruptive — no restart, no image repull) so protection is active *now*, and
+  **committed durably to all prod/staging/demo compose files** so it survives recreates. Verified: all 15
+  healthy, prod still 200, caps enforced. `3ac1210`, branch `fix/orq-11-compose-mem-limits` (HARD HOLD local).
+- **ORQ-12 — Uptime monitoring.** Uptime-Kuma was already running but had **zero Orqafy monitors** — the exact
+  reason the outage was silent for 4 days. Added 3 HTTP monitors (orqafy.com / staging / demo → `/api/health`,
+  60s) with the Telegram (Hermes) alert attached. All verified UP/200. Any future Orqafy outage now pings you.
+
+💬 Notes / follow-ups
+- Deliberately used `docker update` (not `compose up`) for the live fix: prod's `:latest` tag now points at the
+  v0.18.0 portal image, so a `compose up` would have silently deployed the portal to prod. Avoided.
+- **ORQ-13 (new):** prod `MERGED.docker-compose.yml` is stale (says "no MinIO / R2" but live prod runs MinIO) —
+  a Komodo redeploy from it would drop storage. Logged, not fixed (out of scope).
+- **Still open — your call:** promote v0.18.0 (Customer Portal) to prod. Staging is green; infra is now hardened.
+
 ## 2026-08-27 (eve) — D-4 public invoice view built + released; Full-Auto A→C; Customer Portal (D-1) started
 
 **In your words:** resume → "start D-4" (standalone) → "do all options A to C in Full Auto Mode, summon Architect orchestration." → "merge feat/d1-customer-portal → main (+ bump ~v0.18.0), then push main to origin."
