@@ -7,17 +7,23 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## 🔴 / 🟡 Open
 
-- 🔴 **Add `mem_limit` to stage/prod compose (V32.10)** `[ORQ-11]` — stage/prod services have NO mem_limit
-  despite the V32.10 mandate; likely the OOM behind the prod exit-255 → 4-day outage. Add per-role limits to
-  `/etc/komodo/stacks/orqafy-{prod,staging,demo}` + repo templates. `agent-found 2026-08-28` (outage RCA).
-- 🔴 **Wire uptime monitoring/alert for orqafy.com** `[ORQ-12]` — orqafy.com was down ~4 days unnoticed. Add an
-  uptime-kuma check + alert for orqafy.com + staging.orqafy.com; consider `restart: always` for infra so a
-  reboot self-heals. `agent-found 2026-08-28` (outage RCA).
 - 🔴 **`favicon.ico` 404** `[ORQ-10]` — app serves no favicon; browser logs a 404 on first load (harmless but
   shows in console). Add `apps/web/src/app/favicon.ico` (or `icon.png`). `agent-found 2026-08-27` (QA sweep).
+- 🟡 **Regenerate stale `prod/MERGED.docker-compose.yml`** `[ORQ-13]` — the committed prod MERGED declares
+  "no MinIO / uses R2" (generated 2026-06-16) but live prod runs MinIO; a Komodo redeploy from it would drop
+  storage. Regenerate MERGED from the current per-service files. `agent-found 2026-08-28` (ORQ-11 work).
 
 ## ✅ Done recently
 
+- ✅ **Compose resource limits (mem/cpu) — outage hardening** `[ORQ-11]` — added top-level `mem_limit`/
+  `memswap_limit`/`mem_reservation`/`cpus` (V32.10) to all prod/staging/demo services (dev exempt); applied
+  live to all 15 running containers via `docker update` (non-disruptive, no repull/restart) AND committed
+  durably to compose files. Modeled on ferrybook + real usage on the tight 2-vCPU/7.8G box. `3ac1210` on
+  `fix/orq-11-compose-mem-limits`, HARD HOLD local. (2026-08-28)
+- ✅ **Uptime monitoring + alerts for Orqafy** `[ORQ-12]` — added 3 HTTP monitors (orqafy.com /
+  staging.orqafy.com / demo.orqafy.com → `/api/health`, 60s) to the existing shared Uptime-Kuma with the
+  Telegram (Hermes) notification attached. All UP/200 verified. Closes the blind spot behind the silent
+  4-day outage. (Kuma DB change — shared infra, not in-repo.) (2026-08-28)
 - ✅ **D-1 Customer Portal MVP (invite-only)** `[ORQ-1]` — 2nd Auth.js portal provider + principalType +
   portalProcedure; Dashboard/Invoices/Orders/Repairs (customer-scoped) + staff invite card. E2E-verified;
   6 defects caught in verification. Released **v0.18.0**, merged+pushed, deployed to staging. (2026-08-28)
