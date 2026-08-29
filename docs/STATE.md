@@ -13,9 +13,10 @@ Full handoff (TODO + open decisions + ground truth): .sessions/slot-23/next-sess
 
 ## ⏳ TODO next session (IN ORDER) — full detail in the slot-23 handoff
 1. [ ] (OWNER CALL) Promote v0.18.0 portal to PRODUCTION — staging validated green; deploy/push-to-prod.sh sha-0e7ba0f.
-2. [ ] [ORQ-11] Add mem_limit to stage/prod compose (V32.10) — the OOM behind the outage.
-3. [ ] [ORQ-12] Wire uptime alert for orqafy.com (down 4 days unnoticed).
-4. [ ] [ORQ-10] favicon.ico 404 (trivial). 5. [ ] Rebuild dev off v0.18.0 (FYI).
+   ALSO PENDING: merge branch fix/orq-11-compose-mem-limits → main (compose limits; HARD HOLD local).
+2. [x] [ORQ-11] Compose mem/cpu limits — DONE 2026-08-29 (live docker update + committed 3ac1210, branch HARD HOLD).
+3. [x] [ORQ-12] Uptime monitors (3× /api/health + Telegram) — DONE 2026-08-29, all UP/200.
+4. [ ] [ORQ-10] favicon.ico 404 (trivial). 5. [ ] Rebuild dev off v0.18.0 (FYI). 6. [ ] [ORQ-13] stale prod MERGED.docker-compose.yml.
 
 ## ⚖️ OPEN DECISIONS — surface FIRST
 - [ ] Promote v0.18.0 to PROD? (staging green) · Deploy portal to DEMO? · D-1 v2 scope · pre-existing PENDING_DECISIONS (D-3, D-2b, D-PROD-3) · fleet adoptions.

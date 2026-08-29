@@ -1,5 +1,21 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-08-29 (am) — Verification pass + rest checkpoint (no code change)
+
+**In your words:** "check if last session's tasks finished — nothing unfinished or corrupted." → then "save it, I'll shut down to rest. No reboot loop."
+
+✅ Done (verified)
+- **Confirmed last session (overnight Aug 28–29) landed clean.** Portal v0.18.0 merged + tagged + pushed to
+  origin (`0e7ba0f` is on `origin/main`); staging green; ORQ-11/12 outage hardening committed. Integrity: working
+  tree clean, branch `fix/orq-11-compose-mem-limits` touches only compose + docs (no stray code), all 26 compose
+  YAML files parse. **No unfinished or corrupted coding.**
+
+💬 Notes
+- Local `main` is 1 commit ahead of origin — that commit is the save-session handoff doc (`d386691`), docs-only, safe.
+- **Still open — your call (unchanged):** promote v0.18.0 (Customer Portal) to prod (image `sha-0e7ba0f` pinned),
+  and/or merge `fix/orq-11-compose-mem-limits` to main. Both HARD HOLD until you say ship.
+- Owner resting — loop stopped, no reboot.
+
 ## 2026-08-28 (night) — Outage hardening: Compose resource limits + uptime monitoring (ORQ-11, ORQ-12)
 
 **In your words:** resume → you chose "harden infra first (ORQ-11/12), THEN promote v0.18.0 to prod."
