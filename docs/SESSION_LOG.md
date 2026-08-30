@@ -1,5 +1,25 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-08-30 — Promote v0.18.0 Customer Portal to PRODUCTION (owner-approved ship)
+
+**In your words:** "yes do that Promote" → ship the pinned v0.18.0 build to prod.
+
+✅ Done (verified)
+- **v0.18.0 (Customer Portal) is LIVE on orqafy.com.** Ran `deploy/compose/push-to-prod.sh sha-0e7ba0f`:
+  prod DB backed up first (rollback point), `sha-0e7ba0f` promoted → `latest` (web + worker), prod app+worker
+  recreated, migrations applied. Verified: `/api/health` = 200; prod app image revision = `0e7ba0f` (exact
+  portal bytes); `/powerbyte/portal` → 307 (redirect to portal login — expected for the invite-only portal).
+- **2 migrations applied to prod DB (deliberate, never reseeded):** `20260814133917_add_brand_merchcontent_ecommerce_fields`
+  + `20260827210000_add_customer_portal_session_and_invites`. Migration set confirmed identical to v0.18.0
+  (`0e7ba0f` is an ancestor of the deploy HEAD; no extra migrations on the ORQ-11 branch).
+- **Rule 39 dev-freshness:** rebuilt dev app+worker off `main` as the coupled step (delta was docs-only).
+
+💬 Notes
+- Cosmetic only: the promoted image also got a `prod-sha-3ac1210`-style label from the deploy HEAD (ORQ-11
+  branch) rather than `0e7ba0f`; the running bytes are correct (`0e7ba0f`), just the vanity tag differs.
+- Squirlnote ORQ-14 → For Review (agent terminal lane; Done is owner-only).
+- Still open (unchanged, HARD HOLD local): merge `fix/orq-11-compose-mem-limits` → main. Demo still on old build.
+
 ## 2026-08-29 (am) — Verification pass + rest checkpoint (no code change)
 
 **In your words:** "check if last session's tasks finished — nothing unfinished or corrupted." → then "save it, I'll shut down to rest. No reboot loop."

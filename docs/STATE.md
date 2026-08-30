@@ -12,8 +12,8 @@
 Full handoff (TODO + open decisions + ground truth): .sessions/slot-23/next-session
 
 ## ⏳ TODO next session (IN ORDER) — full detail in the slot-23 handoff
-1. [ ] (OWNER CALL) Promote v0.18.0 portal to PRODUCTION — staging validated green; deploy/push-to-prod.sh sha-0e7ba0f.
-   ALSO PENDING: merge branch fix/orq-11-compose-mem-limits → main (compose limits; HARD HOLD local).
+1. [x] ✅ DONE 2026-08-30 — Promoted v0.18.0 portal to PRODUCTION (owner-approved). orqafy.com LIVE on sha-0e7ba0f, health 200, portal 307; 2 migrations applied; prod DB backed up first; dev rebuilt (Rule 39).
+   STILL PENDING: merge branch fix/orq-11-compose-mem-limits → main (compose limits; HARD HOLD local).
 2. [x] [ORQ-11] Compose mem/cpu limits — DONE 2026-08-29 (live docker update + committed 3ac1210, branch HARD HOLD).
 3. [x] [ORQ-12] Uptime monitors (3× /api/health + Telegram) — DONE 2026-08-29, all UP/200.
 4. [ ] [ORQ-10] favicon.ico 404 (trivial). 5. [ ] Rebuild dev off v0.18.0 (FYI). 6. [ ] [ORQ-13] stale prod MERGED.docker-compose.yml.
@@ -23,7 +23,7 @@ Full handoff (TODO + open decisions + ground truth): .sessions/slot-23/next-sess
 
 ## 🔒 GROUND TRUTH
 - main @44e9d54 IN SYNC origin; v0.17.0+v0.18.0 tags pushed; clean tree.
-- PROD (orqafy.com) UP on OLD pre-portal image · STAGING UP on v0.18.0 (portal, validated) · DEMO UP old. All healthy. prod/staging tenant slug=powerbyte.
+- PROD (orqafy.com) UP on v0.18.0 (portal, promoted 2026-08-30) · STAGING UP on v0.18.0 · DEMO UP old. All healthy. prod/staging tenant slug=powerbyte.
 - Model B no auto-deploy; prod/demo portal deploy = owner word. CI ci.yml red = pre-existing dep-audit only (lint/test/build green).
 - ⚠ ALREADY-DONE guard: D-1/D-4/deploy/outage DONE — do NOT re-run. Prod-promote is the only build-ish TODO.
 ```
