@@ -4,6 +4,16 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.18.1 — 2026-08-31
+
+### [FIXED]
+- **Deploy — outage hardening (ORQ-11):** compose `mem_limit`/`memswap_limit`/`mem_reservation`/`cpus` on all
+  prod/staging/demo services (dev exempt), preventing the OOM that caused the ~4-day outage (`3ac1210`).
+- **Deploy — migration-tunnel safety (ORQ-17):** `push-to-prod.sh`/`push-to-demo.sh` now open the prisma-migrate
+  SSH tunnel on a dedicated local port decoupled from `DB_PORT`, with a fatal-bind guard (`ExitOnForwardFailure`
+  + liveness check), so a local port collision can no longer silently migrate the wrong database and report false
+  success (`347e900`).
+
 ## v0.18.0 — 2026-08-28
 
 ### [FEATURE]
