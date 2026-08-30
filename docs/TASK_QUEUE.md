@@ -12,15 +12,16 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 - 🟡 **Regenerate stale `prod/MERGED.docker-compose.yml`** `[ORQ-13]` — the committed prod MERGED declares
   "no MinIO / uses R2" (generated 2026-06-16) but live prod runs MinIO; a Komodo redeploy from it would drop
   storage. Regenerate MERGED from the current per-service files. `agent-found 2026-08-28` (ORQ-11 work).
-- 🔴 **Harden `push-to-demo.sh` / `push-to-prod.sh` migration tunnel** `[ORQ-17]` — both open the DB tunnel on a
-  LOCAL bind port equal to the remote `DB_PORT`; when another local container publishes that port (hit live:
-  `onepostman-postgres` on `:5439` vs demo `DB_PORT=5439`) the bind fails, prisma migrates the WRONG local DB,
-  the fallback swallows the error, and the script still prints "✅ done" (false success — demo DB left un-migrated).
-  Fix: fixed high local tunnel port (e.g. 15439) decoupled from `DB_PORT`; fail loud on migrate error; poll health
-  not sleep-5. Lesson: `bash.deploy.tunnel-port-collides-with-local-db-container-false-success`.
-  `agent-found 2026-08-30` (demo promote). Done = demo migration applies even with `:5439` locally occupied.
-
 ## ✅ Done recently
+
+- ✅ **Harden `push-to-demo.sh` / `push-to-prod.sh` migration tunnel** `[ORQ-17]` — both opened the DB tunnel on a
+  LOCAL bind port equal to the remote `DB_PORT`; when another local container published that port (hit live:
+  `onepostman-postgres` on `:5439` vs demo `DB_PORT=5439`) the bind failed silently, `ssh -N` stayed alive, prisma
+  migrated the WRONG local DB, and the script still printed "✅ done" (false success — remote DB left un-migrated).
+  Fixed: dedicated high local tunnel port decoupled from `DB_PORT` (probe 15439–15443), `ExitOnForwardFailure=yes`
+  makes a failed bind FATAL, `kill -0` liveness check, abort loudly BEFORE migrate. Brings both scripts to parity
+  with `staging-refresh-and-deploy.sh` (already decoupled). Lesson: `bash.deploy.tunnel-port-collides-with-local-db-container-false-success`.
+  `347e900` on `fix/orq-17-deploy-tunnel-port`, HARD HOLD local. (2026-08-30)
 
 - ✅ **Promote v0.18.0 Customer Portal to PRODUCTION** `[ORQ-14]` — owner-approved. `push-to-prod.sh sha-0e7ba0f`:
   prod DB backed up, image promoted (web+worker), stack recreated, 2 migrations applied, health polled to 200.
