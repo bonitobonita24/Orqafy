@@ -15,10 +15,18 @@
 - **Rule 39 dev-freshness:** rebuilt dev app+worker off `main` as the coupled step (delta was docs-only).
 
 💬 Notes
-- Cosmetic only: the promoted image also got a `prod-sha-3ac1210`-style label from the deploy HEAD (ORQ-11
-  branch) rather than `0e7ba0f`; the running bytes are correct (`0e7ba0f`), just the vanity tag differs.
+- **Merged `fix/orq-11-compose-mem-limits` → main** (FF, compose limits + session docs). main @ `376ee38`,
+  6 commits ahead of origin — HARD HOLD, NOT pushed (push to main = release moment; needs version+changelog).
+- **Deployed portal to DEMO** (`push-to-demo.sh sha-0e7ba0f`): demo.orqafy.com/api/health 200,
+  `/demo/portal/login` 200 (demo tenant slug = `demo`), demo app revision `0e7ba0f`.
+  ⚠ The demo script's migration step FAILED SILENTLY first — its tunnel binds local `:5439`, already taken
+  by an unrelated `onepostman-postgres` container, so prisma migrated the wrong local DB and the script still
+  printed "✅ done" (false success). Caught it, re-ran the migration through a clean `:15439` tunnel — demo DB
+  now has both migrations. Logged lesson `bash.deploy.tunnel-port-collides-…` + agent-found task ORQ-15 to
+  harden both push-to-{demo,prod}.sh.
+- Cosmetic only: the promoted prod image also got a `prod-sha-<HEAD>` vanity label from the deploy branch
+  rather than `0e7ba0f`; the running bytes are correct (`0e7ba0f`).
 - Squirlnote ORQ-14 → For Review (agent terminal lane; Done is owner-only).
-- Still open (unchanged, HARD HOLD local): merge `fix/orq-11-compose-mem-limits` → main. Demo still on old build.
 
 ## 2026-08-29 (am) — Verification pass + rest checkpoint (no code change)
 

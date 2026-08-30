@@ -22,8 +22,8 @@ Full handoff (TODO + open decisions + ground truth): .sessions/slot-23/next-sess
 - [ ] Promote v0.18.0 to PROD? (staging green) · Deploy portal to DEMO? · D-1 v2 scope · pre-existing PENDING_DECISIONS (D-3, D-2b, D-PROD-3) · fleet adoptions.
 
 ## 🔒 GROUND TRUTH
-- main @44e9d54 IN SYNC origin; v0.17.0+v0.18.0 tags pushed; clean tree.
-- PROD (orqafy.com) UP on v0.18.0 (portal, promoted 2026-08-30) · STAGING UP on v0.18.0 · DEMO UP old. All healthy. prod/staging tenant slug=powerbyte.
+- main @376ee38, 6 AHEAD of origin (HARD HOLD — fix/orq-11 FF-merged in + session docs; push=release moment, not pushed). v0.17.0+v0.18.0 tags on origin.
+- PROD (orqafy.com) + STAGING + DEMO all UP on v0.18.0 (portal) as of 2026-08-30. All healthy. prod/staging tenant slug=powerbyte; demo slug=demo (/demo/portal/login 200).
 - Model B no auto-deploy; prod/demo portal deploy = owner word. CI ci.yml red = pre-existing dep-audit only (lint/test/build green).
 - ⚠ ALREADY-DONE guard: D-1/D-4/deploy/outage DONE — do NOT re-run. Prod-promote is the only build-ish TODO.
 ```

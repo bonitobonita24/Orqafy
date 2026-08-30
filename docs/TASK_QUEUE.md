@@ -12,8 +12,24 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 - 🟡 **Regenerate stale `prod/MERGED.docker-compose.yml`** `[ORQ-13]` — the committed prod MERGED declares
   "no MinIO / uses R2" (generated 2026-06-16) but live prod runs MinIO; a Komodo redeploy from it would drop
   storage. Regenerate MERGED from the current per-service files. `agent-found 2026-08-28` (ORQ-11 work).
+- 🔴 **Harden `push-to-demo.sh` / `push-to-prod.sh` migration tunnel** `[ORQ-17]` — both open the DB tunnel on a
+  LOCAL bind port equal to the remote `DB_PORT`; when another local container publishes that port (hit live:
+  `onepostman-postgres` on `:5439` vs demo `DB_PORT=5439`) the bind fails, prisma migrates the WRONG local DB,
+  the fallback swallows the error, and the script still prints "✅ done" (false success — demo DB left un-migrated).
+  Fix: fixed high local tunnel port (e.g. 15439) decoupled from `DB_PORT`; fail loud on migrate error; poll health
+  not sleep-5. Lesson: `bash.deploy.tunnel-port-collides-with-local-db-container-false-success`.
+  `agent-found 2026-08-30` (demo promote). Done = demo migration applies even with `:5439` locally occupied.
 
 ## ✅ Done recently
+
+- ✅ **Promote v0.18.0 Customer Portal to PRODUCTION** `[ORQ-14]` — owner-approved. `push-to-prod.sh sha-0e7ba0f`:
+  prod DB backed up, image promoted (web+worker), stack recreated, 2 migrations applied, health polled to 200.
+  Verified orqafy.com/api/health 200, prod app revision `0e7ba0f`, `/{slug}/portal` 307→login. (2026-08-30)
+- ✅ **Deploy v0.18.0 portal to DEMO** `[ORQ-15]` — owner-approved. `push-to-demo.sh sha-0e7ba0f`; demo DB backed
+  up, image promoted → demo-latest, migration applied (had to re-run via a 15439 tunnel — see ORQ-17). Verified
+  demo.orqafy.com/api/health 200, `/demo/portal/login` 200, demo app revision `0e7ba0f`. (2026-08-30)
+- ✅ **Merge `fix/orq-11-compose-mem-limits` → main** `[ORQ-16]` — FF-merge (compose mem/cpu limits + session docs).
+  main @ `376ee38`, 6 ahead of origin (HARD HOLD — not pushed; push=release moment). (2026-08-30)
 
 - ✅ **Compose resource limits (mem/cpu) — outage hardening** `[ORQ-11]` — added top-level `mem_limit`/
   `memswap_limit`/`mem_reservation`/`cpus` (V32.10) to all prod/staging/demo services (dev exempt); applied
