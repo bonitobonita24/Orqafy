@@ -1,13 +1,18 @@
 # =============================================================
 # ORQAFY PRODUCTION — Komodo Stack compose (single-file merge)
 # =============================================================
-# Generated 2026-06-16 by merging the prod compose files:
+# Regenerated 2026-08-31 (ORQ-13) by merging the current prod compose files:
 #   docker-compose.db.yml      (postgres + pgbouncer)
 #   docker-compose.cache.yml   (valkey)
+#   docker-compose.storage.yml (minio)
+#   docker-compose.pgadmin.yml (pgadmin)
 #   docker-compose.worker.yml  (worker)
 #   docker-compose.app.yml     (app, with Traefik labels)
 #
-# NOTE: No MinIO — prod uses Cloudflare R2 for object storage.
+# STORAGE: persistent media lives on Telegram (STORAGE_BACKEND=telegram, set on
+# app + worker per media-storage-default.md). MinIO is retained as the local
+# temp/index/scratch fallback — it MUST stay in this stack, do not drop it.
+# (The old "No MinIO — uses R2" note was stale; live prod runs MinIO.)
 #
 # PASTE THIS ENTIRE FILE into:
 #   Komodo UI → Stack orqafy-prod → Compose tab
@@ -36,6 +41,8 @@ volumes:
     name: ${COMPOSE_PROJECT_NAME}_pgbouncer_data
   valkey_data:
     name: ${COMPOSE_PROJECT_NAME}_valkey_data
+  minio_data:
+    name: ${COMPOSE_PROJECT_NAME}_minio_data
   pgadmin_data:
     name: ${COMPOSE_PROJECT_NAME}_pgadmin_data
 
@@ -116,6 +123,34 @@ services:
       timeout: 5s
       retries: 5
 
+  # ─── STORAGE (MinIO — temp/index/scratch fallback; persistent media on Telegram) ───
+  minio:
+    image: minio/minio:latest
+    mem_limit: 256m
+    memswap_limit: 256m
+    mem_reservation: 64m
+    cpus: 0.25
+    container_name: ${COMPOSE_PROJECT_NAME}_minio
+    hostname: ${COMPOSE_PROJECT_NAME}_minio
+    env_file: .env
+    environment:
+      TZ: Asia/Manila
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_KEY}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    ports:
+      - "${STORAGE_PORT}:9000"
+      - "${STORAGE_CONSOLE_PORT}:9001"
+    networks: [app_network]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # ─── DB MANAGEMENT UI ───
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -156,6 +191,11 @@ services:
       - TZ=Asia/Manila
       - NODE_ENV=production
       - WORKER_PORT=${WORKER_PORT}
+      # Persistent media default = Telegram (media-storage-default.md).
+      # TELEGRAM_* real values come from .env (Server-Setups SOPS+age) — never hardcode.
+      - STORAGE_BACKEND=telegram
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_DEFAULT_CHANNEL_ID=${TELEGRAM_DEFAULT_CHANNEL_ID}
     networks: [app_network]
     restart: unless-stopped
     depends_on:
@@ -184,6 +224,11 @@ services:
       - TZ=Asia/Manila
       - NODE_ENV=production
       - PORT=${APP_PORT}
+      # Persistent media default = Telegram (media-storage-default.md).
+      # TELEGRAM_* real values come from .env (Server-Setups SOPS+age) — never hardcode.
+      - STORAGE_BACKEND=telegram
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_DEFAULT_CHANNEL_ID=${TELEGRAM_DEFAULT_CHANNEL_ID}
     networks: [app_network, proxy]
     restart: unless-stopped
     depends_on:
