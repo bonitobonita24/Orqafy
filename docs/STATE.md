@@ -1,7 +1,35 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-08-28 by CLAUDE_CODE (Full-Auto A→C shipped: D-4=v0.17.0, D-1 Customer Portal MVP=v0.18.0 merged+pushed; found+fixed a 4-day prod outage; deployed v0.18.0 to staging via data-first gate (validated); Squirlnote board populated ORQ-1..12. main @44e9d54 IN SYNC w/ origin. Handoff: .sessions/slot-23/next-session).
+> Last updated: 2026-08-31 by CLAUDE_CODE (ORQ-17 deploy-tunnel hardening + released v0.18.1 patch, PUSHED to origin. main @971389a IN SYNC w/ origin, tag v0.18.1. No deploys — Model B. Next: ORQ-13 stale prod MERGED compose, ORQ-10 favicon).
+
+---
+
+## ⭐ SESSION 2026-08-31 — ORQ-17 deploy-tunnel hardening + release v0.18.1 (PUSHED)
+
+```
+[FOCUS: Orqafy]  ·  cold-start authority: docs/memory/MEMORY.md → session_release_v0.18.1_orq17_2026-08-31.md
+
+## ⏳ TODO next session (IN ORDER) — un-gated, owner OK'd for "next session"
+1. [ ] [ORQ-13] Regenerate stale prod deploy/compose/prod/MERGED.docker-compose.yml — it declares
+       "no MinIO / uses R2" (gen 2026-06-16) but live prod runs MinIO; a Komodo redeploy from it would DROP
+       storage. Regenerate MERGED from current per-service prod files (now include MinIO + ORQ-11 mem limits).
+2. [ ] [ORQ-10] favicon.ico 404 — add apps/web/src/app/favicon.ico (or icon.png). Trivial.
+
+## ⚖️ OPEN DECISIONS (parked [WHAT] — not blocking)
+- D-PROD-3 Turnstile: prod runs TEST captcha keys; portal login now live on prod → swap to real keys? (rebuild-gated)
+- D-SEO: flip genuinely-public surfaces (marketing/storefront) noindex → indexable per Rule 35.
+- PENDING_DECISIONS.md currently has 0 open [ ] items.
+
+## 🔒 GROUND TRUTH
+- main @971389a, IN SYNC with origin/main. Tag v0.18.1 on origin. Released v0.18.1 (patch): ORQ-11 compose
+  limits + ORQ-17 tunnel hardening. Version 0.18.1 across 10 pkgs.
+- PROD (orqafy.com) + STAGING + DEMO all UP on v0.18.0 portal bytes (sha-0e7ba0f), all healthy. Model B —
+  the v0.18.1 push did NOT redeploy (infra/docs only, envs already run this code). prod/staging slug=powerbyte, demo slug=demo.
+- CI ci.yml dependency-audit stays red = pre-existing advisory (lint/test/build green).
+- ⚠ ALREADY-DONE guard: ORQ-11/12/14/15/16/17 + portal prod/demo promote all DONE. Release v0.18.1 DONE+PUSHED.
+  Do NOT re-run. Only ORQ-13 + ORQ-10 remain un-gated.
+```
 
 ---
 

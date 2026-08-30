@@ -1,5 +1,31 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-08-31 — Deploy-tunnel hardening (ORQ-17) + release v0.18.1
+
+**In your words:** "start it" → fix the deploy tunnel-port footgun (ORQ-17); then "prep the release-push
+for approval" and "push now and save session".
+
+✅ Done (verified)
+- **ORQ-17 — deploy migration-tunnel hardening.** `push-to-prod.sh` + `push-to-demo.sh` opened the
+  prisma-migrate SSH tunnel binding the LOCAL port == remote `DB_PORT`; a local container already on that
+  port made the bind fail silently → migrate hit the wrong DB → script printed false "✅ done". Fixed: tunnel
+  now uses a dedicated local port decoupled from `DB_PORT` (probe 15439–15443), `ExitOnForwardFailure=yes`
+  makes a bad bind fatal, `kill -0` liveness check, aborts loudly before migrate. Brings both to parity with
+  `staging-refresh-and-deploy.sh` (already safe). Commit `347e900`. shellcheck + `bash -n` clean.
+- **Released v0.18.1 (patch) and PUSHED to origin/main.** Batch since v0.18.0 = 2 `fix(deploy)` infra commits
+  (ORQ-11 compose limits + ORQ-17 tunnel) + docs. Bumped 10 workspace package.json → 0.18.1, CHANGELOG entry,
+  annotated tag `v0.18.1`. main @ `971389a`, origin in sync, tag on origin. Merged feature branch cleaned up.
+- **NO deploys** — Model B; prod/staging/demo stay on their running images (already contain this code).
+
+💬 Notes
+- Footgun caught mid-push: the first `push origin main` ran from the feature branch and pushed local `main`
+  (old tip) without the release commits/tag. Fixed by FF-merging the branch into `main` first, then pushing
+  `--follow-tags`. No harm — origin only ever received correct history.
+
+⏳ Next
+- [ORQ-13] regenerate stale prod `MERGED.docker-compose.yml` (declares no-MinIO but live prod runs MinIO).
+- [ORQ-10] favicon.ico 404 (trivial). Both un-gated, queued for next session.
+
 ## 2026-08-30 — Promote v0.18.0 Customer Portal to PRODUCTION (owner-approved ship)
 
 **In your words:** "yes do that Promote" → ship the pinned v0.18.0 build to prod.
