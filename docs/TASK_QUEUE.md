@@ -7,13 +7,25 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## 🔴 / 🟡 Open
 
-- 🔴 **`favicon.ico` 404** `[ORQ-10]` — app serves no favicon; browser logs a 404 on first load (harmless but
-  shows in console). Add `apps/web/src/app/favicon.ico` (or `icon.png`). `agent-found 2026-08-27` (QA sweep).
-- 🟡 **Regenerate stale `prod/MERGED.docker-compose.yml`** `[ORQ-13]` — the committed prod MERGED declares
-  "no MinIO / uses R2" (generated 2026-06-16) but live prod runs MinIO; a Komodo redeploy from it would drop
-  storage. Regenerate MERGED from the current per-service files. `agent-found 2026-08-28` (ORQ-11 work).
+_(none open)_
+
 ## ✅ Done recently
 
+- ✅ **`favicon.ico` 404 → add app icon** `[ORQ-10]` — browsers probed `/favicon.ico` and got 404 (console noise on
+  first load). Added `apps/web/src/app/icon.svg` (Orqafy brand mark) via the Next.js metadata-file convention →
+  Next injects `<link rel="icon" href="/icon.svg" type="image/svg+xml">`, so modern browsers use it and stop
+  probing `/favicon.ico`. Cross-scope: also allow-listed `/icon.svg` in `lib/public-paths.ts` (middleware) — else
+  the auth middleware 307'd the icon to `/login` (same omission class as robots/sitemap). Verified on rebuilt dev
+  runtime: `/icon.svg` 200 `image/svg+xml`, rel=icon injected, tests 30/30. Residual: bare `/favicon.ico` still
+  404s for non-link-honoring clients (no ICO rasterizer on this box). `31eefdf` on `fix/orq-13-orq-10-compose-favicon`,
+  HARD HOLD local. (2026-08-31)
+- ✅ **Regenerate stale `prod/MERGED.docker-compose.yml`** `[ORQ-13]` — the committed prod MERGED (gen 2026-06-16)
+  had drifted from the per-service source: declared "No MinIO — uses R2", omitted the MinIO service + `minio_data`
+  volume, and app+worker were missing `STORAGE_BACKEND=telegram` + `TELEGRAM_*` env. A Komodo redeploy from it
+  would have dropped the MinIO scratch/fallback container and run app+worker without the Telegram storage backend.
+  Faithfully re-merged from the current db/cache/storage/pgadmin/worker/app files (stage MERGED was already
+  correct → prod now at parity); header note corrected. Validated with `docker compose config` (exit 0). `2bbce18`
+  on `fix/orq-13-orq-10-compose-favicon`, HARD HOLD local. (2026-08-31)
 - ✅ **Harden `push-to-demo.sh` / `push-to-prod.sh` migration tunnel** `[ORQ-17]` — both opened the DB tunnel on a
   LOCAL bind port equal to the remote `DB_PORT`; when another local container published that port (hit live:
   `onepostman-postgres` on `:5439` vs demo `DB_PORT=5439`) the bind failed silently, `ssh -N` stayed alive, prisma
