@@ -40,9 +40,25 @@ ssh_vps "cd ${STACK}; sed -i 's/^APP_IMAGE_TAG=.*/APP_IMAGE_TAG=demo-latest/' .e
 echo "▶ 4/5 Migrate (deploy; resolve drift as applied — NEVER seed)"
 DBPORT=$(ssh_vps "grep -oP '(?<=^DB_PORT=)[0-9]+' ${STACK}/.env")
 DBURL=$(ssh_vps "grep -oP '(?<=^DATABASE_URL=).*' ${STACK}/.env")
+# ORQ-17: open the migration tunnel on a DEDICATED high LOCAL port, decoupled from
+# the remote ${DBPORT}. Binding local==remote let a local container already
+# publishing ${DBPORT} hijack the bind — ssh -N stayed alive, migrate hit the WRONG
+# local DB, and the script still printed success (remote left un-migrated).
+# ExitOnForwardFailure=yes makes a failed bind FATAL; we probe a small port range
+# and abort loudly rather than ever migrate the wrong database.
+TUN=""; LPORT=""
+for CAND in 15439 15440 15441 15442 15443; do
+  ssh -o ConnectTimeout=20 -o ExitOnForwardFailure=yes -i "$KEY" -N -L "${CAND}:localhost:${DBPORT}" "$VPS" &
+  _pid=$!; sleep 3
+  if kill -0 "$_pid" 2>/dev/null; then TUN=$_pid; LPORT=$CAND; break; fi
+  wait "$_pid" 2>/dev/null || true
+done
+if [ -z "$TUN" ]; then
+  echo "  ✗ ORQ-17: could not bind a local DB tunnel (tried 15439-15443). Aborting BEFORE migrate to avoid touching the wrong database."; exit 1
+fi
+echo "  ↳ tunnel up on localhost:${LPORT} → ${VPS}:${DBPORT}"
 # Rewrite the host authority (single '@' — base64 pwd has no '@') to the tunnel; port-agnostic.
-DBURL_LOCAL=$(echo "$DBURL" | sed -E "s#@[^/]+/#@localhost:${DBPORT}/#")
-ssh -i "$KEY" -N -L "${DBPORT}:localhost:${DBPORT}" "$VPS" & TUN=$!; sleep 3
+DBURL_LOCAL=$(echo "$DBURL" | sed -E "s#@[^/]+/#@localhost:${LPORT}/#")
 if ! DATABASE_URL="$DBURL_LOCAL" pnpm --filter @orqafy/db db:migrate:deploy; then
   echo "  ↳ migrate failed (physical schema likely present); resolving pending as applied…"
   for M in $(DATABASE_URL="$DBURL_LOCAL" pnpm --filter @orqafy/db exec prisma migrate status 2>/dev/null | grep -oE '[0-9]{14}_[a-zA-Z0-9_]+'); do
