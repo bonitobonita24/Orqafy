@@ -1,7 +1,35 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-08-31 by CLAUDE_CODE (ORQ-13 prod MERGED regen + ORQ-10 favicon icon.svg + middleware allow-list — both DONE+verified on branch fix/orq-13-orq-10-compose-favicon, HARD HOLD local/unmerged. Task queue Open now EMPTY. No deploys — Model B. Loop STOPPED at owner request. Open [WHAT]: merge-branch call, ORQ-18 release-push, ORQ-19 Turnstile).
+> Last updated: 2026-08-31 by CLAUDE_CODE (merged ORQ-13+ORQ-10 branch → main; cut+pushed v0.18.2 (origin/main a16507d); ORQ-19 Turnstile code+config DONE — widget allow-lists orqafy.com, prod env on REAL vault keys, checkout fallback removed — prod REDEPLOY remaining (owner-gated). Loop STOPPED at owner request. HARD HOLD branch fix/orq-19-turnstile-real-keys).
+
+---
+
+## ⭐ SESSION 2026-08-31 (latest) — merge + v0.18.2 + Turnstile (ORQ-19)
+
+```
+[FOCUS: Orqafy]  ·  cold-start authority: docs/memory/MEMORY.md → session_v0.18.2_turnstile_orq19_2026-08-31.md
+
+## ⏳ TODO next session — all owner-gated (no un-gated work left)
+1. [ ] [ORQ-19] Prod REBUILD+REDEPLOY to bake real NEXT_PUBLIC_TURNSTILE_SITE_KEY (build-time). Then verify
+       challenge renders on orqafy.com login + checkout, and a forged/empty token is rejected. Say "push to prod".
+2. [ ] Merge/release the HARD HOLD branches when decided: fix/orq-19-turnstile-real-keys (app, 2 commits) +
+       Server-Setups vault commit 9083be7.
+
+## ⚖️ OPEN DECISIONS (parked [WHAT])
+- ORQ-19 prod redeploy (above) — the only remaining Turnstile step.
+- D-SEO: flip genuinely-public surfaces (marketing/storefront) noindex → indexable per Rule 35.
+- PENDING_DECISIONS.md currently has 0 open [ ] items.
+
+## 🔒 GROUND TRUTH
+- origin/main @a16507d, tag v0.18.2 (patch: ORQ-13 prod MERGED regen + ORQ-10 favicon). Version 0.18.2 across 10 pkgs.
+- HARD HOLD (local, unpushed): branch fix/orq-19-turnstile-real-keys = 2 commits ahead of main (77a32dd checkout
+  fallback removal + 9fd1d43 task-queue). Server-Setups: 9083be7 (prod env real Turnstile keys, local).
+- Cloudflare "Orqafy Production" Turnstile widget now allow-lists orqafy.com (+ old powerbyte.app hosts). Real
+  keys live in vault orqafy-turnstile.enc.yaml + now in orqafy-prod-app.enc.env — take effect on next prod rebuild.
+- PROD/STAGING/DEMO all UP on v0.18.0 portal (sha-0e7ba0f), healthy. Prod STILL on TEST Turnstile keys until redeploy.
+- ⚠ ALREADY-DONE guard: merge + v0.18.2 release DONE+PUSHED; ORQ-19 code+config DONE (only prod redeploy remains).
+```
 
 ---
 

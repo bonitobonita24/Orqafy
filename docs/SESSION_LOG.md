@@ -1,5 +1,26 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-08-31 — Merge branch, cut v0.18.2, tackle Turnstile
+
+**In your words:** "merge the branch to local main, then cut a v0.18.2 release, then tackle Turnstile" → "save session, stop reboot loop".
+
+✅ **Done**
+- **Merged** `fix/orq-13-orq-10-compose-favicon` (ORQ-13 + ORQ-10) → local `main` (FF).
+- **Released v0.18.2** — `gen-release-notes --apply` (CHANGELOG + 10-pkg version-sync + sidebar footer + tag),
+  pushed `main`+tag to origin. `origin/main @ a16507d`. Live envs stay v0.18.0 (Model B).
+- **ORQ-19 Turnstile — code + config done (deploy gated):** prod ran always-pass TEST keys. Root issue: the
+  real "Orqafy Production" widget only allow-listed the *old* `*.powerbyte.app` hosts. Fixed the chain:
+  (1) added `orqafy.com` to the widget's domains (CF API); (2) swapped `orqafy-prod-app.enc.env` to the REAL
+  vault keys (`9083be7` Server-Setups); (3) removed the hardcoded test-key fallback in `checkout-form.tsx`
+  → now fail-closed (`77a32dd`, tsc clean + 70/70 tests). Live prod untouched (still test keys until redeploy).
+
+💬 **Notes / open**
+- **ORQ-19 remaining (owner-gated):** a prod **rebuild+redeploy** to bake the real `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
+  (build-time). Then verify challenge renders on orqafy.com login/checkout + forged token rejected.
+- HARD HOLD branches (local): `fix/orq-19-turnstile-real-keys` (app, 2 commits) + the Server-Setups vault commit.
+- Logged global lesson: `sops -e > file` truncates the vault on rule-mismatch → use `$EDITOR`/`sops set` in-place.
+- Squirlnote: ORQ-19 → On-Going (+infra); ORQ-18/13/10 in For Review awaiting your Done.
+
 ## 2026-08-31 — Knock out ORQ-13 + ORQ-10 (prod compose + favicon)
 
 **In your words:** "knock out ORQ-13 + ORQ-10" → then "save session, stop reboot loop".
