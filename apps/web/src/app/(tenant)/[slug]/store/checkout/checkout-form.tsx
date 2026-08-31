@@ -412,7 +412,7 @@ export function CheckoutForm({
           )}
           <div className="mt-5 flex justify-center">
             <Turnstile
-              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA"}
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
               onSuccess={setTurnstileToken}
               onExpire={() => setTurnstileToken("")}
               onError={() => setTurnstileToken("")}
