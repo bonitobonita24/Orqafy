@@ -1,7 +1,7 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-08-31 by CLAUDE_CODE (ORQ-17 deploy-tunnel hardening + released v0.18.1 patch, PUSHED to origin. main @971389a IN SYNC w/ origin, tag v0.18.1. No deploys — Model B. Next: ORQ-13 stale prod MERGED compose, ORQ-10 favicon).
+> Last updated: 2026-08-31 by CLAUDE_CODE (ORQ-13 prod MERGED regen + ORQ-10 favicon icon.svg + middleware allow-list — both DONE+verified on branch fix/orq-13-orq-10-compose-favicon, HARD HOLD local/unmerged. Task queue Open now EMPTY. No deploys — Model B. Loop STOPPED at owner request. Open [WHAT]: merge-branch call, ORQ-18 release-push, ORQ-19 Turnstile).
 
 ---
 

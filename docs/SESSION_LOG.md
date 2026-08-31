@@ -1,5 +1,27 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-08-31 — Knock out ORQ-13 + ORQ-10 (prod compose + favicon)
+
+**In your words:** "knock out ORQ-13 + ORQ-10" → then "save session, stop reboot loop".
+
+✅ **Done**
+- **ORQ-13** — regenerated the stale prod `MERGED.docker-compose.yml`. It had drifted from the per-service
+  source: no MinIO service/volume (claimed "uses R2"), and app+worker missing `STORAGE_BACKEND=telegram`.
+  A Komodo redeploy from it would have dropped storage. Re-merged to parity with the (correct) stage MERGED;
+  `docker compose config` validates. `2bbce18`.
+- **ORQ-10** — added the app icon (`icon.svg`, brand mark) so browsers stop logging a favicon 404. Found +
+  fixed a hidden second bug on the way: the auth middleware was 307-redirecting the icon to `/login`
+  (allow-list omission) — allow-listed it. Verified on a rebuilt dev runtime (`/icon.svg` → 200, tests 30/30).
+  `31eefdf`.
+- Task queue "Open" is now **empty**; both mirrored to Squirlnote **For Review**.
+
+💬 **Notes / open**
+- All work on branch `fix/orq-13-orq-10-compose-favicon` (HARD HOLD, local, unmerged/unpushed).
+- Asked whether to merge the branch to local main — left for the owner (unanswered at close).
+- Parked owner decisions unchanged: ORQ-18 (push main→origin as a release), ORQ-19/D-PROD-3 (Turnstile prod
+  TEST keys), D-SEO, D-ADMINCN-E.
+- Loop **stopped** at owner request (no reboot).
+
 ## 2026-08-31 — Deploy-tunnel hardening (ORQ-17) + release v0.18.1
 
 **In your words:** "start it" → fix the deploy tunnel-port footgun (ORQ-17); then "prep the release-push
