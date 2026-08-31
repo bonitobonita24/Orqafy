@@ -4,6 +4,16 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.18.3 — 2026-08-31
+
+### [FIXED]
+- remove hardcoded Turnstile test-key fallback in checkout (ORQ-19) (`77a32dd`)
+
+### [DOCS]
+- v0.18.2 released + ORQ-19 Turnstile code/config done; handoff + log (loop stop) (`fe64ad3`)
+- ORQ-18 v0.18.2 released; ORQ-19 Turnstile code+config done (deploy gated) (`9fd1d43`)
+
+
 ## v0.18.2 — 2026-08-31
 
 ### [FIXED]
