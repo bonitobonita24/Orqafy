@@ -4,6 +4,18 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.18.2 — 2026-08-31
+
+### [FIXED]
+- add app icon.svg to stop favicon 404 on first load (ORQ-10) (`31eefdf`)
+- regenerate stale prod MERGED compose — restore MinIO + Telegram storage env (ORQ-13) (`2bbce18`)
+
+### [DOCS]
+- ORQ-13 + ORQ-10 done; handoff + log + state; loop stopped (`7e6631a`)
+- ORQ-10 + ORQ-13 done — favicon icon + prod MERGED regen (`46a1644`)
+- release v0.18.1 (ORQ-17 tunnel + ORQ-11 limits) pushed; next=ORQ-13/ORQ-10 (`77546be`)
+
+
 ## v0.18.1 — 2026-08-31
 
 ### [FIXED]
