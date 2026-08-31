@@ -7,15 +7,19 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## 🔴 / 🟡 Open
 
-- 🟡 **Real Cloudflare Turnstile on prod** `[ORQ-19]` — code + config DONE, prod **redeploy remaining** (owner-gated).
-  Prod ran always-pass TEST keys. Done: (1) added `orqafy.com` to the "Orqafy Production" Turnstile widget's
-  allow-listed domains (CF API); (2) swapped `orqafy-prod-app.enc.env` to the REAL vault keys (`orqafy-turnstile.enc.yaml`);
-  (3) removed the hardcoded test-key fallback in `checkout-form.tsx` (now fail-closed). Remaining: a prod
-  **rebuild+redeploy** to bake the real `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (build-time). Verify post-deploy: bot check
-  renders on orqafy.com login + checkout, and a forged/empty token is rejected. `77a32dd` on
-  `fix/orq-19-turnstile-real-keys` (app) + `9083be7` on Server-Setups, both HARD HOLD. `source: owner 2026-08-31`
-
 ## ✅ Done recently
+
+- ✅ **Real Cloudflare Turnstile LIVE on prod** `[ORQ-19]` — owner said "push to prod". Shipped v0.18.3 through the
+  full build-once→promote path AND fixed the runtime-secret gap a prior session left. Baked the real
+  `NEXT_PUBLIC_TURNSTILE_SITE_KEY` by updating the **GitHub Actions secret** (was still test key from 2026-06-16) →
+  CI rebuilt `sha-ed87a4e` (byte-verified: real sitekey in client+server bundles, ZERO test-key). Promoted to prod
+  (`push-to-prod.sh sha-ed87a4e`; DB backup, no pending migrations, health 200). **Caught + fixed:** the live VPS
+  `orqafy-prod/.env` still held TEST keys — the prior session's vault commit (`9083be7`) was never applied to the
+  host; the test `TURNSTILE_SECRET_KEY` always-passes → bot protection was silently OFF. Sed'd the real secret+sitekey
+  into the live `.env` (backup taken) + recreated app. Verified LIVE: forged token → **403** "Invalid bot protection
+  token"; running prod container serves the real sitekey (digest `sha256:e231de84`). Dev rebuilt fresh (Rule 39).
+  v0.18.3 tag `ed87a4e` on origin/main. Lesson logged (`deploy.env.nextpublic-baked-vs-runtime-secret-vs-vault-not-live`). (2026-08-31)
+
 
 - ✅ **Cut v0.18.2 release** `[ORQ-18]` — FF-merged `fix/orq-13-orq-10-compose-favicon` (ORQ-13+ORQ-10) → main,
   ran `gen-release-notes --apply` (CHANGELOG + 10-pkg version-sync + sidebar footer + annotated tag), pushed

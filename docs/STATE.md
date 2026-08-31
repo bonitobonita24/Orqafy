@@ -1,33 +1,40 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-08-31 by CLAUDE_CODE (merged ORQ-13+ORQ-10 branch → main; cut+pushed v0.18.2 (origin/main a16507d); ORQ-19 Turnstile code+config DONE — widget allow-lists orqafy.com, prod env on REAL vault keys, checkout fallback removed — prod REDEPLOY remaining (owner-gated). Loop STOPPED at owner request. HARD HOLD branch fix/orq-19-turnstile-real-keys).
+> Last updated: 2026-08-31 by CLAUDE_CODE ("push to prod": shipped v0.18.3 + rolled ORQ-19 Turnstile to PROD. Real bot protection now LIVE on orqafy.com — real sitekey baked (via GH secret + CI rebuild sha-ed87a4e, byte-verified), real secret applied to live prod .env (prior session had only updated the vault, not the host), forged token → 403 verified, dev rebuilt fresh. origin/main @ed87a4e tag v0.18.3).
 
 ---
 
-## ⭐ SESSION 2026-08-31 (latest) — merge + v0.18.2 + Turnstile (ORQ-19)
+## ⭐ SESSION 2026-08-31 (pm, latest) — ORQ-19 Turnstile shipped to PROD (v0.18.3)
 
 ```
-[FOCUS: Orqafy]  ·  cold-start authority: docs/memory/MEMORY.md → session_v0.18.2_turnstile_orq19_2026-08-31.md
+[FOCUS: Orqafy]  ·  cold-start authority: docs/memory/MEMORY.md → latest session file
 
-## ⏳ TODO next session — all owner-gated (no un-gated work left)
-1. [ ] [ORQ-19] Prod REBUILD+REDEPLOY to bake real NEXT_PUBLIC_TURNSTILE_SITE_KEY (build-time). Then verify
-       challenge renders on orqafy.com login + checkout, and a forged/empty token is rejected. Say "push to prod".
-2. [ ] Merge/release the HARD HOLD branches when decided: fix/orq-19-turnstile-real-keys (app, 2 commits) +
-       Server-Setups vault commit 9083be7.
+## ✅ DONE THIS SESSION — ORQ-19 fully live + verified
+- v0.18.3 released (FF-merged fix/orq-19-turnstile-real-keys → main; gen-release-notes --apply; pushed origin+tag).
+- GH Actions secret NEXT_PUBLIC_TURNSTILE_SITE_KEY updated to real sitekey (was test key since 2026-06-16) → CI
+  rebuilt sha-ed87a4e; byte-verified real key in client+server bundle, zero test-key.
+- push-to-prod.sh sha-ed87a4e: DB backup, promote→latest, no pending migrations, health 200.
+- FIXED live gap: prod .env still had TEST secret (vault commit 9083be7 was never applied to host) → sed'd real
+  secret+sitekey into live orqafy-prod/.env (backup taken) + recreated app.
+- Verified LIVE: forged token → 403 "Invalid bot protection token"; running container serves real sitekey.
+- Dev rebuilt fresh off main (Rule 39, app+worker). Lesson logged.
+
+## ⏳ TODO next session — no un-gated work; parked [WHAT] only
+1. [ ] D-SEO: flip genuinely-public surfaces (marketing/storefront) noindex → indexable per Rule 35.
 
 ## ⚖️ OPEN DECISIONS (parked [WHAT])
-- ORQ-19 prod redeploy (above) — the only remaining Turnstile step.
-- D-SEO: flip genuinely-public surfaces (marketing/storefront) noindex → indexable per Rule 35.
+- D-SEO (above).
 - PENDING_DECISIONS.md currently has 0 open [ ] items.
 
 ## 🔒 GROUND TRUTH
-- origin/main @a16507d, tag v0.18.2 (patch: ORQ-13 prod MERGED regen + ORQ-10 favicon). Version 0.18.2 across 10 pkgs.
-- HARD HOLD (local, unpushed): branch fix/orq-19-turnstile-real-keys = 2 commits ahead of main (77a32dd checkout
-  fallback removal + 9fd1d43 task-queue). Server-Setups: 9083be7 (prod env real Turnstile keys, local).
-- Cloudflare "Orqafy Production" Turnstile widget now allow-lists orqafy.com (+ old powerbyte.app hosts). Real
-  keys live in vault orqafy-turnstile.enc.yaml + now in orqafy-prod-app.enc.env — take effect on next prod rebuild.
-- PROD/STAGING/DEMO all UP on v0.18.0 portal (sha-0e7ba0f), healthy. Prod STILL on TEST Turnstile keys until redeploy.
+- origin/main @ed87a4e, tag v0.18.3 (patch: ORQ-19 checkout fail-closed). Version 0.18.3 across 10 pkgs.
+- PROD (orqafy.com) UP on v0.18.3 / sha-ed87a4e, health 200. REAL Turnstile keys live (client baked + server .env).
+  Bot protection ACTIVE: forged/empty token rejected (403).
+- STAGING/DEMO still on v0.18.0 portal (sha-0e7ba0f) — Model B, no auto-deploy. Their .env still hold test keys
+  (fine; not redeployed). NOTE: next staging/demo CI build will bake the real sitekey (shared GH secret) — their
+  runtime secret stays test until separately rotated (acceptable for non-prod).
+- Server-Setups vault orqafy-turnstile.enc.yaml = real keys; live prod host now matches. Local prod .env backups on VPS.
 - ⚠ ALREADY-DONE guard: merge + v0.18.2 release DONE+PUSHED; ORQ-19 code+config DONE (only prod redeploy remains).
 ```
 

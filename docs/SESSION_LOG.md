@@ -1,5 +1,28 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-08-31 (pm) — Push ORQ-19 Turnstile to prod (real bot protection now live)
+
+**In your words:** "resume session" → "push to prod".
+
+✅ **Done — real Cloudflare Turnstile is now LIVE on orqafy.com**
+- Shipped **v0.18.3** through the correct build-once→promote path. The site key is baked into the client bundle
+  at **build time**, so the fix was to update the **GitHub Actions secret** (it was still the test key from June) →
+  CI rebuilt the image `sha-ed87a4e`. I byte-verified the image: real sitekey in both client + server bundles,
+  **zero** test-key occurrences. Promoted that exact image to prod (DB backup taken, no pending migrations, health 200).
+- **Caught a real gap the prior session left:** the live prod server `.env` still had the **test secret**
+  (Cloudflare's test secret *always passes*, so bot protection was silently OFF). The earlier "swap" only updated
+  the vault, never the running host. I applied the real secret to the live prod `.env` (with backup) and restarted
+  the app.
+- **Verified live:** a forged token to the real verify endpoint is now **rejected (HTTP 403)**; the running prod
+  container serves the real sitekey. Both client and server halves confirmed.
+- Rebuilt local dev fresh off main (Rule 39). Logged a reusable lesson on the build-time-vs-runtime-vs-vault trap.
+
+💬 **Notes**
+- **Nothing left open on Turnstile.** Prod is fully protected on real keys.
+- The old ORQ-19 HARD HOLD branch is now merged (v0.18.3, `ed87a4e` on origin/main). Server-Setups vault already
+  carried the real keys; live host now matches.
+- Squirlnote: ORQ-19 → For Review.
+
 ## 2026-08-31 — Merge branch, cut v0.18.2, tackle Turnstile
 
 **In your words:** "merge the branch to local main, then cut a v0.18.2 release, then tackle Turnstile" → "save session, stop reboot loop".
