@@ -7,9 +7,19 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## 🔴 / 🟡 Open
 
-_(none open)_
+- 🟡 **Real Cloudflare Turnstile on prod** `[ORQ-19]` — code + config DONE, prod **redeploy remaining** (owner-gated).
+  Prod ran always-pass TEST keys. Done: (1) added `orqafy.com` to the "Orqafy Production" Turnstile widget's
+  allow-listed domains (CF API); (2) swapped `orqafy-prod-app.enc.env` to the REAL vault keys (`orqafy-turnstile.enc.yaml`);
+  (3) removed the hardcoded test-key fallback in `checkout-form.tsx` (now fail-closed). Remaining: a prod
+  **rebuild+redeploy** to bake the real `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (build-time). Verify post-deploy: bot check
+  renders on orqafy.com login + checkout, and a forged/empty token is rejected. `77a32dd` on
+  `fix/orq-19-turnstile-real-keys` (app) + `9083be7` on Server-Setups, both HARD HOLD. `source: owner 2026-08-31`
 
 ## ✅ Done recently
+
+- ✅ **Cut v0.18.2 release** `[ORQ-18]` — FF-merged `fix/orq-13-orq-10-compose-favicon` (ORQ-13+ORQ-10) → main,
+  ran `gen-release-notes --apply` (CHANGELOG + 10-pkg version-sync + sidebar footer + annotated tag), pushed
+  `main`+tag to origin. origin/main @ `a16507d`, **v0.18.2**. Live envs still on v0.18.0 (Model B, no auto-deploy). (2026-08-31)
 
 - ✅ **`favicon.ico` 404 → add app icon** `[ORQ-10]` — browsers probed `/favicon.ico` and got 404 (console noise on
   first load). Added `apps/web/src/app/icon.svg` (Orqafy brand mark) via the Next.js metadata-file convention →
