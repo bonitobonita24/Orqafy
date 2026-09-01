@@ -1,7 +1,7 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-08-31 by CLAUDE_CODE ("push to prod": shipped v0.18.3 + rolled ORQ-19 Turnstile to PROD. Real bot protection now LIVE on orqafy.com — real sitekey baked (via GH secret + CI rebuild sha-ed87a4e, byte-verified), real secret applied to live prod .env (prior session had only updated the vault, not the host), forged token → 403 verified, dev rebuilt fresh. origin/main @ed87a4e tag v0.18.3).
+> Last updated: 2026-09-01 by CLAUDE_CODE ("do 1 then 2" → "merge to main then save session"). Closed D-SEO (dynamic demo/flagship storefront sitemap, ORQ-20) + resolved RBAC fleet-naming reconcile as keep-ratified no-op (ORQ-21). Both commits FF-merged to LOCAL main @45b0948 — HARD HOLD, 2 ahead of origin/main (@c6de318 / tag v0.18.3), NOT pushed/deployed. Prior context: v0.18.3 Turnstile is LIVE on prod (below).
 
 ---
 
@@ -40,7 +40,9 @@
   not a Postgres enum. See DECISIONS_LOG 2026-09-01.
 
 ## 🔒 GROUND TRUTH
-- origin/main @ed87a4e, tag v0.18.3 (patch: ORQ-19 checkout fail-closed). Version 0.18.3 across 10 pkgs.
+- LOCAL main @45b0948 — 2 commits ahead of origin/main (HARD HOLD, NOT pushed): e28e816 (sitemap) + 45b0948
+  (docs). feat/orq-seo-tenant-store-sitemap FF-merged in + branch retained. A push = release moment (owner word).
+- origin/main @c6de318, tag v0.18.3 (patch: ORQ-19 checkout fail-closed). Version 0.18.3 across 10 pkgs.
 - PROD (orqafy.com) UP on v0.18.3 / sha-ed87a4e, health 200. REAL Turnstile keys live (client baked + server .env).
   Bot protection ACTIVE: forged/empty token rejected (403).
 - STAGING/DEMO still on v0.18.0 portal (sha-0e7ba0f) — Model B, no auto-deploy. Their .env still hold test keys
