@@ -2670,3 +2670,28 @@
 - Gates:                N/A (docs-only; no build/typecheck/lint surface touched).
 - Scope:               Governance/doc reconciliation only. LOCAL (HARD HOLD, unpushed) —
                        branch feat/theme-phase5-studio-blocks.
+
+## 2026-09-01 — D-SEO close: dynamic demo/flagship storefront sitemap (+ RBAC naming keep-ratified)
+- Agent:               CLAUDE_CODE
+- Why:                 Close the last open piece of D-SEO — the dynamic per-tenant storefront sitemap
+                       (previously a TODO(seo)). Owner call: enumerate the demo/flagship store ONLY, not
+                       every tenant. Separately confirmed the RBAC role-slug naming reconcile as a no-op
+                       (owner: keep the ratified tenant_super_admin / platform_owner divergence).
+- Files modified:      apps/web/src/app/sitemap.ts (dynamic demo-store enumeration; fail-open; hourly
+                       revalidate; slug via SITEMAP_STORE_TENANT_SLUG; 5000-URL cap), docs/STATE.md,
+                       docs/DECISIONS_LOG.md (2 entries), docs/TASK_QUEUE.md, docs/CHANGELOG_AI.md (this).
+- Schema/migrations:   none (RBAC decision = no-op; sitemap is read-only DB enumeration).
+- What it adds:        sitemap.xml now lists /{demo}/store, /{demo}/store/products, and every public
+                       product (isActive && ecommerceVisible) of the flagship tenant, alongside the 3
+                       marketing routes. Other tenant stores stay individually crawlable (index:true) but
+                       are not enumerated.
+- Gates:               tsc --noEmit exit 0 (apps/web). Runtime enumeration verified against the dev DB:
+                       demo tenant active + 24 public products with well-formed URLs + real lastmod.
+                       (New sitemap.ts not yet live in the dev container — prebuilt image; verified via
+                       direct dev-DB query mirroring the exact filter.)
+- Scope:               apps/web/src/app/sitemap.ts + docs. No schema/seed/other app code touched.
+- Commits:             e28e816 (feat(seo): enumerate demo/flagship storefront into sitemap) on
+                       feat/orq-seo-tenant-store-sitemap; docs commit follows.
+- Errors encountered:  none
+- Errors resolved:     none
+- HOLD:                LOCAL / HARD HOLD — no staging/prod deploy without explicit owner word.

@@ -1773,3 +1773,46 @@ NOT authored — this app's fidelity tooling snapshots `mockupRoute` and does no
 adding one would be an unused artifact.
 
 — recorded by CLAUDE_CODE (PM/Opus), full-auto, 2026-08-27.
+
+---
+
+## 2026-09-01 — D-SEO: tenant-store sitemap scope = demo/flagship ONLY
+
+**Decision:** The dynamic per-tenant storefront sitemap (the last open piece of D-SEO, previously a
+`TODO(seo)` in `app/sitemap.ts`) enumerates **only the flagship/demo tenant's** storefront — NOT every
+tenant's catalogue. Owner call, 2026-09-01 (D-SEO sub-decision surfaced at resume).
+
+**Context:** D-SEO's core (adaptive metadata, robots.ts, sitemap.ts, per-route index/noindex, OG,
+JSON-LD) was already built + ratified 2026-08-08. The only remainder was whether/how to enumerate
+storefront products, which the code itself flagged as needing a product decision on "indexing every
+tenant store." Indexing every tenant would be an outward-facing choice (publishes all tenants' catalogues
+to search engines) + needs DB enumeration of tenants×products. Owner chose the controlled option.
+
+**Implementation:** `apps/web/src/app/sitemap.ts` now emits, in addition to the 3 marketing routes, the
+demo store landing + product list + every public product (`isActive && ecommerceVisible`) of the tenant
+whose slug = `SITEMAP_STORE_TENANT_SLUG` (default `"demo"`). URL = `ecommerceSlug ?? id`, lastmod =
+`updatedAt`, 5000-URL cap, hourly `revalidate`, fail-open to marketing routes on any DB error. Other
+tenant stores remain individually crawlable (`index:true`) but are not enumerated. Verified: `tsc` clean;
+dev-DB query → demo active + 24 public products, well-formed URLs. Commit `e28e816` on
+`feat/orq-seo-tenant-store-sitemap` (LOCAL / HARD HOLD). **D-SEO is now fully closed.**
+
+— recorded by CLAUDE_CODE (PM/Opus), 2026-09-01.
+
+---
+
+## 2026-09-01 — RBAC role-slug naming: KEEP the ratified divergence (no reconcile)
+
+**Decision:** Orqafy KEEPS its role slugs `tenant_super_admin` (tenant owner) and `platform_owner`
+(platform role) as-is. The owner explicitly declined reconciling them to the fleet-standard
+`tenant_superadmin` / `tenant_manager`. No code or DB change. Owner call, 2026-09-01.
+
+**Context:** A SessionStart note (and the site-access-standard adoption memory) suggested Orqafy was "not
+on the 3-tier RBAC standard" and proposed a naming reconcile. Ground-truth check: the 3-tier retrofit was
+already built + merged (2026-08-09), and this exact naming divergence was already ratified then. Roles are
+a **data-driven `roles` table with string slugs** (model Role, seed `packages/db/src/seed/roles.ts`) —
+NOT a Postgres enum — so the memory's `ALTER TYPE…RENAME VALUE` assumption did not apply. Renaming would
+reverse a ratified decision and touch ~40 code refs + seed + a data migration in every env, for a cosmetic
+app-internal gain. Owner chose to keep. **This closes the item; the SessionStart RBAC-retrofit offer is
+STALE — do not re-surface.**
+
+— recorded by CLAUDE_CODE (PM/Opus), 2026-09-01.

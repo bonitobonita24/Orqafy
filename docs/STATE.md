@@ -20,12 +20,24 @@
 - Verified LIVE: forged token → 403 "Invalid bot protection token"; running container serves real sitekey.
 - Dev rebuilt fresh off main (Rule 39, app+worker). Lesson logged.
 
-## ⏳ TODO next session — no un-gated work; parked [WHAT] only
-1. [ ] D-SEO: flip genuinely-public surfaces (marketing/storefront) noindex → indexable per Rule 35.
+## ⏳ TODO next session — no un-gated work
+- (empty) — D-SEO fully closed 2026-09-01 (see DONE below); RBAC naming keep-ratified (no-op).
 
 ## ⚖️ OPEN DECISIONS (parked [WHAT])
-- D-SEO (above).
+- (none) — D-SEO resolved; RBAC fleet-naming reconcile answered "keep ratified names".
 - PENDING_DECISIONS.md currently has 0 open [ ] items.
+
+## ✅ DONE 2026-09-01 (built AND verified — evidence)
+- D-SEO CLOSED: core (metadataBase/robots.ts/sitemap.ts/per-route metadata/OG/JSON-LD, public=index,
+  authed/utility=noindex) was already shipped 2026-08-08 — verified in code this session. Remaining piece
+  (dynamic tenant-store sitemap) BUILT demo/flagship-only per owner call: apps/web/src/app/sitemap.ts now
+  enumerates the demo store landing + product list + 24 public products (isActive && ecommerceVisible),
+  URL=ecommerceSlug??id, lastmod=updatedAt; fail-open, 5000 cap, hourly revalidate, slug via
+  SITEMAP_STORE_TENANT_SLUG. Verified: tsc --noEmit exit 0; dev-DB query → demo active + 24 public products
+  with well-formed URLs. Commit e28e816 on feat/orq-seo-tenant-store-sitemap (LOCAL / HARD HOLD).
+- RBAC naming reconcile: owner chose KEEP ratified names (tenant_super_admin / platform_owner) — the
+  2026-08-09 divergence stands; NO code/DB change. Roles are a data-driven `roles` table (string slug),
+  not a Postgres enum. See DECISIONS_LOG 2026-09-01.
 
 ## 🔒 GROUND TRUTH
 - origin/main @ed87a4e, tag v0.18.3 (patch: ORQ-19 checkout fail-closed). Version 0.18.3 across 10 pkgs.

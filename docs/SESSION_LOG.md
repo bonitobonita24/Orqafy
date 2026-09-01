@@ -1,5 +1,28 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-09-01 — Close D-SEO + resolve RBAC naming
+
+**In your words:** "resume session" → "do 1 then 2" (1 = D-SEO, 2 = RBAC naming reconcile).
+
+💬 **Both turned out mostly-resolved — I reconciled the docs against the actual code first.**
+- **D-SEO core was already shipped** (2026-08-08): adaptive metadata, robots.ts, sitemap.ts, per-route
+  index/noindex, OG, JSON-LD, storefront already crawlable. STATE.md's "still open" lines were stale.
+- Only the **dynamic tenant-store sitemap** remained (a real product call). You chose **demo/flagship only**.
+
+✅ **Done — dynamic demo storefront sitemap** `[ORQ-20]`
+- `sitemap.ts` now enumerates the demo store landing + product list + every public product (24 live),
+  beside the 3 marketing routes. Fail-open, hourly refresh, 5000 cap, tenant slug configurable via env.
+- Verified: typecheck clean; queried the dev DB directly → demo active + 24 public products, clean URLs.
+- Commit `e28e816`, branch `feat/orq-seo-tenant-store-sitemap`, **LOCAL / HARD HOLD** (not pushed/deployed).
+
+✅ **Done — RBAC naming** `[ORQ-21]` (no-op)
+- You chose to **keep** the ratified `tenant_super_admin` / `platform_owner` names. No code/DB change.
+- Note: the SessionStart "not on 3-tier RBAC" note is stale — the retrofit was built+merged 2026-08-09,
+  and roles are a data-driven table (string slug), not a Postgres enum (so no `ALTER TYPE` was ever needed).
+
+💬 **State:** branch `feat/orq-seo-tenant-store-sitemap` holds one code commit + this docs commit, LOCAL,
+HARD HOLD. Merge to main / release / deploy all await your explicit word.
+
 ## 2026-08-31 (pm) — Push ORQ-19 Turnstile to prod (real bot protection now live)
 
 **In your words:** "resume session" → "push to prod".

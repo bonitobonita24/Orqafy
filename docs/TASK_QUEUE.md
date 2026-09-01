@@ -9,6 +9,18 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## ✅ Done recently
 
+- ✅ **D-SEO closed: dynamic demo/flagship storefront sitemap** `[ORQ-20]` — the last open D-SEO piece (a
+  `TODO(seo)` in `app/sitemap.ts`). Owner call: enumerate the **demo/flagship store ONLY**, not every tenant.
+  `sitemap.ts` now emits the demo store landing + product list + every public product (`isActive &&
+  ecommerceVisible`, URL `ecommerceSlug ?? id`, lastmod `updatedAt`) beside the 3 marketing routes; fail-open,
+  5000 cap, hourly revalidate, slug via `SITEMAP_STORE_TENANT_SLUG`. Verified: `tsc` clean; dev-DB → demo active
+  + 24 public products, well-formed URLs. `e28e816` on `feat/orq-seo-tenant-store-sitemap`, HARD HOLD local.
+  (2026-09-01)
+- ✅ **RBAC fleet-naming reconcile = KEEP ratified names (no-op)** `[ORQ-21]` — owner declined renaming
+  `tenant_super_admin`/`platform_owner` → fleet `tenant_superadmin`/`tenant_manager`. Divergence already ratified
+  2026-08-09; roles are a data-driven `roles` table (string slug), not an enum. No code/DB change. SessionStart
+  RBAC-retrofit offer is STALE. See DECISIONS_LOG 2026-09-01. (2026-09-01)
+
 - ✅ **Real Cloudflare Turnstile LIVE on prod** `[ORQ-19]` — owner said "push to prod". Shipped v0.18.3 through the
   full build-once→promote path AND fixed the runtime-secret gap a prior session left. Baked the real
   `NEXT_PUBLIC_TURNSTILE_SITE_KEY` by updating the **GitHub Actions secret** (was still test key from 2026-06-16) →
