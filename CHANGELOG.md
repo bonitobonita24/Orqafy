@@ -4,6 +4,17 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.19.0 — 2026-09-02
+
+### [FEATURE]
+- enumerate demo/flagship storefront into sitemap (D-SEO) (`e28e816`)
+
+### [DOCS]
+- merge D-SEO/RBAC branch to main; handoff (save session) (`8ff29fa`)
+- close D-SEO (demo-store sitemap) + RBAC naming keep-ratified (`45b0948`)
+- ORQ-19 Turnstile shipped to prod (v0.18.3) — real bot protection live + verified (`c6de318`)
+
+
 ## v0.18.3 — 2026-08-31
 
 ### [FIXED]
