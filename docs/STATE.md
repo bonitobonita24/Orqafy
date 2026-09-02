@@ -1,11 +1,36 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-09-01 by CLAUDE_CODE ("do 1 then 2" → "merge to main then save session"). Closed D-SEO (dynamic demo/flagship storefront sitemap, ORQ-20) + resolved RBAC fleet-naming reconcile as keep-ratified no-op (ORQ-21). Both commits FF-merged to LOCAL main @45b0948 — HARD HOLD, 2 ahead of origin/main (@c6de318 / tag v0.18.3), NOT pushed/deployed. Prior context: v0.18.3 Turnstile is LIVE on prod (below).
+> Last updated: 2026-09-02 by CLAUDE_CODE ("yes push it" → "yes cut the version"). Pushed the 3 pending commits to origin, then cut + released **v0.19.0** (minor bump — D-SEO feat drives SemVer). origin/main now @89737aa + tag v0.19.0, tree clean, IN SYNC. NO deploy (Model B — live prod/demo stay on v0.18.3 / sha-ed87a4e). Empty un-gated queue, 0 open decisions.
 
 ---
 
-## ⭐ SESSION 2026-08-31 (pm, latest) — ORQ-19 Turnstile shipped to PROD (v0.18.3)
+## ⭐ SESSION 2026-09-02 (latest) — Pushed batch + released v0.19.0
+
+```
+[FOCUS: Orqafy]  ·  cold-start authority: docs/memory/MEMORY.md → latest session file
+
+## ✅ DONE THIS SESSION
+- Pushed 3 pending commits to origin (c6de318..8ff29fa): D-SEO storefront sitemap + 2 session/closure docs.
+- Cut + released v0.19.0 via gen-release-notes --apply (minor bump: feat(seo) D-SEO above the docs).
+  CHANGELOG [FEATURE] demo/flagship sitemap + 3 [DOCS]; version synced to 0.19.0 across 10 package.json
+  + sidebar footer tag; annotated tag v0.19.0. Pushed commit+tag (8ff29fa..89737aa, v0.19.0). Tree clean.
+
+## ⏳ TODO next session — no un-gated work
+- (empty) — queue clear, 0 open decisions.
+
+## ⚖️ OPEN DECISIONS (parked [WHAT])
+- (none). PENDING_DECISIONS.md has 0 open [ ] items.
+
+## 🚦 DEPLOY STATE (HARD HOLD)
+- origin/main @89737aa, tag v0.19.0 (in sync). Model B — CI builds image on main, auto-deploys NOTHING.
+- LIVE prod/demo on v0.18.3 (sha-ed87a4e), Turnstile bot protection live+verified. Promote only on
+  explicit "push to prod/demo" (push-to-prod.sh / push-to-demo.sh).
+```
+
+---
+
+## SESSION 2026-08-31 (pm) — ORQ-19 Turnstile shipped to PROD (v0.18.3)
 
 ```
 [FOCUS: Orqafy]  ·  cold-start authority: docs/memory/MEMORY.md → latest session file

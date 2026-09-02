@@ -1,5 +1,22 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-09-02 — Push batch + cut release v0.19.0
+
+**In your words:** "resume session" → "yes push it" → "yes [cut the version], batch includes a real user-facing feature".
+
+✅ **Pushed the 3 pending commits to origin** — `c6de318..8ff29fa`, main was 3 ahead (D-SEO sitemap feature + 2 session/closure docs). Tree clean.
+
+✅ **Cut + released v0.19.0** `[gen-release-notes --apply]`
+- Minor bump (correct SemVer — the `feat(seo)` D-SEO commit drives it above the docs).
+- CHANGELOG.md updated ([FEATURE] demo/flagship storefront sitemap + 3 [DOCS]); version synced to 0.19.0 across all 10 package.json + the sidebar footer tag; annotated tag `v0.19.0`.
+- Pushed commit + tag: `8ff29fa..89737aa`, `v0.19.0`.
+
+💬 **No deploy.** Model B — CI builds the image on main but auto-deploys nothing. Live prod/demo remain on **v0.18.3** (sha-ed87a4e) until an explicit "push to prod/demo". Branch-protection bypass on push is expected (Turbo build check runs post-push).
+
+⏳ **Next / open:** none un-gated. Queue empty, 0 open decisions.
+
+---
+
 ## 2026-09-01 — Close D-SEO + resolve RBAC naming
 
 **In your words:** "resume session" → "do 1 then 2" (1 = D-SEO, 2 = RBAC naming reconcile).
