@@ -21,6 +21,8 @@
 
 🔨 **Agent-found (logged, not fixed):** `push-to-demo.sh` step 5 uses a single `sleep 5` + one curl → false-negative health `404`; `push-to-prod.sh` was hardened to a bounded 24×5s poll. Demo script should adopt the same poll (ORQ-22).
 
+✅ **[same session, later] Pushed held commits + adopted ORQ-22.** "push it" → pushed main to origin. "adopt it" → hardened `push-to-demo.sh` to the bounded 24×5s poll (mirrors push-to-prod.sh); `bash -n` + shellcheck clean; `ef2b6f8` FF-merged to main and pushed; board task → For Review. origin/main **@edd2476**, tree in sync. No version bump (deploy-tooling only; app stays v0.19.0). Then: **save session, stop reboot loop** (owner rest).
+
 ## 2026-09-02 — Push batch + cut release v0.19.0
 
 **In your words:** "resume session" → "yes push it" → "yes [cut the version], batch includes a real user-facing feature".

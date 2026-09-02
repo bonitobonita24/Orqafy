@@ -1,7 +1,7 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-09-02 (pm) by CLAUDE_CODE (Full Auto: "do all one at a time... in full auto mode. i need to sleep"). Pushed local doc commit 55f5ac9 → origin (in sync), then promoted **v0.19.0** (sha-89737aa) to **PROD + DEMO** — both verified live on image a3b74a700190 (health+sitemap 200), migrate no-op (no new migrations), dev rebuilt FRESH (Rule 39). origin/main @55f5ac9, tag v0.19.0, tree clean + IN SYNC. Empty un-gated queue; 1 agent-found follow-up logged (ORQ-22, demo health-poll).
+> Last updated: 2026-09-03 by CLAUDE_CODE ("push it" + "adopt it" → "save session, stop reboot loop"). Pushed everything to origin, then adopted **ORQ-22** (bounded health poll in push-to-demo.sh, ef2b6f8). origin/main **@edd2476**, tag v0.19.0, tree clean + IN SYNC. Live prod + demo BOTH on **v0.19.0** (image a3b74a700190). Empty un-gated queue, 0 open decisions, 0 open tasks. Session STOPPED (owner rest) — no reboot.
 
 ---
 
@@ -19,15 +19,14 @@
 - Rule 39: dev app + worker rebuilt off main 55f5ac9, both FRESH.
 
 ## ⏳ TODO next session — no un-gated work
-- (empty) — queue clear, 0 open decisions.
-- Backlog (agent-found, non-blocking): ORQ-22 — align push-to-demo.sh health check to the bounded
-  24×5s poll used by push-to-prod.sh (single sleep-5 gives false 404). See docs/TASK_QUEUE.md.
+- (empty) — queue clear, 0 open decisions, 0 open tasks.
+- ORQ-22 DONE this session (push-to-demo.sh bounded health poll, ef2b6f8 → main). On board = For Review.
 
 ## ⚖️ OPEN DECISIONS (parked [WHAT])
 - (none). PENDING_DECISIONS.md has 0 open [ ] items.
 
 ## 🚦 DEPLOY STATE (HARD HOLD)
-- origin/main @55f5ac9, tag v0.19.0 (in sync). Model B — CI builds image on main, auto-deploys NOTHING.
+- origin/main @edd2476, tag v0.19.0 (in sync). Model B — CI builds image on main, auto-deploys NOTHING.
 - LIVE prod + demo BOTH on v0.19.0 (sha-89737aa / image a3b74a700190) as of 2026-09-02 pm.
   Turnstile bot protection live. Future promotes only on explicit "push to prod/demo".
 ```
