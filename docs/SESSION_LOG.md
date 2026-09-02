@@ -1,5 +1,26 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-09-02 (pm) — Full Auto: pushed doc commit + promoted v0.19.0 to PROD + DEMO
+
+**In your words:** "resume session" → "do all one at a time and do this all in full auto mode. i need to sleep" (the candidate list: push local doc commit, promote v0.19.0 to prod, promote to demo).
+
+✅ **Pushed local doc commit** `55f5ac9` → origin/main (was 1 ahead; last session's handoff doc). Tree in sync.
+
+✅ **Promoted v0.19.0 → PRODUCTION** (orqafy.com) `[push-to-prod.sh sha-89737aa]`
+- Promoted the exact CI-verified v0.19.0 build (`sha-89737aa`, web + worker) → `latest`/`prod-sha-55f5ac9`.
+- Prod DB backed up first; migrate = **no-op** (v0.19.0 has zero new migrations vs v0.18.3 — code-only D-SEO change).
+- **Verified vs ground truth:** running image `sha256:a3b74a700190…` = exact v0.19.0 digest; health 200; `/sitemap.xml` 200.
+
+✅ **Promoted v0.19.0 → DEMO** (demo.orqafy.com) `[push-to-demo.sh sha-89737aa]`
+- Same build → `demo-latest`; demo DB backed up; migrate no-op; reseed NEVER (curated demo data preserved).
+- **Verified:** running image `a3b74a700190…` = v0.19.0; health 200; sitemap 200. (In-script `404` was the known single-`sleep 5` false-alarm — bounded re-check confirmed 200.)
+
+✅ **Rule 39 dev-freshness** — dev app + worker rebuilt off main `55f5ac9`, both FRESH (via push-to-demo's ensure-dev-fresh).
+
+💬 **Both live envs now on v0.19.0** (were v0.18.3). RBAC retrofit offer at SessionStart is STALE (3-tier already built/merged 2026-08-09, naming keep-ratified ORQ-21).
+
+🔨 **Agent-found (logged, not fixed):** `push-to-demo.sh` step 5 uses a single `sleep 5` + one curl → false-negative health `404`; `push-to-prod.sh` was hardened to a bounded 24×5s poll. Demo script should adopt the same poll (ORQ-22).
+
 ## 2026-09-02 — Push batch + cut release v0.19.0
 
 **In your words:** "resume session" → "yes push it" → "yes [cut the version], batch includes a real user-facing feature".

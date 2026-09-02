@@ -7,7 +7,16 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## 🔴 / 🟡 Open
 
+- 🔴 **Harden push-to-demo.sh health check** `[ORQ-22]` — step 5 uses a single `sleep 5` + one curl, which
+  false-negatives to `404` on a normal-speed deploy (seen 2026-09-02 v0.19.0 demo promote; bounded re-check =
+  200). Adopt the same bounded 24×5s poll `push-to-prod.sh` already uses (`deploy/compose/push-to-demo.sh`
+  lines ~70-72). Done-criterion: demo promote prints a real 200 without a manual re-check. `agent-found 2026-09-02`
+
 ## ✅ Done recently
+
+- ✅ **Promoted v0.19.0 → PROD + DEMO (Full Auto)** `[ORQ-deploy]` — both live envs moved v0.18.3 → **v0.19.0**
+  (sha-89737aa / image a3b74a700190); prod+demo DBs backed up, migrate no-op (no new migrations), reseed never,
+  dev rebuilt FRESH (Rule 39). Verified: both health 200 + sitemap 200, running digest = v0.19.0. (2026-09-02 pm)
 
 - ✅ **D-SEO closed: dynamic demo/flagship storefront sitemap** `[ORQ-20]` — the last open D-SEO piece (a
   `TODO(seo)` in `app/sitemap.ts`). Owner call: enumerate the **demo/flagship store ONLY**, not every tenant.

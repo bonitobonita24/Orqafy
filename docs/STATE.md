@@ -1,31 +1,35 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-09-02 by CLAUDE_CODE ("yes push it" → "yes cut the version"). Pushed the 3 pending commits to origin, then cut + released **v0.19.0** (minor bump — D-SEO feat drives SemVer). origin/main now @89737aa + tag v0.19.0, tree clean, IN SYNC. NO deploy (Model B — live prod/demo stay on v0.18.3 / sha-ed87a4e). Empty un-gated queue, 0 open decisions.
+> Last updated: 2026-09-02 (pm) by CLAUDE_CODE (Full Auto: "do all one at a time... in full auto mode. i need to sleep"). Pushed local doc commit 55f5ac9 → origin (in sync), then promoted **v0.19.0** (sha-89737aa) to **PROD + DEMO** — both verified live on image a3b74a700190 (health+sitemap 200), migrate no-op (no new migrations), dev rebuilt FRESH (Rule 39). origin/main @55f5ac9, tag v0.19.0, tree clean + IN SYNC. Empty un-gated queue; 1 agent-found follow-up logged (ORQ-22, demo health-poll).
 
 ---
 
-## ⭐ SESSION 2026-09-02 (latest) — Pushed batch + released v0.19.0
+## ⭐ SESSION 2026-09-02 (pm, latest) — Full Auto: promoted v0.19.0 to PROD + DEMO
 
 ```
 [FOCUS: Orqafy]  ·  cold-start authority: docs/memory/MEMORY.md → latest session file
 
 ## ✅ DONE THIS SESSION
-- Pushed 3 pending commits to origin (c6de318..8ff29fa): D-SEO storefront sitemap + 2 session/closure docs.
-- Cut + released v0.19.0 via gen-release-notes --apply (minor bump: feat(seo) D-SEO above the docs).
-  CHANGELOG [FEATURE] demo/flagship sitemap + 3 [DOCS]; version synced to 0.19.0 across 10 package.json
-  + sidebar footer tag; annotated tag v0.19.0. Pushed commit+tag (8ff29fa..89737aa, v0.19.0). Tree clean.
+- Pushed local doc commit 55f5ac9 → origin/main (was 1 ahead; last session's handoff doc). In sync.
+- Promoted v0.19.0 (sha-89737aa) → PRODUCTION (push-to-prod.sh): prod DB backed up, migrate no-op,
+  running image a3b74a700190 = exact v0.19.0 digest, health 200, /sitemap.xml 200. VERIFIED.
+- Promoted v0.19.0 (sha-89737aa) → DEMO (push-to-demo.sh): demo DB backed up, reseed NEVER, migrate no-op,
+  running image a3b74a700190, health 200, sitemap 200. VERIFIED. (in-script 404 = known sleep-5 false alarm.)
+- Rule 39: dev app + worker rebuilt off main 55f5ac9, both FRESH.
 
 ## ⏳ TODO next session — no un-gated work
 - (empty) — queue clear, 0 open decisions.
+- Backlog (agent-found, non-blocking): ORQ-22 — align push-to-demo.sh health check to the bounded
+  24×5s poll used by push-to-prod.sh (single sleep-5 gives false 404). See docs/TASK_QUEUE.md.
 
 ## ⚖️ OPEN DECISIONS (parked [WHAT])
 - (none). PENDING_DECISIONS.md has 0 open [ ] items.
 
 ## 🚦 DEPLOY STATE (HARD HOLD)
-- origin/main @89737aa, tag v0.19.0 (in sync). Model B — CI builds image on main, auto-deploys NOTHING.
-- LIVE prod/demo on v0.18.3 (sha-ed87a4e), Turnstile bot protection live+verified. Promote only on
-  explicit "push to prod/demo" (push-to-prod.sh / push-to-demo.sh).
+- origin/main @55f5ac9, tag v0.19.0 (in sync). Model B — CI builds image on main, auto-deploys NOTHING.
+- LIVE prod + demo BOTH on v0.19.0 (sha-89737aa / image a3b74a700190) as of 2026-09-02 pm.
+  Turnstile bot protection live. Future promotes only on explicit "push to prod/demo".
 ```
 
 ---
