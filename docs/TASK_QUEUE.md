@@ -7,7 +7,13 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## 🔴 / 🟡 Open
 
-- (none)
+- 🔴 **Make coupled rollback's paired-dump pairing real** `[ORQ-24]` — `deploy/rollback.sh` coupled path
+  searches `/root/orqafy-<env>-backup-pre-promotion-<sha>-*.sql.gz`, but `push-to-prod.sh`/`push-to-demo.sh`
+  write `...-pre-pushtoprod-<ts>` / `...-pre-pushtodemo-<ts>` (no sha, different name) → the paired dump is
+  never found and rollback always falls to the guardrail (safe, but coupled image+schema restore never fires).
+  Fix: decide the sha-pairing convention (name the pre-promotion backup with the OUTGOING deployed sha) and
+  have the promotion scripts emit it. Touches proven prod-promotion script — plan the blast radius.
+  `source: agent-found 2026-09-03`
 
 ## ✅ Done recently
 
