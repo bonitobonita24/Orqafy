@@ -1,11 +1,46 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-09-03 by CLAUDE_CODE ("push it" + "adopt it" → "save session, stop reboot loop"). Pushed everything to origin, then adopted **ORQ-22** (bounded health poll in push-to-demo.sh, ef2b6f8). origin/main **@edd2476**, tag v0.19.0, tree clean + IN SYNC. Live prod + demo BOTH on **v0.19.0** (image a3b74a700190). Empty un-gated queue, 0 open decisions, 0 open tasks. Session STOPPED (owner rest) — no reboot.
+> Last updated: 2026-09-03 by CLAUDE_CODE (resume → "continue all pending tasks in full auto" → picked candidate #1: adopt fleet CI/CD standard). Closed the CI/CD-standard 4-item gap (**ORQ-23**) on branch **feat/cicd-standard-backfill @ 980358a**, LOCAL/HARD HOLD (unpushed). Live prod + demo unchanged on **v0.19.0**. origin/main still @edd2476 tag v0.19.0. New agent-found follow-up **ORQ-24** (rollback paired-dump pairing). 1 open task on the board.
 
 ---
 
-## ⭐ SESSION 2026-09-02 (pm, latest) — Full Auto: promoted v0.19.0 to PROD + DEMO
+## ⭐ SESSION 2026-09-03 (latest) — Adopt fleet CI/CD standard (ORQ-23)
+
+```
+[FOCUS: Orqafy]  ·  cold-start authority: docs/memory/MEMORY.md → latest session file
+
+## ✅ DONE THIS SESSION
+- Closed the CI/CD-standard 4-item gap (ORQ-23). Generated via cicd-gen, kept ONLY net-new scripts,
+  reinstated proven ci.yml/docker-publish.yml/push.sh/start.sh/staging-refresh-and-deploy.sh from HEAD
+  (generator had clobbered them). Added deploy/{rollback,demo-reset,demo-bless-golden,komodo-verify}.sh
+  (kept at deploy/ root, matching MG ref). .ai_prompt/cicd.md already present.
+- Reconciled the generator's STALE bakes to live reality: app+worker (not app-only),
+  orqafy.com/staging.orqafy.com/demo.orqafy.com (not *.powerbyte.app), prod stack orqafy-prod,
+  ORQ-17 hardened migration tunnel + ORQ-22 bounded health poll in rollback.sh & demo-reset.sh.
+- Verified: bash -n + shellcheck + lefthook pre-commit all clean. Commits c9b2147 (scripts) + 980358a (docs).
+
+## ⏳ TODO next session
+- ORQ-24 (agent-found, board Pending): make coupled rollback's paired-dump pairing real — rollback.sh
+  looks for ...-pre-promotion-<sha>-*.sql.gz but promotion scripts write ...-pre-pushtoprod/demo-<ts>.
+  Guardrail keeps rollback safe; coupled restore inert until fixed. Touches proven prod script — plan it.
+- Owner-gated wiring for ORQ-23 (HARD HOLD, needs explicit word): install demo-reset cron/Komodo schedule,
+  run demo-bless-golden.sh once, ensure prod-promotion writes the paired backup, merge+release the branch.
+- ⚠ demo-reset.sh MinIO restore uses --network ${PROJ}_network + bucket "orqafy" — verify at wire-time.
+
+## ⚖️ OPEN DECISIONS (parked [WHAT])
+- (none in PENDING_DECISIONS.md). Owner's next pick among earlier candidates: #2 framework governance
+  sync V32.48, #3 fleet typeface migration, #4 anything new — none started (owner selected only #1).
+
+## 🚦 DEPLOY STATE (HARD HOLD)
+- origin/main @edd2476, tag v0.19.0. Local branch feat/cicd-standard-backfill @980358a NOT pushed.
+- LIVE prod + demo BOTH on v0.19.0 (sha-89737aa / image a3b74a700190) — UNCHANGED this session.
+- Model B — CI builds on main, auto-deploys NOTHING. Nothing wired/deployed for ORQ-23.
+```
+
+---
+
+## ⭐ SESSION 2026-09-02 (pm) — Full Auto: promoted v0.19.0 to PROD + DEMO
 
 ```
 [FOCUS: Orqafy]  ·  cold-start authority: docs/memory/MEMORY.md → latest session file
