@@ -1,7 +1,7 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-09-03 by CLAUDE_CODE (resume → "continue all pending tasks in full auto" → picked candidate #1: adopt fleet CI/CD standard). Closed the CI/CD-standard 4-item gap (**ORQ-23**) on branch **feat/cicd-standard-backfill @ 980358a**, LOCAL/HARD HOLD (unpushed). Live prod + demo unchanged on **v0.19.0**. origin/main still @edd2476 tag v0.19.0. New agent-found follow-up **ORQ-24** (rollback paired-dump pairing). 1 open task on the board.
+> Last updated: 2026-09-04 by CLAUDE_CODE (adopted CI/CD standard ORQ-23; then owner: "save session, stop reboot loop"). Closed the CI/CD-standard 4-item gap (**ORQ-23**) on branch **feat/cicd-standard-backfill @ fc0d18f**, LOCAL/HARD HOLD (unpushed). Live prod + demo unchanged on **v0.19.0**; origin/main @edd2476 tag v0.19.0. Owner queued for NEXT session (this order): EC2-retarget prereq (ORQ-25) → ORQ-24 → demo cron → #2 gov-sync. Parked decision D-DEMO-CRON. Loop STOPPED (owner rest) — no reboot.
 
 ---
 
@@ -20,17 +20,27 @@
   ORQ-17 hardened migration tunnel + ORQ-22 bounded health poll in rollback.sh & demo-reset.sh.
 - Verified: bash -n + shellcheck + lefthook pre-commit all clean. Commits c9b2147 (scripts) + 980358a (docs).
 
-## ⏳ TODO next session
-- ORQ-24 (agent-found, board Pending): make coupled rollback's paired-dump pairing real — rollback.sh
-  looks for ...-pre-promotion-<sha>-*.sql.gz but promotion scripts write ...-pre-pushtoprod/demo-<ts>.
-  Guardrail keeps rollback safe; coupled restore inert until fixed. Touches proven prod script — plan it.
-- Owner-gated wiring for ORQ-23 (HARD HOLD, needs explicit word): install demo-reset cron/Komodo schedule,
-  run demo-bless-golden.sh once, ensure prod-promotion writes the paired backup, merge+release the branch.
-- ⚠ demo-reset.sh MinIO restore uses --network ${PROJ}_network + bucket "orqafy" — verify at wire-time.
+## ⏳ TODO next session — owner queued this ORDER: (0 prereq) → ORQ-24 → demo cron → #2 gov-sync
+- ⚠ **PREREQ — EC2 RETARGET (ORQ-25, agent-found 2026-09-04, NOT started):** staging + demo MIGRATED off
+  Hostinger to EC2-Komodo `ubuntu@18.138.220.90` (staging 09-02, demo 09-04; PROD stays Hostinger
+  `root@72.62.74.203`). But `deploy/compose/push-to-demo.sh`, `deploy/staging-refresh-and-deploy.sh`,
+  `deploy/demo-reset.sh`, `deploy/demo-bless-golden.sh` STILL hardcode Hostinger → they'd hit the now-STOPPED
+  rollback copy. Retarget demo+staging scripts to EC2 (per-env host/key/user; key `~/.ssh/powerbyte_ec2_komodo`,
+  stacks `/etc/komodo/stacks/orqafy-{staging,demo}/`, external net must exist, ubuntu user may need sudo, NOT
+  Komodo-registered). Ref memory `infra_staging_demo_on_ec2_komodo` + Server-Setups EC2 onboarding runbook.
+  **This blocks correct ORQ-24 (demo path) + the demo cron.**
+- **ORQ-24** (board Pending): coupled rollback paired-dump pairing — rollback.sh looks for
+  `...-pre-promotion-<sha>-*.sql.gz` but promotion scripts write `...-pre-pushtoprod/demo-<ts>`. Make it
+  host-aware (prod=Hostinger, demo=EC2). Touches proven prod script — plan the blast radius.
+- **Demo cron** (board Pending, DECISION open — see PENDING_DECISIONS "D-DEMO-CRON"): needs the EC2 retarget
+  first + a one-time LIVE golden bless of EC2 demo + install ~6h reset cron on EC2. Owner deferred the
+  live-vs-defer call → answer it next session before wiring.
+- **#2 framework governance sync V32.48** (candidate #2, independent of infra): via `prep-sync`, HARD HOLD local.
+- ⚠ demo-reset.sh MinIO restore uses --network ${PROJ}_network + bucket "orqafy" — verify at wire-time (EC2).
 
 ## ⚖️ OPEN DECISIONS (parked [WHAT])
-- (none in PENDING_DECISIONS.md). Owner's next pick among earlier candidates: #2 framework governance
-  sync V32.48, #3 fleet typeface migration, #4 anything new — none started (owner selected only #1).
+- **D-DEMO-CRON** (PENDING_DECISIONS.md) — how far to go wiring the demo cron on the freshly-migrated EC2 box:
+  (A) code+defer live bless/enable, (B) go fully live now, (C) skip. Owner said "save for next session" tonight.
 
 ## 🚦 DEPLOY STATE (HARD HOLD)
 - origin/main @edd2476, tag v0.19.0. Local branch feat/cicd-standard-backfill @980358a NOT pushed.

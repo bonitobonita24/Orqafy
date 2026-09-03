@@ -13,7 +13,8 @@
 🔨 **Agent-found follow-up** `[ORQ-24]` — coupled rollback's paired-dump pairing is inert: `rollback.sh` looks for `...-pre-promotion-<sha>-*.sql.gz` but the promotion scripts write `...-pre-pushtoprod/demo-<ts>` (no sha). Guardrail path keeps rollback safe; coupled restore won't fire until the sha-pairing convention is designed. Logged, not fixed (touches proven prod script).
 
 💬 **HARD HOLD** — LOCAL branch only, nothing pushed/wired/deployed. Owner-gated follow-ups: install the demo-reset cron, run `demo-bless-golden.sh` once, wire the paired pre-promotion backup, and merge/release the branch.
-💬 Not done (owner's next call): candidates #2 framework governance sync V32.48, #3 fleet typeface migration, #4 anything new.
+💬 Owner then queued (order): ORQ-24 → wire demo cron → #2 gov-sync. On starting, discovered **staging+demo migrated to EC2-Komodo** (18.138.220.90; demo 2026-09-04) — the demo/staging deploy scripts still target dead Hostinger, so an **EC2 retarget (ORQ-25)** is a prereq for ORQ-24's demo path + the cron. Surfaced the demo-cron live-vs-defer fork (D-DEMO-CRON); owner replied **"save session, stop reboot loop."**
+⏳ Parked for next session (nothing more built tonight): ORQ-25 (EC2 retarget) → ORQ-24 → demo cron (D-DEMO-CRON decision open) → #2 gov-sync. Loop STOPPED, no reboot.
 
 ## 2026-09-02 (pm) — Full Auto: pushed doc commit + promoted v0.19.0 to PROD + DEMO
 

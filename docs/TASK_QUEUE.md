@@ -7,6 +7,14 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## 🔴 / 🟡 Open
 
+> Owner-queued order for next session: **ORQ-25 (EC2 retarget, prereq) → ORQ-24 → demo cron (D-DEMO-CRON) → #2 gov-sync V32.48.**
+
+- 🔴 **Retarget demo + staging deploy scripts to EC2-Komodo** `[ORQ-25]` — staging+demo migrated off Hostinger
+  to EC2 `ubuntu@18.138.220.90` (staging 2026-09-02, demo 2026-09-04; PROD stays Hostinger). `push-to-demo.sh`,
+  `staging-refresh-and-deploy.sh`, `demo-reset.sh`, `demo-bless-golden.sh` still hardcode Hostinger → they hit
+  the now-stopped rollback copy. Retarget per-env (host/key `~/.ssh/powerbyte_ec2_komodo`/user `ubuntu`, stacks
+  `/etc/komodo/stacks/orqafy-{staging,demo}/`, external net, possible sudo, not Komodo-registered). Prereq for
+  ORQ-24 demo path + the demo cron. Ref memory `infra_staging_demo_on_ec2_komodo`. `source: agent-found 2026-09-04`
 - 🔴 **Make coupled rollback's paired-dump pairing real** `[ORQ-24]` — `deploy/rollback.sh` coupled path
   searches `/root/orqafy-<env>-backup-pre-promotion-<sha>-*.sql.gz`, but `push-to-prod.sh`/`push-to-demo.sh`
   write `...-pre-pushtoprod-<ts>` / `...-pre-pushtodemo-<ts>` (no sha, different name) → the paired dump is
