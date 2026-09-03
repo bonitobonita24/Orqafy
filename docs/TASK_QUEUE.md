@@ -11,6 +11,17 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## ✅ Done recently
 
+- ✅ **Adopted fleet CI/CD standard — closed the 4-item gap** `[ORQ-23]` — generated the net-new pipeline
+  scripts via `cicd-gen` and kept only what Orqafy lacked, reinstating the proven `ci.yml` /
+  `docker-publish.yml` / `push.sh` / `start.sh` / `staging-refresh-and-deploy.sh` from HEAD (the generator
+  had clobbered them). Net-new: `deploy/rollback.sh` (coupled image+schema rollback / guardrail),
+  `deploy/demo-reset.sh` (6h golden self-heal), `deploy/demo-bless-golden.sh` (capture golden),
+  `deploy/komodo-verify.sh` (§8.1 stack-registration audit). `.ai_prompt/cicd.md` already present (prior sync).
+  Reconciled the generator's stale bakes to Orqafy's live reality: **app+worker** (not app-only),
+  **orqafy.com / staging.orqafy.com / demo.orqafy.com** (not `*.powerbyte.app`), prod stack `orqafy-prod`,
+  **ORQ-17** hardened migration tunnel + **ORQ-22** bounded health poll in rollback & demo-reset. `bash -n` +
+  shellcheck clean. HARD HOLD — LOCAL only, nothing wired/deployed; cron + `demo-bless-golden.sh` one-time +
+  paired pre-promotion backup remain owner-gated wiring. `source: owner 2026-09-03`
 - ✅ **Hardened push-to-demo.sh health check (bounded poll)** `[ORQ-22]` — replaced the single `sleep 5` + one
   curl with the same 24×5s bounded poll `push-to-prod.sh` uses (breaks on first 200, warns after 120s). Fixes
   the false `404` seen on the v0.19.0 demo promote. `bash -n` + shellcheck clean. `ef2b6f8` → main, pushed. (2026-09-02)
