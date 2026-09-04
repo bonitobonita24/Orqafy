@@ -1,5 +1,24 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-09-05 — EC2 deploy retarget (ORQ-25) + coupled-rollback pairing (ORQ-24) + gov-sync plan
+
+**In your words:** resume → "yes please" (do ORQ-25 EC2 retarget + D-DEMO-CRON Option 1) → "yes continue" (ORQ-24) → "push on into one of the other two then save session" (picked the gov-sync plan).
+
+✅ **ORQ-25 — retargeted demo/staging deploy scripts to EC2-Komodo** (branch `feat/orq-25-ec2-retarget`, LOCAL/HARD HOLD)
+- staging+demo moved to EC2 `ubuntu@18.138.220.90`; prod stays Hostinger. Verified every quirk against the LIVE box: `ubuntu` in docker+sudo groups, demo `.env` is mode 600, `/root` inaccessible.
+- Rules applied per-file: `sudo` for demo `.env` reads + all `docker compose` from the stack dir (Compose auto-loads `./.env`); staging `.env` world-readable → sudo only on writes; `/root`→`/home/ubuntu` for backups+golden; `docker exec`/`buildx` stay bare.
+- `rollback.sh` + `komodo-verify.sh` made two-host aware (staging/demo=EC2, prod=Hostinger); `push-to-prod.sh` untouched.
+- New `deploy/demo-reset-cron-install.sh` — D-DEMO-CRON **Option 1** (code now, defer live): inert, pre-flight-checked, owner-gated 6h self-heal installer. Commit `44eb63b`.
+
+✅ **ORQ-24 — coupled rollback's paired-dump pairing now works** (commit `480f327`)
+- Root nuance: prod runs a moving `APP_IMAGE_TAG=latest`; the immutable identity is `prod-sha-<SHA>`. Added a `DEPLOYED_APP_SHA` marker to the prod `.env` so `push-to-prod.sh` names the pre-promotion backup with the OUTGOING sha and `rollback prod prod-sha-<OUTGOING>` finds it → coupled image+schema restore fires. rollback also keeps the marker current.
+
+🔨 **gov-sync — prep-sync PLAN produced (apply owner-gated)** `[D-GOVSYNC]`
+- Target is **v32.54.0**, not the memory's stale "V32.48" (real jump V32.45.1→V32.54.0, governance-only, disjoint from the deploy branch).
+- ⚠ Found an AIEF-tooling **whitelist-lag bug**: `sync-to-project.sh` skips the 5 newest deliverables (review-scope/audit-scope/content-voice) → needs an AIEF-seat fix before a clean apply. Plan + steps in `PENDING_DECISIONS.md` D-GOVSYNC; global lesson logged.
+
+💬 **Notes:** All work LOCAL / HARD HOLD — nothing pushed or deployed; live prod+demo unchanged (v0.19.0). Surfaced **ORQ-27** (cross-host residuals: staging-refresh prod-read `[WHAT]` + demo-cron go-live topology). `bash -n` + shellcheck + lefthook clean throughout. Board synced (ORQ-24/25 + D-DEMO-CRON → For Review; ORQ-27 created).
+
 ## 2026-09-03 — Adopt fleet CI/CD standard (ORQ-23) — full auto
 
 **In your words:** resume → "continue doing all pending tasks in full auto mode" → picked candidate #1: adopt the fleet CI/CD standard.

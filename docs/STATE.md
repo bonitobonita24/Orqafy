@@ -1,11 +1,48 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-09-04 by CLAUDE_CODE (adopted CI/CD standard ORQ-23; then owner: "save session, stop reboot loop"). Closed the CI/CD-standard 4-item gap (**ORQ-23**) on branch **feat/cicd-standard-backfill @ fc0d18f**, LOCAL/HARD HOLD (unpushed). Live prod + demo unchanged on **v0.19.0**; origin/main @edd2476 tag v0.19.0. Owner queued for NEXT session (this order): EC2-retarget prereq (ORQ-25) → ORQ-24 → demo cron → #2 gov-sync. Parked decision D-DEMO-CRON. Loop STOPPED (owner rest) — no reboot.
+> Last updated: 2026-09-05 by CLAUDE_CODE ("save session" after ORQ-25 + ORQ-24 + gov-sync plan). Branch **feat/orq-25-ec2-retarget** (off the ORQ-23 backfill), 4 commits, LOCAL/HARD HOLD (unpushed): ORQ-25 (EC2 retarget) `44eb63b` + ORQ-24 (coupled-rollback pairing) `480f327` + docs. Live prod + demo UNCHANGED on **v0.19.0**. Next un-gated: **ORQ-27** (cross-host residuals — has [WHAT]s) + **D-GOVSYNC** apply (V32.45.1→V32.54.0, blocked on an AIEF whitelist-lag fix). Interactive "save session" — reboot per routine.
 
 ---
 
-## ⭐ SESSION 2026-09-03 (latest) — Adopt fleet CI/CD standard (ORQ-23)
+## ⭐ SESSION 2026-09-05 (latest) — EC2 deploy retarget (ORQ-25) + coupled-rollback pairing (ORQ-24) + gov-sync plan
+
+```
+[FOCUS: Orqafy]  ·  cold-start authority: docs/memory/MEMORY.md → latest session file
+
+## ✅ DONE THIS SESSION (branch feat/orq-25-ec2-retarget, LOCAL/HARD HOLD, unpushed)
+- ORQ-25 (`44eb63b`): retargeted demo/staging deploy scripts Hostinger→EC2-Komodo (ubuntu@18.138.220.90).
+  Verified against LIVE box: ubuntu in docker+sudo groups, demo .env mode 600, /root inaccessible.
+  Rules: sudo for demo .env reads + all `docker compose` from stack dir (Compose auto-loads ./.env);
+  staging .env world-readable → sudo only on writes; /root→/home/ubuntu backups+golden; docker exec/buildx bare.
+  rollback.sh + komodo-verify.sh → two-host aware (staging/demo=EC2, prod=Hostinger). push-to-prod.sh untouched.
+  NEW deploy/demo-reset-cron-install.sh = D-DEMO-CRON Option 1 (inert, pre-flight-checked, owner-gated).
+- ORQ-24 (`480f327`): coupled rollback pairing via a DEPLOYED_APP_SHA marker in prod .env. push-to-prod names
+  the pre-promotion backup with the OUTGOING sha; rollback keeps the marker current. `rollback prod prod-sha-<X>`
+  now finds its paired dump. Staging=guardrail (moving tag); demo self-heals.
+- gov-sync (D-GOVSYNC): prep-sync PLAN only (apply owner-gated). Real target = **v32.54.0** (memory's V32.48 stale).
+  Governance-only, DISJOINT from deploy branch. ⚠ AIEF sync-to-project.sh whitelist-lag skips the 5 newest
+  deliverables → AIEF-seat fix needed first. Plan in PENDING_DECISIONS D-GOVSYNC; global lesson logged.
+- All gates: bash -n + shellcheck + lefthook clean. Board synced (ORQ-24/25 + D-DEMO-CRON → For Review; ORQ-27 new).
+
+## ⏳ TODO next session (un-gated first, then decisions)
+- **ORQ-27** (board Pending): cross-host residuals — (a) staging-refresh prod→staging is same-host, prod now on
+  Hostinger/staging on EC2 → step 2 auto-skips; a cross-host prod-read pipe = [WHAT]. (b) demo-cron go-live needs
+  on-box migrate + self-SSH/SG topology resolved. Both [WHAT]/gated — not pure un-gated.
+- **D-GOVSYNC apply** (V32.45.1→v32.54.0): owner-approve + coordinate the AIEF whitelist-lag fix, then branch
+  `chore/framework-sync-v32.54` off main → sync-to-project --dry-run → apply → deploy.sh → dev-verify → HOLD.
+- Deploy branches awaiting owner merge/push decision (HARD HOLD): feat/cicd-standard-backfill (ORQ-23) +
+  feat/orq-25-ec2-retarget (ORQ-24/25, includes the ORQ-23 commits as ancestors).
+
+## ⚖️ OPEN DECISIONS (parked [WHAT])
+- **ORQ-27(a)** — cross-host staging refresh reads production: build the pipe or leave the gate degraded?
+- **D-GOVSYNC** — approve the V32.54.0 sync (needs AIEF whitelist-lag fix first) or defer?
+- D-DEMO-CRON — RESOLVED Option 1 (code done; live-enable still owner-gated, tracked in ORQ-27b).
+```
+
+---
+
+## SESSION 2026-09-03 — Adopt fleet CI/CD standard (ORQ-23)
 
 ```
 [FOCUS: Orqafy]  ·  cold-start authority: docs/memory/MEMORY.md → latest session file
