@@ -7,7 +7,7 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## 🔴 / 🟡 Open
 
-> Owner-queued order: ORQ-25 ✅ + demo-cron code ✅ (Option 1) → **ORQ-24 → ORQ-27 (cross-host residuals) → #2 gov-sync V32.48.**
+> Owner-queued order: ORQ-25 ✅ · demo-cron code ✅ (Option 1) · ORQ-24 ✅ → **ORQ-27 (cross-host residuals) → #2 gov-sync V32.48.**
 
 - 🔴 **Cross-host deploy residuals from the EC2 split** `[ORQ-27]` — surfaced by ORQ-25. Two items: (a)
   `staging-refresh-and-deploy.sh` refreshes staging FROM prod via a SAME-HOST `pg_dump|psql` stream, but prod
@@ -15,16 +15,17 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   prod→staging pipe reads prod = a [WHAT]. (b) The demo self-heal cron (`demo-reset-cron-install.sh`) can't go
   live until the on-box migrate mechanism + self-SSH/SG topology are resolved (box has no repo/pnpm; SG blocks
   :22 from the box's own EIP). `source: agent-found 2026-09-05`
-- 🔴 **Make coupled rollback's paired-dump pairing real** `[ORQ-24]` — `deploy/rollback.sh` coupled path
-  searches `/root/orqafy-<env>-backup-pre-promotion-<sha>-*.sql.gz`, but `push-to-prod.sh`/`push-to-demo.sh`
-  write `...-pre-pushtoprod-<ts>` / `...-pre-pushtodemo-<ts>` (no sha, different name) → the paired dump is
-  never found and rollback always falls to the guardrail (safe, but coupled image+schema restore never fires).
-  Fix: decide the sha-pairing convention (name the pre-promotion backup with the OUTGOING deployed sha) and
-  have the promotion scripts emit it. Touches proven prod-promotion script — plan the blast radius.
-  `source: agent-found 2026-09-03`
 
 ## ✅ Done recently
 
+- ✅ **Make coupled rollback's paired-dump pairing real** `[ORQ-24]` — root nuance: prod runs a moving
+  `APP_IMAGE_TAG=latest`; the immutable per-deploy identity is the `prod-sha-<SHA>` tag. Introduced a
+  `DEPLOYED_APP_SHA` marker in the prod `.env`: `push-to-prod.sh` names the pre-promotion backup with the
+  OUTGOING sha (`orqafy-prod-backup-pre-promotion-<OUTGOING>-<ts>.sql.gz`) + records the incoming sha for
+  next time; `rollback.sh` (search already matched) now also updates `DEPLOYED_APP_SHA` at both re-tag points
+  so the next promotion pairs correctly. `rollback prod prod-sha-<OUTGOING>` now finds its paired dump →
+  coupled image+schema restore fires. Staging keeps the guardrail (moving tag, wiped/refreshed); demo self-heals.
+  Commit `480f327`, `bash -n`+shellcheck clean. HARD HOLD (local only). `source: agent-found 2026-09-03`
 - ✅ **Retarget demo + staging deploy scripts to EC2-Komodo** `[ORQ-25]` — retargeted every demo/staging deploy
   path off the dead Hostinger host to EC2 `ubuntu@18.138.220.90`, verified against the live box: SSH user
   `ubuntu` (docker group + passwordless sudo), demo `.env` mode 600 → sudo for `.env` reads + all `docker
