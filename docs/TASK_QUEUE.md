@@ -7,14 +7,14 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## 🔴 / 🟡 Open
 
-> Owner-queued order for next session: **ORQ-25 (EC2 retarget, prereq) → ORQ-24 → demo cron (D-DEMO-CRON) → #2 gov-sync V32.48.**
+> Owner-queued order: ORQ-25 ✅ + demo-cron code ✅ (Option 1) → **ORQ-24 → ORQ-27 (cross-host residuals) → #2 gov-sync V32.48.**
 
-- 🔴 **Retarget demo + staging deploy scripts to EC2-Komodo** `[ORQ-25]` — staging+demo migrated off Hostinger
-  to EC2 `ubuntu@18.138.220.90` (staging 2026-09-02, demo 2026-09-04; PROD stays Hostinger). `push-to-demo.sh`,
-  `staging-refresh-and-deploy.sh`, `demo-reset.sh`, `demo-bless-golden.sh` still hardcode Hostinger → they hit
-  the now-stopped rollback copy. Retarget per-env (host/key `~/.ssh/powerbyte_ec2_komodo`/user `ubuntu`, stacks
-  `/etc/komodo/stacks/orqafy-{staging,demo}/`, external net, possible sudo, not Komodo-registered). Prereq for
-  ORQ-24 demo path + the demo cron. Ref memory `infra_staging_demo_on_ec2_komodo`. `source: agent-found 2026-09-04`
+- 🔴 **Cross-host deploy residuals from the EC2 split** `[ORQ-27]` — surfaced by ORQ-25. Two items: (a)
+  `staging-refresh-and-deploy.sh` refreshes staging FROM prod via a SAME-HOST `pg_dump|psql` stream, but prod
+  is on Hostinger and staging on EC2 → step 2 now auto-skips (gate degraded to deploy+migrate only); a cross-host
+  prod→staging pipe reads prod = a [WHAT]. (b) The demo self-heal cron (`demo-reset-cron-install.sh`) can't go
+  live until the on-box migrate mechanism + self-SSH/SG topology are resolved (box has no repo/pnpm; SG blocks
+  :22 from the box's own EIP). `source: agent-found 2026-09-05`
 - 🔴 **Make coupled rollback's paired-dump pairing real** `[ORQ-24]` — `deploy/rollback.sh` coupled path
   searches `/root/orqafy-<env>-backup-pre-promotion-<sha>-*.sql.gz`, but `push-to-prod.sh`/`push-to-demo.sh`
   write `...-pre-pushtoprod-<ts>` / `...-pre-pushtodemo-<ts>` (no sha, different name) → the paired dump is
@@ -25,6 +25,14 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## ✅ Done recently
 
+- ✅ **Retarget demo + staging deploy scripts to EC2-Komodo** `[ORQ-25]` — retargeted every demo/staging deploy
+  path off the dead Hostinger host to EC2 `ubuntu@18.138.220.90`, verified against the live box: SSH user
+  `ubuntu` (docker group + passwordless sudo), demo `.env` mode 600 → sudo for `.env` reads + all `docker
+  compose` from the stack dir; staging `.env` world-readable → only `.env` writes need sudo; `/root`→`/home/ubuntu`
+  for backups+golden. `rollback.sh`+`komodo-verify.sh` made per-env two-host aware (staging/demo=EC2, prod=Hostinger);
+  `push-to-prod.sh` untouched. Plus `demo-reset-cron-install.sh` (D-DEMO-CRON Option 1: inert, pre-flight-checked,
+  owner-gated). Commit `44eb63b` on `feat/orq-25-ec2-retarget`, `bash -n`+shellcheck clean. HARD HOLD (local only).
+  `source: owner-queued 2026-09-05`
 - ✅ **Adopted fleet CI/CD standard — closed the 4-item gap** `[ORQ-23]` — generated the net-new pipeline
   scripts via `cicd-gen` and kept only what Orqafy lacked, reinstating the proven `ci.yml` /
   `docker-publish.yml` / `push.sh` / `start.sh` / `staging-refresh-and-deploy.sh` from HEAD (the generator
