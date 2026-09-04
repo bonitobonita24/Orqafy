@@ -12,13 +12,17 @@
 # Promotes BOTH images (web + worker) so app and worker move together.
 #
 # Usage:  bash deploy/compose/push-to-demo.sh [SOURCE_TAG]   (default: latest — Hub)
-# Prereq: SSH key ~/.ssh/powerbyte_hostinger; run from repo root at the commit
+# Prereq: SSH key ~/.ssh/powerbyte_ec2_komodo; run from repo root at the commit
 #         that built SOURCE_TAG (migrations are applied host-side from this repo).
+# Host:   demo lives on EC2-Komodo (ubuntu@18.138.220.90). The SSH user is `ubuntu` (docker group +
+#         passwordless sudo). The stack .env is root-owned mode 600, so every .env read/write AND every
+#         `docker compose` run from the stack dir (Compose auto-loads ./.env) go through sudo; docker
+#         exec/buildx stay bare (ubuntu is in the docker group). Backups land in /home/ubuntu (ORQ-25).
 # =============================================================================
 set -euo pipefail
 
 SRC="${1:-latest}"
-VPS="root@72.62.74.203"; KEY="$HOME/.ssh/powerbyte_hostinger"
+VPS="ubuntu@18.138.220.90"; KEY="$HOME/.ssh/powerbyte_ec2_komodo"
 HUB="bonitobonita24"; WEB="orqafy"; WRK="orqafy-worker"
 STACK="/etc/komodo/stacks/orqafy-demo"; PROJ="orqafy_demo"
 CF="-f docker-compose.db.yml -f docker-compose.cache.yml -f docker-compose.storage.yml -f docker-compose.app.yml -f docker-compose.worker.yml"
@@ -26,20 +30,20 @@ ssh_vps(){ ssh -o ConnectTimeout=15 -i "$KEY" "$VPS" "$@"; }
 
 echo "▶ 1/5 Backup demo DB"
 ssh_vps "U=\$(docker exec ${PROJ}_postgres printenv POSTGRES_USER); D=\$(docker exec ${PROJ}_postgres printenv POSTGRES_DB); \
-  docker exec ${PROJ}_postgres pg_dump -U \$U -d \$D | gzip > /root/orqafy-demo-backup-pre-pushtodemo-\$(date -u +%Y%m%d-%H%M%S).sql.gz && echo '  ok'"
+  docker exec ${PROJ}_postgres pg_dump -U \$U -d \$D | gzip > /home/ubuntu/orqafy-demo-backup-pre-pushtodemo-\$(date -u +%Y%m%d-%H%M%S).sql.gz && echo '  ok'"
 
 echo "▶ 2/5 Promote ${SRC} → demo-latest (registry manifest, web + worker)"
 ssh_vps "docker buildx imagetools create -t ${HUB}/${WEB}:demo-latest ${HUB}/${WEB}:${SRC} && \
          docker buildx imagetools create -t ${HUB}/${WRK}:demo-latest ${HUB}/${WRK}:${SRC} && echo '  ok'"
 
 echo "▶ 3/5 Redeploy demo stack (pull + recreate app + worker)"
-ssh_vps "cd ${STACK}; sed -i 's/^APP_IMAGE_TAG=.*/APP_IMAGE_TAG=demo-latest/' .env; \
-  docker compose -p ${PROJ} --env-file .env ${CF} pull app worker >/dev/null 2>&1; \
-  docker compose -p ${PROJ} --env-file .env ${CF} up -d app worker && echo '  ok'"
+ssh_vps "cd ${STACK}; sudo sed -i 's/^APP_IMAGE_TAG=.*/APP_IMAGE_TAG=demo-latest/' .env; \
+  sudo docker compose -p ${PROJ} --env-file .env ${CF} pull app worker >/dev/null 2>&1; \
+  sudo docker compose -p ${PROJ} --env-file .env ${CF} up -d app worker && echo '  ok'"
 
 echo "▶ 4/5 Migrate (deploy; resolve drift as applied — NEVER seed)"
-DBPORT=$(ssh_vps "grep -oP '(?<=^DB_PORT=)[0-9]+' ${STACK}/.env")
-DBURL=$(ssh_vps "grep -oP '(?<=^DATABASE_URL=).*' ${STACK}/.env")
+DBPORT=$(ssh_vps "sudo grep -oP '(?<=^DB_PORT=)[0-9]+' ${STACK}/.env")
+DBURL=$(ssh_vps "sudo grep -oP '(?<=^DATABASE_URL=).*' ${STACK}/.env")
 # ORQ-17: open the migration tunnel on a DEDICATED high LOCAL port, decoupled from
 # the remote ${DBPORT}. Binding local==remote let a local container already
 # publishing ${DBPORT} hijack the bind — ssh -N stayed alive, migrate hit the WRONG

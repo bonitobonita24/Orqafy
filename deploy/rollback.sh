@@ -21,20 +21,25 @@
 #      exact "old code on new schema" footgun) and tells you to fix forward instead.
 #
 # Usage:  bash deploy/rollback.sh <staging|prod> <sha-XXXXXXX>
-# Prereq: SSH key $HOME/.ssh/powerbyte_hostinger; run from the app repo root at (or near) the target commit,
-#         so the DB package + migrate script below match what that sha expects.
+# Prereq: run from the app repo root at (or near) the target commit, so the DB package + migrate script
+#         below match what that sha expects. The SSH host/key are PER-ENV (ORQ-25): staging → EC2-Komodo
+#         key ~/.ssh/powerbyte_ec2_komodo (ubuntu); prod → Hostinger key ~/.ssh/powerbyte_hostinger (root).
 set -euo pipefail
 
 ENVIRON="${1:?Usage: bash deploy/rollback.sh <staging|prod> <sha-XXXXXXX>}"
 TARGET_SHA="${2:?Usage: bash deploy/rollback.sh <staging|prod> <sha-XXXXXXX>}"
-VPS="root@72.62.74.203"; KEY="$HOME/.ssh/powerbyte_hostinger"
-ssh_vps(){ ssh -o ConnectTimeout=20 -i "$KEY" "$VPS" "$@"; }
-
+# ORQ-25: host is PER-ENV. staging runs on EC2-Komodo (SSH user `ubuntu`, docker group + passwordless
+# sudo; the stack .env is root-owned so .env WRITES go through $SUDO; backups live under /home/ubuntu).
+# prod stays on Hostinger (SSH user root: $SUDO empty, backups under /root). docker compose / .env reads
+# stay bare on BOTH (prod is root; staging .env is world-readable).
 case "$ENVIRON" in
-  staging) STACK="/etc/komodo/stacks/orqafy-staging"; PROJ="orqafy_staging"; DOMAIN="staging.orqafy.com" ;;
-  prod)    STACK="/etc/komodo/stacks/orqafy-prod";     PROJ="orqafy_prod";    DOMAIN="orqafy.com" ;;
+  staging) VPS="ubuntu@18.138.220.90"; KEY="$HOME/.ssh/powerbyte_ec2_komodo"; SUDO="sudo"; BACKUP_DIR="/home/ubuntu"
+           STACK="/etc/komodo/stacks/orqafy-staging"; PROJ="orqafy_staging"; DOMAIN="staging.orqafy.com" ;;
+  prod)    VPS="root@72.62.74.203";    KEY="$HOME/.ssh/powerbyte_hostinger"; SUDO="";     BACKUP_DIR="/root"
+           STACK="/etc/komodo/stacks/orqafy-prod";     PROJ="orqafy_prod";    DOMAIN="orqafy.com" ;;
   *) echo "❌ Usage: bash deploy/rollback.sh <staging|prod> <sha-XXXXXXX>"; exit 1 ;;
 esac
+ssh_vps(){ ssh -o ConnectTimeout=20 -i "$KEY" "$VPS" "$@"; }
 # Orqafy runs app + worker together (a mismatched old worker on a newer schema must fail loudly,
 # never write silently) — both move in every stop/pull/up so a rollback can't strand the worker.
 CF="-f docker-compose.db.yml -f docker-compose.cache.yml -f docker-compose.storage.yml -f docker-compose.app.yml -f docker-compose.worker.yml"
@@ -44,7 +49,7 @@ echo "▶ Rollback target: ${ENVIRON} → ${TARGET_SHA}  (stack ${STACK}, projec
 
 echo "▶ 1/4 Locate paired pre-promotion backup for ${TARGET_SHA}"
 # Naming convention: orqafy-<env>-backup-pre-promotion-<sha>-<timestamp>.sql.gz
-PAIRED="$(ssh_vps "ls -1t /root/orqafy-${ENVIRON}-backup-pre-promotion-${TARGET_SHA}-*.sql.gz 2>/dev/null | head -1" || true)"
+PAIRED="$(ssh_vps "ls -1t ${BACKUP_DIR}/orqafy-${ENVIRON}-backup-pre-promotion-${TARGET_SHA}-*.sql.gz 2>/dev/null | head -1" || true)"
 if [ -z "$PAIRED" ]; then
   echo "  ⚠ no paired dump found for ${TARGET_SHA} on ${ENVIRON}."
 else
@@ -90,7 +95,7 @@ if [ -n "$PAIRED" ]; then
     docker exec ${PROJ}_postgres psql -U \$U -d \$D -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;' >/dev/null; \
     gunzip -c '$PAIRED' | docker exec -i ${PROJ}_postgres psql -U \$U -d \$D -q >/dev/null && echo '  ok'"
   echo "  · re-tagging image → ${TARGET_SHA}"
-  ssh_vps "cd ${STACK}; sed -i 's/^APP_IMAGE_TAG=.*/APP_IMAGE_TAG=${TARGET_SHA}/' .env"
+  ssh_vps "cd ${STACK}; ${SUDO} sed -i 's/^APP_IMAGE_TAG=.*/APP_IMAGE_TAG=${TARGET_SHA}/' .env"
   echo "  · bringing ${ENVIRON} back up on ${TARGET_SHA}"
   ssh_vps "cd ${STACK}; docker compose -p ${PROJ} --env-file .env ${CF} pull ${SERVICES} >/dev/null 2>&1; docker compose -p ${PROJ} --env-file .env ${CF} up -d ${SERVICES}"
 else
@@ -111,7 +116,7 @@ else
     echo "  aborted — no changes made."
     exit 1
   fi
-  ssh_vps "cd ${STACK}; sed -i 's/^APP_IMAGE_TAG=.*/APP_IMAGE_TAG=${TARGET_SHA}/' .env; \
+  ssh_vps "cd ${STACK}; ${SUDO} sed -i 's/^APP_IMAGE_TAG=.*/APP_IMAGE_TAG=${TARGET_SHA}/' .env; \
     docker compose -p ${PROJ} --env-file .env ${CF} pull ${SERVICES} >/dev/null 2>&1; \
     docker compose -p ${PROJ} --env-file .env ${CF} up -d ${SERVICES}"
 fi

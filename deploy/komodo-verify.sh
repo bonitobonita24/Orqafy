@@ -25,8 +25,14 @@ REPORT_ONLY=0
 [ "${1:-}" = "--report-only" ] && REPORT_ONLY=1
 
 APP="orqafy"
-VPS="root@72.62.74.203"
-KEY="$HOME/.ssh/powerbyte_hostinger"
+# ORQ-25: SPLIT TOPOLOGY — prod runs on Hostinger, staging + demo on EC2-Komodo. The on-host
+# stack-dir check (dir_exists) SSHes to the CORRECT box per env below. ⚠ CAVEAT: the Komodo
+# tracked-list (`km`/ListStacks) is read from ONE configured Komodo instance — prod registration
+# lives in Hostinger-Komodo, staging/demo in EC2-Komodo (kmd.powerbyte.app). So the tracked check
+# is only authoritative for the env-set matching the Komodo your `km`/KOMODO_HOST points at; a full
+# dual-Komodo audit is a follow-up (ORQ-26). dir_exists (the hand-install finding) is host-correct.
+VPS_PROD="root@72.62.74.203";     KEY_PROD="$HOME/.ssh/powerbyte_hostinger"
+VPS_EC2="ubuntu@18.138.220.90";   KEY_EC2="$HOME/.ssh/powerbyte_ec2_komodo"
 # env → on-host stack dir (name = the Komodo Stack resource name = basename of the dir)
 STACK_PROD="/etc/komodo/stacks/orqafy-prod"
 STACK_STAGING="/etc/komodo/stacks/orqafy-staging"
@@ -35,8 +41,6 @@ STACK_DEMO="/etc/komodo/stacks/orqafy-demo"
 warn(){ echo "   ⚠ $*" >&2; }
 ok(){   echo "   ✓ $*"; }
 bad(){  echo "   ✗ $*" >&2; }
-
-ssh_vps(){ ssh -o ConnectTimeout=15 -i "$KEY" "$VPS" "$@"; }
 
 # ── how will we read Komodo's tracked-stack list? (decided once, fail-open) ──────
 KOMODO_STACKS=""        # newline-separated list of tracked stack names, or empty if unknown
@@ -79,7 +83,7 @@ is_tracked(){ # is_tracked <stack-name> — true only on an EXACT, standalone st
   local re; re="$(printf '%s' "$1" | sed -E 's/[][(){}.^$*+?|\\/]/\\&/g')"
   printf '%s\n' "$KOMODO_STACKS" | grep -qiE "(^|[^[:alnum:]_-])${re}([^[:alnum:]_-]|\$)"
 }
-dir_exists(){ ssh_vps "[ -d '$1' ]" 2>/dev/null; }
+dir_exists(){ ssh -o ConnectTimeout=15 -i "$2" "$1" "[ -d '$3' ]" 2>/dev/null; } # dir_exists <host> <key> <dir>
 
 emit_resource_sync(){ # emit_resource_sync <stack-name> <stack-dir>
   local name="$1" dir="$2" repo
@@ -98,25 +102,25 @@ TOML
 
 FINDINGS=0
 PROD_FINDING=0
-audit_env(){ # audit_env <label> <stack-dir> <is-prod 0/1>
-  local label="$1" dir="$2" is_prod="$3" name; name="$(basename "$dir")"
+audit_env(){ # audit_env <label> <stack-dir> <is-prod 0/1> <ssh-host> <ssh-key>
+  local label="$1" dir="$2" is_prod="$3" host="$4" key="$5" name; name="$(basename "$dir")"
   if is_tracked "$name"; then
     ok "${label}: '${name}' is a Komodo-tracked Stack."
     return
   fi
-  if dir_exists "$dir"; then
-    bad "${label}: '${name}' EXISTS on host (${dir}) but is NOT tracked by Komodo — HAND-INSTALLED."
+  if dir_exists "$host" "$key" "$dir"; then
+    bad "${label}: '${name}' EXISTS on host (${host}:${dir}) but is NOT tracked by Komodo — HAND-INSTALLED."
     emit_resource_sync "$name" "$dir"
     FINDINGS=$((FINDINGS+1)); [ "$is_prod" = "1" ] && PROD_FINDING=1
   else
-    echo "   • ${label}: '${name}' not set up on host yet (no ${dir}) — nothing to register."
+    echo "   • ${label}: '${name}' not set up on ${host} yet (no ${dir}) — nothing to register."
   fi
 }
 
-# Production FIRST and loudest, then staging, then demo.
-audit_env "PRODUCTION" "$STACK_PROD"    1
-audit_env "staging"    "$STACK_STAGING" 0
-audit_env "demo"       "$STACK_DEMO"    0
+# Production FIRST and loudest, then staging, then demo. ORQ-25: prod on Hostinger, staging+demo on EC2.
+audit_env "PRODUCTION" "$STACK_PROD"    1 "$VPS_PROD" "$KEY_PROD"
+audit_env "staging"    "$STACK_STAGING" 0 "$VPS_EC2"  "$KEY_EC2"
+audit_env "demo"       "$STACK_DEMO"    0 "$VPS_EC2"  "$KEY_EC2"
 
 echo "──────────────────────────────────────────────────────────────────────────"
 if [ "$FINDINGS" -eq 0 ]; then

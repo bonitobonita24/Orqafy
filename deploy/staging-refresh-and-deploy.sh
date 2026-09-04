@@ -17,9 +17,17 @@
 #   5. Bring staging up on new images (app + worker)
 #   6. Health verify
 #
-# FIRST-RUN NOTE: until an Orqafy production stack (orqafy_prod) exists on the
-# VPS, step 2 is skipped automatically (no prod to copy from) — staging keeps
-# whatever data it was seeded with. Once prod exists, the refresh engages with no edits.
+# FIRST-RUN NOTE: until an Orqafy production stack (orqafy_prod) exists ON THIS SAME HOST,
+# step 2 is skipped automatically (no prod to copy from) — staging keeps whatever data it
+# was seeded with. Once a same-host prod exists, the refresh engages with no edits.
+#
+# ⚠ CROSS-HOST LIMITATION (ORQ-25, 2026-09-05): staging now runs on EC2-Komodo while PRODUCTION
+#   still runs on Hostinger. Step 2's prod→staging copy is a SAME-HOST `docker exec pg_dump | docker
+#   exec psql` stream (no network egress) and there is NO orqafy_prod container on EC2 — so step 2
+#   currently AUTO-SKIPS and staging is NOT refreshed from prod-shaped data. This degrades the
+#   staging-refresh gate to "deploy candidate + migrate against staging's own data". A cross-host
+#   prod→staging pipe (pg_dump on Hostinger → stream over SSH → psql on EC2) reads production and is a
+#   [WHAT]/cross-env decision — tracked as ORQ-26, NOT built here. Deploy + migrate still work today.
 #
 # HARD RULES:
 #   • PRODUCTION is only ever READ (pg_dump). It is never written, migrated, or restarted here.
@@ -28,13 +36,16 @@
 #   • Production promotion stays a separate, explicit manual step (never triggered here).
 #
 # Usage:  bash deploy/staging-refresh-and-deploy.sh [SOURCE_TAG]   (default: staging-latest)
-# Prereq: SSH key ~/.ssh/powerbyte_hostinger; run from the app repo root at the
+# Prereq: SSH key ~/.ssh/powerbyte_ec2_komodo; run from the app repo root at the
 #         commit that built SOURCE_TAG (migrations are applied host-side from this repo).
+# Host:   staging lives on EC2-Komodo (ubuntu@18.138.220.90). SSH user `ubuntu` (docker group +
+#         passwordless sudo); the staging .env is root-owned but world-READABLE, so `docker compose`
+#         and .env grep stay bare — only the `.env` WRITE (sed) needs sudo. Backups → /home/ubuntu.
 # =============================================================================
 set -euo pipefail
 
 SRC="${1:-staging-latest}"
-VPS="root@72.62.74.203"; KEY="$HOME/.ssh/powerbyte_hostinger"
+VPS="ubuntu@18.138.220.90"; KEY="$HOME/.ssh/powerbyte_ec2_komodo"
 STACK="/etc/komodo/stacks/orqafy-staging"
 PROJ="orqafy_staging"; PRODPROJ="orqafy_prod"
 CF="-f docker-compose.db.yml -f docker-compose.cache.yml -f docker-compose.storage.yml -f docker-compose.app.yml -f docker-compose.worker.yml"
@@ -42,7 +53,7 @@ ssh_vps(){ ssh -o ConnectTimeout=20 -i "$KEY" "$VPS" "$@"; }
 
 echo "▶ 1/6 Backup staging DB (rollback point)"
 ssh_vps "U=\$(docker exec ${PROJ}_postgres printenv POSTGRES_USER); D=\$(docker exec ${PROJ}_postgres printenv POSTGRES_DB); \
-  docker exec ${PROJ}_postgres pg_dump -U \$U -d \$D | gzip > /root/orqafy-staging-backup-pre-refresh-\$(date -u +%Y%m%d-%H%M%S).sql.gz && echo '  ok'"
+  docker exec ${PROJ}_postgres pg_dump -U \$U -d \$D | gzip > /home/ubuntu/orqafy-staging-backup-pre-refresh-\$(date -u +%Y%m%d-%H%M%S).sql.gz && echo '  ok'"
 
 echo "▶ 2/6 Refresh staging data FROM prod (prod READ-ONLY; staging wiped + reloaded)"
 if ssh_vps "docker inspect ${PRODPROJ}_postgres >/dev/null 2>&1"; then
@@ -58,12 +69,14 @@ if ssh_vps "docker inspect ${PRODPROJ}_postgres >/dev/null 2>&1"; then
     docker exec ${PRODPROJ}_postgres pg_dump -U \$PU -d \$PD --no-owner --no-privileges | docker exec -i ${PROJ}_postgres psql -U \$SU -d \$SD -q >/dev/null; \
     echo '  · staging DB now mirrors production'"
 else
-  echo "  ⚠ no ${PRODPROJ}_postgres on VPS yet — SKIPPING prod refresh (first-run / no-prod). Staging keeps its seeded data."
+  echo "  ⚠ no ${PRODPROJ}_postgres on THIS host — SKIPPING prod refresh. Staging keeps its current data."
+  echo "     (Expected post-ORQ-25: prod runs on Hostinger, staging on EC2 — no same-host prod to copy."
+  echo "      A cross-host prod→staging pipe is ORQ-26, a separate [WHAT]. Deploy + migrate proceed.)"
 fi
 
 echo "▶ 3/6 Pull candidate images '${SRC}' from Docker Hub (AFTER data refresh; web + worker)"
 ssh_vps "cd ${STACK}; \
-  sed -i 's/^APP_IMAGE_TAG=.*/APP_IMAGE_TAG=${SRC}/' .env; \
+  sudo sed -i 's/^APP_IMAGE_TAG=.*/APP_IMAGE_TAG=${SRC}/' .env; \
   docker compose -p ${PROJ} --env-file .env ${CF} pull app worker >/dev/null 2>&1 && echo '  ok'"
 
 echo "▶ 4/6 Migrate staging (prod-data → new schema; drift-resolve fallback)"

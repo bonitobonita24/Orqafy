@@ -13,13 +13,15 @@
 # backup (a rolling backup could faithfully preserve an already-broken demo state).
 #
 # Usage:  bash deploy/demo-bless-golden.sh
-# Prereq: SSH key $HOME/.ssh/powerbyte_hostinger; run from the app repo root, ONLY when the current demo state
+# Prereq: SSH key $HOME/.ssh/powerbyte_ec2_komodo; run from the app repo root, ONLY when the current demo state
 #         (data + media) is exactly what future auto-resets should restore.
+# Host:   demo lives on EC2-Komodo (ubuntu@18.138.220.90); the SSH user is `ubuntu` (docker group, passwordless
+#         sudo). /root is not accessible to ubuntu, so the golden baseline lives under /home/ubuntu (ORQ-25).
 set -euo pipefail
 
-VPS="root@72.62.74.203"; KEY="$HOME/.ssh/powerbyte_hostinger"
+VPS="ubuntu@18.138.220.90"; KEY="$HOME/.ssh/powerbyte_ec2_komodo"
 PROJ="orqafy_demo"
-GOLDEN="/root/golden/orqafy-demo"
+GOLDEN="/home/ubuntu/golden/orqafy-demo"
 ssh_vps(){ ssh -o ConnectTimeout=20 -i "$KEY" "$VPS" "$@"; }
 
 echo "▶ Blessing current demo state as GOLDEN → ${GOLDEN}"
