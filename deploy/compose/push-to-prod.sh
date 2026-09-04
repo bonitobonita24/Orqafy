@@ -28,16 +28,26 @@ STACK="/etc/komodo/stacks/orqafy-prod"; PROJ="orqafy_prod"
 CF="-f docker-compose.db.yml -f docker-compose.cache.yml -f docker-compose.storage.yml -f docker-compose.app.yml -f docker-compose.worker.yml"
 ssh_vps(){ ssh -o ConnectTimeout=20 -i "$KEY" "$VPS" "$@"; }
 
-echo "▶ 1/5 Backup prod DB (rollback point)"
+echo "▶ 1/5 Backup prod DB (coupled-rollback point — ORQ-24)"
+# ORQ-24: name the pre-promotion backup with the OUTGOING deployed sha so `rollback prod <that-tag>`
+# (deploy/rollback.sh) can find and restore the DB state that pairs with the image it rolls back to.
+# The outgoing sha is the prod-sha-* tag recorded in .env as DEPLOYED_APP_SHA by the PREVIOUS deploy
+# (step 3 below writes it). First-ever deploy has none → 'bootstrap' (nothing earlier to roll back to).
+OUTGOING_SHA="$(ssh_vps "grep -oP '(?<=^DEPLOYED_APP_SHA=).*' ${STACK}/.env 2>/dev/null || true")"
+OUTGOING_SHA="${OUTGOING_SHA:-bootstrap}"
+echo "  outgoing=${OUTGOING_SHA}  incoming=prod-sha-${SHA}  → backup tagged for the OUTGOING sha"
 ssh_vps "U=\$(docker exec ${PROJ}_postgres printenv POSTGRES_USER); D=\$(docker exec ${PROJ}_postgres printenv POSTGRES_DB); \
-  docker exec ${PROJ}_postgres pg_dump -U \$U -d \$D | gzip > /root/orqafy-prod-backup-pre-pushtoprod-\$(date -u +%Y%m%d-%H%M%S).sql.gz && echo '  ok'"
+  docker exec ${PROJ}_postgres pg_dump -U \$U -d \$D | gzip > /root/orqafy-prod-backup-pre-promotion-${OUTGOING_SHA}-\$(date -u +%Y%m%d-%H%M%S).sql.gz && echo '  ok'"
 
 echo "▶ 2/5 Promote ${SRC} → latest + prod-sha-${SHA} (registry manifest, web + worker)"
 ssh_vps "docker buildx imagetools create -t ${HUB}/${WEB}:latest -t ${HUB}/${WEB}:prod-sha-${SHA} ${HUB}/${WEB}:${SRC} && \
          docker buildx imagetools create -t ${HUB}/${WRK}:latest -t ${HUB}/${WRK}:prod-sha-${SHA} ${HUB}/${WRK}:${SRC} && echo '  ok'"
 
 echo "▶ 3/5 Redeploy prod stack (pull + recreate app + worker)"
+# ORQ-24: also record the now-current deployed sha (prod-sha-${SHA}) in .env as DEPLOYED_APP_SHA so
+# the NEXT deploy names its pre-promotion backup for THIS sha (the coupled-rollback pairing key).
 ssh_vps "cd ${STACK}; sed -i 's/^APP_IMAGE_TAG=.*/APP_IMAGE_TAG=latest/' .env; \
+  if grep -q '^DEPLOYED_APP_SHA=' .env; then sed -i 's/^DEPLOYED_APP_SHA=.*/DEPLOYED_APP_SHA=prod-sha-${SHA}/' .env; else echo 'DEPLOYED_APP_SHA=prod-sha-${SHA}' >> .env; fi; \
   docker compose -p ${PROJ} --env-file .env ${CF} pull app worker >/dev/null 2>&1; \
   docker compose -p ${PROJ} --env-file .env ${CF} up -d app worker && echo '  ok'"
 

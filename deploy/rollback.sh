@@ -12,7 +12,13 @@
 # Preference is ALWAYS fix-forward over rolling back. This script exists for the rare case
 # a bad promotion must be undone immediately. It:
 #   1. Locates the paired pre-promotion backup for the target sha
-#      (naming convention: orqafy-<env>-backup-pre-promotion-<sha>-<timestamp>.sql.gz)
+#      (naming convention: orqafy-<env>-backup-pre-promotion-<deploy-tag>-<timestamp>.sql.gz).
+#      ORQ-24: for PROD, <deploy-tag> is the immutable `prod-sha-<SHA>` image tag — push-to-prod.sh
+#      records the live one in .env as DEPLOYED_APP_SHA and names each pre-promotion backup with the
+#      OUTGOING sha, so `rollback prod prod-sha-<OUTGOING>` restores the DB state that pairs with that
+#      image. STAGING has no sha-pinned promotion (it deploys the moving staging-latest and is wiped+
+#      refreshed from prod each run) → its coupled path won't find a paired dump and takes the safe
+#      GUARDRAIL below. (Demo is not rollback-managed — it self-heals via demo-reset.sh.)
 #   2. If found: re-tags the image back AND restores that dump, behind an explicit
 #      interactive "this discards data written since promotion" confirmation.
 #   3. If NOT found: refuses to touch the schema — falls back to the GUARDRAIL, i.e. it
@@ -20,7 +26,7 @@
 #      target image expects, it refuses the image-only rollback (that combination is the
 #      exact "old code on new schema" footgun) and tells you to fix forward instead.
 #
-# Usage:  bash deploy/rollback.sh <staging|prod> <sha-XXXXXXX>
+# Usage:  bash deploy/rollback.sh <staging|prod> <deploy-tag>   (prod deploy-tag = prod-sha-XXXXXXX)
 # Prereq: run from the app repo root at (or near) the target commit, so the DB package + migrate script
 #         below match what that sha expects. The SSH host/key are PER-ENV (ORQ-25): staging → EC2-Komodo
 #         key ~/.ssh/powerbyte_ec2_komodo (ubuntu); prod → Hostinger key ~/.ssh/powerbyte_hostinger (root).
@@ -94,8 +100,9 @@ if [ -n "$PAIRED" ]; then
     docker exec ${PROJ}_postgres psql -U \$U -d \$D -c \"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='\$D' AND pid<>pg_backend_pid();\" >/dev/null; \
     docker exec ${PROJ}_postgres psql -U \$U -d \$D -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;' >/dev/null; \
     gunzip -c '$PAIRED' | docker exec -i ${PROJ}_postgres psql -U \$U -d \$D -q >/dev/null && echo '  ok'"
-  echo "  · re-tagging image → ${TARGET_SHA}"
-  ssh_vps "cd ${STACK}; ${SUDO} sed -i 's/^APP_IMAGE_TAG=.*/APP_IMAGE_TAG=${TARGET_SHA}/' .env"
+  echo "  · re-tagging image → ${TARGET_SHA} (+ DEPLOYED_APP_SHA so the next promotion pairs correctly — ORQ-24)"
+  ssh_vps "cd ${STACK}; ${SUDO} sed -i 's/^APP_IMAGE_TAG=.*/APP_IMAGE_TAG=${TARGET_SHA}/' .env; \
+    if grep -q '^DEPLOYED_APP_SHA=' .env; then ${SUDO} sed -i 's/^DEPLOYED_APP_SHA=.*/DEPLOYED_APP_SHA=${TARGET_SHA}/' .env; else echo 'DEPLOYED_APP_SHA=${TARGET_SHA}' | ${SUDO} tee -a .env >/dev/null; fi"
   echo "  · bringing ${ENVIRON} back up on ${TARGET_SHA}"
   ssh_vps "cd ${STACK}; docker compose -p ${PROJ} --env-file .env ${CF} pull ${SERVICES} >/dev/null 2>&1; docker compose -p ${PROJ} --env-file .env ${CF} up -d ${SERVICES}"
 else
@@ -117,6 +124,7 @@ else
     exit 1
   fi
   ssh_vps "cd ${STACK}; ${SUDO} sed -i 's/^APP_IMAGE_TAG=.*/APP_IMAGE_TAG=${TARGET_SHA}/' .env; \
+    if grep -q '^DEPLOYED_APP_SHA=' .env; then ${SUDO} sed -i 's/^DEPLOYED_APP_SHA=.*/DEPLOYED_APP_SHA=${TARGET_SHA}/' .env; else echo 'DEPLOYED_APP_SHA=${TARGET_SHA}' | ${SUDO} tee -a .env >/dev/null; fi; \
     docker compose -p ${PROJ} --env-file .env ${CF} pull ${SERVICES} >/dev/null 2>&1; \
     docker compose -p ${PROJ} --env-file .env ${CF} up -d ${SERVICES}"
 fi
