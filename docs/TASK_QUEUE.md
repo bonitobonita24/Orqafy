@@ -7,7 +7,13 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## 🔴 / 🟡 Open
 
-> Owner-queued order: ORQ-25 ✅ · demo-cron code ✅ (Option 1) · ORQ-24 ✅ → **ORQ-27 (cross-host residuals) → #2 gov-sync V32.48.**
+> Owner-queued order: ORQ-25 ✅ · demo-cron code ✅ · ORQ-24 ✅ · gov-sync PLANNED (D-GOVSYNC) → **ORQ-27 (cross-host residuals) → apply gov-sync V32.54.0 (owner-approved).**
+
+- 🔴 **Framework gov-sync V32.45.1 → V32.54.0 (plan ready, apply owner-gated)** `[D-GOVSYNC]` — prep-sync pre-flight
+  done. Target is **v32.54.0** (memory's "V32.48" is stale). Governance-only, DISJOINT from the deploy branch.
+  ⚠ BLOCKER: AIEF `sync-to-project.sh` whitelist-lag skips the 5 newest deliverables (review-scope/audit-scope/
+  content-voice) — needs an AIEF-seat fix first. Plan + apply→verify→HOLD steps in `PENDING_DECISIONS.md` D-GOVSYNC.
+  Global lesson logged. `source: agent-found 2026-09-05`
 
 - 🔴 **Cross-host deploy residuals from the EC2 split** `[ORQ-27]` — surfaced by ORQ-25. Two items: (a)
   `staging-refresh-and-deploy.sh` refreshes staging FROM prod via a SAME-HOST `pg_dump|psql` stream, but prod
