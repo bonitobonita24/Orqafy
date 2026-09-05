@@ -7,7 +7,7 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## 🔴 / 🟡 Open
 
-> Owner-queued order: ORQ-25 ✅ · demo-cron code ✅ · ORQ-24 ✅ · gov-sync PLANNED (D-GOVSYNC) → **ORQ-27 (cross-host residuals) → apply gov-sync V32.54.0 (owner-approved).**
+> Owner-queued order: ORQ-25 ✅ · demo-cron code ✅ · ORQ-24 ✅ · **ORQ-23/24/25 FF-merged → local `main` `fcd6025` (11 ahead of origin, HARD HOLD) 2026-09-05** · gov-sync PLANNED (D-GOVSYNC, BLOCKED on AIEF whitelist fix) → **ORQ-27 (cross-host residuals, has [WHAT]s).**
 
 - 🔴 **Framework gov-sync V32.45.1 → V32.54.0 (plan ready, apply owner-gated)** `[D-GOVSYNC]` — prep-sync pre-flight
   done. Target is **v32.54.0** (memory's "V32.48" is stale). Governance-only, DISJOINT from the deploy branch.
@@ -24,6 +24,12 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## ✅ Done recently
 
+- ✅ **FF-merge ORQ-23/24/25 → local `main`** `[ORQ-merge]` — owner authorized merging the held deploy work.
+  `feat/orq-25-ec2-retarget` already subsumed `feat/cicd-standard-backfill` (merge-base confirmed) and both
+  were 0-behind `main` → one clean fast-forward landed ORQ-23 (CI/CD standard) + ORQ-24 (coupled rollback) +
+  ORQ-25 (EC2 retarget). Pre-merge verify PASS: 8 deploy scripts `bash -n`+shellcheck clean, no `apps/`/
+  `packages/` source touched, tree clean. main @ `fcd6025`, **11 ahead of origin, HARD HOLD** (no push/deploy).
+  `source: owner 2026-09-05`
 - ✅ **Make coupled rollback's paired-dump pairing real** `[ORQ-24]` — root nuance: prod runs a moving
   `APP_IMAGE_TAG=latest`; the immutable per-deploy identity is the `prod-sha-<SHA>` tag. Introduced a
   `DEPLOYED_APP_SHA` marker in the prod `.env`: `push-to-prod.sh` names the pre-promotion backup with the

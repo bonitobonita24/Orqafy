@@ -1,5 +1,15 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-09-05 (pm) — Merge held deploy work → local main (ORQ-23/24/25)
+
+**In your words:** resume → "do the recommendation and all other pending tasks in agent orchestration to maintain your stand as project manager/supervisor."
+
+✅ **FF-merged the held deploy branches → local `main`** (`fcd6025`, 11 ahead of origin, HARD HOLD)
+- Recon showed `feat/orq-25-ec2-retarget` already contained all of `feat/cicd-standard-backfill` (merge-base confirmed) and both were 0-behind `main` → a single clean fast-forward landed **ORQ-23 (CI/CD standard) + ORQ-24 (coupled rollback) + ORQ-25 (EC2 retarget)**.
+- Dispatched a verification worker first (PM discipline — kept the tool output out of context): 8 deploy scripts `bash -n`+shellcheck clean, no `apps/`/`packages/` source touched, tree clean → PASS, then merged.
+
+💬 **Held / gated (surfaced, not crossed):** D-GOVSYNC apply is blocked on a cross-seat AIEF whitelist-lag fix (won't produce an incomplete V32.54.0); ORQ-27 cross-host residuals carry `[WHAT]`s; push/deploy + D-DEMO-CRON live-enable await explicit owner word. Nothing pushed, nothing deployed — live prod+demo unchanged on v0.19.0.
+
 ## 2026-09-05 — EC2 deploy retarget (ORQ-25) + coupled-rollback pairing (ORQ-24) + gov-sync plan
 
 **In your words:** resume → "yes please" (do ORQ-25 EC2 retarget + D-DEMO-CRON Option 1) → "yes continue" (ORQ-24) → "push on into one of the other two then save session" (picked the gov-sync plan).
