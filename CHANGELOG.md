@@ -4,6 +4,36 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.20.0 — 2026-09-05
+
+### [FEATURE]
+- make coupled rollback's paired-dump pairing real (ORQ-24) (`480f327`)
+- retarget demo/staging deploy scripts to EC2-Komodo (ORQ-25) (`44eb63b`)
+- adopt fleet CI/CD standard — backfill rollback + demo self-heal + stack audit (ORQ-23) (`c9b2147`)
+
+### [FIXED]
+- bounded health poll in push-to-demo.sh (ORQ-22) (`ef2b6f8`)
+
+### [DOCS]
+- handoff — merge landed, all decisions resolved, no un-gated work (`705fc5a`)
+- record owner resolutions — defer D-GOVSYNC, leave ORQ-27(a) degraded, hold ORQ-27(b), hold push (`417c344`)
+- FF-merge ORQ-23/24/25 → local main; record merge + gated remainder (`9bfaa61`)
+- session 2026-09-05 — ORQ-25 + ORQ-24 done, gov-sync plan; save session (`710a798`)
+- log D-GOVSYNC plan (V32.45.1→V32.54.0, whitelist-lag blocker) (`69a5a24`)
+- ORQ-24 done (coupled-rollback pairing via DEPLOYED_APP_SHA) (`5a8d71c`)
+- ORQ-25 done (EC2 retarget) + demo-cron code; log ORQ-26 residuals (`32778fc`)
+- park session — queue ORQ-25 EC2 retarget + ORQ-24 + demo cron + #2; loop stop (`c086fe9`)
+- session handoff — CI/CD standard adopted (ORQ-23); sync-context (`fc0d18f`)
+- log ORQ-23 adoption + ORQ-24 rollback-pairing follow-up; session log (`980358a`)
+- ORQ-22 done + handoff; session stop (save session) (`d885860`)
+- close ORQ-22 (push-to-demo health poll hardened) (`edd2476`)
+- Full Auto — promoted v0.19.0 to prod + demo; handoff (save session) (`45cd062`)
+- push batch + release v0.19.0 (D-SEO feature); handoff (save session) (`55f5ac9`)
+
+### [CHORE]
+- sync-context regenerate CLAUDE.md managed region (`fcd6025`)
+
+
 ## v0.19.0 — 2026-09-02
 
 ### [FEATURE]
