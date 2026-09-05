@@ -25,14 +25,17 @@
   deliverables → AIEF-seat fix needed first. Plan in PENDING_DECISIONS D-GOVSYNC; global lesson logged.
 - All gates: bash -n + shellcheck + lefthook clean. Board synced (ORQ-24/25 + D-DEMO-CRON → For Review; ORQ-27 new).
 
-## ⏳ TODO next session (un-gated first, then decisions)
-- **ORQ-27** (board Pending): cross-host residuals — (a) staging-refresh prod→staging is same-host, prod now on
-  Hostinger/staging on EC2 → step 2 auto-skips; a cross-host prod-read pipe = [WHAT]. (b) demo-cron go-live needs
-  on-box migrate + self-SSH/SG topology resolved. Both [WHAT]/gated — not pure un-gated.
-- **D-GOVSYNC apply** (V32.45.1→v32.54.0): owner-approve + coordinate the AIEF whitelist-lag fix, then branch
-  `chore/framework-sync-v32.54` off main → sync-to-project --dry-run → apply → deploy.sh → dev-verify → HOLD.
-- Deploy branches awaiting owner merge/push decision (HARD HOLD): feat/cicd-standard-backfill (ORQ-23) +
-  feat/orq-25-ec2-retarget (ORQ-24/25, includes the ORQ-23 commits as ancestors).
+## ✅ ALSO DONE (2026-09-05 pm — merge + decision close)
+- **FF-merged ORQ-23/24/25 → local `main` `417c344`** (13 ahead of origin, HARD HOLD). orq-25 already subsumed
+  cicd-backfill → one fast-forward. Pre-merge verify PASS (8 deploy scripts bash -n+shellcheck clean, no source).
+- All remaining owner-gated items RESOLVED (see DECISIONS below) — deploy branches no longer "awaiting merge."
+
+## ⏳ TODO next session
+- **Nothing un-gated.** All work parked on owner's word. When ready, in priority:
+  1. **Push local `main`** (13 ahead) — the next release moment, whenever owner says.
+  2. **D-GOVSYNC** re-opens ONLY after the cross-seat AIEF whitelist-lag fix (AIEF seat adds 5 files to
+     `AI_PROMPT_FILES`); then branch `chore/framework-sync-v32.54` → dry-run → apply → deploy.sh → dev-verify → HOLD.
+  3. **ORQ-27(b)/demo cron** live-enable + **ORQ-27(a)** cross-host pipe — only on an explicit owner go.
 
 ## ⚖️ DECISIONS (resolved 2026-09-05 pm — owner "go with all recommendations")
 - **ORQ-27(a)** — RESOLVED: **LEAVE the gate degraded** (no cross-host prod-read pipe; revisit only if staging must
