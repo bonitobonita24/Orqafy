@@ -9,6 +9,17 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 > Owner-queued order: ORQ-25 ✅ · demo-cron code ✅ · ORQ-24 ✅ · **ORQ-23/24/25 FF-merged → local `main` `fcd6025` (11 ahead of origin, HARD HOLD) 2026-09-05** · gov-sync PLANNED (D-GOVSYNC, BLOCKED on AIEF whitelist fix) → **ORQ-27 (cross-host residuals, has [WHAT]s).**
 
+- 🟡 **[AWAITING MERGE — owner call] CI `security` job red: 9 high `pnpm audit` advisories** `[ORQ-28]` — CI
+  workflow's `security` job runs `pnpm audit --audit-level=high` and had been RED for multiple releases
+  (also failed 2026-09-02); the `quality` job stayed green, so local gates never caught it. Root cause: 9 high
+  advisories in dev-tooling transitive chains (`deepmerge-ts` via Prisma CLI; `browserslist` via Babel;
+  `fast-uri` via Expo/ajv) — and the existing `fast-uri` override sat at `^3.1.5`, one patch short of the
+  `>=3.1.6` fix. FIXED on branch `fix/orq-28-ci-audit-high` (`e1a900f`) via 3 targeted `pnpm.overrides` bumps,
+  **no new suppressions and the gate itself untouched**. Verified: audit exit 0 · typecheck 0 · lint 0 ·
+  1716 tests 0 · build 0. Done-criterion: merge to `main` + push → CI `security` green.
+  ⚠ ALSO: pushes to `main` report "Bypassed rule violations — Required status check 'Turbo build' is expected",
+  so branch protection has been admin-bypassed while CI sat red. `source: agent-found 2026-09-05`
+
 - 🔴 **[BLOCKED — DEFERRED by owner 2026-09-05] Framework gov-sync V32.45.1 → V32.54.0** `[D-GOVSYNC]` — plan
   ready; **apply DEFERRED** pending the cross-seat AIEF prerequisite. Target **v32.54.0**. ⚠ BLOCKER: AIEF
   `sync-to-project.sh` whitelist-lag skips the 5 newest deliverables (review-scope/audit-scope/content-voice) →
@@ -23,6 +34,10 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   2026-09-05: HOLD** (installer written+inert; enable live only when ready to touch the EC2 box). `source: agent-found 2026-09-05`
 
 ## ✅ Done recently
+- ✅ **Released v0.20.0** — consolidated changelog + annotated tag + version-sync across 10 package.json files
+  and the sidebar footer constant; pushed to origin/main. Docker images published (`Docker Build & Publish` green).
+  NO environment deployed — prod/demo remain on v0.19.0. (`3dcc639`, 2026-09-05)
+
 
 - ✅ **FF-merge ORQ-23/24/25 → local `main`** `[ORQ-merge]` — owner authorized merging the held deploy work.
   `feat/orq-25-ec2-retarget` already subsumed `feat/cicd-standard-backfill` (merge-base confirmed) and both

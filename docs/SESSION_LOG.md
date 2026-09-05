@@ -1,5 +1,33 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-09-05 — Full Auto: released v0.20.0, then found and fixed a long-red CI gate
+
+**In your words:** do any of the three parked items now, in full auto, as PM with subagent orchestration.
+
+✅ **Done**
+- Released **v0.20.0** and pushed it to origin — 19 commits since v0.19.0, minor bump (ORQ-23 CI/CD standard,
+  ORQ-24 coupled rollback, ORQ-25 EC2 retarget). CHANGELOG written, annotated tag pushed, version synced into
+  10 package.json files and the sidebar footer. Docker images published.
+- Verified before pushing that CI is Model B, so the push builds images but deploys nothing.
+- Pre-push gates all green on real exit codes: typecheck, lint, **1716 tests**, 21/21 shell scripts.
+- Root-caused a CI failure that had been red since at least 09-02 and fixed it on a branch: the workflow has a
+  second `security` job running `pnpm audit --audit-level=high` that no local gate mirrored. Nine high advisories
+  in build-tooling dependencies, all resolved by three version bumps — no suppressions, gate untouched.
+
+🔨 **Partial**
+- The CI fix (`fix/orq-28-ci-audit-high`) is committed locally and fully verified, but **not merged** — merging
+  to main is your call.
+
+⏳ **Next**
+- Merge + push the CI fix to turn CI green (would be v0.20.1, patch).
+- D-GOVSYNC still waits on the AIEF-seat whitelist fix; ORQ-27(b) demo cron still waits on your go.
+
+💬 **Notes**
+- **Nothing was deployed.** Production and demo are still on v0.19.0.
+- Worth a decision: pushes to `main` are bypassing the required "Turbo build" status check via admin rights.
+  With CI red, that combination could let a real regression through unnoticed.
+- `node_modules` reflects the fix branch right now — run `pnpm install` after checking out main.
+
 ## 2026-09-05 (pm) — Merge held deploy work → local main (ORQ-23/24/25)
 
 **In your words:** resume → "do the recommendation and all other pending tasks in agent orchestration to maintain your stand as project manager/supervisor."
