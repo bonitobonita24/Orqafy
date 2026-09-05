@@ -1,7 +1,7 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-09-05 (pm-2) by CLAUDE_CODE (owner: "do any of the three now in full auto mode"). **RELEASED v0.20.0 — pushed to origin/main (`3dcc639`, tree IN SYNC).** Docker images published; **NO environment deployed** — prod + demo remain LIVE on v0.19.0. Post-push discovery: CI `security` job is RED (pre-existing, also red 09-02) — root-caused + FIXED on branch `fix/orq-28-ci-audit-high` (`e1a900f`), LOCAL/HARD HOLD, awaiting owner merge.
+> Last updated: 2026-09-05 (pm-2) by CLAUDE_CODE (owner: "do any of the three now in full auto mode"). **RELEASED v0.20.0 — pushed to origin/main (`3dcc639`, tree IN SYNC).** Docker images published; **NO environment deployed** — prod + demo remain LIVE on v0.19.0. Post-push discovery: CI `security` job is RED (pre-existing, also red 09-02) — root-caused + FIXED on branch `fix/orq-29-ci-audit-high` (`e1a900f`), LOCAL/HARD HOLD, awaiting owner merge.
 
 ---
 
@@ -21,21 +21,21 @@
   `pnpm test --run` 0 (**1716 passed / 0 failed**, 131 files) · bash -n + shellcheck 21/21 scripts.
 - **Verified CI is Model B before pushing** — `docker-publish.yml` on push to main BUILDS+PUSHES images only;
   no deploy step, no SSH, no Komodo call. So this push was a RELEASE, not a promotion. Confirmed green.
-- **ORQ-28 (agent-found) — CI `security` job root-caused + FIXED.** After the push, `Docker Build & Publish`
+- **ORQ-29 (agent-found) — CI `security` job root-caused + FIXED.** After the push, `Docker Build & Publish`
   went green but `CI` went RED — and had ALSO been red on 2026-09-02, i.e. pre-existing across releases.
   Root cause: `ci.yml` has TWO parallel jobs; local gates mirrored only `quality` (lint/typecheck/test/build).
   The `security` job runs `pnpm audit --audit-level=high`, which has NO local counterpart — and `.npmrc` pins
   `audit-level=critical`, so a bare local `pnpm audit` exits 0 while CI's explicit `--audit-level=high` exits 1.
   9 high advisories, all dev-tooling transitive: `deepmerge-ts` (Prisma CLI), `browserslist` (Babel),
   `fast-uri` (Expo/expo-router/ajv). The existing `fast-uri` override was `^3.1.5` — ONE PATCH short of `>=3.1.6`.
-  FIX on branch `fix/orq-28-ci-audit-high` (`e1a900f`): 3 targeted `pnpm.overrides` bumps
+  FIX on branch `fix/orq-29-ci-audit-high` (`e1a900f`): 3 targeted `pnpm.overrides` bumps
   (`fast-uri ^3.1.6`, `browserslist ^4.28.7`, `deepmerge-ts ^8.0.2`) + lockfile. **No new suppressions; the gate
   itself untouched** (zero diff on ci.yml/.npmrc). PM-verified: `pnpm audit --audit-level=high` **exit 0**,
   typecheck 0, lint 0, 1716 tests 0, `pnpm build` 0.
 - Global lesson logged: `ci.verification.local-gates-mirror-only-one-ci-job`.
 
 ## ⏳ TODO next session
-1. **[OWNER CALL] Merge `fix/orq-28-ci-audit-high` → main + push** — this is what turns CI green. Branch is
+1. **[OWNER CALL] Merge `fix/orq-29-ci-audit-high` → main + push** — this is what turns CI green. Branch is
    verified and local-only per branch-commit-discipline (merging to main is the owner's call). Would be a
    PATCH release (`v0.20.1`, fix-only).
 2. **D-GOVSYNC** — still DEFERRED, still blocked on the cross-seat AIEF `AI_PROMPT_FILES` whitelist fix.
@@ -45,7 +45,7 @@
 - **Branch protection is being admin-bypassed.** Every push to `main` reports "Bypassed rule violations —
   Required status check 'Turbo build' is expected". Combined with a long-red CI, a regression could ship
   unnoticed. Worth deciding whether to keep the bypass. `[WHAT]` — not recorded as blocking.
-- **`node_modules` currently reflects the ORQ-28 branch resolution** (the fix ran `pnpm install` on that
+- **`node_modules` currently reflects the ORQ-29 branch resolution** (the fix ran `pnpm install` on that
   branch, and the tree was then switched back to `main`). Run `pnpm install` after checking out `main` to re-sync.
 - No environment was deployed. prod + demo remain on **v0.19.0**. Deploy stays owner-gated.
 ```

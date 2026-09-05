@@ -15,7 +15,7 @@
   in build-tooling dependencies, all resolved by three version bumps — no suppressions, gate untouched.
 
 🔨 **Partial**
-- The CI fix (`fix/orq-28-ci-audit-high`) is committed locally and fully verified, but **not merged** — merging
+- The CI fix (`fix/orq-29-ci-audit-high`) is committed locally and fully verified, but **not merged** — merging
   to main is your call.
 
 ⏳ **Next**
