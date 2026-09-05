@@ -9,18 +9,18 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 > Owner-queued order: ORQ-25 ✅ · demo-cron code ✅ · ORQ-24 ✅ · **ORQ-23/24/25 FF-merged → local `main` `fcd6025` (11 ahead of origin, HARD HOLD) 2026-09-05** · gov-sync PLANNED (D-GOVSYNC, BLOCKED on AIEF whitelist fix) → **ORQ-27 (cross-host residuals, has [WHAT]s).**
 
-- 🔴 **Framework gov-sync V32.45.1 → V32.54.0 (plan ready, apply owner-gated)** `[D-GOVSYNC]` — prep-sync pre-flight
-  done. Target is **v32.54.0** (memory's "V32.48" is stale). Governance-only, DISJOINT from the deploy branch.
-  ⚠ BLOCKER: AIEF `sync-to-project.sh` whitelist-lag skips the 5 newest deliverables (review-scope/audit-scope/
-  content-voice) — needs an AIEF-seat fix first. Plan + apply→verify→HOLD steps in `PENDING_DECISIONS.md` D-GOVSYNC.
-  Global lesson logged. `source: agent-found 2026-09-05`
+- 🔴 **[BLOCKED — DEFERRED by owner 2026-09-05] Framework gov-sync V32.45.1 → V32.54.0** `[D-GOVSYNC]` — plan
+  ready; **apply DEFERRED** pending the cross-seat AIEF prerequisite. Target **v32.54.0**. ⚠ BLOCKER: AIEF
+  `sync-to-project.sh` whitelist-lag skips the 5 newest deliverables (review-scope/audit-scope/content-voice) →
+  the AIEF SEAT must add them to `AI_PROMPT_FILES` first (NOT an Orqafy edit). Re-open once AIEF is fixed. Plan +
+  steps in `PENDING_DECISIONS.md` D-GOVSYNC (answered: DEFER). Global lesson logged. `source: agent-found 2026-09-05`
 
-- 🔴 **Cross-host deploy residuals from the EC2 split** `[ORQ-27]` — surfaced by ORQ-25. Two items: (a)
-  `staging-refresh-and-deploy.sh` refreshes staging FROM prod via a SAME-HOST `pg_dump|psql` stream, but prod
-  is on Hostinger and staging on EC2 → step 2 now auto-skips (gate degraded to deploy+migrate only); a cross-host
-  prod→staging pipe reads prod = a [WHAT]. (b) The demo self-heal cron (`demo-reset-cron-install.sh`) can't go
-  live until the on-box migrate mechanism + self-SSH/SG topology are resolved (box has no repo/pnpm; SG blocks
-  :22 from the box's own EIP). `source: agent-found 2026-09-05`
+- 🔴 **[HELD by owner 2026-09-05] Cross-host deploy residuals from the EC2 split** `[ORQ-27]` — surfaced by ORQ-25.
+  (a) `staging-refresh-and-deploy.sh` prod→staging is same-host `pg_dump|psql`, but prod=Hostinger / staging=EC2 →
+  step 2 auto-skips (gate degraded to deploy+migrate only). **Owner decision 2026-09-05: LEAVE THE GATE DEGRADED**
+  (don't build a cross-host prod-read pipe — safer; revisit if staging must validate against real prod data).
+  (b) demo self-heal cron can't go live until on-box migrate + self-SSH/SG topology resolved. **Owner decision
+  2026-09-05: HOLD** (installer written+inert; enable live only when ready to touch the EC2 box). `source: agent-found 2026-09-05`
 
 ## ✅ Done recently
 

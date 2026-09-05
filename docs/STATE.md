@@ -1,7 +1,7 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-09-05 (pm) by CLAUDE_CODE (owner: "do the recommendation + all pending tasks in agent orchestration"). **ORQ-23/24/25 FF-merged → local `main` `fcd6025`, 11 ahead of origin, LOCAL/HARD HOLD (unpushed).** Pre-merge verify PASS (8 deploy scripts bash -n+shellcheck clean, no source touched). Live prod + demo UNCHANGED on **v0.19.0**. Remaining is owner-gated: **ORQ-27** (cross-host residuals — has [WHAT]s), **D-GOVSYNC** apply (blocked on an AIEF whitelist-lag fix — cross-seat), push/deploy + D-DEMO-CRON live-enable (await explicit owner word).
+> Last updated: 2026-09-05 (pm) by CLAUDE_CODE (owner: "do the recommendation + all pending tasks in agent orchestration"). **ORQ-23/24/25 FF-merged → local `main` `fcd6025`, 11 ahead of origin, LOCAL/HARD HOLD (unpushed).** Pre-merge verify PASS (8 deploy scripts bash -n+shellcheck clean, no source touched). Live prod + demo UNCHANGED on **v0.19.0**. Remaining owner-gated items RESOLVED 2026-09-05 pm ("go with all recommendations"): **ORQ-27(a)** = leave gate degraded · **ORQ-27(b)/D-DEMO-CRON** = hold live-enable · **D-GOVSYNC** = defer until cross-seat AIEF whitelist fix · **push/deploy** = held. No open un-gated work remains.
 
 ---
 
@@ -34,10 +34,16 @@
 - Deploy branches awaiting owner merge/push decision (HARD HOLD): feat/cicd-standard-backfill (ORQ-23) +
   feat/orq-25-ec2-retarget (ORQ-24/25, includes the ORQ-23 commits as ancestors).
 
-## ⚖️ OPEN DECISIONS (parked [WHAT])
-- **ORQ-27(a)** — cross-host staging refresh reads production: build the pipe or leave the gate degraded?
-- **D-GOVSYNC** — approve the V32.54.0 sync (needs AIEF whitelist-lag fix first) or defer?
-- D-DEMO-CRON — RESOLVED Option 1 (code done; live-enable still owner-gated, tracked in ORQ-27b).
+## ⚖️ DECISIONS (resolved 2026-09-05 pm — owner "go with all recommendations")
+- **ORQ-27(a)** — RESOLVED: **LEAVE the gate degraded** (no cross-host prod-read pipe; revisit only if staging must
+  validate against real prod data).
+- **ORQ-27(b)** / D-DEMO-CRON — RESOLVED: **HOLD** live-enable (installer written+inert; enable only when ready to
+  touch the EC2 box on an explicit go).
+- **D-GOVSYNC** — RESOLVED: **DEFER** the V32.54.0 apply until the cross-seat AIEF whitelist-lag fix lands (AIEF
+  seat adds the 5 files to `AI_PROMPT_FILES`); re-open after.
+- **Push/release/deploy** — HELD (no owner word to push); local `main` sits 12 ahead of origin, HARD HOLD.
+
+_No open un-gated work remains this session._
 ```
 
 ---
