@@ -17,6 +17,17 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   2026-09-05: HOLD** (installer written+inert; enable live only when ready to touch the EC2 box). `source: agent-found 2026-09-05`
 
 ## ✅ Done recently
+- ✅ **Stop the `main` branch-protection admin-bypass** `[ORQ-30]` — every direct push to `main`
+  admin-bypassed a required status check (`Turbo build`). Root cause: required status checks are
+  incompatible with a direct-push/FF-merge model — at push time the new HEAD has no check runs yet, so
+  the required check sits "expected/waiting" and blocks the push; `enforce_admins=off` turns each admin
+  push into a bypass (the check itself was real + passing — a timing artifact, not a ghost check). Owner
+  chose **drop the requirement** (a required check only gates in a PR flow; keeping direct-push). Surgically
+  removed via `gh api -X DELETE .../branches/main/protection/required_status_checks` — force-push/deletion
+  protection intact; CI still runs + reports on every push, just no longer a phantom gate. Verified
+  `required_status_checks` = REMOVED. Lesson logged
+  (`github.branch-protection.required-check-vs-direct-push-bypass`). GitHub-settings change only, no repo
+  files touched. `source: agent-found 2026-09-08` (2026-09-08)
 - ✅ **Gov-sync V32.45.1 → V32.54.0 APPLIED** `[D-GOVSYNC]` — governance-only framework sync (no app source
   touched). Landed the 5 lagging deliverables (`review-scope.{md,mjs}`, `audit-scope.{md,mjs}`,
   `content-voice.md`) + V32.46–V32.54 updates (phases/security/ui-rules/scenarios/templates/rbac/seo/cicd/
