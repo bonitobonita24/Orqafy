@@ -4,6 +4,15 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.20.2 — 2026-09-08
+
+### [DOCS]
+- ORQ-29 released v0.20.1 + D-GOVSYNC V32.54.0 applied; ORQ-27 owner-parked (`1864665`)
+
+### [CHORE]
+- sync governance V32.45.1 → V32.54.0 (D-GOVSYNC) (`7357dbf`)
+
+
 ## v0.20.1 — 2026-09-08
 
 ### [FIXED]
