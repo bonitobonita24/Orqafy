@@ -14,9 +14,12 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   (also failed 2026-09-02); the `quality` job stayed green, so local gates never caught it. Root cause: 9 high
   advisories in dev-tooling transitive chains (`deepmerge-ts` via Prisma CLI; `browserslist` via Babel;
   `fast-uri` via Expo/ajv) — and the existing `fast-uri` override sat at `^3.1.5`, one patch short of the
-  `>=3.1.6` fix. FIXED on branch `fix/orq-29-ci-audit-high` (`e1a900f`) via 3 targeted `pnpm.overrides` bumps,
+  `>=3.1.6` fix. FIXED on branch `fix/orq-29-ci-audit-high` via 3 targeted `pnpm.overrides` bumps,
   **no new suppressions and the gate itself untouched**. Verified: audit exit 0 · typecheck 0 · lint 0 ·
-  1716 tests 0 · build 0. Done-criterion: merge to `main` + push → CI `security` green.
+  1716 tests 0 · build 0. **REBASED onto current `main` 2026-09-08 (`b0e0ced`, was `e1a900f`) — the 3
+  post-release doc commits had diverged main so it no longer FF'd; zero file overlap (branch = package.json +
+  pnpm-lock.yaml only), clean rebase, now fast-forwardable in one step.** Done-criterion: merge to `main` +
+  push → CI `security` green.
   ⚠ ALSO: pushes to `main` report "Bypassed rule violations — Required status check 'Turbo build' is expected",
   so branch protection has been admin-bypassed while CI sat red. `source: agent-found 2026-09-05`
 
