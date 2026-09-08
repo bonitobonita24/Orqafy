@@ -4,6 +4,18 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.20.1 — 2026-09-08
+
+### [FIXED]
+- resolve 9 high pnpm audit advisories via targeted overrides (`6f37ad9`)
+- repair .mcp.json — npx invocation + re-add context7/shadcn (`92d3b09`)
+
+### [DOCS]
+- record ORQ-29 fix-branch rebase onto main (FF-ready, b0e0ced) (`fa0e66d`)
+- renumber CI-audit task ORQ-28→ORQ-29 to match Squirlnote board (`d81b9e3`)
+- Full Auto — release v0.20.0; root-cause + fix CI security gate (ORQ-28) (`4a8a24b`)
+
+
 ## v0.20.0 — 2026-09-05
 
 ### [FEATURE]
