@@ -1,7 +1,46 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-09-05 (pm-2) by CLAUDE_CODE (owner: "do any of the three now in full auto mode"). **RELEASED v0.20.0 — pushed to origin/main (`3dcc639`, tree IN SYNC).** Docker images published; **NO environment deployed** — prod + demo remain LIVE on v0.19.0. Post-push discovery: CI `security` job is RED (pre-existing, also red 09-02) — root-caused + FIXED on branch `fix/orq-29-ci-audit-high` (`e1a900f`), LOCAL/HARD HOLD, awaiting owner merge.
+> Last updated: 2026-09-08 by CLAUDE_CODE (owner: resume → "do all pending Squirlnote tasks, plan first"). **RELEASED v0.20.1 (ORQ-29 CI security fix) + v0.20.2 (D-GOVSYNC V32.54.0), both pushed to origin/main (`de42e8e`, tree IN SYNC).** CI `security` gate now GREEN. Orqafy now on framework **V32.54.0**. **NO environment deployed** — prod + demo remain LIVE on v0.19.0 (Model B).
+
+---
+
+## ⭐ SESSION 2026-09-08 (latest) — resume: cleared the 2 gated pending items (ORQ-29 release + gov-sync)
+
+```
+[FOCUS: Orqafy]  ·  cold-start authority: docs/memory/MEMORY.md → latest session file
+
+## ✅ DONE THIS SESSION
+- **ORQ-29 → RELEASED v0.20.1.** Rebased `fix/orq-29-ci-audit-high` onto main (it had diverged behind 3 doc
+  commits), FF-merged, verified `pnpm audit --audit-level=high` **exit 0** on main. Cut v0.20.1 patch
+  (`gen-release-notes --apply`; version-sync 10 pkgs + footer + tag), pushed `main`+tag. **CI `security` gate
+  now runs green** after being red across many releases. (`13c00b3`)
+- **D-GOVSYNC → APPLIED + RELEASED v0.20.2.** Synced framework **V32.45.1 → V32.54.0** (governance-only, no app
+  source). The approved "copy files" workaround was blocked by AIEF `sync-to-project.sh`'s whitelist-lag guard
+  now HARD-ABORTING (exit 3, not silent-skip). Under a one-time owner-authorized cross-seat override, fixed AIEF
+  `sync-to-project.sh` (added the 5 lagging files to AI_PROMPT_FILES; AIEF branch `fix/sync-whitelist-lag-5-files`
+  `1010ce0`, LOCAL/UNMERGED — POW-14 for the AIEF seat), then ran sync + deploy.sh. Landed `review-scope.{md,mjs}`,
+  `audit-scope.{md,mjs}`, `content-voice.md` + V32.46–54 updates; CLAUDE.md → V32.54, managed region regenerated.
+  FF-merged `chore/framework-sync-v32.54` → main, released v0.20.2, pushed. (`de42e8e`)
+- **ORQ-27 → owner-PARKED** (both halves decided 2026-09-05: leave staging gate degraded / hold demo cron). Not a
+  to-do; reclassified in TASK_QUEUE.
+- Board: gov-sync → For Review; POW-14 filed (AIEF seat merge); ORQ-27 parked. All Orqafy `Pending` cleared.
+
+## ⏳ TODO next session (all un-gated / owner-optional)
+1. **[NEXT un-gated] Branch-protection: "Turbo build" required-but-unsatisfied.** Every push to main admin-bypasses
+   `remote: Bypassed rule violations — Required status check 'Turbo build' is expected`. Now that CI is green,
+   investigate why that check never satisfies (name mismatch? workflow not producing that check?) and either wire
+   it or drop the requirement so pushes stop bypassing. [HOW]-ish; safe to do.
+2. **[CROSS-SEAT] POW-14** — merge AIEF `fix/sync-whitelist-lag-5-files` from an AIEF session (was 9 ahead of
+   origin; check collision) so every app's future sync picks up the 5 files cleanly.
+3. **[OWNER] Deploy** — prod/demo still on v0.19.0; three releases (v0.20.0/1/2) sit unshipped. Promote only on
+   explicit owner word (HARD HOLD).
+
+## STATE
+- main = `de42e8e` **v0.20.2**, IN SYNC with origin. Framework V32.54.0. Working tree: STATE/SESSION_LOG docs
+  commit pending (local). Nothing deployed.
+- No open `[WHAT]` in PENDING_DECISIONS (all resolved/parked).
+```
 
 ---
 

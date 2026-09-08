@@ -1,5 +1,30 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-09-08 — Cleared the two gated pending items: CI security fix + framework sync
+
+**In your words:** resume, then do all pending Squirlnote tasks — but analyze and plan first, and use the right skills.
+
+✅ **Done**
+- **Released v0.20.1** — merged the ORQ-29 fix and cut the patch. This turned the **CI `security` gate green** for
+  the first time in many releases (9 high dependency-audit advisories cleared via 3 version bumps; no suppressions,
+  gate untouched).
+- **Released v0.20.2** — applied the framework governance sync **V32.45.1 → V32.54.0** (docs/tooling only, no app
+  code) and merged it. Orqafy is now on the current framework.
+- Analyzed the whole Squirlnote board first (per your "plan first"): found only 2 items truly pending, both gated —
+  so I brought each to you as a decision rather than guessing.
+- Answered your CI/CD question: build→Docker Hub is unchanged; the pull onto EC2-Komodo for staging/demo is real
+  but **manual** (CI never auto-deploys), and prod stays on Hostinger.
+
+🔨 **Partial / handed off**
+- The gov-sync needed a one-time **cross-seat fix** to the AIEF sync tool (you authorized it). That fix is committed
+  on an AIEF branch but **not merged** — filed as **POW-14** for an AIEF session to merge (so every app benefits).
+
+💬 **Decisions / notes**
+- **ORQ-27** (cross-host deploy residuals): you chose to **keep it parked** — no work needed.
+- ⚠ Every push to `main` still **admin-bypasses** the required "Turbo build" check. Teed up as next session's first
+  item — worth wiring or dropping now that CI is otherwise green.
+- Nothing deployed — prod/demo remain on v0.19.0; three releases now sit ready to ship on your word.
+
 ## 2026-09-05 — Full Auto: released v0.20.0, then found and fixed a long-red CI gate
 
 **In your words:** do any of the three parked items now, in full auto, as PM with subagent orchestration.
