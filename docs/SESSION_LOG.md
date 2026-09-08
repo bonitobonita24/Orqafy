@@ -1,5 +1,24 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-09-08 (pm) — Fixed the "Turbo build" branch-protection bypass
+
+**In your words:** resume, then fix the branch-protection bypass — then save the session.
+
+✅ **Done**
+- **Stopped the admin-bypass on every push to `main`.** Root cause wasn't a broken check — `Turbo build` is a
+  real, passing CI check. The bypass was a *timing* thing: with our direct-push workflow, the code lands before
+  its checks can run, so a "required" check can never gate it and every admin push waves it through. It provided
+  zero protection and only made noise.
+- **You chose to drop the requirement** (keep our direct-push/FF-merge model). Removed it surgically — CI still
+  runs and reports on every push, and force-push / branch-deletion protection is untouched. No more bypass warnings.
+- Logged it as a reusable fleet lesson (every seat pushes directly to `main`, so this footgun applies everywhere)
+  and recorded the fix in the task queue.
+
+💬 **Notes**
+- GitHub-settings change only — no app code touched, and it's one API call to reverse if we ever move to PR-gating.
+- `main` is 2 commits ahead of origin (docs-only handoffs, held per discipline) — nothing deployed; prod/demo
+  still on v0.19.0. Say the word to push and/or promote.
+
 ## 2026-09-08 — Cleared the two gated pending items: CI security fix + framework sync
 
 **In your words:** resume, then do all pending Squirlnote tasks — but analyze and plan first, and use the right skills.

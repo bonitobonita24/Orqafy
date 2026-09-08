@@ -1,7 +1,45 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-09-08 by CLAUDE_CODE (owner: resume → "do all pending Squirlnote tasks, plan first"). **RELEASED v0.20.1 (ORQ-29 CI security fix) + v0.20.2 (D-GOVSYNC V32.54.0), both pushed to origin/main (`de42e8e`, tree IN SYNC).** CI `security` gate now GREEN. Orqafy now on framework **V32.54.0**. **NO environment deployed** — prod + demo remain LIVE on v0.19.0 (Model B).
+> Last updated: 2026-09-08 (pm) by CLAUDE_CODE (owner: resume → "do #1: fix the branch-protection bypass" → "save session"). **ORQ-30 done — removed the `main` required status check that was admin-bypassed on every push.** Prior this day: RELEASED v0.20.1 (ORQ-29 CI security fix) + v0.20.2 (D-GOVSYNC V32.54.0). Framework **V32.54.0**. **NO environment deployed** — prod + demo remain LIVE on v0.19.0 (Model B).
+
+---
+
+## ⭐ SESSION 2026-09-08 (pm) — resume: fixed the main branch-protection admin-bypass (ORQ-30)
+
+```
+[FOCUS: Orqafy]  ·  cold-start authority: docs/memory/MEMORY.md → latest session file
+
+## ✅ DONE THIS SESSION
+- **ORQ-30 — main required status check dropped (stops per-push admin-bypass).** Root-caused the
+  long-standing "Bypassed rule violations — Required status check 'Turbo build' is expected" on every push.
+  NOT a ghost check: `Turbo build` is the real, passing `build` leg of CI's matrix job
+  `name: "Turbo ${{ matrix.task }}"` (green on `de42e8e`). The bypass is a **direct-push timing artifact** —
+  at push time the new HEAD has no check runs yet, so the required check sits "expected/waiting" and blocks
+  non-admin pushes; `enforce_admins=off` makes each admin push a bypass. A required check only truly gates in a
+  PR flow. **Owner chose: drop the requirement** (keep direct-push/FF-merge model). Surgically removed via
+  `gh api -X DELETE repos/{owner}/{repo}/branches/main/protection/required_status_checks`. Verified:
+  `required_status_checks` = REMOVED; force-push + branch-deletion protection still enabled; CI still runs +
+  reports on every push (just no longer a phantom gate). GitHub-settings change only — no repo files touched.
+  Fully reversible (one API call) if PR-gating is ever adopted.
+- Global lesson logged: `github.branch-protection.required-check-vs-direct-push-bypass`.
+- Queue note committed LOCAL: `0b0d7e3` (docs(queue): ORQ-30).
+
+## ⏳ TODO next session (all un-gated / owner-optional)
+1. **[OWNER] Push the trailing docs commits** — main is 2 ahead of origin (last session's handoff `c945b01`
+   + `0b0d7e3` ORQ-30 note, both docs-only, HARD HOLD). Plus this session's save-session docs. A push = release
+   moment; do only on owner word.
+2. **[CROSS-SEAT] POW-14** — merge AIEF `fix/sync-whitelist-lag-5-files` from an AIEF session so every app's
+   future framework sync picks up the 5 files cleanly.
+3. **[OWNER] Deploy** — prod/demo still on v0.19.0; three releases (v0.20.0/1/2) sit unshipped. Promote only on
+   explicit owner word (HARD HOLD).
+
+## STATE
+- main = `0b0d7e3` (pre-save-session), 2 ahead of origin before this save's docs commit. Framework V32.54.0.
+- Branch protection: NO required status checks (removed this session); force-push/deletion still blocked.
+- No open `[WHAT]` in PENDING_DECISIONS (all resolved/parked; ORQ-27 owner-parked). No open un-gated tasks.
+- Nothing deployed. prod + demo on v0.19.0.
+```
 
 ---
 
