@@ -1686,11 +1686,54 @@ await prisma.user.upsert({ where: { email: "admin@admin.com" },
   create: { email: "admin@admin.com", passwordHash: adminHash,
             fullName: "Admin", role: "tenant_admin", isActive: true, tenantId: tenant.id } });
 ```
-- Per-env emails differ (dev/staging-prod/demo) — see `.ai_prompt/rbac.md` Part D; the demo env has NO
-  tenant_admin. `.env.{env}` carries `TENANTADMIN_PASSWORD` / `WEBMASTER_PASSWORD` / `ADMIN_PASSWORD` +
-  `SEED_DEV_ACCOUNTS` (true ONLY in `.env.dev`). Compose footgun: `$` in a hash → `$$` in a compose-consumed .env.
+- Per-env emails differ (dev/staging-prod/demo) — see `.ai_prompt/rbac.md` Part D. **V32.50 update:** demo
+  NOW ALSO seeds a `tenant_admin` (was previously "none") to match the client-tenant shape exactly. `.env.{env}`
+  carries `TENANTADMIN_PASSWORD` / `WEBMASTER_PASSWORD` / `ADMIN_PASSWORD` + `SEED_DEV_ACCOUNTS` (true ONLY
+  in `.env.dev`). Compose footgun: `$` in a hash → `$$` in a compose-consumed .env.
 - Succession (platform break-glass reassign + owner-transfer as a mediated promote-then-demote in one
   transaction) + tests are part of the auth scaffold (phases.md Phase 4 Part 3 MODEL HOOK).
+
+#### 7G — Platform-scope roles seed (V32.50 · Rule 41 — DEFAULT for tenant-based apps, `/tm` site)
+
+Beside the fixed 3-tier backbone (7F), every tenant-based app ALSO seeds the platform-scope sub-roles
+reachable at `/tm`. Full DESIGN/schema/enforcement: **`.ai_prompt/rbac.md` Part E**. Retrofit for an
+existing app: **Scenario 50**.
+
+Seed (`seed.ts`) — 2 curated platform accounts, universal across real envs, **NEVER seeded on demo**
+(demo has no `/tm` — `.ai_prompt/rbac.md` Part F3), passwords ALWAYS from env, NEVER hardcoded:
+```ts
+// Values come from the vault (Server-Setups/secrets/universal-login-credentials.enc.yaml) → .env.{env}.
+// Skip this block entirely when SEEDING FOR DEMO (no /tm surface exists on demo).
+const tenantBillingHash = await bcrypt.hash(requireEnv("TENANTBILLING_PASSWORD"), BCRYPT_ROUNDS);
+const tenantTechHash    = await bcrypt.hash(requireEnv("TENANTTECH_PASSWORD"),    BCRYPT_ROUNDS);
+
+// tenant_billing (BILLING) — scope='platform', tenant_id NULL. Curated: subscription/billing +
+// tenant billing overrides only — NEVER destructive tech ops.
+const billingRole = await prisma.customRole.upsert({
+  where: { name_scope: { name: "BILLING", scope: "platform" } },
+  update: {}, create: { name: "BILLING", scope: "platform", tenantId: null, isActive: true },
+});
+await prisma.user.upsert({ where: { email: "tenantbilling@powerbyteitsolutions.com" },
+  update: { passwordHash: tenantBillingHash },
+  create: { email: "tenantbilling@powerbyteitsolutions.com", passwordHash: tenantBillingHash,
+            fullName: "Tenant Billing", roleId: billingRole.id, isActive: true, tenantId: null } });
+
+// tenant_tech (TECH SUPPORT) — scope='platform', tenant_id NULL. Curated: data overrides /
+// technical support ops only — NEVER billing.
+const techRole = await prisma.customRole.upsert({
+  where: { name_scope: { name: "TECH SUPPORT", scope: "platform" } },
+  update: {}, create: { name: "TECH SUPPORT", scope: "platform", tenantId: null, isActive: true },
+});
+await prisma.user.upsert({ where: { email: "tenanttech@powerbyteitsolutions.com" },
+  update: { passwordHash: tenantTechHash },
+  create: { email: "tenanttech@powerbyteitsolutions.com", passwordHash: tenantTechHash,
+            fullName: "Tenant Tech", roleId: techRole.id, isActive: true, tenantId: null } });
+```
+- `.env.{env}` carries `TENANTBILLING_PASSWORD` / `TENANTTECH_PASSWORD` (see phases.md Phase 4 Part 3
+  `.env` template). Both accounts are universal across `local_dev`/`staging_prod` like `tenant_manager` —
+  **NEVER present on demo** (no `/tm` build target on demo, Part F3).
+- The `PlatformFeatureRegistry` + `PlatformRolePermission` seed rows (BILLING/TECH curated permission
+  matrices) are part of the SAME migration/seed pass — see `.ai_prompt/rbac.md` Part E3.
 
 ### Rule 8 — WSL2 native is the only supported dev environment (V25)
 

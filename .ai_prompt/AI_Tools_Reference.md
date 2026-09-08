@@ -243,6 +243,37 @@ established design system.
 **Fallback:** if the Pro MCP is unreachable, fall back to the plain shadcn/ui MCP (§2.4) + the
 shadcn/ui Blocks gallery — same shadcn/ui output target, lower automation.
 
+### 2.6 IconStack MCP Server (NEW V32.49)
+```
+URL:      https://iconstack.io/api
+Type:     MCP server (hosted remote via the mcp-remote proxy) — icon SEARCH + SVG SOURCING
+Added:    V32.49
+Scope:    user-global — 51,378 MIT-licensed icons across 21 libraries (lucide, tabler, phosphor,
+          material, remix, bootstrap, ant, …). No auth, no API key, no rate limits, CORS enabled.
+Auth:     none — free/public, MIT-only, attribution not required. Remote endpoint; DESIGN-TIME only.
+Install:  ~/.claude.json  (user-global, single machine — not committed to any app repo):
+          "iconstack": { "command": "npx", "args": ["-y", "mcp-remote",
+            "https://sglpxftkuzsqdpdhftwv.supabase.co/functions/v1/mcp"] }
+Tools:    search_icons · get_icon_svg · list_libraries
+API:      GET .../functions/v1/icon-search?q=<term>&library=<ids>&style=<outline|filled>&limit=<1-100>
+          GET .../functions/v1/icon-svg?library=lucide&id=user[&format=svg]
+```
+
+**What it is:** the framework's DEFAULT icon-SOURCING layer (V32.49). IconStack aggregates the same MIT
+icon sets we already use (lucide included) into one searchable surface — the place the agent finds/pulls
+anything BEYOND lucide. `lucide-react` stays the shadcn RUNTIME baseline (ui-rules.md Rule 9).
+
+**INHERIT-not-REPLACE (HARD):** IconStack does NOT replace lucide and adds NO runtime dependency. The
+agent searches at design/build time and materializes the returned SVG as a self-hosted, tree-shakeable
+component in the repo (`components/icons/`); the client app NEVER calls IconStack at runtime (CSP +
+offline safe). Never add a competing icon NPM library (heroicons / react-icons / font-awesome / phosphor).
+
+**When the framework reaches for it:** the design phases (2.8 / 3.3 / Parts 5-6 / Phase 7) whenever a
+needed glyph isn't in lucide — `search_icons` → pick → `get_icon_svg` → drop into `components/icons/`.
+
+**License:** the API/MCP returns MIT-licensed icons only; free for commercial/client use, attribution
+not required (backlink to iconstack.io appreciated).
+
 ---
 
 ## 3. Skills & Plugins
@@ -560,6 +591,14 @@ Two new skills prescribed by **Rule 33** (`privacy.md` deliverable #23). Both ar
 
 **Change history:**
 - V32.9: Both skills added. `ph-data-privacy` by Powerbyte (Internal); `accessibility-agents` from Community-Access. Both wired into `src/data/skills.js` + CLAUDE.md phase→skill table per Surface Additions Policy.
+
+---
+
+### 3.9 Per-phase loadout & capability map (V32.53)
+
+Skills are armed per phase from the global **Capability Map** (`~/.claude/library/capability-map.md`) via the always-on loadout chain (`~/.claude/rules/analyze-confirm-gate.md` HAND-1 → `skill-loadout-card.md` STEP 0.5) — a rescan of the live/new available skills + a curated **dev-phase × task × skills × Black Magic** map. **Priority = our OWN library** (installed skills · MCPs · plugins). **AI Black Magic is GATED — never auto-queried** (token cost): only BM-1 (curating our own skills/the map), BM-2 (a real gap after searching our library), or BM-3 (owner asks). New skills now prescribed per phase: `design-brief` (design translator — FIRST at Phase 2.8/3.3), `humanize` + `ai-check` (docs/showcase/marketing copy — Phase 7 + app-showcase), `doubt-driven-development` (high-stakes decisions — pairs with the Phase 3 Spec Expert Panel), `video-shot-planner` · `app-showcase` · `image` · `dataviz` · `web-motion` (showcase/marketing/charts). Provided globally (every seat loads `~/.claude/`) — the framework references them; not deployed via deploy.sh.
+
+**Content Human-Voice Pass (V32.54).** The `humanize` + `ai-check` skills above now have a documented on-demand authority: deliverable **#44 `.ai_prompt/content-voice.md`** (Content Human-Voice Pass). Whenever human-facing PUBLISHED prose is authored (marketing/landing/blog/caption/in-app/notification/generated-docs copy), Read it and run the write-human-first-or-rewrite → `ai-check` gate before the content is "done" — pulled ONLY when a content task fires (never in a non-content session, never scaffolded into an app; contrast the always-on Rule 35 SEO). Rides ON TOP of `copywriting`/`app-showcase`/`doc-coauthoring` (INHERIT-not-REPLACE); SKIP for non-prose + rigid/legal register. See `phases.md` MODEL HOOK (V32.54) for the phase wiring.
 
 ---
 
@@ -946,6 +985,38 @@ Implements Rule 9 (bidirectional governance). Checks:
 
 Exits 1 on any violation. Runs in CI and Phase 5. This is the primary guard against spec drift.
 
+### 9.5 review-scope.mjs (Review Pre-Scope — NEW V32.51)
+
+A fifth `scripts/`-tier `.mjs` tool (deliverable #40), distinct from the four Phase-4-generated governance
+tools above — it ships with the framework itself rather than being scaffolded per app. It is a
+deterministic, no-LLM code-review pre-scope: given a `git diff`, it resolves each changed file to the
+MINIMUM `security.md` §L1-L6 lenses + `audit-app.sh` scanners a reviewer should guarantee they look at, and
+writes an advisory manifest for `/code-review` to consume.
+
+**Run:**
+```bash
+node scripts/review-scope.mjs [--base <ref>] [--diff <path>]
+```
+No flags diffs the working tree; `--base <ref>` diffs against a ref (e.g. `--base main`); `--diff <path>`
+reads a pre-computed unified diff.
+
+**Output:** `test-artifacts/review/review-manifest.json` (machine-readable) + `review-manifest.md`
+(human-readable), both written on every run.
+
+**Posture — FLOOR, not ceiling, always exits 0.** The manifest names the guaranteed minimum a reviewer
+should check per file; it never caps or replaces the reviewer's own judgment, and an absent lens is not
+permission to skip that concern. It never gates a commit, build, or review — advisory-only, same manual/
+on-demand posture as `audit-app.sh` (§9 note above / `.ai_prompt/audit.md`). Route handlers
+(`app/**/route.ts(x)`, `pages/api/**`) force-fire L1 (tenant-scoping) + L3 (rbac) + L4 (rate-limit+
+transport), mirroring `security.md`'s Route-Handler-bypass finding.
+
+**Consumer:** the `/code-review` skill — run this first, read the manifest as an added floor, then review
+beyond it as always.
+
+**Authority:** `.ai_prompt/review-scope.md` (#41, deliverable) for the full lens/scanner mapping table and
+manifest schema; `.ai_prompt/security.md` §L1-L6 for lens semantics (wins on conflict); `.ai_prompt/audit.md`
++ `scripts/audit-app.sh` for scanner semantics.
+
 ---
 
 ## 10. Security Stack (always scaffolded — V18+)
@@ -1150,7 +1221,7 @@ The Master Prompt contains a UI COMPONENT RULES section that enforces shadcn/ui 
 | Charts | Recharts (via shadcn/ui Chart) | Dashboard charts, area/bar/line/pie | `npx shadcn@latest add chart` |
 | Data tables | TanStack Table (via shadcn/ui Data Table) | Sortable, filterable, paginated tables | `npx shadcn@latest add data-table` |
 | Forms | React Hook Form + Zod (via shadcn/ui Form) | Client-side validation matching server Zod schemas | `npx shadcn@latest add form` |
-| Icons | lucide-react | Icon set (shadcn/ui dependency) | Already installed with shadcn/ui |
+| Icons | lucide-react (runtime baseline) + IconStack MCP (sourcing layer §2.6) | Runtime icons = lucide (shadcn dep); anything beyond lucide → source a self-hosted SVG via IconStack MCP | lucide installed with shadcn/ui; IconStack = user-global MCP, no runtime dep |
 | Maps (default) | Leaflet.js + OpenStreetMap | Simple pins/markers, zero API cost | `npm install leaflet react-leaflet` |
 | Maps (advanced) | mapcn (MapLibre GL) | Routes, layers, vector tiles, auto-theming | `npx shadcn@latest add https://mapcn.dev/maps/map.json` |
 | Complex UI | Kibo UI | Kanban, Gantt, Editor, Dropzone, Code Block | `npx kibo-ui add [component]` |

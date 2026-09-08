@@ -37,7 +37,7 @@
 >
 > **INHERIT-not-REPLACE (Rule 38 never overrides Rule L1–L6 or the Checklist):** this file is the
 > **AUTOMATED layer beneath** `security.md` (the L1–L6 security stack) and `Security_Checklist.md`
-> (the 147-item human/AI review checklist). Rule 38 finds what a scanner can find, mechanically, on
+> (the 159-item human/AI review checklist). Rule 38 finds what a scanner can find, mechanically, on
 > every commit or every Phase 5 run — it never substitutes for the reasoning-driven review those two
 > files govern, and a scanner passing green never closes a `security.md`/Checklist item on its own.
 
@@ -47,7 +47,7 @@ stack (Docker Compose + Komodo + Traefik — **not** Kubernetes) and against wha
 gates; the result is a tiered subset, wired where it closes a real gap and documented-only everywhere
 tiering would rather not pay the cost. Full disposition rationale: `docs/planning/V32.38_SCOPE.md`.
 Companion: `security.md` (L1–L6, the human/AI-reasoning security layer this sits beneath),
-`Security_Checklist.md` (147-item audit checklist), `lint-deploy.sh` (the sibling gate `audit-app.sh`
+`Security_Checklist.md` (159-item audit checklist), `lint-deploy.sh` (the sibling gate `audit-app.sh`
 clones the pattern from), `design-fidelity.mjs` (Rule 31 — BackstopJS pairs directly with it).
 
 ---
@@ -404,7 +404,7 @@ word, per `~/.claude/rules/deploy-discipline.md`.
   push without the owner's explicit word.
 
 Companion authorities: `security.md` (L1–L6 stack this file sits beneath) · `Security_Checklist.md`
-(147-item human/AI review checklist) · `phases.md` (Phase 5 OUTPUT CONTRACT + CVE decision tree this
+(159-item human/AI review checklist) · `phases.md` (Phase 5 OUTPUT CONTRACT + CVE decision tree this
 file's §6 mirrors) · `design-fidelity.mjs` (Rule 31 — BackstopJS's structural-check sibling) ·
 `microservices.md` (Rule 37 — the escalation gate Tracetest/Pact wait on) · `docs/planning/V32.38_SCOPE.md`
 (full 30-tool disposition + rationale).

@@ -43,6 +43,22 @@
 #   P1h Image hover transform              (<img> hover:scale-/hover:rotate-)
 #   P1i Crushed / negative letter-spacing  (tracking-tighter / letter-spacing:-0.0x)
 #   P1j Flat / shadowless primary button   (shadow-none on Button / ghost|link as a submit action → needs shadow-xs emboss)
+#   P1k Version-label decorative eyebrow    (BETA / ALPHA / EARLY ACCESS / v0.6 used as a hero eyebrow)
+#   P1l Numbered-section eyebrow            (00 / 01 / 00·INDEX / 001·Capabilities decorative section numbers)
+#   P1m "· No. 01" sub-eyebrow meta-line    (Brand · No. 01 decorative catalogue-number strip)
+#   P1n Locale/time/weather HUD strip       (18°C-style temperature chip as decorative HUD)
+#   P1o Scroll-cue indicator copy           ("scroll" / "scroll down" hero indicator text)
+#   P1p Decorative status dots everywhere   (tiny rounded-full + animate-pulse used as ornament)
+#   P1q Middot separator strip              (2+ "·" on one line — the universal AI meta-line glue)
+#   P1r Em-dash density in copy             (2+ "—" on one line — AI copy affectation; also flagged by impeccable)
+#   P1s Decorative glow / halo / spotlight  (blur-2xl/3xl or glow/halo/spotlight class as a hero backdrop)
+#   P1t Codex grid-line background          (linear-gradient 1px grid / bg-grid decorative pattern)
+#   P1u Premium beige/brass luxury palette  (canned cream/brass/clay/oxblood default-luxury hexes)
+# P1k–P1u harvested (advisory) from taste-skill (MIT, leonxlnx) §9.F + impeccable
+# (Apache-2.0, pbakaus) rule registry — 2026-08-10. SKIPPED (not reliably line-greppable —
+# would flood false positives): nested-cards (Card-in-Card nesting spans lines; a line-based
+# grep can't reliably detect it) and monotonous-spacing (needs cross-element spacing-distribution
+# analysis, not a cheap static grep).
 # Behavioural craft rules (five-states, animation timing) are NOT grep-checkable —
 # they live in design-principles.md / motion.md as agent+reviewer guidance.
 # =============================================================================
@@ -180,6 +196,68 @@ H="$(scan '\btracking-tighter\b|letter-spacing:\s*-0?\.0[3-9]|letter-spacing:\s*
 # Tells: shadow-none on a Button, OR a ghost/link variant used as a submit (primary) action.
 H="$(scan '<[Bb]utton[^>]*\bshadow-none\b|variant=["'"'"']?(ghost|link)["'"'"']?[^>]*type=["'"'"']?submit|type=["'"'"']?submit["'"'"']?[^>]*variant=["'"'"']?(ghost|link)')"
 [ -n "$H" ] && report P1 P1j "Flat/shadowless primary button — give primary/secondary/CTA buttons a small shadow-xs/shadow-sm (or outline border) so they read as buttons; reserve ghost/link for tertiary/inline actions (see ui-rules.md Rule 3 + design-principles.md)." "$H"
+
+# ============================================================================
+# P1k–P1u — content/microcopy "production-test tells" + static AI antipatterns
+# Harvested (advisory, reimplemented) from taste-skill (MIT, leonxlnx) §9.F +
+# impeccable (Apache-2.0, pbakaus) rule registry — 2026-08-10. All ADVISORY:
+# report-only, never fail. Tight patterns to keep the false-positive floor low.
+# SKIPPED deliberately (not reliably line-greppable → would flood false positives):
+#   • nested-cards       — a <Card> inside another <Card> spans multiple lines; a
+#                          line-based grep cannot reliably detect cross-line nesting.
+#   • monotonous-spacing — needs cross-element spacing-distribution analysis, not a
+#                          cheap static grep.
+# ============================================================================
+
+# ── P1k — Version-label decorative eyebrow (BETA / ALPHA / EARLY ACCESS / v0.6) ──
+# Match only as element text (>…<) so it fires on decorative eyebrows, not code identifiers.
+H="$(scan '>\s*(beta|alpha|early[ -]access|coming soon)\s*<|>\s*v[0-9]+\.[0-9]+(\.[0-9]+)?\s*<')"
+[ -n "$H" ] && report P1 P1k "Version-label decorative eyebrow (BETA/ALPHA/EARLY ACCESS/v0.6) — a stock 'production-test' hero tell; drop it or make it a real, meaningful badge." "$H"
+
+# ── P1l — Numbered-section eyebrow (00 / 01 / 00·INDEX / 001·Capabilities) ────
+# Leading-zero section numbers used as decorative eyebrows (element text, or before a ·//).
+H="$(scan '>\s*0[0-9]\s*<|>\s*0{2,3}[0-9]?\s*[·/]|\b0{2,3}[0-9]?\s*[·/]\s*[a-z]')"
+[ -n "$H" ] && report P1 P1l "Numbered-section eyebrow (00 / 01 / 00·INDEX) — decorative section numbering is a generated-portfolio tell; label sections by what they are." "$H"
+
+# ── P1m — "· No. 01" sub-eyebrow meta-line ───────────────────────────────────
+H="$(scan '·\s*no\.\s*0?[0-9]|\bno\.\s*0[0-9]\b')"
+[ -n "$H" ] && report P1 P1m "'· No. 01' sub-eyebrow meta-line — a decorative 'brand · no.' affectation; remove the faux catalogue numbering." "$H"
+
+# ── P1n — Locale/time/weather HUD strip (18°C-style temperature chip) ─────────
+H="$(scan '[0-9]{1,3}\s*°\s*[cf]\b')"
+[ -n "$H" ] && report P1 P1n "Temperature chip (e.g. 18°C) as a decorative HUD strip — a stock 'ambient dashboard' tell; drop unless the app is genuinely weather/locale-driven." "$H"
+
+# ── P1o — Scroll-cue indicator text ──────────────────────────────────────────
+# As element text only, so it never matches scrollTo/scrollIntoView/overflow-scroll/scrollbar.
+H="$(scan '>\s*scroll(\s+down)?\s*<|scroll to (explore|discover)|scroll for more')"
+[ -n "$H" ] && report P1 P1o "Scroll-cue indicator copy ('scroll' / 'scroll down') — a decorative hero affectation; let the content invite the scroll instead." "$H"
+
+# ── P1p — Decorative status dots everywhere (tiny rounded-full + animate-pulse) ──
+# Two-pass (ERE has no lookahead): lines with rounded-full AND animate-pulse AND a tiny size
+# token — a status dot, not a spinner (animate-spin) or a skeleton (rounded-md) loader.
+H="$(scan 'rounded-full' | grep -iE 'animate-pulse' | grep -iE '\b(w|h)-(1|1\.5|2)\b')"
+[ -n "$H" ] && report P1 P1p "Tiny pulsing status dot used as ornament — a generated-UI signature when it decorates everything; reserve a live-status dot for a real live status." "$H"
+
+# ── P1q — Middot separator strip (2+ "·" on one line) ────────────────────────
+H="$(scan '·[^·<>]{1,40}·')"
+[ -n "$H" ] && report P1 P1q "Middot (·) as a universal separator strip — the default AI meta-line glue; vary separators or use real layout." "$H"
+
+# ── P1r — Em-dash density in copy (2+ "—" on one line) ───────────────────────
+H="$(scan '—[^—<>]{1,60}—')"
+[ -n "$H" ] && report P1 P1r "Em-dash (—) density on a single line — reads as an AI copy affectation; review whether the sentence needs restructuring (also flagged by impeccable)." "$H"
+
+# ── P1s — Decorative glow / halo / spotlight backdrop ────────────────────────
+H="$(scan '\bblur-[23]xl\b|class(Name)?="[^"]*\b(glow|halo|spotlight)\b')"
+[ -n "$H" ] && report P1 P1s "Decorative glow/halo/spotlight backdrop (heavy blur-2xl/3xl or a glow/halo class) — a generated-hero signature; prefer a deliberate, restrained backdrop." "$H"
+
+# ── P1t — Codex grid-line background pattern ─────────────────────────────────
+H="$(scan 'linear-gradient\([^)]*[12]px[^)]*transparent|\b(bg-grid|grid-pattern|grid-bg)\b')"
+[ -n "$H" ] && report P1 P1t "Grid-line background pattern (1px linear-gradient grid / bg-grid) — the canonical 'codex' decorative backdrop; use only if a grid is genuinely part of the design language." "$H"
+
+# ── P1u — Premium beige/brass luxury palette overuse ─────────────────────────
+# Specific cream/beige + brass/clay/oxblood hexes used as the stock 'luxury' palette.
+H="$(scan '#(f5f5dc|faf0e6|fdf6e3|f5efe6|f7f3e9|b5a642|c9a227|b08d57|800020|6b1414|b66a50)\b')"
+[ -n "$H" ] && report P1 P1u "Stock beige/brass 'premium-consumer' palette hex — a default-luxury tell; derive the palette from docs/DESIGN.md tokens, not the canned cream/brass set." "$H"
 
 # ============================================================================
 # Summary  (mirrors lint-deploy.sh)

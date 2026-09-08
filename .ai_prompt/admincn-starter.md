@@ -64,6 +64,19 @@ dangling by design; the app supplies those or the builder grafts them).
 **Total ≈ 222 files + `PROVENANCE.md`.** Reconcile against the app's own `packages/ui` on adoption —
 add the AdminCN extras; never duplicate a component the app already has.
 
+> **⚠️ The slice is a GITIGNORED local REFERENCE, never committed (V32.48.1, completed V32.48.2).**
+> The slice lands in TWO places per app: `sync-to-project.sh` stages it to `.ai_prompt/starter/admincn/`
+> (`AI_PROMPT_DIRS`), and `deploy.sh` re-copies THAT to `starter/admincn/`. `deploy.sh` `GITIGNORE_ENTRIES`
+> now adds **both** `starter/admincn/` **and** `.ai_prompt/starter/admincn/` (a mid-slash pattern is
+> root-anchored, so one entry cannot cover the other path) and re-copies the slice on every sync, so it is
+> always present locally to cherry-pick from but never enters the app's git history. This prevents the
+> duplication footgun: an already-shadcn app that committed the slice ends up carrying a second copy of
+> ~37 stock `components/ui` files (verified live on FerryBook: 37/50 collided). **An app that already
+> committed the slice** (synced before this fix) clears it once, on its OWN seat, untracking **BOTH**
+> paths: `git rm -r --cached starter/admincn .ai_prompt/starter/admincn && git commit -m "chore: untrack
+> AdminCN reference slice"` — the working copy stays; only the tracking is removed. Verify with
+> `git ls-files 'starter/admincn' '.ai_prompt/starter/admincn' | wc -l` → 0. Never run that from the AIEF seat.
+
 **Explicitly excluded from the slice** (do NOT adopt): `fake-db/` · `store/` (Zustand) · `nuqs` usage ·
 non-adopted app views (`calendar`, `chat`, `contact`, `kanban`, `mail`) · `forms`/`datatables` demo views ·
 the other 5 layouts (opt-in — see below).

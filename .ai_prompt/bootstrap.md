@@ -348,6 +348,7 @@ Step 12 — Governance doc templates
   docs/CHANGELOG_AI.md  — Rule 15 format template
   docs/DECISIONS_LOG.md — LOCKED entry format template
   docs/IMPLEMENTATION_MAP.md — all section headers
+  docs/TASK_QUEUE.md    — fleet task-backlog standard, empty-but-shaped (TODO 🔴 / PARTIAL 🟡 / DONE ✅); captures owner-dumped asks + agent-found out-of-scope items per the global task-capture rule. NOT one of the 9 hydration governance docs — a separate task backlog, distinct from PENDING_DECISIONS.md (owner-gated [WHAT] decisions).
   project.memory.md     — V14 rules + agent stack summary (6 agents + Log Lesson)
   docs/STATE.md       — written by Step 16 (not a template — actual content written in Step 16)
   docs/DECISIONS_LOG.md entry: Dev environment mode — MODE A (WSL2 native) — locked, no devcontainer (V25)

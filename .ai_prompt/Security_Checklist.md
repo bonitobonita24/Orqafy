@@ -11,7 +11,7 @@
 > **How to use:** Copy this file into your project root. After code generation, `grep` or
 > manually inspect each item. Mark PASS / FAIL / N/A. Fix all FAILs before squash-merge.
 >
-> **Total: 147 verification items across 21 sections.**
+> **Total: 159 verification items across 22 sections.**
 
 ---
 
@@ -766,10 +766,101 @@ one-owner-per-tenant enforcement, matrix-driven custom roles, and the guardrails
 
 ---
 
+## SECTION 22 — PLATFORM SITE-ACCESS (V32.50 — Rule 41)
+
+Run for every tenant-based app that has adopted (or is adopting via Scenario 50) the `/tm` platform
+site + role-routed URL topology. Verifies scope separation, the anti-escalation CHECK constraint,
+`/tm` gating, and the `/{slug}/login` guard-layer parity.
+→ security.md § L3 — TENANT RBAC STANDARD + `.ai_prompt/rbac.md` Parts E + F + Rule 41.
+
+```
+□ 22.1  `scope` enforced server-side, deny-by-default
+        → .ai_prompt/rbac.md Part E2/E3
+        VERIFY: the platform resolver reads ONLY PlatformRolePermission and the tenant resolver
+                reads ONLY RolePermission — no code path resolves permissions from the "wrong"
+                vocabulary for a given scope; an absent row = no access on both sides
+
+□ 22.2  The scope/tenant CHECK constraint is present and enforced at the DB layer
+        → .ai_prompt/rbac.md Part E2
+        VERIFY: `scope_tenant_consistency` CHECK exists — (scope='tenant' AND tenant_id IS NOT
+                NULL) OR (scope='platform' AND tenant_id IS NULL); inserting a platform-scope row
+                WITH a tenant_id (or a tenant-scope row with a NULL tenant_id) is rejected; ALSO the
+                `platformrole_scope_pinned` CHECK + composite FK pin every PlatformRolePermission to a
+                scope='platform' CustomRole, and a partial unique index `(name) WHERE scope='platform'`
+                rejects a duplicate / shadow 'ADMIN' platform role
+
+□ 22.3  `/tm` is reachable ONLY to platform-scope roles
+        → .ai_prompt/rbac.md Part F1/F2
+        VERIFY: tenant_manager/tenant_billing/tenant_tech sessions reach /tm; a tenant-scoped
+                session (any tenant, any role) hitting /tm is denied server-side (not just hidden nav)
+
+□ 22.4  Demo deployment has NO `/tm` route registered or reachable
+        → .ai_prompt/rbac.md Part F3
+        VERIFY: the demo build/routing table contains zero /tm references — a build-time check
+                (grep the compiled route manifest), not merely a runtime-hidden nav item
+
+□ 22.5  Platform permission vocabulary is a DISTINCT namespace from the tenant vocabulary
+        → .ai_prompt/rbac.md Part E3
+        VERIFY: PlatformFeatureRegistry/PlatformRolePermission share NO foreign key, join, or
+                enum with FeatureKey/RolePermission — the two vocabularies are structurally
+                unreachable from each other
+
+□ 22.6  Platform permissions are NEVER grantable to a tenant-scoped CustomRole (and vice versa)
+        → .ai_prompt/rbac.md Part E4
+        VERIFY: the role-builder UI does not expose PlatformFeatureRegistry keys when editing a
+                scope='tenant' role (or FeatureKey when editing scope='platform'); the server
+                rejects any cross-scope grant attempt even if attempted directly against the API; and
+                a seeded or frontend-created platform sub-role can NEVER be granted platform
+                role-management / tenant-lifecycle / manager-creation keys (exclusive to tenant_manager)
+
+□ 22.7  Cross-scope role assignment is refused server-side
+        → .ai_prompt/rbac.md Part E4
+        VERIFY: assigning a scope='platform' CustomRole to a tenant-scoped user record (or
+                assigning a scope='tenant' role to a platform account) is rejected; only
+                tenant_manager may create/edit/assign platform-scope roles; the refusal is backed by a
+                STRUCTURAL constraint on the assignment table (scope↔account-context), not app code alone
+
+□ 22.8  `/{slug}/login` public-route exception is an EXACT match, never a prefix match
+        → .ai_prompt/rbac.md Part F2 / F2a
+        VERIFY: the guard condition is `pathname === '/{slug}/login'` (or the tenant-aware
+                equivalent) — grep for a startsWith('/{slug}/login') or path-prefix match, which
+                would leak an authed sibling route sharing the prefix. If the OPTIONAL public
+                landing (F2a, `tenantLandingEnabled`) is ON, the `/{slug}/` root is ALSO public and
+                must use the SAME exact-match exception; when OFF, `/{slug}/` must redirect to
+                `/{slug}/login` and expose nothing pre-auth
+
+□ 22.9  The `/{slug}/login` exception is granted in BOTH guard layers
+        → .ai_prompt/rbac.md Part F2
+        VERIFY: the exception exists in BOTH middleware.ts (edge guard) AND the
+                [tenant]/layout.tsx server-side auth check; manually exercise an anonymous
+                request to confirm no infinite redirect bounce between the two layers
+
+□ 22.10 Post-login landing is role-routed server-side, never client-trusted
+        → .ai_prompt/rbac.md Part F2 (inherits AGENT PROHIBITION #1)
+        VERIFY: admin-tier (tenant_superadmin/tenant_admin) lands at /{slug}/admin, every other
+                role lands at /{slug}/login, and the routing decision is derived from the server
+                session — never from a client-supplied redirect/callbackUrl parameter
+
+□ 22.11 `/platform`→`/tm` rename ships a redirect shim; reserved slugs are rejected
+        → .ai_prompt/rbac.md Part F4
+        VERIFY: a request to a legacy /platform/* URL 30x-redirects to the /tm/* equivalent; and the
+                reserved-slug rejection (`tm`, `demo`, `platform`, `admin`, `login`, `api`) is
+                case-insensitive + enforced SERVER-SIDE — a direct-API tenant create with any of those
+                slugs is refused, not just the client form
+
+□ 22.12 Seeded platform accounts (BILLING/TECH) come from the vault; no secrets committed
+        → .ai_prompt/rbac.md Part D/E1
+        VERIFY: tenant_billing/tenant_tech seed accounts read passwords from env (bcryptjs,
+                never hardcoded/argv); values live only in the Server-Setups vault
+                (universal-login-credentials.enc.yaml), never pasted into the repo
+```
+
+---
+
 ## HOW TO USE THIS CHECKLIST
 
 **After Phase 4 (initial scaffold):**
-Run ALL 21 sections. Every item applies. This is the most critical audit — the scaffold
+Run ALL 22 sections. Every item applies. This is the most critical audit — the scaffold
 defines the security posture for the entire project lifecycle.
 
 **After Phase 7 (Feature Update):**
@@ -786,6 +877,7 @@ Run only the sections relevant to the feature:
 - Added or changed AWS/R2/MinIO cloud storage credentials? → Section 19
 - Added native mobile (Expo) features? → Section 20
 - Added/changed roles, RBAC, user-management, custom-role builder, or role succession? → Sections 2, 21
+- Added/changed the `/tm` platform site, platform BILLING/TECH roles, or role-routed login/`/{slug}/admin`? → Sections 2, 21, 22
 - Always run Section 13 (Phase 5 commands) regardless
 
 **Cross-AI audit loop:**

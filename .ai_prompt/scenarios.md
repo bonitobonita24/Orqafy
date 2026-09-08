@@ -1,4 +1,4 @@
-# Spec-Driven Platform V32.45 — Scenarios 1-49
+# Spec-Driven Platform V32.51 — Scenarios 1-51
 
 > Loaded contextually when user triggers a named scenario.
 > Read ONLY the scenario matching the user's request.
@@ -2745,6 +2745,127 @@ structure, not values.
   the no-redistribution constraint (keep it private if it carries the slice).
 
 Full standard: `.ai_prompt/admincn-starter.md` (#39), `ui-rules.md` Rule 8 + Rule 12, Rule 31.
+
+---
+
+### SCENARIO 50 — Existing-App Site-Access & `/tm` Bootstrap Retrofit (NEW V32.50)
+
+**Trigger:** the owner says anything like "adopt the site-access standard on `<app>`", "set up `/tm` on
+`<app>`", "bring `<app>`'s login/routing onto the fleet standard", "add BILLING/TECH platform roles",
+or a `register-to-aief`/`prep-sync` scan flags an app on framework < V32.50 with an ad-hoc `/platform`
+or global `/admin` surface. Authority: **Rule 41** + `.ai_prompt/rbac.md` Parts E + F. Mirrors
+**Scenario 42**'s dev-first / LOCAL-only / HARD-HOLD posture exactly — this is the site-access sibling
+of that scenario, not a replacement.
+
+**CONTEXT:** An existing tenant-based app already has the Rule 34 3-tier backbone
+(`tenant_manager`/`tenant_superadmin`/`tenant_admin`) but predates the site-access topology: no `/tm`
+platform site (or a bare `/platform` convention), a single global `/admin`, and no BILLING/TECH
+platform roles. This scenario layers Rule 41 ON TOP of the existing backbone — it does not touch or
+re-run the Rule 34 backbone retrofit (Scenario 42) if that's already done.
+
+**⚠ Naming-divergence pre-check.** If the app's platform-tier enum value diverges from the fleet
+standard (e.g. `tenant_super_admin` instead of `tenant_manager` — the known Orqafy case), reconcile the
+naming FIRST via `ALTER TYPE … RENAME VALUE` (data-preserving, never DROP/CREATE — same mechanic as
+Scenario 42 step 3) before proceeding to step 1 below.
+
+**⚠ HARD HOLD:** every step below lands as LOCAL commits + a DEV-DB apply only. Staging/prod/demo
+promotion + any live re-seed are separate, explicit, owner-gated words (see step 8).
+
+**STEPS (dev-first):**
+1. Branch `feat/site-access-rule41-bootstrap`.
+2. **`/platform` → `/tm` rename + redirect shim.** If the app already has a `/platform/*` management
+   surface, rename routes to `/tm/*` and add a redirect shim (`/platform/:path* → /tm/:path*`) so
+   existing bookmarks/`callbackUrl`s/Traefik path-matching don't 404 mid-cutover (`.ai_prompt/rbac.md`
+   Part F4). If the app has NO platform surface yet, scaffold `/tm/*` fresh — no shim needed.
+3. **Additive scope migration (NEVER destructive):**
+   ```sql
+   ALTER TYPE "RoleScope" ADD VALUE IF NOT EXISTS 'platform'; -- or CREATE TYPE if new
+   ALTER TABLE "CustomRole" ADD COLUMN "scope" "RoleScope" NOT NULL DEFAULT 'tenant';
+   ALTER TABLE "CustomRole" ALTER COLUMN "tenant_id" DROP NOT NULL;
+   ALTER TABLE "CustomRole" ADD CONSTRAINT "scope_tenant_consistency"
+     CHECK ((scope = 'tenant' AND tenant_id IS NOT NULL) OR (scope = 'platform' AND tenant_id IS NULL));
+   ```
+   Every pre-existing `CustomRole` row backfills to `scope='tenant'` automatically (the `DEFAULT`) — zero
+   data loss, zero re-migration of existing tenant roles. Create the NEW `PlatformFeatureRegistry` +
+   `PlatformRolePermission` tables (`.ai_prompt/rbac.md` Part E3) — additive, no existing table touched.
+4. **Disjoint platform resolver + `platformRole` router.** Wire a resolver that reads ONLY
+   `PlatformRolePermission` (never `RolePermission`) — see Part E3/E4. Add a `platformRole` tRPC router
+   (create/edit/assign platform roles), gated to `tenant_manager` ONLY. Seed the BILLING/TECH matrix
+   (Part E1) — curated permission sets, never full-ADMIN, never overlapping each other's domain.
+5. **Role-routed login + the `/{slug}/login` guard exception, in BOTH layers.** Wire post-login routing:
+   admin-tier → `/{slug}/admin`, regular users → `/{slug}/login` (server-derived, never a client
+   redirect). Grant the EXACT-match public exception (`pathname === '/{slug}/login'`, NEVER
+   `startsWith`) in **BOTH** `middleware.ts` AND `[tenant]/layout.tsx` — missing either fail-closes into
+   an infinite redirect bounce (`.ai_prompt/rbac.md` Part F2). Drop the old global `/admin` route once
+   `/{slug}/admin` is verified reachable for every existing tenant.
+5a. **(Optional) per-tenant public landing (`/{slug}/` root).** If the app opts in (`tenantLandingEnabled`,
+   Part F2a — e.g. FerryBook's per-client marketing page), the `/{slug}/` root is public and joins
+   `/{slug}/login` under the SAME exact-match exception in BOTH guard layers; when OFF, `/{slug}/`
+   redirects to `/{slug}/login`. Skip this step for apps that don't want a public tenant landing (e.g. FRMS).
+6. **Reserved-slug guard.** Add `tm`, `demo`, `platform`, `admin`, `login`, `api` to the tenant-slug creation
+   rejection list (Part F4) — verify a NEW tenant cannot register any of those slugs.
+7. **Seed platform accounts + tests.** Seed `tenant_billing@…`/`tenant_tech@…` (universal platform
+   accounts, passwords from env/vault, never hardcoded — see `templates.md` 7G). Cross-scope tests:
+   a platform role can NEVER resolve a tenant `FeatureKey`; a tenant role can NEVER resolve a
+   `PlatformFeatureRegistry` key; a cross-scope grant attempt is rejected server-side.
+8. Full gate + `secure-code-guardian` review + Visual QA on DEV (verify-all-pages — the `/tm` rename +
+   login re-route must not regress any existing tenant flow). Back-port to `docs/DECISIONS_LOG.md` +
+   `docs/CHANGELOG_AI.md` (Rule 15). Commit LOCAL only.
+9. Promotion (each a separate owner word, never auto):
+   - STAGING: ship image → migration runs (additive scope columns + CHECK constraint) → validate via
+     the staging data-first gate (`~/.claude/rules/staging-refresh-gate.md`).
+   - PROD: promote the verified image → migration → cut the `/platform`→`/tm` redirect shim over (or
+     remove it once bookmarks have migrated) → health-verify.
+   - DEMO: promote → migration → **NO `/tm` deployed at all on demo** (Part F3) → NEVER reseed.
+
+**VERIFICATION:**
+- `\d "CustomRole"` shows the `scope` column, nullable `tenant_id`, and the CHECK constraint; inserting
+  a `scope='platform'` row WITH a `tenant_id` (or `scope='tenant'` with a NULL `tenant_id`) is rejected.
+- `/tm` is reachable ONLY to `tenant_manager`/`tenant_billing`/`tenant_tech` sessions; a tenant-scoped
+  session hitting `/tm` is denied server-side.
+- `/{slug}/login` loads pre-auth with NO redirect loop; `/{slug}/admin` is reachable only to admin-tier;
+  every other role lands back at `/{slug}/login`.
+- A platform-scope permission grant attempt against a tenant `CustomRole` (and vice versa) is refused.
+- Demo build/routing table contains **zero** `/tm` references (build-time check, not just runtime-hidden).
+- `docs/DECISIONS_LOG.md` / `docs/CHANGELOG_AI.md` updated; commit is LOCAL only. No staging/prod/demo
+  change without an explicit owner word.
+
+Full standard: `.ai_prompt/rbac.md` Parts E + F, `Security_Checklist.md` §22, Rule 41.
+
+---
+
+### SCENARIO 51 — Delegation-Mode Review Pre-Scope (NEW V32.51)
+
+**Trigger:** the owner says anything like "pre-scope a review", "scope the code review", "which lenses
+apply to this diff", "run the review pre-scope", or `/code-review` is about to run against a batch of
+changed files and the session wants a deterministic starting floor before reviewing.
+
+**CONTEXT:** `/code-review` is powerful but unscoped by default — on a large or mixed-surface diff it can
+miss which lenses/scanners a given changed file actually calls for (security-sensitive route, RBAC
+surface, Prisma schema, Docker/compose, etc.). Delegation-Mode adds a deterministic pre-scope step that
+computes a per-file **FLOOR** of applicable lenses/scanners BEFORE the review runs, so the review is never
+left to guess file-by-file relevance from scratch.
+
+**STEPS:**
+1. Run `node scripts/review-scope.mjs [--base <ref>]` against the changed-file set (diff vs `--base`, or
+   the working tree if omitted).
+2. Read the generated `test-artifacts/review/review-manifest.md` — a per-file table of the lenses/scanners
+   the file's path/type/content pattern maps to (e.g. an `.ai_prompt/security.md` L1-L6 pattern in a
+   changed route, an RBAC surface touch, a schema/migration file, a Docker/compose file).
+3. Treat the manifest as the **guaranteed FLOOR**, never a ceiling: run `/code-review` normally, and
+   ensure every lens the manifest names for a touched file is actually exercised — then keep reviewing
+   BEYOND the floor exactly as `/code-review` would unscoped (deeper reasoning, cross-file correctness,
+   anything the mechanical mapping can't see).
+
+**Notes:**
+- **FLOOR-not-ceiling.** `review-scope.mjs` guarantees a MINIMUM set of lenses per file; it never caps or
+  narrows what `/code-review` is allowed to check. A file mapping to zero mechanical lenses still gets the
+  full unscoped review — the manifest only ever adds a guaranteed baseline, never subtracts.
+- **Advisory-only, never gates.** The manifest is a pre-scope aid for the review session, not a CI/Phase-5
+  blocking gate — nothing in this scenario fails a build or blocks a commit/push. Composes with, does not
+  replace, `security.md` §L1-L6 and the existing audit toolkit (`audit.md` #35 — Rule 38).
+
+Full standard: `.ai_prompt/review-scope.md` (#41), `.ai_prompt/security.md` §L1-L6.
 
 ---
 

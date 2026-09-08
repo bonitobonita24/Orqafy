@@ -318,14 +318,7 @@ function readJsonSafe(path) {
 
 function loadConfig(projectRoot) {
   const cfg = readJsonSafe(join(projectRoot, 'design-fidelity.config.json'));
-  const merged = { ...DEFAULT_CONFIG, ...(cfg || {}) };
-  // FDL_BASE_URL env override — lets a transient QA server (e.g. a branch
-  // build on another port) be targeted without editing the committed config.
-  // Unset ⇒ behavior unchanged (config file, then DEFAULT_CONFIG).
-  if (typeof process.env.FDL_BASE_URL === 'string' && process.env.FDL_BASE_URL.length > 0) {
-    merged.baseUrl = process.env.FDL_BASE_URL;
-  }
-  return merged;
+  return { ...DEFAULT_CONFIG, ...(cfg || {}) };
 }
 
 function baselinePathFor(projectRoot, screen) {
@@ -352,69 +345,10 @@ function resolveUrl(route, config) {
   return new URL(route, config.baseUrl).href;
 }
 
-// ── Auth (E1) — logs in ONCE per run and reuses the storageState for every
-// manifest entry flagged "auth": true. Public entries are unaffected — they
-// keep using a plain no-auth context, so their capture output stays
-// byte-identical to before this change. Dev-seed creds only, env-overridable,
-// never a real secret hardcoded (see docs/CREDENTIALS.md).
-const DEFAULT_DEMO_EMAIL = 'admin@mail.com';
-const DEFAULT_DEMO_PASSWORD = 'admin';
-const FALLBACK_DEMO_EMAIL = 'webmaster@orqafy.local';
-const FALLBACK_DEMO_PASSWORD = process.env.WEBMASTER_PASSWORD ?? '';
-const DEMO_TENANT_SLUG = 'demo';
-
-async function attemptLogin(page, config, email, password) {
-  await page.goto(resolveUrl('/login', config), { waitUntil: 'networkidle' });
-  await page.fill('#tenantSlug', DEMO_TENANT_SLUG);
-  await page.fill('#email', email);
-  await page.fill('#password', password);
-  await Promise.all([
-    page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 15000 }).catch(() => {}),
-    page.getByRole('button', { name: 'Sign in' }).click(),
-  ]);
-  return page.url();
-}
-
-/**
- * Log in once, return a Playwright storageState object to reuse across every
- * authed capture in this run. Throws with a clear message if BOTH the
- * primary and fallback dev-seed credential sets fail to reach an authed
- * /demo/ path (caller decides whether that's fatal).
- */
-async function loginAndCaptureStorageState(playwright, config) {
+async function extractSignature(playwright, route, config) {
   const browser = await playwright.chromium.launch();
   try {
-    const context = await browser.newContext({ viewport: config.viewport });
-    const page = await context.newPage();
-
-    const primaryEmail = process.env.DEMO_ADMIN_EMAIL || DEFAULT_DEMO_EMAIL;
-    const primaryPassword = process.env.DEMO_ADMIN_PASSWORD || DEFAULT_DEMO_PASSWORD;
-    let finalUrl = await attemptLogin(page, config, primaryEmail, primaryPassword);
-
-    if (new URL(finalUrl).pathname.startsWith('/login') && FALLBACK_DEMO_PASSWORD !== '') {
-      finalUrl = await attemptLogin(page, config, FALLBACK_DEMO_EMAIL, FALLBACK_DEMO_PASSWORD);
-    }
-
-    if (new URL(finalUrl).pathname.startsWith('/login')) {
-      throw new Error(
-        `login failed for both credential sets — final URL still /login (${finalUrl})`,
-      );
-    }
-
-    const storageState = await context.storageState();
-    return storageState;
-  } finally {
-    await browser.close();
-  }
-}
-
-async function extractSignature(playwright, route, config, storageState) {
-  const browser = await playwright.chromium.launch();
-  try {
-    const context = storageState
-      ? await browser.newContext({ viewport: config.viewport, storageState })
-      : await browser.newContext({ viewport: config.viewport });
-    const page = await context.newPage();
+    const page = await browser.newPage({ viewport: config.viewport });
     await page.goto(resolveUrl(route, config), { waitUntil: 'networkidle' });
     const signature = await page.evaluate(() => {
       const els = Array.from(document.querySelectorAll('[data-fdl]'));
@@ -542,31 +476,14 @@ async function main() {
   let anyBaselineMissing = false;
   const allViolations = [];
 
-  // Log in ONCE (if any manifest entry needs it) and reuse the session for
-  // every authed capture below. Public-only manifests never touch this path
-  // — their capture behavior/output stays byte-identical to before E1.
-  const needsAuth = Object.values(manifest).some((entry) => entry.auth === true);
-  let authStorageState = null;
-  if (needsAuth) {
-    console.log(`  ${CYN}logging in${RST} (demo tenant) — reused for all "auth": true entries…`);
-    try {
-      authStorageState = await loginAndCaptureStorageState(playwright, config);
-      console.log(`  [${GRN}OK${RST}] authenticated session ready\n`);
-    } catch (e) {
-      console.error(`${RED}Error:${RST} ${e.message}`);
-      process.exit(1);
-    }
-  }
-
   for (const [screen, entry] of Object.entries(manifest)) {
-    const storageStateForEntry = entry.auth === true ? authStorageState : null;
     if (args.updateBaseline) {
       if (!entry.mockupRoute) {
         console.log(`  [${YLW}SKIP${RST}] ${screen} — manifest entry has no mockupRoute`);
         continue;
       }
       try {
-        const signature = await extractSignature(playwright, entry.mockupRoute, config, storageStateForEntry);
+        const signature = await extractSignature(playwright, entry.mockupRoute, config);
         const outPath = baselinePathFor(projectRoot, screen);
         mkdirSync(dirname(outPath), { recursive: true });
         writeFileSync(outPath, JSON.stringify(signature, null, 2) + '\n');
@@ -590,7 +507,7 @@ async function main() {
       continue;
     }
     try {
-      const build = await extractSignature(playwright, entry.appRoute, config, storageStateForEntry);
+      const build = await extractSignature(playwright, entry.appRoute, config);
       const { pass, violations } = classifyDiff(baseline, build, config);
       if (pass) {
         console.log(`  [${PASS}] ${screen} — matches mockup layout baseline`);

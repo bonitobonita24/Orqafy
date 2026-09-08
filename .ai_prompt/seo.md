@@ -361,3 +361,101 @@ the branch is considered done.
 runs a content/design pass against §1.5 above on the app's existing public/marketing/landing surfaces:
 audit and fix heading hierarchy (single `<h1>`, logical `<h2>`/`<h3>`), keyword-informed copy, semantic
 structure, `alt` text, and CWV-affecting layout, alongside the metadata/sitemap/robots/JSON-LD work.
+
+---
+
+## 8. §GEO — Generative Engine Optimization (ON-DEMAND extension of Rule 35, NEW V32.46)
+
+> **Read this section ON-DEMAND, and ONLY on a public-facing / marketing / content-heavy app** — at
+> the design & content phases (the Planning Assistant DESIGN.md/MOCKUP.jsx step, Phase 2.8 mockup,
+> Phase 3.3 prototype — the same cue as §1.5) and again at the Phase 5 SEO validation step. It layers
+> **ON TOP of** the always-on Rule 35 baseline (§§0–7); it does not replace or gate anything. An
+> internal / back-office / authed-only app renders `noindex,nofollow` per §1 and never needs this
+> section — AI answer engines can't cite a page they can't index, so GEO is moot there.
+
+### 8.1 Position — GEO is rebranded SEO, not a new discipline
+
+"Generative Engine Optimization" (GEO), and its sibling label "Answer Engine Optimization" (AEO), name
+the practice of being **cited by AI answer surfaces** — Google's AI Overviews / AI Mode, ChatGPT web
+search, Perplexity, Claude, and similar. The credible, evidence-based position — consistent with public
+Google Search guidance (captured in the 2026-08 SEO/GEO harvest of AgriciDaniel/claude-seo; **verify
+against current Google documentation** before treating any date-specific claim as authoritative) — is that
+optimizing for generative AI search **is still SEO**: the same ranking systems decide eligibility, and
+being crawlable + indexable is the prerequisite floor. AEO/GEO are largely **rebranded labels for work
+we already do.**
+
+**Why this is an on-demand *extension*, not a new always-on Rule.** Rule 35 (§§0–7) already delivers
+the indexation/technical floor that any AI citation depends on — correct crawlability, metadata,
+sitemap/robots, canonical, structured data, and the Phase-5 Lighthouse gate. §GEO adds **no
+constitutional weight**; it captures only the small set of **content-and-authoring levers** that are
+genuinely net-new relative to §§0–7, and it applies only where a page is actually public and meant to
+be found. Treat it as a checklist layered onto §1.5, not a second SEO system.
+
+### 8.2 The net-new levers (content & authoring — applied to public surfaces only)
+
+These are content/copy/markup practices decided at mockup/content time (§1.5) and confirmed at Phase 5.
+None of them is a build-scaffold change — the Rule 35 scaffold (§§2–5) already emits the technical layer.
+
+- **Passage citability.** Structure the substance as **self-contained answer blocks (~130–170 words
+  each)** that can be lifted out of the page and still make sense with no surrounding context. Put the
+  **direct answer in the first ~40–60 words** of a section, and **front-load** the most citable block
+  high on the page (AI answers disproportionately pull from the top of a page). Write in clear, quotable
+  sentences that state a specific fact rather than gesturing at one.
+- **Question-based headings.** Phrase `<h2>`/`<h3>` headings as the **real questions** a user (or an AI
+  routing a query) would ask — the way the question is actually typed — on top of the clean single-`<h1>`,
+  logical-nesting hierarchy §1.5 already requires. Favor short paragraphs (2–4 sentences), comparison
+  **tables** for structured data, ordered/unordered lists for steps, and explicit **FAQ** blocks.
+- **Attribution density.** Back claims with **specific, attributable sources and concrete statistics**
+  rather than unsourced assertion; write definitions in the `"X is …"` / `"X refers to …"` form; carry a
+  visible **publication date + last-updated date**. **Recency is a real lever** — fresh, maintained pages
+  are substantially more citable than stale ones, so a scheduled content-refresh habit is worth more than
+  any one-time trick. Distinct, first-party data points are more citable than restated commodity content.
+- **Entity presence & consistency.** Give the site a **structured, consistent identity** an engine can
+  resolve to an entity: consistent organization name / brand / contact details, author **bylines with
+  real credentials**, and — where the project warrants it — consistent presence across the wider web
+  (Wikipedia/Wikidata, LinkedIn, and topic communities like Reddit/YouTube). On the framework side this
+  is carried by the §4 JSON-LD (`Organization` / `WebSite` / author `Person`) plus App-Identity-sourced
+  values — never fabricate entity facts the app doesn't actually have.
+- **Structured data, framed for answer engines.** This reuses the **exact same JSON-LD mechanism Rule 35
+  already emits** (§4) — there is no separate "AI schema." The GEO framing is simply which types earn
+  their place on a citable public page: `Organization` + `WebSite` at the root, `Article` with
+  `author` + `datePublished`/`dateModified` on content pages, `FAQPage` on Q&A sections, `BreadcrumbList`
+  on nested routes, and `Person` for a credentialed author. Emit only types that match real page content
+  (same "adaptive, sourced from real app data, never fabricated" rule as §4).
+
+*(Optional, informational — AI-crawler access.)* Whether to explicitly allow AI-search crawlers
+(GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot) in `app/robots.ts` is a **per-app opt-in choice**, not
+a framework default. Rule 35's `robots.ts` (§2.3) already allows public routes and disallows private
+prefixes, which is the correct baseline; adding named AI-crawler `allow` rules is a deliberate decision
+for a site that wants AI-search visibility, and is never required for the levers above to work.
+
+### 8.3 The myth-list — explicitly debunked, so no effort is wasted
+
+The GEO/AEO space is full of influencer advice that does not survive contact with primary sources.
+**Do NOT adopt any of the following, and do not let a PRODUCT.md or a client request smuggle them in as
+requirements:**
+
+- **`llms.txt` is NOT a Google ranking or citation lever.** Google's own guidance states that Google
+  Search — including its generative-AI features — **ignores** `llms.txt` / AI-text files: they "won't
+  harm (nor help)" visibility or rankings, and Google's own John Mueller called the discovery use case
+  "a dead end." *(Attribution per community SEO sources in the 2026-08 harvest, not re-verified against a
+  primary Google source this session — treat as the current best-evidence steer; re-verify via live docs
+  before relying on it.)* It is fine to keep an `llms.txt` for **non-Google** AI services if a project wants one,
+  but **never scaffold it as a Rule-35 requirement, and never present it as a way to rank or get cited
+  in Google.**
+- **There is no magic "content-chunking for AI."** No special chunk format, delimiter, or hidden block
+  makes an answer engine prefer your page. The entire mechanism is the well-structured semantic HTML +
+  clear self-contained passages that §1.5 and §8.2 already call for — nothing beyond that.
+- **There is no separate "AI-keyword" vocabulary to rewrite copy for.** Do not rewrite human-readable
+  copy to court a model. Writing naturally and specifically for the **real query** is SEO, full stop;
+  keyword-informed copy (§1.5) is the whole of it. "AI keyword optimization" as a distinct practice is
+  hype, not a lever.
+
+### 8.4 Where it lands (no new gate)
+
+§GEO adds **no new Phase-5 hard gate** — the Rule 35 §6 checklist (including the Lighthouse SEO ≥ 90
+public-facing gate) is unchanged. §GEO is an **advisory content/authoring checklist**: decide the §8.2
+levers into `docs/DESIGN.md` / `docs/MOCKUP.jsx` at content time (alongside §1.5), and at Phase 5 confirm
+the public/marketing surfaces carry them. On the **Scenario 44** existing-app retrofit, run §8.2 as an
+extra content pass over the app's public surfaces, right beside the §1.5 content/design pass. HARD HOLD
+applies exactly as everywhere else — local, dev-first; promotion is the owner's explicit call.

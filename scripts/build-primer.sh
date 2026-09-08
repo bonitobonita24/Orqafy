@@ -132,6 +132,7 @@ COMPLIANCE: ?     # PH-DPA | BIR-7yr | GDPR | none  (comma-join if several)
 INTEGRATIONS: ?   # comma list of the ones that pull a specific skill/SDK (Xendit, Stripe, Resend, Turnstile) or -
 MODULES: ?        # N surfaces (detail lives in docs/CAPABILITY_PRIMER.md)
 SECURITY: ?       # L-levels active (e.g. L1-L6) or none
+INVISIBLE_DIMS_IN_SCOPE: ?  # Rule 40 radar scope — subset of: security,seo,a11y,privacy,audit,perf,observability,iso,reliability,maintainability (derived from PRODUCT.md, NEVER guessed; unknown stays ?)
 STUB
   printf "%b build-primer:%b scaffolded stub %s — fill it from docs/PRODUCT.md (unknowns stay '?')\n" "$YLW" "$RST" "docs/primer.yml"
 }
@@ -203,6 +204,7 @@ COMPLIANCE="$(f COMPLIANCE)"
 INTEGRATIONS="$(f INTEGRATIONS)"
 MODULES="$(f MODULES)"
 SECURITY="$(f SECURITY)"
+INVISIBLE_DIMS="$(f INVISIBLE_DIMS_IN_SCOPE)"
 
 # ── Render the managed FLAGS block (pure function of docs/primer.yml) ────────
 # Layout MUST match ~/.claude/templates/capability-primer.md SLICE 1 exactly.
@@ -215,6 +217,7 @@ render_block() {
   printf '%s\n' "Data:      PII=${PII} · financial=${FINANCIAL} · compliance=${COMPLIANCE}"
   printf '%s\n' "Integrations: ${INTEGRATIONS}"
   printf '%s\n' "Modules:   ${MODULES} · security=${SECURITY}"
+  printf '%s\n' "Invisible-dims: ${INVISIBLE_DIMS}"
   printf '%s\n' "$END_MARKER"
 }
 

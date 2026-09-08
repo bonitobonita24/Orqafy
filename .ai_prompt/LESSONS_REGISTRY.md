@@ -229,3 +229,18 @@ _Promoted: 2026-07-27_
 _Promoted: 2026-07-28_
 
 ---
+
+## framework.site-access.tm-platform-roles-and-role-routed-urls
+
+| Field | Value |
+|---|---|
+| **fingerprint** | `framework.site-access.tm-platform-roles-and-role-routed-urls` |
+| **machine_signature** | (AI-judged: a `/tm` or `/platform` management surface reachable to a tenant-scoped session; a `PlatformRolePermission`/`FeatureKey` cross-reference in a resolver or join; a `/{slug}/login` guard using `startsWith` instead of an exact match; the `/{slug}/login` public exception present in only ONE of `middleware.ts` / `[tenant]/layout.tsx`; a demo build with a reachable `/tm` route; a `CustomRole` row with `scope='platform' AND tenant_id IS NOT NULL` or `scope='tenant' AND tenant_id IS NULL`) |
+| **scope** | `framework` |
+| **failure** | Ad-hoc per-app site-access topology repeats avoidable defects once a platform tier + a per-tenant login surface both exist: (1) a shared/joined permission vocabulary lets a platform role resolve a tenant permission (or vice versa) — the exact privilege-boundary bug the two-namespace design (Rule 41 / `rbac.md` Part E3) exists to make structurally impossible; (2) a `/{slug}/login` guard written as a prefix match (`startsWith`) leaks an authed sibling route sharing that prefix; (3) the public-login exception granted in only ONE of the two guard layers (edge middleware vs. server layout) fail-closes into an infinite redirect bounce — the single most common Scenario-50 retrofit defect; (4) a demo deployment that still exposes `/tm` breaks the "demo is single-tenant, no platform layer" guarantee (Part F3) and can leak platform-tier controls to a client-facing environment; (5) a `/platform`→`/tm` rename shipped WITHOUT a redirect shim breaks live bookmarks/`callbackUrl`s/Traefik path-matching on cutover. Codified 2026-08-16 with the V32.50 Site Access & Tenancy Bootstrap Standard (FRMS reference implementation, `docs/SITE_ACCESS_STANDARD.md`). |
+| **standing_check** | At work-start before any `/tm`, platform-role, or per-tenant login/routing task AND at done-claim: (a) the platform resolver reads ONLY `PlatformRolePermission`, the tenant resolver reads ONLY `RolePermission` — grep for any join/FK/shared-enum between `PlatformFeatureRegistry`/`PlatformRolePermission` and `FeatureKey`/`RolePermission`, expect zero; (b) the `scope_tenant_consistency` CHECK constraint exists on `CustomRole` and a violating insert is rejected; (c) `/{slug}/login`'s guard condition is an EXACT match (`pathname === '/{slug}/login'`), never `startsWith`; (d) the SAME public exception is present in BOTH `middleware.ts` AND `[tenant]/layout.tsx` — manually exercise an anonymous request and confirm no redirect loop; (e) a demo build's compiled route manifest contains ZERO `/tm` references; (f) a `/platform`→`/tm` rename ships with a working redirect shim BEFORE the cutover is flipped. |
+| **check_location** | `.ai_prompt/rbac.md` Parts E–F + `scenarios.md` Scenario 50 + `phases.md` Phase 4 Part 3 seed / RBAC MODEL HOOK + Phase 3.3 URL-topology cue + Phase 4 Parts 5-6 GATE-CLOSURE route-topology item + `security.md` L3 RBAC block + `Security_Checklist.md` §22 |
+
+_Promoted: 2026-08-16_
+
+---

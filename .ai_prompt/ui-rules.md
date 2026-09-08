@@ -117,10 +117,17 @@ sourced; it NEVER overrides the locked stack, shadcn/ui-only (Rule 1), or docs/D
    documented opt-in. **Read `.ai_prompt/admincn-starter.md`** for the slice manifest, theme presets, and
    the `fake-db`→tRPC graft procedure. INHERIT-not-REPLACE — AdminCN supplies shell structure, not tokens.
 
-9. Icons: lucide-react (already a shadcn/ui dependency). NEVER import heroicons,
-   react-icons, font-awesome, or phosphor-icons alongside lucide.
-   If a specific icon is missing from lucide → check lucide.dev for alternatives
-   before adding any other icon library.
+9. Icons: **lucide-react is the RUNTIME baseline** (already a shadcn/ui dependency — shadcn
+   components import it; never remove it). **IconStack is the DEFAULT icon SOURCING layer** (V32.49):
+   when a needed glyph is missing from lucide, search it via the IconStack MCP (`search_icons` →
+   `get_icon_svg` — 51k+ MIT icons across 21 libraries incl. lucide, tabler, phosphor, material,
+   remix) and drop the returned **self-hosted SVG** into the repo as a single tree-shakeable
+   component (`components/icons/`). Do NOT add a competing icon NPM library — never import
+   heroicons, react-icons, font-awesome, or phosphor-icons; IconStack delivers individual SVG assets,
+   not a package dependency. **No runtime IconStack dependency** — icons are materialized at
+   design/build time, never fetched from the API at runtime (CSP + offline safe). License: the
+   IconStack API/MCP returns MIT-licensed icons only, attribution not required. Config + endpoints:
+   `AI_Tools_Reference.md` §2.6.
 
 10. Monorepo integration: shadcn/ui supports monorepo setups natively.
     Reference: https://ui.shadcn.com/docs/monorepo

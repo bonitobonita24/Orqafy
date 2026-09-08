@@ -2,6 +2,7 @@
 # =============================================================================
 # spec-gap-check.sh — Powerbyte fleet cross-artifact gap-check (V32.21, deliverable #28)
 #                     (V32.41 — adds CLASS 5 Capability-Primer staleness)
+#                     (V32.47 — adds CLASS 6 Invisible-Quality dimension evidence, Rule 40)
 #
 # Compares the spec-persistence artifact set — docs/PRODUCT.md, prisma schema,
 # docs/IMPLEMENTATION_MAP.md, docs/STATE.md, inputs.yml, docs/primer.yml — against
@@ -233,6 +234,34 @@ if [ -n "$RESOLVED" ] && [ -f "$RESOLVED" ]; then
         fi
       fi
     done
+  fi
+fi
+
+# ── DESYNC CLASS 6 — in-scope invisible-quality dimension declared but no evidence built ──
+# V32.47 (Rule 40 — Invisible-Quality Radar). Advisory, low-false-positive drift backstop. Reads the
+# primer's INVISIBLE_DIMS_IN_SCOPE field (build-primer.sh #38); for a dimension the app DECLARES in-scope,
+# it looks for the cheapest structural evidence that the dimension was attended to. A declared-but-unbuilt
+# invisible dimension is silent in the running app — exactly what the radar exists to keep visible. This
+# CLASS re-implements NO owner surface; it only flags a missing-evidence gap for the owner rule to fix.
+# Graceful-degrade: no docs/primer.yml → skipped (CLASS 5 already nudges adoption); an unfilled '?' dims
+# field → skipped (nothing declared in-scope yet). Never blocks — --report-only exits 0, --check exits 3.
+if [ -f "$PRIMER_YML" ]; then
+  DIMS_LINE="$(grep -m1 -iE '^[[:space:]]*INVISIBLE_DIMS_IN_SCOPE:' "$PRIMER_YML" 2>/dev/null \
+    | sed -E 's/^[[:space:]]*INVISIBLE_DIMS_IN_SCOPE:[[:space:]]*//; s/[[:space:]]+#.*$//; s/[[:space:]]+$//' || true)"
+  if [ -n "$DIMS_LINE" ] && [ "$DIMS_LINE" != "?" ]; then
+    # D2 SEO — a public app declaring 'seo' in-scope must ship a sitemap route (Rule 35 evidence).
+    if printf '%s' "$DIMS_LINE" | grep -qiw 'seo'; then
+      if ! find "$PROJECT_ROOT" -type f \( -name 'sitemap.ts' -o -name 'sitemap.tsx' -o -name 'sitemap.js' \) \
+             -not -path '*/node_modules/*' 2>/dev/null | grep -q .; then
+        add_finding "INVISIBLE-DIM UNBUILT (SEO)" "primer INVISIBLE_DIMS_IN_SCOPE names 'seo' but no app/sitemap.ts found — SEO Rule 35 evidence missing (see .ai_prompt/seo.md)"
+      fi
+    fi
+    # D5 audit-ability — an app declaring 'audit' in-scope must have an AuditLog model (L5 evidence).
+    if printf '%s' "$DIMS_LINE" | grep -qiw 'audit'; then
+      if [ -z "$PRISMA_SCHEMA" ] || ! grep -qiE '^model[[:space:]]+AuditLog' "$PRISMA_SCHEMA" 2>/dev/null; then
+        add_finding "INVISIBLE-DIM UNBUILT (audit)" "primer INVISIBLE_DIMS_IN_SCOPE names 'audit' but no Prisma 'AuditLog' model found — L5 AuditLog evidence missing (see .ai_prompt/audit.md Rule 38)"
+      fi
+    fi
   fi
 fi
 

@@ -20,6 +20,13 @@ demo, and what happens to its database at each step." Reference implementation: 
 generates from), `security.md` (secrets handling), `rbac.md`/`notifications.md`/`seo.md` (other
 on-demand deliverables this pairs with at scaffold time).
 
+> **📍 Consolidated visual reference (canonical single-page view):** the internal Powerbyte **Docs-Hub →
+> "CI/CD Deployment Pipeline"** page (Vercel project `pb-cicd-diagram`, source `Powerbyte-Docs-Hub/index.html`)
+> is the single at-a-glance consolidation of this whole standard — promotion spine, split CI workflows, the 4
+> environments + DB treatment, both promotion gates, demo self-heal + coupled rollback, the NL deploy contract,
+> Komodo stack registration, and the `deploy.sh` framework-delivery / repo-hygiene layer. This file stays the
+> text authority; the Docs-Hub page is the canonical consolidated view — keep the two in sync.
+
 **Scope note.** This standard is for the Docker/Komodo/Traefik/Postgres/Prisma locked-stack apps —
 every framework-built app. It does not apply to a WordPress, PHP, or static/Vercel-hosted project;
 those are "N/A, different stack" and out of scope here.

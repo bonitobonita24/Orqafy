@@ -699,7 +699,7 @@ PRIORITY  SOURCE                  ENFORCED BY
 ────────  ──────────────────────  ───────────────────────────────────
 1         Safety constraints      All agents — never expose credentials,
                                   never delete without confirm, never harm data
-2         CLAUDE.md rules         This file — all 37 rules
+2         CLAUDE.md rules         This file — all 41 rules
 3         Active phase rules      Numbered steps of the current phase
 4         docs/PRODUCT.md         Feature intent — what to build
 5         docs/DECISIONS_LOG.md   Locked decisions — never re-decide

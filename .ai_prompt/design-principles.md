@@ -367,7 +367,7 @@ DESIGN.md decides how each LOOKS; this contract decides which must EXIST. WCAG 2
 
 ## Pillar 8 — Anti-AI-Slop (cardinal sins + extended tells)
 
-Concrete tells that separate "shipped by a designer" from "default LLM output." Surfaced by `scripts/lint-design.sh` (D1–D8 P0 + P1a–P1j advisory), which runs `--report-only` at the design phases (3.3 / Parts 5-6 / Phase 5) — advisory, for agent self-correction, not a hard block.
+Concrete tells that separate "shipped by a designer" from "default LLM output." Surfaced by `scripts/lint-design.sh` (D1–D8 P0 + P1a–P1u advisory), which runs `--report-only` at the design phases (3.3 / Parts 5-6 / Phase 5) — advisory, for agent self-correction, not a hard block.
 
 1. Default Tailwind indigo/violet as accent — use `var(--accent)`.
 2. Two-stop purple/blue/cyan "trust" gradient on the hero — flat surface + type beats it.

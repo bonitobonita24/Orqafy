@@ -1,4 +1,4 @@
-# Tenant RBAC Standard — On-Demand Authority (V32.25 — Rule 34)
+# Tenant RBAC Standard — On-Demand Authority (V32.25 — Rule 34; extended V32.50 — Rule 41 Parts E+F)
 
 > Loaded contextually (read-on-demand, NOT auto-loaded — same posture as `security.md` / `privacy.md`).
 > This file is the sole authority for the **tenant RBAC standard** every tenant-based framework app
@@ -238,16 +238,240 @@ defaults.** Values live ONLY in the vault — never in a repo, never in this fil
 **Sole source:** `Server-Setups/secrets/universal-login-credentials.enc.yaml` (SOPS+age; nested, keyed
 role × env). Describe the model in prose and point here; do not duplicate the table as an authority.
 
-| Env | tenant_manager (universal) | tenant_superadmin | tenant_admin |
-|---|---|---|---|
-| local_dev | platform account | dev owner account | dev admin account |
-| staging_prod | platform account | prod owner account | prod admin account |
-| demo | platform account | demo owner account | — (none) |
+| Env | tenant_manager (universal) | tenant_billing (universal, NEW V32.50) | tenant_tech (universal, NEW V32.50) | tenant_superadmin | tenant_admin |
+|---|---|---|---|---|---|
+| local_dev | platform account | platform account | platform account | dev owner account | dev admin account |
+| staging_prod | platform account | platform account | platform account | prod owner account | prod admin account |
+| demo | platform account (no `/tm` reachable — F3) | n/a (no `/tm` on demo) | n/a (no `/tm` on demo) | demo owner account | demo admin account (NEW V32.50 — was "none" pre-Rule-41) |
 
 Operational footnote: the vault schema is **nested 3 levels** (`["local_dev"]["tenant_superadmin"]["username"]`).
 Some `sops` versions error on a 3-level `--extract` → **decrypt-whole + parse** instead. Passwords are set via
 bcrypt (feed plaintext via file/stdin, never shell argv — special chars) and mirrored to the vault. Seed reads
 passwords from env (`.env.{env}`) — never hardcoded (see `templates.md` seed + `.env` cred-key templates).
+**NEW V32.50:** `tenant_billing`/`tenant_tech` are universal platform accounts (like `tenant_manager`) —
+they exist ONLY where a `/tm` is reachable (never on demo, per F3). Demo now ALSO seeds a `tenant_admin`
+account (was previously "none") to match the client-tenant shape (F1/Part A) exactly, on every real
+environment AND demo. Rolling either change out to an ALREADY-DEPLOYED app is owner-gated — see
+`~/.claude/CLAUDE.md` "Universal login credentials" rollout-gate policy.
+
+---
+
+## Part E — Platform-scope roles (data-driven) (NEW V32.50 — Rule 41)
+
+The platform tier (`tenant_manager`, `tenant_id = NULL`) gains the SAME "data-driven, matrix-backed"
+treatment Part B already gives tenant-scoped custom roles — applied to the PLATFORM scope. This is a
+NEW layer alongside the fixed 3-tier backbone (Part A), never a redefinition of it.
+
+### E1 — `tenant_manager` stays the FIXED default ADMIN ceiling
+
+`tenant_manager` (label: **ADMIN**) remains the platform's fixed, framework-constant default role —
+Part A's guarantee is UNCHANGED. What's new: the platform site now ALSO seeds two curated sub-roles
+and supports creating more, in-frontend, by a `tenant_manager`:
+
+| Role | Label | Seeded by default | Curated permission set |
+|---|---|:--:|---|
+| `tenant_manager` | ADMIN (default, fixed) | ✅ | Full platform access (unchanged from Part A) |
+| `tenant_billing` | BILLING | ✅ | Subscription/billing management + tenant billing overrides; **no destructive tech ops** |
+| `tenant_tech` | TECH SUPPORT | ✅ | Data overrides / technical support ops; **no billing** |
+| *(more)* | owner-named | frontend-created | Built by `tenant_manager` from the platform permission matrix (E3) |
+
+### E2 — `scope` discriminator on the existing custom-role tables (additive)
+
+Reuse Part B's `CustomRole` / `RolePermission` shape rather than inventing a parallel schema — add a
+**`scope`** discriminator column (additive migration, `DEFAULT 'tenant'` so every existing row is
+unaffected) and make `tenantId` nullable so a platform-scope row can carry `tenant_id = NULL`:
+
+```prisma
+enum RoleScope { tenant  platform }              // additive enum — 'tenant' is the pre-existing default
+
+model CustomRole {
+  id        String    @id @default(cuid())
+  scope     RoleScope @default(tenant)            // NEW — discriminator
+  tenantId  String?                                // NOW NULLABLE — platform rows carry NULL
+  name      String
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  @@unique([tenantId, name])                        // unchanged for tenant scope (tenant_id NOT NULL)
+  @@unique([id, scope])                             // composite target for the platform-scope FK (E3 / B1)
+  @@index([tenantId])
+}
+```
+
+```sql
+-- Additive: ADD COLUMN with a default backfills every existing row as 'tenant' (zero data loss).
+ALTER TABLE "CustomRole" ADD COLUMN "scope" "RoleScope" NOT NULL DEFAULT 'tenant';
+ALTER TABLE "CustomRole" ALTER COLUMN "tenant_id" DROP NOT NULL;
+
+-- The anti-escalation guarantee, enforced at the DB layer — a row can never be BOTH
+-- tenant-scoped-with-no-tenant NOR platform-scoped-with-a-tenant.
+ALTER TABLE "CustomRole" ADD CONSTRAINT "scope_tenant_consistency"
+  CHECK ((scope = 'tenant' AND tenant_id IS NOT NULL) OR (scope = 'platform' AND tenant_id IS NULL));
+
+-- Platform role names must be unique WITHIN the platform scope. Because tenant_id IS NULL on platform
+-- rows and SQL treats NULLs as distinct, @@unique([tenantId, name]) does NOT stop a duplicate (or a
+-- second shadow 'ADMIN') platform role — a partial unique index does (mirrors the one-owner-per-tenant
+-- partial index in Part A).
+CREATE UNIQUE INDEX "customrole_platform_name_key" ON "CustomRole" (name) WHERE scope = 'platform';
+
+-- Pin every PlatformRolePermission structurally to a PLATFORM-scoped CustomRole: the composite FK
+-- (roleId, roleScope) -> CustomRole(id, scope) plus this CHECK make it impossible for a platform grant
+-- to attach to a scope='tenant' role, closing the residual join path through the shared CustomRole table.
+ALTER TABLE "PlatformRolePermission" ADD CONSTRAINT "platformrole_scope_pinned" CHECK (role_scope = 'platform');
+```
+
+### E3 — A DISTINCT platform permission vocabulary (never the tenant `FeatureKey` table)
+
+**The core anti-escalation guarantee is namespace separation, not just a `scope` flag.** Reusing
+`FeatureKey` for platform permissions would let a bug (or a careless query) resolve a platform grant
+against a tenant role. Instead, platform permissions live in their OWN, physically separate tables:
+
+```prisma
+model PlatformFeatureRegistry {
+  id       String  @id @default(cuid())
+  key      String  @unique          // e.g. "billing.subscriptions", "tech.data-override"
+  label    String
+  category String?                  // "Billing" | "Tech Support" | …
+  isActive Boolean @default(true)
+}
+
+model PlatformRolePermission {
+  id                 String     @id @default(cuid())
+  roleId             String
+  roleScope          RoleScope  @default(platform)  // pinned to 'platform' — composite FK below (B1)
+  role               CustomRole @relation(fields: [roleId, roleScope], references: [id, scope])
+  platformFeatureKey String                      // → PlatformFeatureRegistry.key
+  view               Boolean @default(false)
+  write              Boolean @default(false)     // create-only
+  update             Boolean @default(false)     // edit-only
+  delete             Boolean @default(false)
+  @@unique([roleId, platformFeatureKey])
+  @@index([roleId])
+}
+```
+
+`PlatformRolePermission` NEVER references `FeatureKey`/`RolePermission` (Part B) and vice-versa —
+two vocabularies, two tables, no shared enum, no cross-reference. The resolver for a platform role
+reads ONLY `PlatformRolePermission`; the resolver for a tenant role reads ONLY `RolePermission` (Part
+B3). This is what makes the CHECK constraint (E2) a structural guarantee rather than an
+application-layer promise. The two vocabularies DO share one table — `CustomRole` holds both scopes —
+so `PlatformRolePermission.roleId` is pinned to a platform-scoped role by a **composite FK**
+`(roleId, roleScope) → CustomRole(id, scope)` with `roleScope` fixed to `'platform'` (the
+`platformrole_scope_pinned` CHECK, E2). That closes the only residual join path: a platform grant
+cannot attach to a `scope='tenant'` role even under a resolver or query bug.
+
+### E4 — Guardrails (restated for the platform scope — mirrors Part C)
+
+- **Only `tenant_manager` creates/edits/assigns platform roles** (the platform-scope equivalent of Part
+  C's "only `tenant_superadmin` (+platform `tenant_manager`)" — here there is no higher tier above
+  `tenant_manager`, so it alone holds this power).
+- **`tenant_billing` and `tenant_tech` are curated, NOT full-ADMIN** — the seed matrix grants each ONLY
+  its named domain (billing OR tech-support), never both, never destructive ops outside its domain.
+- **Platform permissions are NEVER grantable to a tenant-scoped `CustomRole`, and tenant permissions
+  are NEVER grantable to a platform-scope role.** The server rejects any attempt to write a
+  cross-scope grant — this is enforced by BOTH the CHECK constraint (structural) AND the
+  resolver-level separation (E3, no shared vocabulary to even attempt a cross-grant against).
+- **A never-grantable platform-permission set — the platform-scope ceiling.** Just as tenant custom
+  roles can NEVER be granted Billing or User-Management (Part C), a seeded or frontend-created platform
+  sub-role can NEVER be granted the platform's own governance keys — **platform role-management**
+  (create/edit/assign roles), **tenant lifecycle** (create/suspend/delete a tenant), and
+  **platform-account/manager creation**. Those stay exclusive to the fixed `tenant_manager` (ADMIN).
+  Without this, a `tenant_billing`/`tenant_tech` or new sub-role granted a key like
+  `platform.roles.manage` / `tenant.create` would silently escalate to full ADMIN. Enforce it in the
+  platform role-builder matrix (those keys are never offered) AND server-side.
+- **Cross-scope ASSIGNMENT is refused structurally, not only in app code.** The user↔role assignment
+  join carries a constraint tying the assigned role's `scope` to the account's context (a platform
+  account may hold ONLY `scope='platform'` roles; a tenant user ONLY `scope='tenant'` roles) — a
+  DB-level check on the assignment table mirroring the permission side, so a direct-API assignment
+  cannot cross scopes.
+- **Deny-by-default, server-enforced**, identical posture to Part B3 — an absent
+  `PlatformRolePermission` row = no access.
+- **Roles are ALWAYS server-derived**, never trusted from client input (inherits AGENT PROHIBITION #1,
+  same as Part C).
+
+## Part F — Site-access URL topology (NEW V32.50 — Rule 41)
+
+The routing shape every tenant-based app exposes, identical in every real environment (Local Dev,
+Staging, Production). Companion to Parts A–E (roles) — this Part defines WHERE each tier lands.
+
+### F1 — The 3-layer model
+
+```
+/tm                        Tenant Management Site — the SaaS platform/server owner (Powerbyte)
+   ├─ ADMIN    tenant_manager   (Part E1, fixed default)
+   ├─ BILLING  tenant_billing   (Part E1, seeded)
+   └─ TECH     tenant_tech      (Part E1, seeded)
+
+/{client-slug}              Client Tenant — the subscriber's own space
+   ├─ /{slug}/  → OPTIONAL public marketing/landing page (per-app flag; public, before login — F2a)
+   ├─ tenant_superadmin / tenant_admin → login /{slug}/login → post-auth landing /{slug}/admin
+   ├─ (app-design RBAC roles below tenant_admin — Part B)
+   └─ regular users → login /{slug}/login → land in-app
+
+/demo (optional)          Demo Tenant — separate subdomain stack; NO /tm layer (F3)
+```
+
+### F2 — Client tenant: ONE role-routed login, never two forms
+
+A client tenant exposes exactly **ONE** login form: `/{slug}/login`. Post-login the landing is
+**role-routed server-side** (never a client-supplied redirect):
+- Admin-tier (`tenant_superadmin`, `tenant_admin`) → `/{slug}/admin`
+- Every other app role → `/{slug}/login` (its own home)
+
+A pre-existing global `/admin` route is **dropped** in favor of the per-tenant `/{slug}/admin` — a
+global, un-scoped `/admin` is ambiguous about which tenant it belongs to.
+
+**Guard-layer requirement — grant the public exception in BOTH places, exact match only.** `/{slug}/login`
+must be reachable pre-auth. Grant this EXACT-match exception (`pathname === '/{slug}/login'`, **NEVER**
+`startsWith('/{slug}/login')` — a `startsWith` match would leak a sibling authed route that happens to
+share the prefix) in **BOTH**:
+1. `middleware.ts` (the edge guard), AND
+2. the `[tenant]/layout.tsx` server-side auth check.
+
+Missing either layer fail-closes into an **infinite redirect bounce** (middleware allows through, layout
+bounces back to login, middleware allows through again…) — this is the single most common site-access
+retrofit defect; verify both layers explicitly (Scenario 50 step 5 + verification).
+
+### F2a — Optional public per-tenant landing page (`/{slug}/`)
+
+A per-app-project **option** (a flag, e.g. `tenantLandingEnabled`): a client tenant MAY expose a public
+marketing/landing page at its slug root `/{slug}/`, shown **before** login. FerryBook is the reference
+case (`www.<app>.com/{slug}/` marketing page per client); an internal/LGU app (e.g. FRMS) typically
+leaves it OFF.
+- **Enabled** → `/{slug}/` is **public/unauthenticated**; it joins `/{slug}/login` as a public path and
+  MUST be granted by the SAME exact-match public exception (F2), in BOTH guard layers.
+- **Disabled** → `/{slug}/` redirects to `/{slug}/login` (or the dashboard if already authenticated).
+- The flag is app/tenant configuration, never hard-coded; it changes ONLY which paths are public, never
+  the role/permission model.
+
+### F3 — Demo: separate subdomain, NO `/tm` layer, ever
+
+A demo deployment is always a **separate deployment/stack** (never a tenant merged into prod), reached
+via a subdomain: `demo.<domain>.com` or `{app}-demo.powerbyte.app`. Because it is single-tenant and
+client-facing, it has **NO Tenant Management Site at all** — no `/tm` route is registered or reachable
+on a demo deployment (not gated-and-hidden — genuinely absent from the demo build/routing table).
+Demo accounts follow the standard client-tenant shape: `tenant_superadmin` + `tenant_admin`, credentials
+from the vault's demo cred slot (Part D). Because a demo is single-tenant, its admin-tier landing MAY be
+served at a bare `/admin` — this does NOT violate the "global `/admin` dropped" rule (F2), which targets
+the MULTI-tenant ambiguity of an un-scoped `/admin`; a single-tenant demo has exactly one tenant, so
+`/admin` is unambiguous there.
+
+### F4 — `/platform` → `/tm` rename + reserved slugs
+
+Where an app already has a management surface at the pre-standard `/platform/*` convention, rename to
+`/tm/*` with a **redirect shim** (`/platform/:path* → /tm/:path*`) so existing bookmarks, OAuth
+`callbackUrl`s, and Traefik/Komodo path-matching don't 404 mid-cutover. Removing the shim / flipping
+default routing is an owner-gated cutover (`deploy-discipline.md`), same as any promotion.
+
+**Reserved slugs** — a tenant-slug creation flow MUST reject (case-insensitively — normalize to
+lowercase first) any of: `tm`, `demo`, `platform`, `admin`, `login`, `api`. `platform` is reserved
+while the `/platform`→`/tm` redirect shim is live, so a `platform` tenant can't collide with it. Enforce
+this **server-side** at tenant creation — never only in the client form — so a direct-API create cannot
+bypass it. This guarantees no future tenant can ever collide with a platform/system route.
+
+### F5 — Retrofit
+
+An existing tenant-based app adopts Parts E+F via **Scenario 50** (dev-first, LOCAL-only, HARD HOLD —
+mirrors Scenario 42's posture). Security verification: `Security_Checklist.md` **Section 22**.
 
 ---
 
@@ -261,5 +485,12 @@ passwords from env (`.env.{env}`) — never hardcoded (see `templates.md` seed +
   Billing/User-Mgmt in custom roles, succession).
 - **`phases.md` Phase 0/4** seed the backbone by default; **`templates.md`** carries the seed + `.env` templates.
 - **`LESSONS_REGISTRY.md`** (`framework.rbac.tenant-3tier-and-custom-role-matrix`) keeps the standard from regressing.
+- **Rule 41** (`Master_Prompt.md` / `CLAUDE_compact.md`, NEW V32.50) references Parts E+F of this file for
+  the site-access topology + platform-scope role mechanics, exactly as Rule 34 references Parts A–D.
+- **Scenario 50** (`scenarios.md`) is the executable retrofit playbook for Parts E+F on an existing app.
+- **`Security_Checklist.md` §22** verifies the standard (CHECK constraint, scope enforcement, `/tm` gating,
+  distinct vocab, `/{slug}/login` guard-layer parity, role-routed login).
+- **`LESSONS_REGISTRY.md`** (`framework.site-access.tm-platform-roles-and-role-routed-urls`) keeps the
+  site-access standard from regressing.
 </content>
 </invoke>

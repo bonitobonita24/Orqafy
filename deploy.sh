@@ -110,6 +110,10 @@
 # docs/primer.yml + docs/CAPABILITY_PRIMER.md stubs if absent; path-hardened; renders the always-on
 # loadout-deciding FLAGS slice consumed by ~/.claude/rules/skill-loadout-card.md STEP 0; sibling of
 # sync-context.sh #27; see GROUP 15 below). Deliverable count 37 → 38.
+# V32.51 (review-scope.mjs pre-scope engine + review-scope.md authority, code-review pre-scope) adds
+# deliverables #40 and #41 — scripts/review-scope.mjs (deterministic files×rules pre-scope engine for
+# /code-review) + .ai_prompt/review-scope.md (on-demand authority reference); see GROUP 17 below.
+# Deliverable count 39 → 41.
 #         NOTE: sd.config.mjs, design-validate.mjs, STATE.md evidence template, AND (V32.36)
 #         design-fidelity.config.json + docs/design-baseline/manifest.json are
 #         NOT deploy-copied — they are scaffolded by bootstrap.md Step 20 from templates.md
@@ -177,6 +181,8 @@
 #   │   ├── audit-app.sh               ← NEW V32.38 — T1/T2 gate runner (→ scripts/, deliverable #36)
 #   │   ├── dev-freshness-check.sh     ← NEW V32.39 — dev-freshness detection backstop (→ scripts/, deliverable #37)
 #   │   ├── build-primer.sh            ← NEW V32.40 — Capability-Primer regenerator (→ scripts/, deliverable #38)
+#   │   ├── review-scope.mjs           ← NEW V32.51 — review pre-scope engine (→ scripts/, deliverable #40)
+#   │   ├── review-scope.md            ← NEW V32.51 — review pre-scope authority (→ .ai_prompt/, deliverable #41)
 #   │   ├── Planning_Assistant.md
 #   │   ├── Framework_Feature_Index.md
 #   │   ├── AI_Tools_Reference.md
@@ -184,7 +190,7 @@
 #   │   ├── ChatGPT_Cross_Audit.md
 #   │   ├── Prompt_References.md
 #   │   └── Prompt_References.html     ← interactive HTML UI for prompt references
-#   └── deploy.sh             ← this script at project root (38-file total deliverable set)
+#   └── deploy.sh             ← this script at project root (44-file total deliverable set)
 #
 # DEPLOYED TARGET LOCATIONS (V32.7.2 additions):
 #   .claude/agents/spec-executor.md    ← overwrite-with-backup (framework-owned)
@@ -230,6 +236,9 @@
 #   scripts/build-primer.sh            ← overwrite-with-backup (framework-owned), chmod +x (deliverable #38, V32.40)
 #   NOTE: docs/primer.yml + docs/CAPABILITY_PRIMER.md are NOT deploy-copied — build-primer.sh
 #   scaffolds them per-app on first run (project-adjacent, agent-authored; primer.yml is protected below).
+# DEPLOYED TARGET LOCATIONS (V32.51 addition):
+#   scripts/review-scope.mjs           ← overwrite-with-backup (framework-owned), chmod +x (deliverable #40, V32.51)
+#   .ai_prompt/review-scope.md         ← overwrite-with-backup (framework-owned) (deliverable #41, V32.51)
 #
 # USAGE:
 #   cd your-project
@@ -594,6 +603,13 @@ GITIGNORE_ENTRIES=(
   "tokens/build/"
   "tests/visual/__snapshots__/"
   "tests/visual/diff/"
+  "# ─── V32.48.1 AdminCN starter slice — local cherry-pick REFERENCE, never committed ───"
+  "# (sync-to-project.sh stages it to .ai_prompt/starter/admincn/, deploy.sh re-copies that to"
+  "#  starter/admincn/ each sync; it is non-compiling reference material — committing EITHER copy"
+  "#  duplicates an app's own components/ui. Both paths are ignored. Cherry-pick the AdminCN extras"
+  "#  OUT of it per Scenario 49.)"
+  "starter/admincn/"
+  ".ai_prompt/starter/admincn/"
 )
 
 for entry in "${GITIGNORE_ENTRIES[@]}"; do
@@ -737,8 +753,10 @@ overwrite_with_backup "$AI_PROMPT/LESSONS_REGISTRY.md" "$PROJECT/.ai_prompt/LESS
 #   .ai_prompt/audit.md    ← App Audit Toolkit standard (V32.38 — Rule 38)
 #                             Deliverable #35. Loaded on-demand for audit-gate work (tool matrix,
 #                             tier table, per-tool invocation, triage/severity policy, T3 runbooks).
+#   .ai_prompt/review-scope.md ← Review pre-scope authority (V32.51)
+#                             Deliverable #41. Loaded on-demand by /code-review's pre-scope step.
 # ============================================================
-echo "─── Group 8: V32.9 compliance + data privacy + V32.12 design principles + V32.14 motion + V32.25 rbac + V32.28 notifications + V32.30 seo + V32.32 cicd + V32.35 microservices + V32.38 audit ───"
+echo "─── Group 8: V32.9 compliance + data privacy + V32.12 design principles + V32.14 motion + V32.25 rbac + V32.28 notifications + V32.30 seo + V32.32 cicd + V32.35 microservices + V32.38 audit + V32.51 review-scope ───"
 overwrite_with_backup "$AI_PROMPT/privacy.md" "$PROJECT/.ai_prompt/privacy.md"
 overwrite_with_backup "$AI_PROMPT/design-principles.md" "$PROJECT/.ai_prompt/design-principles.md"
 overwrite_with_backup "$AI_PROMPT/motion.md" "$PROJECT/.ai_prompt/motion.md"
@@ -749,6 +767,9 @@ overwrite_with_backup "$AI_PROMPT/cicd.md" "$PROJECT/.ai_prompt/cicd.md"
 overwrite_with_backup "$AI_PROMPT/microservices.md" "$PROJECT/.ai_prompt/microservices.md"
 overwrite_with_backup "$AI_PROMPT/audit.md" "$PROJECT/.ai_prompt/audit.md"
 overwrite_with_backup "$AI_PROMPT/admincn-starter.md" "$PROJECT/.ai_prompt/admincn-starter.md"   # V32.43 — deliverable #39 (AdminCN design starter)
+overwrite_with_backup "$AI_PROMPT/review-scope.md" "$PROJECT/.ai_prompt/review-scope.md"   # V32.51 — deliverable #41 (review pre-scope authority)
+overwrite_with_backup "$AI_PROMPT/audit-scope.md" "$PROJECT/.ai_prompt/audit-scope.md"   # V32.52 — deliverable #43 (full-audit pre-scope authority)
+overwrite_with_backup "$AI_PROMPT/content-voice.md" "$PROJECT/.ai_prompt/content-voice.md"   # V32.54 — deliverable #44 (Content Human-Voice Pass, on-demand)
 echo ""
 
 # ============================================================
@@ -874,6 +895,32 @@ if [ -f "$PROJECT/scripts/build-primer.sh" ]; then
 fi
 echo ""
 
+# ============================================================
+# GROUP 17 — scripts/ target: review-scope.mjs review pre-scope engine (V32.51, deliverable #40)
+# Deterministic files×rules pre-scope engine feeding /code-review; invoked per review-scope.md.
+# Overwrite-with-backup (framework-owned) + chmod +x.
+# ============================================================
+echo "─── Group 17: scripts/review-scope.mjs — review pre-scope engine (V32.51) ───"
+# scripts/ already created by Group 6 — no mkdir needed here.
+overwrite_with_backup "$AI_PROMPT/review-scope.mjs" "$PROJECT/scripts/review-scope.mjs"
+if [ -f "$PROJECT/scripts/review-scope.mjs" ]; then
+  chmod +x "$PROJECT/scripts/review-scope.mjs"
+fi
+echo ""
+
+# ============================================================
+# GROUP 18 — scripts/ target: audit-scope.mjs full-audit pre-scope engine (V32.52, deliverable #42)
+# Deterministic target-type × dimension/gate pre-scope engine feeding the `full audit check` swarm;
+# the audit-side sibling of review-scope.mjs (#40). Invoked per audit-scope.md.
+# Overwrite-with-backup (framework-owned) + chmod +x.
+# ============================================================
+echo "─── Group 18: scripts/audit-scope.mjs — full-audit pre-scope engine (V32.52) ───"
+overwrite_with_backup "$AI_PROMPT/audit-scope.mjs" "$PROJECT/scripts/audit-scope.mjs"
+if [ -f "$PROJECT/scripts/audit-scope.mjs" ]; then
+  chmod +x "$PROJECT/scripts/audit-scope.mjs"
+fi
+echo ""
+
 # 7c: tests/visual/ scaffold — create directory + .gitkeep ONLY if the directory is absent.
 # Never overwrite existing snapshot files inside tests/visual/.
 if [ ! -d "$PROJECT/tests/visual" ]; then
@@ -927,6 +974,8 @@ echo "    scripts/design-fidelity.mjs              ← mockup-anchored layout-fi
 echo "    scripts/audit-app.sh                    ← T1/T2 audit-gate runner, chmod +x (V32.38, deliverable #36)"
 echo "    scripts/dev-freshness-check.sh          ← dev-freshness detection backstop, chmod +x (V32.39, deliverable #37)"
 echo "    scripts/build-primer.sh                 ← Capability-Primer regenerator, chmod +x (V32.40, deliverable #38)"
+echo "    scripts/review-scope.mjs                ← review pre-scope engine, chmod +x (V32.51, deliverable #40)"
+echo "    scripts/audit-scope.mjs                 ← full-audit pre-scope engine, chmod +x (V32.52, deliverable #42)"
 echo ""
 echo "  Merged additively (APPEND/MERGE bucket):"
 echo "    .gitignore                              ← V32 entries added, user entries preserved"
@@ -955,7 +1004,7 @@ echo "    (Human reference — do not move:)"
 echo "    Planning_Assistant.md      ← claude.ai planning + Phase 2.8 mockup (already done before this script)"
 echo "    Framework_Feature_Index.md            ← feature + capability reference"
 echo "    AI_Tools_Reference.md     ← tools + model routing reference"
-echo "    Security_Checklist.md ← 147-item security audit (21 sections)"
+echo "    Security_Checklist.md ← 159-item security audit (22 sections)"
 echo "    ChatGPT_Cross_Audit.md         ← cross-AI validation prompt"
 echo "    Prompt_References.md                      ← scenario-based prompt guide (markdown)"
 echo "    Prompt_References.html                    ← scenario-based prompt guide (interactive UI — START HERE)"
@@ -968,6 +1017,9 @@ echo "    seo.md                                    ← SEO scaffold + validatio
 echo "    cicd.md                                   ← CI/CD standard reference (V32.32, deliverable #32)"
 echo "    microservices.md                          ← microservices escalation standard (V32.35, deliverable #33)"
 echo "    audit.md                                  ← App Audit Toolkit standard, Rule 38 (V32.38, deliverable #35)"
+echo "    review-scope.md                           ← review pre-scope authority (V32.51, deliverable #41)"
+echo "    audit-scope.md                            ← full-audit pre-scope authority (V32.52, deliverable #43)"
+echo "    content-voice.md                          ← Content Human-Voice Pass, on-demand (V32.54, deliverable #44)"
 echo "    (Deployed to scripts/ — do not run from .ai_prompt/:)"
 echo "    lint-deploy.sh                            ← pre-deploy footgun gate (deploys to scripts/lint-deploy.sh, V32.7.5)"
 echo "    design-stop-hook.sh                       ← Claude Code Stop hook (deploys to scripts/, V32.8)"
@@ -978,6 +1030,8 @@ echo "    design-fidelity.mjs                       ← mockup-anchored layout-f
 echo "    audit-app.sh                              ← T1/T2 audit-gate runner (deploys to scripts/audit-app.sh, V32.38)"
 echo "    dev-freshness-check.sh                    ← dev-freshness detection backstop (deploys to scripts/dev-freshness-check.sh, V32.39)"
 echo "    build-primer.sh                           ← Capability-Primer regenerator (deploys to scripts/build-primer.sh, V32.40)"
+echo "    review-scope.mjs                          ← review pre-scope engine (deploys to scripts/review-scope.mjs, V32.51)"
+echo "    audit-scope.mjs                           ← full-audit pre-scope engine (deploys to scripts/audit-scope.mjs, V32.52)"
 echo "    (Note: sd.config.mjs, design-validate.mjs, STATE.md.template, design-fidelity.config.json,"
 echo "     docs/design-baseline/manifest.json are scaffolded by bootstrap.md Step 20 from"
 echo "     templates.md — not deployed by this script)"

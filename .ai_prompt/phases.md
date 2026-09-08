@@ -630,6 +630,10 @@ Note (Phase 2.8 — design principles): When docs/DESIGN.md / ui-rules.md are si
 
 **MODEL HOOK (V32.24 — Spec Expert Panel gate, Phase 2.8 + Phase 3):** before Phase 2.8 hands off (and again before Phase 3 spec-lock, see the matching hook at the Phase 3 Output Contract below), the PM (Opus) dispatches 5 expert-lens Sonnet subagents IN PARALLEL against `docs/PRODUCT.md` (+ `docs/DESIGN.md`/`docs/MOCKUP.jsx` at this Phase 2.8 pass) — `secure-code-guardian` (security/authz/data-privacy), `architecture-designer` (structure/scalability/coupling), `api-designer` (API surface/contracts/versioning), `test-master` (testability/coverage/acceptance criteria), `database-optimizer` (schema/indexing/tenancy). The PM synthesizes the 5 findings lists, dedups overlapping findings, prioritizes (Critical/High/Medium), and feeds every finding into the Flow-Back / LIVING-SPEC reconcile (Rule 1 Spec-Persistence Model, Scenario 40's 5-step loop — BEHAVIOR findings become a proposed `docs/PRODUCT.md` edit for the human to apply per Rule 1; STRATEGY findings go to `docs/DECISIONS_LOG.md`; TASK-BREAKDOWN findings go to `docs/IMPLEMENTATION_MAP.md`). See Prompt 3.24 / Scenario 41 for the full dispatch pattern. **Gate-closure:** Phase 2.8 CANNOT close while any CRITICAL Spec-Expert-Panel finding is unresolved. Emit a single collapsed line on a clean pass — `✅ spec-expert-panel: clear` — or `⛔ spec-expert-panel: N Critical findings unresolved` when blocked. This is an ADDITIVE gate alongside the existing V32.5.1 `/design-review` gate-closure above — both must clear. This is a MODEL HOOK, not a new `memory-governance.md §3` phase hook — the Phase Hooks count stays 18.
 
+**MODEL HOOK (V32.53 — Per-phase loadout: consult the global Capability Map; own-library-first, Black Magic gated):** At each phase's loadout step, arm the task from the CURRENT curated library, not memory. The global always-on chain (`~/.claude/rules/analyze-confirm-gate.md` HAND-1 → `skill-loadout-card.md` STEP 0.5) rescans the LIVE available-skills list for a fit not yet tabled (especially a newly-added skill) and consults `~/.claude/library/capability-map.md` — the curated **dev-phase × task × skills × Black Magic** map. **OUR OWN library (installed skills · MCPs · plugins) is always the default.** **AI Black Magic is GATED — NEVER auto-queried** (token cost): reach for it ONLY when (BM-1) curating our own coding/dev skills or the map, (BM-2) a genuine capability gap after ALREADY searching our library (search-skill/scan-project + the map + external-skill-catalogs) with no match, or (BM-3) the owner explicitly asks. New/better skills now prescribed by phase: **`design-brief`** (design translator — run FIRST at Phase 2.8/3.3 before the design system is chosen); **`humanize` + `ai-check`** (docs/showcase/marketing copy — app-showcase, Phase 7 content); **`doubt-driven-development`** (high-stakes/irreversible decisions — pairs with the Phase 3 pre-lock Spec Expert Panel); **`video-shot-planner` · `app-showcase` · `image` · `dataviz` · `web-motion`** (showcase/marketing/charts, cross-phase). These are provided GLOBALLY (every seat loads `~/.claude/`), so a build session already has them — this hook makes the framework aware of the current loadout discipline. MODEL HOOK, not a new phase hook — Phase Hooks count stays 18.
+
+**MODEL HOOK (V32.54 — Content Human-Voice Pass, on-demand):** Whenever you AUTHOR human-facing PUBLISHED prose at a design/content phase — mockup marketing/landing copy at Phase 2.8/3.3, feature-update content at Phase 7, or any showcase/marketing/docs copy via the app-showcase pipeline — **Read `.ai_prompt/content-voice.md`** and run the humanize + `ai-check` pass automatically. Either write-human-first (the `humanize` skill's generate mode) OR humanize-rewrite the draft, then gate it through `ai-check` before the content is called "done"; at Phase 5, a light `ai-check --report-only` check on public-facing copy suffices. This is ON-DEMAND — pulled ONLY when content is actually being made, NOT a constitutional always-on concern (deliberately unlike Rule 35 SEO, which every app IS scaffolded with): it never loads in a non-content session and is never scaffolded into an app. It rides ON TOP of `copywriting`/`app-showcase`/`doc-coauthoring` (INHERIT-not-REPLACE) and is SKIPPED for non-prose (code/config/JSON/data) + rigid/legal register. This strengthens the V32.53 humanize/ai-check loadout cue above from a hint into a documented pass. MODEL HOOK, not a new phase hook — Phase Hooks count stays 18.
+
 ### PHASE 3 INTERACTION
 Zero. Phase 3 in Claude Code proceeds based on PRODUCT.md + inputs.yml regardless
 of whether Phase 2.8 ran, passed, or was skipped. The mockup is ephemeral — used
@@ -1058,6 +1062,9 @@ Generate:
    TENANTADMIN_PASSWORD=your-tenant-manager-password-here
    WEBMASTER_PASSWORD=your-tenant-superadmin-password-here
    ADMIN_PASSWORD=your-tenant-admin-password-here
+   # Platform-scope roles (V32.50 · Rule 41 — /tm site, NOT seeded on demo, see rbac.md Part F3)
+   TENANTBILLING_PASSWORD=your-tenant-billing-password-here
+   TENANTTECH_PASSWORD=your-tenant-tech-password-here
    # Weak predictable dev accounts (admin@mail.com/user@mail.com) — set true ONLY in .env.dev
    SEED_DEV_ACCOUNTS=false
 
@@ -1116,6 +1123,9 @@ Generate:
    tenant_manager (universal platform account, tenant_id null) · tenant_superadmin (this owner account) ·
    tenant_admin (delegated) — passwords ALWAYS from env (.env.{env}), values from the vault
    (Server-Setups/secrets/universal-login-credentials.enc.yaml). See .ai_prompt/rbac.md Part D + templates.md.
+   V32.50 (Rule 41) adds 2 platform-scope sub-roles reachable at `/tm` — tenant_billing (BILLING) ·
+   tenant_tech (TECH SUPPORT) — universal accounts like tenant_manager, seeded on every real env but
+   NEVER on demo (no `/tm` on demo — rbac.md Part F3). See rbac.md Part E + templates.md 7G.
 
    ---
 
@@ -1586,6 +1596,14 @@ hero, CLS-stable dimensions) survive intact from the mockup into the prototype, 
 here — before Phase 4 scaffold — rather than discovered late. Internal/authed flows get the lighter
 `noindex,nofollow` touch per Rule 35 §1.
 
+**MODEL HOOK (V32.50 — Site Access & Tenancy Bootstrap, Rule 41 · URL-topology cue):** for a
+tenant-based app, the interactive prototype ALSO validates the site-access URL topology before Phase 4
+scaffold: a `/tm` platform-site screen (or its stub) reachable only to platform-scope roles, ONE
+role-routed login flow per tenant (`/{slug}/login` → `/{slug}/admin` for admin-tier, `/{slug}/login`
+itself for regular users), and — if the app is demo-bound — confirm the demo variant of the prototype
+carries no `/tm` surface at all. Surfacing the topology here, before production wiring, catches a
+routing-shape mismatch while it is still cheap to fix. Full detail: `.ai_prompt/rbac.md` Part F.
+
 **Steps:**
 ```
 Step 1 — Flow inventory: Opus dispatches a Sonnet Scout to read PRODUCT.md §3 (R6 — non-allow-list, typically >100 lines) → Opus reviews the Scout's output to list every Core User Flow + the entities each touches (from the Phase 3 schema).
@@ -1994,6 +2012,12 @@ Parts 5-6 cannot close — and Part 7 MUST NOT begin — until ALL of these hold
   NEW TAB to https://www.powerbyteitsolutions.com/ with target="_blank" rel="noopener noreferrer"
   — per ~/.claude/rules/design-defaults.md Entry 3 (non-sidebar archetypes: marks placed per
   that rule's page-footer / about-panel fallback slots)
+□ site-access route topology (V32.50 — Rule 41, tenant-based apps only): `/tm` platform site
+  scaffolded (or the `/platform`→`/tm` redirect shim wired on an existing surface); ONE
+  role-routed `/{slug}/login` per tenant with admin-tier landing at `/{slug}/admin`; the
+  `/{slug}/login` public exception granted as an EXACT match in BOTH middleware.ts AND
+  `[tenant]/layout.tsx`; reserved slugs (`tm`, `demo`, `platform`, `admin`, `login`, `api`) rejected at
+  tenant-slug creation; demo build carries NO `/tm` route at all (`.ai_prompt/rbac.md` Part F)
 □ SEO Foundation scaffold (V32.30 — Rule 35, ALWAYS-ON, no PRODUCT.md gate): Read `.ai_prompt/seo.md`
   and emit — root `app/layout.tsx` `metadataBase` + base `metadata` (title template, description,
   default `openGraph`/`twitter`, `Organization` + `WebSite` JSON-LD); `robots: { index: false,
@@ -2493,6 +2517,24 @@ for persistent media":
   EXISTING app, the data-preserving retrofit (ALTER TYPE … RENAME VALUE) is **Scenario 42** — never DROP/CREATE
   the enum. (Custom-role matrix is authored as framework DESIGN; implemented per-app at scaffold/next-touch
   under the deploy HARD HOLD.)
+
+  **MODEL HOOK (V32.50 — Site Access & Tenancy Bootstrap, Rule 41 · platform-scope roles seed):** for a
+  tenant-based app, ALSO scaffold the platform-scope role layer alongside the Rule 34 backbone above.
+  Extend the `CustomRole` migration with the additive `scope` discriminator (`RoleScope { tenant platform }`,
+  `DEFAULT 'tenant'`, `tenant_id` made nullable) + the CHECK constraint `(scope='tenant' AND tenant_id IS NOT
+  NULL) OR (scope='platform' AND tenant_id IS NULL)`. Scaffold the NEW `PlatformFeatureRegistry` +
+  `PlatformRolePermission` tables (a **DISTINCT** vocabulary — never reused from / joined to `FeatureKey`/
+  `RolePermission`) and a disjoint platform resolver that reads ONLY `PlatformRolePermission`. Seed the 2
+  curated platform sub-roles — `tenant_billing` (BILLING) and `tenant_tech` (TECH SUPPORT) — beside the
+  fixed `tenant_manager` (ADMIN) default; a `platformRole` tRPC router (create/edit/assign platform roles)
+  is gated to `tenant_manager` ONLY. Scaffold `/tm/*` routing (or the `/platform`→`/tm` redirect shim on an
+  existing surface) + the role-routed login (`/{slug}/login` regular, admin-tier → `/{slug}/admin`) + the
+  reserved-slug rejection list (`tm`, `demo`, `platform`, `admin`, `login`, `api`) on tenant-slug creation. Grant the
+  `/{slug}/login` public exception as an EXACT-match (never `startsWith`) in BOTH `middleware.ts` AND
+  `[tenant]/layout.tsx`. **Demo builds NEVER register a `/tm` route** — exclude it entirely from the demo
+  build/routing table, not merely gate-and-hide it. Full DESIGN + schema + guardrails: **Read
+  `.ai_prompt/rbac.md` Parts E + F**. For an EXISTING app, the retrofit is **Scenario 50** — dev-first,
+  LOCAL-only, HARD HOLD. Security verification: **`Security_Checklist.md` §22**.
 
   **MODEL HOOK — Event Delivery / Notifications (conditional, V32.28):** If `docs/PRODUCT.md` declares a multi-channel notification / event-delivery need, `Read .ai_prompt/notifications.md` and scaffold the Tier-1 pipeline (Valkey Streams + BullMQ) with the 6 mandatory additions (schema/versioning, tenant isolation, preferences, idempotency-at-ingestion, per-provider rate limits, PII routing). Default locked stack otherwise unchanged; NATS JetStream is an opt-in Tier-2 graduation (templates.md). See Scenario 43.
 
@@ -4213,6 +4255,7 @@ Before reporting Feature Update complete, verify ALL of these:
 □ SocratiCode index refreshed via codebase_update
 □ IF this update added a new UI surface: docs/MOCKUP.jsx updated + design:validate/build rerun + baseline re-captured (V32.8 — Rule 31)
 □ REGISTRY DONE-CLAIM (V32.8 — Rule 32): LESSONS_REGISTRY.md scanned for surface fingerprints; acceptance check output captured in STATE.md {contract, check_command, captured_output}. Empty evidence field = malformed claim.
+□ INVISIBLE-QUALITY RADAR (V32.47 — Rule 40, ADVISORY consideration — a radar prompt, NOT a build-blocking gate): for each IN-SCOPE invisible-quality dimension this update touched (primer `INVISIBLE_DIMS_IN_SCOPE` — security · SEO · a11y · privacy · audit · perf · observability · ISO · reliability · maintainability), re-assert it was attended to via its existing owner surface (security.md L1-L6 · seo.md Rule 35 · ui-rules.md R13 WCAG · privacy.md Rule 33 · audit.md Rule 38 · L5 AuditLog); INHERIT-not-REPLACE over those rules. D6/D7/D8 are named-but-unowned — just keep them in view.
 IF ANY item fails → Feature Update = INCOMPLETE → fix before marking done
 ─────────────────────────────────────────────────────────
 
