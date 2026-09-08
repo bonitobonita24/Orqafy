@@ -7,29 +7,9 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## 🔴 / 🟡 Open
 
-> Owner-queued order: ORQ-25 ✅ · demo-cron code ✅ · ORQ-24 ✅ · **ORQ-23/24/25 FF-merged → local `main` `fcd6025` (11 ahead of origin, HARD HOLD) 2026-09-05** · gov-sync PLANNED (D-GOVSYNC, BLOCKED on AIEF whitelist fix) → **ORQ-27 (cross-host residuals, has [WHAT]s).**
+> Owner-queued order: ORQ-25 ✅ · ORQ-24 ✅ · ORQ-23 ✅ · **ORQ-29 (CI security gate) MERGED + RELEASED v0.20.1 2026-09-08** · **D-GOVSYNC (V32.54.0) APPLIED 2026-09-08 (local, HARD HOLD)** · ORQ-27 = owner-PARKED (sole remaining, no un-gated work).
 
-- 🟡 **[AWAITING MERGE — owner call] CI `security` job red: 9 high `pnpm audit` advisories** `[ORQ-29]` — CI
-  workflow's `security` job runs `pnpm audit --audit-level=high` and had been RED for multiple releases
-  (also failed 2026-09-02); the `quality` job stayed green, so local gates never caught it. Root cause: 9 high
-  advisories in dev-tooling transitive chains (`deepmerge-ts` via Prisma CLI; `browserslist` via Babel;
-  `fast-uri` via Expo/ajv) — and the existing `fast-uri` override sat at `^3.1.5`, one patch short of the
-  `>=3.1.6` fix. FIXED on branch `fix/orq-29-ci-audit-high` via 3 targeted `pnpm.overrides` bumps,
-  **no new suppressions and the gate itself untouched**. Verified: audit exit 0 · typecheck 0 · lint 0 ·
-  1716 tests 0 · build 0. **REBASED onto current `main` 2026-09-08 (`b0e0ced`, was `e1a900f`) — the 3
-  post-release doc commits had diverged main so it no longer FF'd; zero file overlap (branch = package.json +
-  pnpm-lock.yaml only), clean rebase, now fast-forwardable in one step.** Done-criterion: merge to `main` +
-  push → CI `security` green.
-  ⚠ ALSO: pushes to `main` report "Bypassed rule violations — Required status check 'Turbo build' is expected",
-  so branch protection has been admin-bypassed while CI sat red. `source: agent-found 2026-09-05`
-
-- 🔴 **[BLOCKED — DEFERRED by owner 2026-09-05] Framework gov-sync V32.45.1 → V32.54.0** `[D-GOVSYNC]` — plan
-  ready; **apply DEFERRED** pending the cross-seat AIEF prerequisite. Target **v32.54.0**. ⚠ BLOCKER: AIEF
-  `sync-to-project.sh` whitelist-lag skips the 5 newest deliverables (review-scope/audit-scope/content-voice) →
-  the AIEF SEAT must add them to `AI_PROMPT_FILES` first (NOT an Orqafy edit). Re-open once AIEF is fixed. Plan +
-  steps in `PENDING_DECISIONS.md` D-GOVSYNC (answered: DEFER). Global lesson logged. `source: agent-found 2026-09-05`
-
-- 🔴 **[HELD by owner 2026-09-05] Cross-host deploy residuals from the EC2 split** `[ORQ-27]` — surfaced by ORQ-25.
+- 🔵 **[OWNER-PARKED 2026-09-05 — not a to-do] Cross-host deploy residuals from the EC2 split** `[ORQ-27]` — surfaced by ORQ-25.
   (a) `staging-refresh-and-deploy.sh` prod→staging is same-host `pg_dump|psql`, but prod=Hostinger / staging=EC2 →
   step 2 auto-skips (gate degraded to deploy+migrate only). **Owner decision 2026-09-05: LEAVE THE GATE DEGRADED**
   (don't build a cross-host prod-read pipe — safer; revisit if staging must validate against real prod data).
@@ -37,6 +17,21 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   2026-09-05: HOLD** (installer written+inert; enable live only when ready to touch the EC2 box). `source: agent-found 2026-09-05`
 
 ## ✅ Done recently
+- ✅ **Gov-sync V32.45.1 → V32.54.0 APPLIED** `[D-GOVSYNC]` — governance-only framework sync (no app source
+  touched). Landed the 5 lagging deliverables (`review-scope.{md,mjs}`, `audit-scope.{md,mjs}`,
+  `content-voice.md`) + V32.46–V32.54 updates (phases/security/ui-rules/scenarios/templates/rbac/seo/cicd/
+  audit/Master_Prompt/Security_Checklist + advisory scripts); CLAUDE.md V32.45.1→V32.54, managed region
+  regenerated via `sync-context.sh`. Unblocked the AIEF whitelist-lag guard (which now HARD-ABORTS exit 3, not
+  silent-skip) via a **one-time owner-authorized cross-seat fix** to AIEF `sync-to-project.sh` (branch
+  `fix/sync-whitelist-lag-5-files` `1010ce0`, LOCAL/HARD HOLD on AIEF, UNMERGED — tracked as POW-14 for the AIEF
+  seat to merge). Commit `7357dbf` on `chore/framework-sync-v32.54`, shellcheck clean, HARD HOLD local. (2026-09-08)
+- ✅ **ORQ-29 CI security gate FIXED + RELEASED v0.20.1** `[ORQ-29]` — FF-merged `fix/orq-29-ci-audit-high`
+  (`b0e0ced`, rebased onto main) → main; the 9 high `pnpm audit` advisories cleared via 3 targeted
+  `pnpm.overrides` bumps (no new suppressions, gate untouched). `pnpm audit --audit-level=high` now exit 0.
+  Cut **v0.20.1** patch (`gen-release-notes --apply`: CHANGELOG + 10-pkg version-sync + sidebar footer +
+  annotated tag), pushed `main`+tag to origin → CI `security` gate now runs green. Live envs unchanged (Model B,
+  prod/demo on v0.19.0). ⚠ STILL OPEN as a note: pushes to `main` admin-bypass the 'Turbo build' required check —
+  worth a branch-protection decision. (`13c00b3`, 2026-09-08)
 - ✅ **Released v0.20.0** — consolidated changelog + annotated tag + version-sync across 10 package.json files
   and the sidebar footer constant; pushed to origin/main. Docker images published (`Docker Build & Publish` green).
   NO environment deployed — prod/demo remain on v0.19.0. (`3dcc639`, 2026-09-05)
