@@ -7,17 +7,7 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## 🔴 / 🟡 Open
 
-> Owner-queued order: ORQ-25 ✅ · ORQ-24 ✅ · ORQ-23 ✅ · **ORQ-29 MERGED+RELEASED v0.20.1** · **D-GOVSYNC (V32.54.0) APPLIED** · **ORQ-31 (CI audit RCE fix) RELEASED v0.20.3 + DEPLOYED staging/prod/demo 2026-09-09** · ORQ-27 owner-PARKED · **ORQ-32 (demo push-scope) open**.
-
-- 🔴 **Demo promote needs an authorized-host retag (EC2 lacks Docker Hub push scope)** `[ORQ-32]` —
-  `push-to-demo.sh` step 2 runs `docker buildx imagetools create -t demo-latest` ON the EC2 demo box, which
-  has only pull/read → fails `insufficient_scope: authorization failed` (prod/Hostinger succeeds because that
-  box is logged in). Worked around 2026-09-09 by creating the `demo-latest` manifest from the workstation
-  (Docker Desktop cred helper) then running the EC2 redeploy/migrate/health by hand. Fix: rework
-  `push-to-demo.sh` so the retag runs from an already-push-authorized host (workstation/CI/Hostinger) and EC2
-  stays pull-only — do NOT put prod-repo push creds on the demo box (security expansion). Lesson:
-  `docker.deploy.demo-box-lacks-hub-push-scope-imagetools-create`. Sibling of ORQ-27 (EC2-migration residual).
-  Done = `push-to-demo.sh` completes end-to-end with EC2 pull-only. `source: agent-found 2026-09-09`
+> Owner-queued order: ORQ-25 ✅ · ORQ-24 ✅ · ORQ-23 ✅ · **ORQ-29 MERGED+RELEASED v0.20.1** · **D-GOVSYNC (V32.54.0) APPLIED** · **ORQ-31 (CI audit RCE fix) RELEASED v0.20.3 + DEPLOYED staging/prod/demo 2026-09-09** · **ORQ-32 (demo retag → workstation) DONE (local, HARD HOLD)** · ORQ-27 owner-PARKED. **No un-gated work open.**
 
 - 🔵 **[OWNER-PARKED 2026-09-05 — not a to-do] Cross-host deploy residuals from the EC2 split** `[ORQ-27]` — surfaced by ORQ-25.
   (a) `staging-refresh-and-deploy.sh` prod→staging is same-host `pg_dump|psql`, but prod=Hostinger / staging=EC2 →
@@ -27,6 +17,15 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   2026-09-05: HOLD** (installer written+inert; enable live only when ready to touch the EC2 box). `source: agent-found 2026-09-05`
 
 ## ✅ Done recently
+- ✅ **Demo retag runs on workstation, EC2 stays pull-only** `[ORQ-32]` — `push-to-demo.sh` step 2 ran
+  `docker buildx imagetools create -t demo-latest` via ssh ON the EC2 demo box (pull-only scope) →
+  `insufficient_scope: authorization failed`. Moved that one registry-side manifest op to run on the
+  workstation (Hub-push-authorized via the local cred helper); EC2 stays pull-only (step 3 pulls
+  demo-latest). No prod-repo push creds on the demo box. Added a `retag_local()` guard that fails loudly
+  with an auth/source hint. Verified: workstation retag of `orqafy` + `orqafy-worker` `sha-70aad59` →
+  `demo-latest` succeeds (idempotent no-op re-point; demo untouched — still on `sha-70aad59`). `bash -n` +
+  shellcheck clean. Full end-to-end confirms on the next real demo promote. `acdf997` on
+  `fix/orq-32-demo-retag-workstation`, HARD HOLD local. `source: agent-found 2026-09-09` (2026-09-09)
 - ✅ **CI audit gate RCE fix + RELEASED v0.20.3 + DEPLOYED all envs** `[ORQ-31]` — new advisories disclosed
   since v0.20.1 turned the CI `security` gate red (**2 critical + 14 high**). The critical was **Next.js
   unauthenticated RCE** (`next <15.5.24`) — a live-prod exposure (v0.19.0 shared the same vulnerable Next).
