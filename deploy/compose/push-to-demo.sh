@@ -12,12 +12,16 @@
 # Promotes BOTH images (web + worker) so app and worker move together.
 #
 # Usage:  bash deploy/compose/push-to-demo.sh [SOURCE_TAG]   (default: latest — Hub)
-# Prereq: SSH key ~/.ssh/powerbyte_ec2_komodo; run from repo root at the commit
-#         that built SOURCE_TAG (migrations are applied host-side from this repo).
+# Prereq: SSH key ~/.ssh/powerbyte_ec2_komodo; THIS workstation logged in to Docker Hub with
+#         PUSH scope (ORQ-32 — the demo-latest retag runs here, not on EC2); run from repo root
+#         at the commit that built SOURCE_TAG (migrations are applied host-side from this repo).
 # Host:   demo lives on EC2-Komodo (ubuntu@18.138.220.90). The SSH user is `ubuntu` (docker group +
 #         passwordless sudo). The stack .env is root-owned mode 600, so every .env read/write AND every
 #         `docker compose` run from the stack dir (Compose auto-loads ./.env) go through sudo; docker
 #         exec/buildx stay bare (ubuntu is in the docker group). Backups land in /home/ubuntu (ORQ-25).
+#         ORQ-32: the `demo-latest` retag (step 2) is a registry-side manifest op needing Hub PUSH
+#         scope; EC2 has pull-only scope, so that ONE step runs on this workstation — EC2 stays
+#         pull-only. Never put prod-repo push creds on the demo box.
 # =============================================================================
 set -euo pipefail
 
@@ -32,9 +36,22 @@ echo "▶ 1/5 Backup demo DB"
 ssh_vps "U=\$(docker exec ${PROJ}_postgres printenv POSTGRES_USER); D=\$(docker exec ${PROJ}_postgres printenv POSTGRES_DB); \
   docker exec ${PROJ}_postgres pg_dump -U \$U -d \$D | gzip > /home/ubuntu/orqafy-demo-backup-pre-pushtodemo-\$(date -u +%Y%m%d-%H%M%S).sql.gz && echo '  ok'"
 
-echo "▶ 2/5 Promote ${SRC} → demo-latest (registry manifest, web + worker)"
-ssh_vps "docker buildx imagetools create -t ${HUB}/${WEB}:demo-latest ${HUB}/${WEB}:${SRC} && \
-         docker buildx imagetools create -t ${HUB}/${WRK}:demo-latest ${HUB}/${WRK}:${SRC} && echo '  ok'"
+echo "▶ 2/5 Promote ${SRC} → demo-latest (registry manifest, web + worker) — retag runs LOCALLY (ORQ-32)"
+# ORQ-32: imagetools create is a registry-side manifest op needing Docker Hub PUSH scope. The EC2
+# demo box has only pull scope (was: insufficient_scope: authorization failed), so run the retag from
+# THIS workstation (Hub-push-authorized via the local cred helper); EC2 stays pull-only (step 3 pulls).
+retag_local(){  # $1 = repo name
+  if ! docker buildx imagetools create -t "${HUB}/$1:demo-latest" "${HUB}/$1:${SRC}"; then
+    echo "  ✗ ORQ-32: retag of ${HUB}/$1:${SRC} → :demo-latest failed from this workstation."
+    echo "     Ensure this host is logged in to Docker Hub with PUSH scope (docker login), and that"
+    echo "     ${HUB}/$1:${SRC} exists on the registry. Do NOT move this step onto EC2 — that box is"
+    echo "     intentionally pull-only (no prod-repo push creds on the demo box)."
+    exit 1
+  fi
+}
+retag_local "$WEB"
+retag_local "$WRK"
+echo "  ok (retagged from workstation; EC2 pull-only)"
 
 echo "▶ 3/5 Redeploy demo stack (pull + recreate app + worker)"
 ssh_vps "cd ${STACK}; sudo sed -i 's/^APP_IMAGE_TAG=.*/APP_IMAGE_TAG=demo-latest/' .env; \
