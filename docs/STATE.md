@@ -1,11 +1,39 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-09-09 by CLAUDE_CODE (owner: resume → "push the docs commits" → "check Squirlnote pending" → "save session"). **Pushed the 3 trailing docs commits — tree now IN SYNC with origin/main @`a256c75`.** Reconciled the Squirlnote board vs local queue (no drift). Framework **V32.54.0**. **NO environment deployed** — prod + demo remain LIVE on v0.19.0 (Model B). No open decisions, no un-gated work.
+> Last updated: 2026-09-09 (pm) by CLAUDE_CODE (owner: resume → "push docs" → "check Squirlnote pending" → "deploy v0.20.2" → "go/save session"). **RELEASED v0.20.3 + DEPLOYED to staging/prod/demo — all LIVE on sha-70aad59, healthy.** Fix-first for a red CI security gate (Next.js unauth RCE, live-prod) → v0.20.3. Framework **V32.54.0**. main @`9d21d9a`, IN SYNC with origin. Open un-gated follow-up: **ORQ-32** (demo push-scope). No open [WHAT] decisions.
 
 ---
 
-## ⭐ SESSION 2026-09-09 — resume: pushed trailing docs + Squirlnote board reconcile
+## ⭐ SESSION 2026-09-09 (pm) — deploy: v0.20.3 (CI security RCE fix) → all envs
+
+```
+[FOCUS: Orqafy]  ·  2026-09-09 20:15  ·  cold-start authority: docs/memory/MEMORY.md → session_v0.20.3_deploy_all_envs_2026-09-09.md
+
+## ⏳ TODO — next session works IN ORDER
+1. [ ] ORQ-32 — rework push-to-demo.sh so demo-latest retag runs from a push-authorized host (workstation/CI/
+   Hostinger), EC2 stays pull-only. Touches proven script → plan-first, LOCAL/HARD HOLD, no live demo redeploy.
+   (Owner-optional: For-Review backlog Done-approval · ORQ-27 parked · POW-14 cross-seat AIEF.)
+
+## ⚖️ OPEN DECISIONS (owner)
+- none open.
+
+## ✅ DONE THIS SESSION (built AND verified — evidence)
+- Released v0.20.3 (tag 70aad59, pushed); ORQ-31 CI security fix — next ^15.5.24 (RCE) + sharp/nodemailer/
+  tiptap(core+pm)/js-yaml/xmldom, no new suppressions. pnpm audit --audit-level=high exit 0; PR #5 CI all-green.
+- Deployed sha-70aad59 to staging→prod→demo; all /api/health 200; migrations no-op. PROD Next.js RCE patched.
+- Demo: manual authorized-host retag (EC2 lacks Hub push scope) → ORQ-32. Board + docs + lesson updated.
+
+## 🔒 STATE / GROUND TRUTH
+- git: main @9d21d9a clean, in sync with origin; v0.20.3 tag pushed; framework V32.54.0.
+- LIVE: prod (Hostinger) + staging + demo (EC2) all on v0.20.3 / sha-70aad59, healthy.
+- local dev: DOWN (OOM during post-ship dev rebuild; ship unaffected). next un-gated: ORQ-32.
+- ⚠ ALREADY-DONE guard: v0.20.3 release+deploy DONE+verified — do not re-run.
+```
+
+---
+
+## SESSION 2026-09-09 (am) — resume: pushed trailing docs + Squirlnote board reconcile
 
 ```
 [FOCUS: Orqafy]  ·  2026-09-09  ·  cold-start authority: docs/memory/MEMORY.md → latest session file
