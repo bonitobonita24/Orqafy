@@ -1,10 +1,13 @@
 {
   "name": "@orqafy/db",
-  "version": "0.20.2",
+  "version": "0.20.3",
   "private": true,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist", "prisma"],
+  "files": [
+    "dist",
+    "prisma"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

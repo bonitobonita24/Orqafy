@@ -4,6 +4,12 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.20.3 — 2026-09-09
+
+### [FIXED]
+- security: clear CI audit gate — bump next `^15.5.24` (critical unauthenticated RCE), sharp `>=0.35.4`, nodemailer `>=9.1.0`, @tiptap/core + @tiptap/pm `>=3.30.5`, js-yaml `^4.3.2`, @xmldom/xmldom `^0.8.15`; no new suppressions (ORQ-31) (`34f928f`)
+
+
 ## v0.20.2 — 2026-09-08
 
 ### [DOCS]
