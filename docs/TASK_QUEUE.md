@@ -7,7 +7,17 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## 🔴 / 🟡 Open
 
-> Owner-queued order: ORQ-25 ✅ · ORQ-24 ✅ · ORQ-23 ✅ · **ORQ-29 (CI security gate) MERGED + RELEASED v0.20.1 2026-09-08** · **D-GOVSYNC (V32.54.0) APPLIED 2026-09-08 (local, HARD HOLD)** · ORQ-27 = owner-PARKED (sole remaining, no un-gated work).
+> Owner-queued order: ORQ-25 ✅ · ORQ-24 ✅ · ORQ-23 ✅ · **ORQ-29 MERGED+RELEASED v0.20.1** · **D-GOVSYNC (V32.54.0) APPLIED** · **ORQ-31 (CI audit RCE fix) RELEASED v0.20.3 + DEPLOYED staging/prod/demo 2026-09-09** · ORQ-27 owner-PARKED · **ORQ-32 (demo push-scope) open**.
+
+- 🔴 **Demo promote needs an authorized-host retag (EC2 lacks Docker Hub push scope)** `[ORQ-32]` —
+  `push-to-demo.sh` step 2 runs `docker buildx imagetools create -t demo-latest` ON the EC2 demo box, which
+  has only pull/read → fails `insufficient_scope: authorization failed` (prod/Hostinger succeeds because that
+  box is logged in). Worked around 2026-09-09 by creating the `demo-latest` manifest from the workstation
+  (Docker Desktop cred helper) then running the EC2 redeploy/migrate/health by hand. Fix: rework
+  `push-to-demo.sh` so the retag runs from an already-push-authorized host (workstation/CI/Hostinger) and EC2
+  stays pull-only — do NOT put prod-repo push creds on the demo box (security expansion). Lesson:
+  `docker.deploy.demo-box-lacks-hub-push-scope-imagetools-create`. Sibling of ORQ-27 (EC2-migration residual).
+  Done = `push-to-demo.sh` completes end-to-end with EC2 pull-only. `source: agent-found 2026-09-09`
 
 - 🔵 **[OWNER-PARKED 2026-09-05 — not a to-do] Cross-host deploy residuals from the EC2 split** `[ORQ-27]` — surfaced by ORQ-25.
   (a) `staging-refresh-and-deploy.sh` prod→staging is same-host `pg_dump|psql`, but prod=Hostinger / staging=EC2 →
@@ -17,6 +27,15 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   2026-09-05: HOLD** (installer written+inert; enable live only when ready to touch the EC2 box). `source: agent-found 2026-09-05`
 
 ## ✅ Done recently
+- ✅ **CI audit gate RCE fix + RELEASED v0.20.3 + DEPLOYED all envs** `[ORQ-31]` — new advisories disclosed
+  since v0.20.1 turned the CI `security` gate red (**2 critical + 14 high**). The critical was **Next.js
+  unauthenticated RCE** (`next <15.5.24`) — a live-prod exposure (v0.19.0 shared the same vulnerable Next).
+  Owner chose fix-first. Targeted bumps, **no new suppressions**: next `^15.5.24`, sharp `>=0.35.4`, nodemailer
+  `>=9.1.0`, @tiptap/core + @tiptap/pm `>=3.30.5` (pm pinned in lockstep), js-yaml `^4.3.2`, @xmldom/xmldom
+  `^0.8.15`. `pnpm audit --audit-level=high` → exit 0; web typecheck+lint+1569 tests+build green; PR #5 CI
+  all-green (incl. worker DB tests + security gate). FF-merged → main, tagged **v0.20.3** (`70aad59`), pushed.
+  Deployed **staging→prod→demo** on `sha-70aad59`, all `/api/health` 200, migrations no-op (no schema change).
+  Demo needed a manual authorized-host retag (→ ORQ-32). `source: agent-found 2026-09-09` (2026-09-09)
 - ✅ **Stop the `main` branch-protection admin-bypass** `[ORQ-30]` — every direct push to `main`
   admin-bypassed a required status check (`Turbo build`). Root cause: required status checks are
   incompatible with a direct-push/FF-merge model — at push time the new HEAD has no check runs yet, so

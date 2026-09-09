@@ -1,5 +1,30 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-09-09 (pm) — Shipped v0.20.3 to production (patched a live Next.js RCE)
+
+**In your words:** push the held docs commit, check what's pending in Squirlnote, then deploy v0.20.2.
+
+✅ **Done**
+- **Pushed the held handoff commit** — `main` back in sync with origin.
+- **Checked Squirlnote pending** — only ORQ-27 is truly pending (both halves owner-parked); ~28 completed cards
+  sit in For-Review awaiting your Done approval. No un-gated work was queued.
+- **Caught a blocker before deploying: CI's security gate was red.** New advisories had been disclosed since the
+  last fix — **2 critical + 14 high**, and one critical was an **unauthenticated remote-code-execution in Next.js**
+  that production was *already* running (v0.19.0 had the same vulnerable version). You chose fix-first.
+- **Fixed it → v0.20.3.** Bumped Next.js (closes the RCE) plus sharp, nodemailer, tiptap, js-yaml, xmldom — no
+  security suppressions added. Verified locally (1569 tests + build green, audit clean), opened PR #5, CI went
+  fully green (including the worker DB tests and the security gate), merged, tagged **v0.20.3**.
+- **Deployed v0.20.3 to staging → production → demo.** All three live and healthy. **The production RCE is now
+  patched.** No database changes were involved.
+
+💬 **Notes**
+- Demo needed a manual step: the EC2 box that now hosts staging+demo can't push image tags to Docker Hub (it's
+  pull-only by design), so I created the demo image tag from this workstation and let EC2 pull it. Logged as
+  **ORQ-32** to fix properly (make the demo deploy script promote from an authorized host). The important envs
+  (prod + staging) deployed cleanly on their own.
+- One hiccup: an earlier local dev stack I'd started for a test collided with the deploy and got memory-killed —
+  it only interrupted a *local* dev-image rebuild, never the actual ship. Cleaned it up; all deploys fine.
+
 ## 2026-09-09 — Pushed the trailing docs + checked the task board
 
 **In your words:** push the docs commits, then check what's pending in Squirlnote and start from there — then save the session.
