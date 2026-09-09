@@ -1,7 +1,39 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-09-08 (pm) by CLAUDE_CODE (owner: resume → "do #1: fix the branch-protection bypass" → "save session"). **ORQ-30 done — removed the `main` required status check that was admin-bypassed on every push.** Prior this day: RELEASED v0.20.1 (ORQ-29 CI security fix) + v0.20.2 (D-GOVSYNC V32.54.0). Framework **V32.54.0**. **NO environment deployed** — prod + demo remain LIVE on v0.19.0 (Model B).
+> Last updated: 2026-09-09 by CLAUDE_CODE (owner: resume → "push the docs commits" → "check Squirlnote pending" → "save session"). **Pushed the 3 trailing docs commits — tree now IN SYNC with origin/main @`a256c75`.** Reconciled the Squirlnote board vs local queue (no drift). Framework **V32.54.0**. **NO environment deployed** — prod + demo remain LIVE on v0.19.0 (Model B). No open decisions, no un-gated work.
+
+---
+
+## ⭐ SESSION 2026-09-09 — resume: pushed trailing docs + Squirlnote board reconcile
+
+```
+[FOCUS: Orqafy]  ·  2026-09-09  ·  cold-start authority: docs/memory/MEMORY.md → latest session file
+
+## ⏳ TODO — next session works these IN ORDER
+1. [ ] none — full bar met. All un-gated work done; tree in sync; no open decisions.
+   (Owner-optional moves only — surface, don't auto-do:)
+   - [OWNER] Deploy — prod/demo still on v0.19.0; v0.20.0/1/2 sit unshipped. Promote only on explicit word (HARD HOLD).
+   - [OWNER] ORQ-27 — the sole Squirlnote Pending card, both halves owner-parked (leave-degraded / hold). Needs a re-opened [WHAT] to advance; recommend keep parked.
+   - [OWNER] For-Review backlog — ~28 completed cards await your Done approval (owner-only lane).
+   - [CROSS-SEAT] POW-14 — merge AIEF `fix/sync-whitelist-lag-5-files` from an AIEF seat.
+
+## ⚖️ OPEN DECISIONS (owner) — surface FIRST on resume
+- none open (PENDING_DECISIONS.md clear; ORQ-27 residuals already owner-decided leave/hold).
+
+## ✅ DONE THIS SESSION (built AND verified — evidence)
+- Pushed 3 trailing docs commits to origin: `de42e8e..a256c75  main -> main` (SESSION_LOG, STATE, TASK_QUEUE
+  handoffs). Verified: `git status` clean + in sync with origin/main. Pre-push lefthook passed. No deploy (Model B).
+- Reconciled Squirlnote board (project Orqafy) vs local `docs/TASK_QUEUE.md`: MATCH, no drift. On-Going lane
+  empty; Pending = 1 card (ORQ-27, owner-parked); ~28 cards in For Review awaiting owner Done approval.
+
+## 🔒 STATE / GROUND TRUTH
+- git: main @`a256c75` · clean, IN SYNC with origin · framework V32.54.0.
+- Branch protection: NO required status checks (dropped 2026-09-08 ORQ-30); force-push/deletion still blocked.
+- Nothing deployed. prod + demo LIVE on v0.19.0. Local+origin main = released v0.20.2.
+- next un-gated action: none — await owner word (deploy / unpark ORQ-27 / clear For-Review / new work).
+- ⚠ ALREADY-DONE guard: ORQ-30, v0.20.1, v0.20.2 all DONE (memory has completion records) — do not re-run.
+```
 
 ---
 

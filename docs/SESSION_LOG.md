@@ -1,6 +1,21 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
-## 2026-09-08 (pm) — Fixed the "Turbo build" branch-protection bypass
+## 2026-09-09 — Pushed the trailing docs + checked the task board
+
+**In your words:** push the docs commits, then check what's pending in Squirlnote and start from there — then save the session.
+
+✅ **Done**
+- **Pushed the 3 held docs commits to GitHub.** `main` is now fully in sync with origin — nothing left dangling
+  locally. No deploy happened (CI doesn't auto-ship), so prod and demo are untouched, still on v0.19.0.
+- **Checked the Squirlnote board against the local task list — they match, nothing's drifted.** The only card
+  actually sitting in "Pending" is ORQ-27, and both parts of it are things you already decided to leave alone
+  (the cross-host staging pipe = leave as-is; the demo self-heal cron = hold). So there's genuinely no queued
+  work to just pick up.
+
+💬 **Notes**
+- About 28 finished cards are sitting in "For Review" waiting for you to tick them over to Done — that's a
+  you-only lane, so I left them. I can walk you through them for a bulk approve whenever you like.
+- Nothing deployed. Say the word to promote v0.20.2 to prod/demo, re-open ORQ-27, or start something new.
 
 **In your words:** resume, then fix the branch-protection bypass — then save the session.
 
