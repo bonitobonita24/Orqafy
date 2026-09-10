@@ -1,5 +1,31 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-09-10 — Fixed the demo-deploy scope problem (ORQ-32), merged to local main
+
+**In your words:** resume, work the queue → then "go with your suggested FF-merging the branch to local main".
+
+✅ **Done**
+- **Fixed the demo promote for good (ORQ-32).** Last ship, `push-to-demo.sh` failed partway: it was asking the
+  EC2 demo box to *retag* the image on Docker Hub, but that box only has permission to **download** images, not
+  upload — so it errored out and I had to finish the promote by hand. Moved that one step to run from **your
+  workstation** (which already has upload rights); EC2 now only downloads, exactly as it should. Deliberately did
+  **not** put the production push credentials on the demo box — a compromised demo box could then poison the
+  images production pulls.
+- **Proved it works** by running the fixed step against the live image — both the app and worker retagged
+  successfully. It was a no-op re-point, so **demo was never touched** (still on v0.20.3). Syntax + lint clean.
+- **Merged to local `main`** (clean fast-forward, no merge commit) and deleted the finished branch.
+- **Bookkeeping:** task queue updated, Squirlnote card moved to For Review, and the global lessons ledger entry
+  for this footgun closed out with the fix.
+
+💬 **Notes**
+- `main` is now **2 commits ahead of origin and deliberately unpushed** — pushing is the release moment and
+  that's your call. When you want it, it'd be a `v0.20.4` patch with changelog.
+- The task queue is **empty of un-gated work**. What's left is all owner-side: approving the ~28 For-Review
+  cards, ORQ-27 (you parked it), and POW-14 (belongs to the AIEF seat).
+- One honest caveat: the full `push-to-demo.sh` end-to-end only truly confirms on the next real demo promote —
+  running it now would have deployed. The step that was broken is verified.
+- Optional whenever you like: ~50 stale local branches could be pruned.
+
 ## 2026-09-09 (pm) — Shipped v0.20.3 to production (patched a live Next.js RCE)
 
 **In your words:** push the held docs commit, check what's pending in Squirlnote, then deploy v0.20.2.

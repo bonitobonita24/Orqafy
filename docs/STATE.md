@@ -1,11 +1,50 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-09-09 (pm) by CLAUDE_CODE (owner: resume → "push docs" → "check Squirlnote pending" → "deploy v0.20.2" → "go/save session"). **RELEASED v0.20.3 + DEPLOYED to staging/prod/demo — all LIVE on sha-70aad59, healthy.** Fix-first for a red CI security gate (Next.js unauth RCE, live-prod) → v0.20.3. Framework **V32.54.0**. main @`9d21d9a`, IN SYNC with origin. Open un-gated follow-up: **ORQ-32** (demo push-scope). No open [WHAT] decisions.
+> Last updated: 2026-09-10 by CLAUDE_CODE (owner: resume → ORQ-32 → "FF-merge to local main" → "save session"). **ORQ-32 DONE + FF-merged to local `main`** — demo-latest retag moved off the pull-only EC2 box to the workstation. main @`5c00a3e`, **2 ahead of origin, HARD HOLD** (unpushed; push = release moment, owner-gated). LIVE envs UNCHANGED on v0.20.3 / sha-70aad59. Framework **V32.54.0**. **Task queue EMPTY of un-gated work.** No open [WHAT] decisions.
 
 ---
 
-## ⭐ SESSION 2026-09-09 (pm) — deploy: v0.20.3 (CI security RCE fix) → all envs
+## ⭐ SESSION 2026-09-10 — ORQ-32: demo retag → workstation (EC2 pull-only), FF-merged
+
+```
+[FOCUS: Orqafy]  ·  2026-09-10 00:05  ·  cold-start authority: docs/memory/MEMORY.md → session_orq32_demo_retag_workstation_2026-09-10.md
+
+## ⏳ TODO — next session works these IN ORDER
+1. [ ] none un-gated — task queue is EMPTY. Do NOT invent work.
+   Owner-gated only (needs explicit word): push `main` → origin = RELEASE moment (2 commits ahead;
+   would cut v0.20.4 patch + changelog via `gen-release-notes --apply`).
+   Owner-side / not mine: For-Review board backlog Done-approval · ORQ-27 (parked) · POW-14 (AIEF seat).
+   Optional housekeeping if asked: prune ~50 stale merged local branches.
+
+## ⚖️ OPEN DECISIONS (owner) — surface FIRST on resume
+- none open. (No PENDING_DECISIONS.md in repo.)
+
+## ✅ DONE THIS SESSION (built AND verified — evidence, not self-report)
+- ORQ-32 `acdf997` — push-to-demo.sh step 2 `docker buildx imagetools create` moved OFF the ssh_vps call
+  (EC2 has pull-only Hub scope → `insufficient_scope`) to run LOCALLY on the workstation; added
+  retag_local() guard failing loudly on auth/source error. EC2 stays pull-only (step 3 `compose pull`
+  needs read only). No prod-repo push creds on the demo box.
+  VERIFIED: workstation retag of orqafy + orqafy-worker `sha-70aad59` → `demo-latest` SUCCEEDED
+  (idempotent no-op re-point; demo untouched, still sha-70aad59). bash -n + shellcheck clean.
+  ⚠ Full end-to-end script run confirms on the NEXT real demo promote (not run — would deploy).
+- `5c00a3e` TASK_QUEUE.md → ORQ-32 ✅; Squirlnote ORQ-32 Pending → For Review.
+- Global lesson `docker.deploy.demo-box-lacks-hub-push-scope-imagetools-create` status open → **fixed**
+  (resolution + commit recorded in ~/.claude/LESSONS_GLOBAL.md).
+- FF-merged `fix/orq-32-demo-retag-workstation` → local `main` (b08829b..5c00a3e, no merge commit);
+  merged branch deleted.
+
+## 🔒 STATE / GROUND TRUTH
+- git: main @`5c00a3e` · clean · **2 ahead of origin — HARD HOLD, unpushed**. Latest tag v0.20.3.
+- LIVE (unchanged this session): prod (Hostinger) + staging + demo (EC2) all on v0.20.3 / sha-70aad59.
+- local dev: DOWN (OOM during a prior post-ship rebuild; unrelated to this session's work).
+- next un-gated action: none — await owner word on the push/release.
+- ⚠ ALREADY-DONE guard: ORQ-32 is DONE+verified+merged — do not re-implement or re-run the retag fix.
+```
+
+---
+
+## SESSION 2026-09-09 (pm) — deploy: v0.20.3 (CI security RCE fix) → all envs
 
 ```
 [FOCUS: Orqafy]  ·  2026-09-09 20:15  ·  cold-start authority: docs/memory/MEMORY.md → session_v0.20.3_deploy_all_envs_2026-09-09.md
