@@ -20,8 +20,12 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   top-level route dirs, matcher exclusions. Was exploitable: `invoice`/`privacy`/`demo-login` + `api*`/`images*`/`fonts*`/`icons*`.
   typecheck/lint/1621 tests green. LEFT: run read-only `apps/web/scripts/check-reserved-tenant-slugs.ts` per env
   (owner-gated for staging/prod). HARD HOLD. `source: agent-found 2026-09-26`
-- 🔴 **Tenant `(app)` layout has no auth — middleware is sole gate** `[ORQ-36]` — add `auth()` + session-tenant ↔ slug
-  check in `(tenant)/[slug]/(app)/layout.tsx` (redirect/notFound), + no-session test. Defense-in-depth, HIGH. `source: agent-found 2026-09-26`
+- 🟡 **Tenant `(app)` layout has no auth — middleware is sole gate** `[ORQ-36]` — BUILT `0dfed5d` on
+  `fix/orq-36-tenant-layout-auth` (NOT merged): `server/auth/require-tenant-session.ts` (cache()'d, mirrors middleware;
+  wrong tenant → notFound) in `(app)/layout` + 74 direct-Prisma pages; static sweep test enforces it. 1647 tests green.
+  LEFT: merge to main (owner word). `source: agent-found 2026-09-26`
+- 🔴 **Suspended-tenant check is dead** `[ORQ-38]` — middleware + guard test `tenantIsActive === false` but auth
+  `config.ts` never sets it on the session → suspended tenants' live sessions keep working. Populate + test. `source: agent-found 2026-09-26`
 - 🔴 **Middleware matcher exclusions not segment-anchored** `[ORQ-37]` — `(?!api|…|images|fonts|icons)` skips any
   path starting with those words; anchor to whole segments, verify static/API unchanged. `source: agent-found 2026-09-26`
 - 🔵 **[OWNER-PARKED 2026-09-05 — not a to-do] Cross-host deploy residuals from the EC2 split** `[ORQ-27]` — surfaced by ORQ-25.
