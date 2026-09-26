@@ -21,7 +21,7 @@ services:
     ports:
       - "${REDIS_PORT}:6379"
     networks: [app_network]
-    restart: unless-stopped
+    restart: "no"
     healthcheck:
       test: ["CMD", "valkey-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s

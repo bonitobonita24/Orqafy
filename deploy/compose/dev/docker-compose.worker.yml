@@ -20,7 +20,7 @@ services:
     ports:
       - "${WORKER_PORT}:${WORKER_PORT}"
     networks: [app_network]
-    restart: unless-stopped
+    restart: "no"
     depends_on:
       postgres:
         condition: service_healthy

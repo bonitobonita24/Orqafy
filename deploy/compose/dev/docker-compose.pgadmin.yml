@@ -25,7 +25,7 @@ services:
     ports:
       - "${PGADMIN_PORT}:80"
     networks: [app_network]
-    restart: unless-stopped
+    restart: "no"
     healthcheck:
       test: ["CMD", "wget", "-O", "-", "http://localhost:80/misc/ping"]
       interval: 30s

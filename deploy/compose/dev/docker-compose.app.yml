@@ -22,7 +22,7 @@ services:
     ports:
       - "${APP_PORT}:${APP_PORT}"
     networks: [app_network]
-    restart: unless-stopped
+    restart: "no"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://0.0.0.0:${APP_PORT}/api/health"]
       interval: 30s

@@ -25,7 +25,7 @@ services:
     ports:
       - "${DB_PORT}:5432"
     networks: [app_network]
-    restart: unless-stopped
+    restart: "no"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
@@ -54,4 +54,4 @@ services:
     networks: [app_network]
     depends_on:
       postgres: { condition: service_healthy }
-    restart: unless-stopped
+    restart: "no"

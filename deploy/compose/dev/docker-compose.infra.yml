@@ -14,4 +14,4 @@ services:
       - "${SMTP_PORT}:1025"
       - "${SMTP_UI_PORT}:8025"
     networks: [app_network]
-    restart: unless-stopped
+    restart: "no"

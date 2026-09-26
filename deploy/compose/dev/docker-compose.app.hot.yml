@@ -40,7 +40,7 @@ services:
       - app_hot_turbo:/workspace/.turbo
     command: ["sh", "-c", "npm install -g pnpm@10 && pnpm install --frozen-lockfile && pnpm --filter @orqafy/db db:generate && pnpm --filter @orqafy/web dev"]
     networks: [app_network]
-    restart: unless-stopped
+    restart: "no"
     # depends_on not set — postgres/valkey live in separate compose files.
     # Start backing services first via: bash deploy/compose/start.sh dev up -d
     # (excluding the regular app service) before launching this hot variant.
