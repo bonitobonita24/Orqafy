@@ -21,13 +21,9 @@
 # step 2 is skipped automatically (no prod to copy from) — staging keeps whatever data it
 # was seeded with. Once a same-host prod exists, the refresh engages with no edits.
 #
-# ⚠ CROSS-HOST LIMITATION (ORQ-25, 2026-09-05): staging now runs on EC2-Komodo while PRODUCTION
-#   still runs on Hostinger. Step 2's prod→staging copy is a SAME-HOST `docker exec pg_dump | docker
-#   exec psql` stream (no network egress) and there is NO orqafy_prod container on EC2 — so step 2
-#   currently AUTO-SKIPS and staging is NOT refreshed from prod-shaped data. This degrades the
-#   staging-refresh gate to "deploy candidate + migrate against staging's own data". A cross-host
-#   prod→staging pipe (pg_dump on Hostinger → stream over SSH → psql on EC2) reads production and is a
-#   [WHAT]/cross-env decision — tracked as ORQ-26, NOT built here. Deploy + migrate still work today.
+# SAME-HOST AGAIN (ORQ-43): production migrated Hostinger → EC2-Komodo on 2026-09-17, so orqafy_prod
+#   now runs on THIS host and step 2's same-host `docker exec pg_dump | docker exec psql` refresh
+#   ENGAGES automatically (the ORQ-25 cross-host skip / ORQ-26 cross-host pipe no longer applies).
 #
 # HARD RULES:
 #   • PRODUCTION is only ever READ (pg_dump). It is never written, migrated, or restarted here.
@@ -70,8 +66,7 @@ if ssh_vps "docker inspect ${PRODPROJ}_postgres >/dev/null 2>&1"; then
     echo '  · staging DB now mirrors production'"
 else
   echo "  ⚠ no ${PRODPROJ}_postgres on THIS host — SKIPPING prod refresh. Staging keeps its current data."
-  echo "     (Expected post-ORQ-25: prod runs on Hostinger, staging on EC2 — no same-host prod to copy."
-  echo "      A cross-host prod→staging pipe is ORQ-26, a separate [WHAT]. Deploy + migrate proceed.)"
+  echo "     (Unexpected since ORQ-43 — prod should be on this EC2 host. Check orqafy_prod. Deploy + migrate proceed.)"
 fi
 
 echo "▶ 3/6 Pull candidate images '${SRC}' from Docker Hub (AFTER data refresh; web + worker)"

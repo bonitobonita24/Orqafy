@@ -34,6 +34,13 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   map codes → shadcn Alert + tests. `source: agent-found 2026-09-26`
 - 🔴 **Middleware matcher exclusions not segment-anchored** `[ORQ-37]` — `(?!api|…|images|fonts|icons)` skips any
   path starting with those words; anchor to whole segments, verify static/API unchanged. `source: agent-found 2026-09-26`
+- 🟡 **Retarget prod deploy/rollback/verify to AWS EC2** `[ORQ-43]` — `push-to-prod.sh`, `rollback.sh` (prod),
+  `komodo-verify.sh`, `DEPLOYMENT.md` → `ubuntu@18.138.220.90` / `~/.ssh/powerbyte_ec2_komodo` / backups `/home/ubuntu`;
+  prod retag runs on workstation (EC2 pull-only); prod-sha pinned from `sha-*` SOURCE_TAG. Done = v0.20.5 prod deploy green
+  via the retargeted script. `source: owner 2026-09-17 broadcast`
+- 🔴 **Repo prod compose drifted from EC2 host** `[ORQ-44]` — `deploy/compose/prod/*.yml` still `certresolver=letsencrypt`,
+  no valkey `--maxmemory`, no `www` router; live host (`/etc/komodo/stacks/orqafy-prod/`) has `cloudflare` + `--maxmemory 200mb`.
+  Scripts never copy compose (no live risk) — reconcile repo to host reality. Done = repo files match host modulo secrets. `source: agent-found 2026-09-26`
 - 🔵 **[OWNER-PARKED 2026-09-05 — not a to-do] Cross-host deploy residuals from the EC2 split** `[ORQ-27]` — surfaced by ORQ-25.
   (a) `staging-refresh-and-deploy.sh` prod→staging is same-host `pg_dump|psql`, but prod=Hostinger / staging=EC2 →
   step 2 auto-skips (gate degraded to deploy+migrate only). **Owner decision 2026-09-05: LEAVE THE GATE DEGRADED**

@@ -25,13 +25,11 @@ REPORT_ONLY=0
 [ "${1:-}" = "--report-only" ] && REPORT_ONLY=1
 
 APP="orqafy"
-# ORQ-25: SPLIT TOPOLOGY — prod runs on Hostinger, staging + demo on EC2-Komodo. The on-host
-# stack-dir check (dir_exists) SSHes to the CORRECT box per env below. ⚠ CAVEAT: the Komodo
-# tracked-list (`km`/ListStacks) is read from ONE configured Komodo instance — prod registration
-# lives in Hostinger-Komodo, staging/demo in EC2-Komodo (kmd.powerbyte.app). So the tracked check
-# is only authoritative for the env-set matching the Komodo your `km`/KOMODO_HOST points at; a full
-# dual-Komodo audit is a follow-up (ORQ-26). dir_exists (the hand-install finding) is host-correct.
-VPS_PROD="root@72.62.74.203";     KEY_PROD="$HOME/.ssh/powerbyte_hostinger"
+# ORQ-43: ALL envs (prod + staging + demo) now run on EC2-Komodo (prod migrated off Hostinger
+# 2026-09-17), all under the single Komodo server `EC2-Komodo` on kmd.powerbyte.app — so the tracked
+# check is authoritative for every env from one `km`/KOMODO_HOST. The per-env host vars are kept so a
+# future split topology is a one-line change. dir_exists (the hand-install finding) is host-correct.
+VPS_PROD="ubuntu@18.138.220.90";  KEY_PROD="$HOME/.ssh/powerbyte_ec2_komodo"
 VPS_EC2="ubuntu@18.138.220.90";   KEY_EC2="$HOME/.ssh/powerbyte_ec2_komodo"
 # env → on-host stack dir (name = the Komodo Stack resource name = basename of the dir)
 STACK_PROD="/etc/komodo/stacks/orqafy-prod"
@@ -117,7 +115,7 @@ audit_env(){ # audit_env <label> <stack-dir> <is-prod 0/1> <ssh-host> <ssh-key>
   fi
 }
 
-# Production FIRST and loudest, then staging, then demo. ORQ-25: prod on Hostinger, staging+demo on EC2.
+# Production FIRST and loudest, then staging, then demo. ORQ-43: all three on EC2-Komodo.
 audit_env "PRODUCTION" "$STACK_PROD"    1 "$VPS_PROD" "$KEY_PROD"
 audit_env "staging"    "$STACK_STAGING" 0 "$VPS_EC2"  "$KEY_EC2"
 audit_env "demo"       "$STACK_DEMO"    0 "$VPS_EC2"  "$KEY_EC2"

@@ -29,19 +29,21 @@
 # Usage:  bash deploy/rollback.sh <staging|prod> <deploy-tag>   (prod deploy-tag = prod-sha-XXXXXXX)
 # Prereq: run from the app repo root at (or near) the target commit, so the DB package + migrate script
 #         below match what that sha expects. The SSH host/key are PER-ENV (ORQ-25): staging → EC2-Komodo
-#         key ~/.ssh/powerbyte_ec2_komodo (ubuntu); prod → Hostinger key ~/.ssh/powerbyte_hostinger (root).
+#         key ~/.ssh/powerbyte_ec2_komodo (ubuntu); prod → ALSO EC2-Komodo since ORQ-43 (migrated off
+#         Hostinger 2026-09-17; the stopped Hostinger copy is a cold standby, not a rollback target here).
 set -euo pipefail
 
 ENVIRON="${1:?Usage: bash deploy/rollback.sh <staging|prod> <sha-XXXXXXX>}"
 TARGET_SHA="${2:?Usage: bash deploy/rollback.sh <staging|prod> <sha-XXXXXXX>}"
 # ORQ-25: host is PER-ENV. staging runs on EC2-Komodo (SSH user `ubuntu`, docker group + passwordless
 # sudo; the stack .env is root-owned so .env WRITES go through $SUDO; backups live under /home/ubuntu).
-# prod stays on Hostinger (SSH user root: $SUDO empty, backups under /root). docker compose / .env reads
-# stay bare on BOTH (prod is root; staging .env is world-readable).
+# ORQ-43: prod is on EC2-Komodo too (SSH user ubuntu). Its .env is ubuntu-owned mode 600, so no $SUDO is
+# needed; backups under /home/ubuntu (pre-promotion dumps written by push-to-prod.sh). docker compose /
+# .env reads stay bare on BOTH (prod .env is ubuntu-owned; staging .env is world-readable).
 case "$ENVIRON" in
   staging) VPS="ubuntu@18.138.220.90"; KEY="$HOME/.ssh/powerbyte_ec2_komodo"; SUDO="sudo"; BACKUP_DIR="/home/ubuntu"
            STACK="/etc/komodo/stacks/orqafy-staging"; PROJ="orqafy_staging"; DOMAIN="staging.orqafy.com" ;;
-  prod)    VPS="root@72.62.74.203";    KEY="$HOME/.ssh/powerbyte_hostinger"; SUDO="";     BACKUP_DIR="/root"
+  prod)    VPS="ubuntu@18.138.220.90"; KEY="$HOME/.ssh/powerbyte_ec2_komodo"; SUDO="";     BACKUP_DIR="/home/ubuntu"
            STACK="/etc/komodo/stacks/orqafy-prod";     PROJ="orqafy_prod";    DOMAIN="orqafy.com" ;;
   *) echo "❌ Usage: bash deploy/rollback.sh <staging|prod> <sha-XXXXXXX>"; exit 1 ;;
 esac

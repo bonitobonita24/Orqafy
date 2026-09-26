@@ -61,9 +61,17 @@ Fixed order, data BEFORE image:
   + `prod-sha-<sha>` (web + worker) → redeploy prod `app`+`worker` → **migrate deploy (NEVER reseed)** →
   health-check. Default `SOURCE_TAG=staging-latest` (the verified build).
 
-Both use SSH key `~/.ssh/powerbyte_hostinger` to `root@72.62.74.203` and expect the Komodo stack
-dirs `/etc/komodo/stacks/orqafy-<env>` on the VPS. Rollback: set `APP_IMAGE_TAG=<...>-sha-<prev>`
-in the stack `.env` and re-run `docker compose ... up -d app worker`.
+All environments (prod, staging, demo) run on **AWS EC2-Komodo** — SSH key `~/.ssh/powerbyte_ec2_komodo`
+to `ubuntu@18.138.220.90` (passwordless sudo) — with Komodo stack dirs `/etc/komodo/stacks/orqafy-<env>`.
+Prod moved off Hostinger (`72.62.74.203`) on 2026-09-17 (ORQ-43); the stopped Hostinger copy is a cold
+standby only. Registry retags (`imagetools create`) run on the **workstation** (Docker Hub push scope) —
+EC2 is pull-only (ORQ-32). Backups land in `/home/ubuntu`. The scripts never copy compose files: the host
+compose (Traefik `certresolver=cloudflare`, valkey `--maxmemory`) is the live source of truth, and only
+`APP_IMAGE_TAG` / `DEPLOYED_APP_SHA` in `.env` change. ⚠ `deploy/compose/prod/*` in this repo has drifted
+from the host (still `letsencrypt`, no `--maxmemory`) — never copy it onto the host as-is.
+
+Rollback (coupled image + schema): `bash deploy/rollback.sh prod prod-sha-<prev>` — restores the paired
+`orqafy-prod-backup-pre-promotion-prod-sha-<prev>-*.sql.gz` from `/home/ubuntu` and re-tags.
 
 ## HARD HOLD
 
