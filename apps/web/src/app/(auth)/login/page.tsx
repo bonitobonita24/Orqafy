@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AuthError } from "next-auth";
 import { signIn } from "@/server/auth";
 import { LoginForm } from "./login-form";
+import { LoginErrorAlert } from "./login-error-alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Logo from "@/components/shadcn-studio/logo";
 import AuthBackgroundShape from "@/assets/svg/auth-background-shape";
@@ -38,7 +39,15 @@ async function authenticate(
   return null;
 }
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  // ORQ-39: surface why a redirect landed here (suspended tenant, expired
+  // session, Auth.js error). Only mapped copy renders — never the raw param.
+  const { error } = await searchParams;
+
   return (
     <div className="relative flex h-auto min-h-screen w-full items-center justify-center overflow-x-hidden px-4 py-10 sm:px-6 lg:px-8">
       <div className="absolute">
@@ -58,6 +67,7 @@ export default function LoginPage() {
         </CardHeader>
 
         <CardContent>
+          <LoginErrorAlert code={error} />
           <LoginForm action={authenticate} />
         </CardContent>
       </Card>
