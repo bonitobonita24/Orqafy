@@ -3,8 +3,8 @@
 // Why this matters: tenant routes live at /{slug}/..., and the page routes under
 // app/(tenant)/[slug] rely on middleware for auth (server components query by
 // URL slug). If a tenant slug equals the first segment of a PUBLIC_PATHS entry,
-// isPublic() lets /{slug}/* through without a session. If a slug starts with a
-// prefix the middleware matcher excludes, the middleware never runs at all.
+// isPublic() lets /{slug}/* through without a session. If a slug equals a first
+// segment the middleware matcher excludes, the middleware never runs at all.
 // Either way the tenant's authed pages become reachable without login.
 //
 // Every tenant-slug creation or rename path must call isReservedSlug() server-side.
@@ -37,13 +37,12 @@ const FORWARD_SLUGS = [
   "static", "_next",
 ] as const;
 
-// First path segments the middleware matcher excludes with an UNANCHORED negative
-// lookahead (`/((?!api|_next/static|_next/image|images|fonts|icons).*)`), so any
-// slug that merely STARTS with one of these skips middleware entirely
-// (e.g. "apiary", "images-co"). Reject by prefix.
-export const RESERVED_TENANT_SLUG_PREFIXES: readonly string[] = [
-  "api", "_next", "images", "fonts", "icons",
-];
+// Matcher exclusions (api, _next, images, fonts, icons) are reserved as exact
+// words via RULE_41_SLUGS / APP_ROUTE_SLUGS / FORWARD_SLUGS. ORQ-35 also rejected
+// any slug STARTING with them because the matcher lookahead was unanchored; ORQ-37
+// anchored it to whole segments (`(?:/|$)`), so "apiary" or "iconsult" now run
+// middleware normally and the prefix rule is gone. The anchor is asserted by
+// lib/__tests__/reserved-slugs.test.ts and lib/__tests__/middleware-matcher.test.ts.
 
 function topSegment(path: string): string | null {
   const seg = path.split("/").filter((s) => s.length > 0)[0];
@@ -65,6 +64,5 @@ export const RESERVED_TENANT_SLUGS: ReadonlySet<string> = new Set<string>([
 export function isReservedSlug(slug: string): boolean {
   const s = slug.trim().toLowerCase();
   if (s.length === 0) return false;
-  if (RESERVED_TENANT_SLUGS.has(s)) return true;
-  return RESERVED_TENANT_SLUG_PREFIXES.some((p) => s.startsWith(p));
+  return RESERVED_TENANT_SLUGS.has(s);
 }

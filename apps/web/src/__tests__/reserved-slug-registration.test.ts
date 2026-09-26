@@ -1,7 +1,7 @@
 /**
  * ORQ-35 — both tenant-creation paths (the /register server action and the
  * registration tRPC router) must reject slugs that collide with public paths
- * or matcher-excluded prefixes, server-side.
+ * or matcher-excluded first segments, server-side.
  */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -33,7 +33,7 @@ import { createCallerFactory, createTRPCRouter } from "@/server/trpc/trpc";
 import type { NextRequest } from "next/server";
 
 // ("tm" is reserved too but already fails the 3-char minimum.)
-const COLLIDING = ["brand", "invoice", "privacy", "demo-login", "apiary"];
+const COLLIDING = ["brand", "invoice", "privacy", "demo-login", "images"];
 
 const baseInput = {
   name: "Evil Corp",

@@ -3,8 +3,9 @@
  *
  * Tenant pages under app/(tenant)/[slug] rely on middleware for auth. A slug that
  * equals a PUBLIC_PATHS top segment is treated as public by isPublic(); a slug that
- * starts with a matcher-excluded prefix never reaches middleware. The guard tests
- * below make that collision impossible to reintroduce silently.
+ * equals a matcher-excluded first segment never reaches middleware. The guard tests
+ * below make that collision impossible to reintroduce silently. (ORQ-37 anchored
+ * the matcher exclusions to whole segments, so prefixes like "apiary" are allowed.)
  */
 import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -37,9 +38,15 @@ describe("isReservedSlug", () => {
     expect(isReservedSlug("BRAND")).toBe(true);
   });
 
-  it("rejects slugs starting with a matcher-excluded prefix", () => {
-    for (const s of ["apiary", "api-co", "images-co", "fontsmith", "iconsult"]) {
+  it("rejects matcher-excluded first segments exactly", () => {
+    for (const s of ["api", "_next", "images", "fonts", "icons"]) {
       expect(isReservedSlug(s)).toBe(true);
+    }
+  });
+
+  it("allows slugs that merely start with a matcher-excluded word (ORQ-37)", () => {
+    for (const s of ["apiary", "api-co", "images-co", "fontsmith", "iconsult"]) {
+      expect(isReservedSlug(s)).toBe(false);
     }
   });
 
@@ -101,21 +108,27 @@ describe("guard: every static top-level app route is reserved", () => {
   });
 });
 
-describe("guard: middleware matcher exclusions are reserved as prefixes", () => {
+describe("guard: middleware matcher exclusions are whole-segment and reserved", () => {
   const src = readFileSync(fileURLToPath(new URL("../../middleware.ts", import.meta.url)), "utf8");
-  const lookahead = /"\/\(\(\?!([^)]*)\)/.exec(src)?.[1];
+  // Anchored form (ORQ-37): "/((?!(?:a|b/c|...)(?:/|$)).*)". If the anchor is ever
+  // dropped this stops matching and the test fails: an unanchored exclusion would
+  // need the prefix rule back in reserved-slugs.ts.
+  const alternation = /"\/\(\(\?!\(\?:([^)]*)\)\(\?:\/\|\$\)\)\.\*\)"/.exec(src)?.[1];
 
-  it("found the matcher negative lookahead", () => {
-    expect(lookahead).toBeDefined();
+  it("found the segment-anchored matcher negative lookahead", () => {
+    expect(alternation).toBeDefined();
   });
 
-  const prefixes = (lookahead ?? "")
+  const segments = (alternation ?? "")
     .split("|")
     .map((alt) => alt.split("/")[0] ?? "")
     .filter(Boolean);
 
-  it.each(prefixes)("excluded prefix %s blocks any slug starting with it", (p) => {
-    expect(isReservedSlug(p)).toBe(true);
-    expect(isReservedSlug(`${p}xyz`)).toBe(true);
+  it("has segments to check", () => {
+    expect(segments).toEqual(expect.arrayContaining(["api", "_next", "images", "fonts", "icons"]));
+  });
+
+  it.each(segments)("excluded first segment %s is reserved", (seg) => {
+    expect(isReservedSlug(seg)).toBe(true);
   });
 });

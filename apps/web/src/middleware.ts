@@ -89,7 +89,13 @@ export const config = {
      * Match all paths except API routes, static files, and Next.js internals.
      * /api/* (tRPC + Auth.js) is excluded — those handlers enforce their own auth;
      * running the tenant-slug guard on them misreads "api" as a tenant slug.
+     *
+     * Each exclusion is anchored to a WHOLE first segment with `(?:/|$)` (ORQ-37).
+     * Without the anchor, /apiary/dashboard or /iconsult/... skipped middleware
+     * (and its session + tenant checks) just because the slug started with
+     * "api"/"icons". Must stay a literal: Next statically analyses config.matcher.
+     * Tested in lib/__tests__/middleware-matcher.test.ts.
      */
-    "/((?!api|_next/static|_next/image|images|fonts|icons).*)",
+    "/((?!(?:api|_next/static|_next/image|images|fonts|icons)(?:/|$)).*)",
   ],
 };

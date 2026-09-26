@@ -1,7 +1,7 @@
 /**
  * ORQ-35 — READ-ONLY audit: list existing tenants whose slug collides with the
  * reserved tenant-slug set (public-path prefixes, static app routes, Rule 41 names,
- * matcher-excluded prefixes). A colliding tenant's authed pages may be reachable
+ * matcher-excluded first segments). A colliding tenant's authed pages may be reachable
  * without login. This script only SELECTs; it never modifies data.
  *
  * Run per environment (owner-run; needs DATABASE_URL for that env):
@@ -11,10 +11,10 @@
  * Exit code: 0 = no unexpected collisions, 1 = collisions found, 2 = error.
  * The seeded "demo" tenant is expected (Rule 41 demo tenant) and reported as such.
  *
- * Equivalent SQL (exact matches only; prefix rule = api|_next|images|fonts|icons):
+ * Equivalent SQL (exact matches only; the ORQ-35 prefix rule was dropped in ORQ-37
+ * once the middleware matcher exclusions were anchored to whole segments):
  *   SELECT id, slug, status FROM tenants
- *   WHERE lower(slug) IN (<RESERVED_TENANT_SLUGS>)
- *      OR lower(slug) ~ '^(api|_next|images|fonts|icons)';
+ *   WHERE lower(slug) IN (<RESERVED_TENANT_SLUGS>);
  */
 import { prisma } from "@orqafy/db";
 import { isReservedSlug } from "../src/lib/reserved-slugs";
