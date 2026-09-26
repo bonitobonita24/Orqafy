@@ -11,7 +11,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { rateLimiters } from "@/server/lib/rate-limit";
-import { verifyCredentialsByEmail } from "@/server/auth/verify-credentials";
+import { verifyCredentialsByEmail, TenantSuspendedError } from "@/server/auth/verify-credentials";
 import { issueTokenPair } from "@/server/auth/mobile-jwt";
 
 // Node runtime required: bcrypt (via verifyCredentialsByEmail) is not
@@ -56,7 +56,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 400 });
   }
 
-  const user = await verifyCredentialsByEmail(parsed.data);
+  let user;
+  try {
+    user = await verifyCredentialsByEmail(parsed.data);
+  } catch (e) {
+    // ORQ-46: valid creds against a suspended workspace. Only reachable AFTER
+    // the password verified, so this reveals suspension to the account owner
+    // only — never to a wrong-password/anonymous attacker (they get the 401
+    // generic below). Mobile has no login page, so a clear 403 is returned.
+    if (e instanceof TenantSuspendedError) {
+      return NextResponse.json({ error: "Workspace suspended" }, { status: 403 });
+    }
+    throw e;
+  }
   if (user === null) {
     // Generic message — never reveal whether the email/password/tenant was
     // wrong (security.md: auth errors must not enable enumeration).

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { AuthError } from "next-auth";
+import { redirect } from "next/navigation";
+import { AuthError, CredentialsSignin } from "next-auth";
 import { signIn } from "@/server/auth";
 import { LoginForm } from "./login-form";
 import { LoginErrorAlert } from "./login-error-alert";
@@ -31,7 +32,14 @@ async function authenticate(
       redirectTo: `/${tenantSlug}/dashboard`,
     });
   } catch (err) {
+    // ORQ-46: a correct login into a suspended workspace — reveal the distinct
+    // reason (only reachable AFTER the password verified). redirect() throws
+    // NEXT_REDIRECT which must propagate, so it sits outside any inner try.
+    if (err instanceof CredentialsSignin && err.code === "tenant_suspended") {
+      redirect("/login?error=tenant_suspended");
+    }
     if (err instanceof AuthError) {
+      // Every other auth failure stays generic (enumeration-resistant).
       return { error: "Invalid email, password, or workspace." };
     }
     throw err;

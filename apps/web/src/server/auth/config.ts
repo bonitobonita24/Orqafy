@@ -1,12 +1,25 @@
 import type { NextAuthConfig } from "next-auth";
+import { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
 import { prisma as db } from "@orqafy/db";
 import { env } from "@/env";
 import { rateLimiters } from "@/server/lib/rate-limit";
-import { verifyCredentials } from "@/server/auth/verify-credentials";
+import { verifyCredentials, TenantSuspendedError } from "@/server/auth/verify-credentials";
 import { verifyPortalCredentials } from "@/server/auth/verify-portal-credentials";
 import { TENANT_ACCESS_SELECT, isTenantSuspended } from "@/server/auth/tenant-status";
+
+/**
+ * ORQ-46 — thrown from `authorize()` when a correct email+password authenticates
+ * against a SUSPENDED tenant. Auth.js appends `code` to the redirect (and, for a
+ * server-action signIn, re-throws this instance), so the /login server action
+ * lands the user on `?error=tenant_suspended`. Only reached AFTER the password is
+ * verified — an anonymous/wrong-password attacker gets the generic error instead
+ * (no workspace enumeration).
+ */
+class TenantSuspendedSignin extends CredentialsSignin {
+  code = "tenant_suspended";
+}
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -196,7 +209,14 @@ export const authConfig: NextAuthConfig = {
         const parsed = loginSchema.safeParse(rawCredentials);
         if (!parsed.success) return null;
 
-        return verifyCredentials(parsed.data);
+        try {
+          return await verifyCredentials(parsed.data);
+        } catch (e) {
+          // ORQ-46: valid creds against a suspended tenant → surface the
+          // distinct code. Every other failure already returned null above.
+          if (e instanceof TenantSuspendedError) throw new TenantSuspendedSignin();
+          throw e;
+        }
       },
     }),
     Credentials({

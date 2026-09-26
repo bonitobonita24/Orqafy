@@ -14,7 +14,11 @@ vi.mock("@orqafy/db", () => ({
   },
 }));
 
-import { verifyCredentials, verifyCredentialsByEmail } from "../verify-credentials";
+import {
+  verifyCredentials,
+  verifyCredentialsByEmail,
+  TenantSuspendedError,
+} from "../verify-credentials";
 
 const PASSWORD = "correct-horse-battery-staple";
 let HASH: string;
@@ -49,15 +53,37 @@ describe("verifyCredentials (tenant-scoped — web login shape)", () => {
     expect(mockUserFindFirst).not.toHaveBeenCalled();
   });
 
-  it("ORQ-38: returns null when the tenant is suspended (status 'suspended', isActive still true)", async () => {
+  it("ORQ-46: correct creds + suspended tenant (status 'suspended') → throws TenantSuspendedError, revealed ONLY after password verify", async () => {
     mockTenantFindUnique.mockResolvedValueOnce({ ...TENANT, status: "suspended" });
+    mockUserFindFirst.mockResolvedValueOnce({ ...USER_ROW, passwordHash: HASH });
+    await expect(
+      verifyCredentials({ email: "jane@acme.com", password: PASSWORD, tenantSlug: "acme" }),
+    ).rejects.toBeInstanceOf(TenantSuspendedError);
+    // Timing/anti-enumeration guard: the suspended path runs the SAME full
+    // user lookup + bcrypt compare an active-tenant login would.
+    expect(mockUserFindFirst).toHaveBeenCalled();
+  });
+
+  it("ORQ-46 (anti-enumeration): WRONG password + suspended tenant → generic null, NOT the suspended signal", async () => {
+    mockTenantFindUnique.mockResolvedValueOnce({ ...TENANT, status: "suspended" });
+    mockUserFindFirst.mockResolvedValueOnce({ ...USER_ROW, passwordHash: HASH });
     const result = await verifyCredentials({
       email: "jane@acme.com",
+      password: "wrong-password",
+      tenantSlug: "acme",
+    });
+    expect(result).toBeNull();
+  });
+
+  it("ORQ-46 (anti-enumeration): unknown user in a suspended tenant → generic null, never the suspended signal", async () => {
+    mockTenantFindUnique.mockResolvedValueOnce({ ...TENANT, status: "suspended" });
+    mockUserFindFirst.mockResolvedValueOnce(null);
+    const result = await verifyCredentials({
+      email: "nobody@acme.com",
       password: PASSWORD,
       tenantSlug: "acme",
     });
     expect(result).toBeNull();
-    expect(mockUserFindFirst).not.toHaveBeenCalled();
   });
 
   it("returns null when no matching active user exists in the tenant", async () => {
@@ -142,23 +168,35 @@ describe("verifyCredentialsByEmail (global-email — mobile login shape)", () =>
     expect(result).toBeNull();
   });
 
-  it("returns null when the user's tenant is deactivated", async () => {
+  it("ORQ-46: correct creds + deactivated tenant (isActive false) → throws TenantSuspendedError (after password verify)", async () => {
     mockUserFindUnique.mockResolvedValueOnce({
       ...USER_WITH_TENANT,
       passwordHash: HASH,
       tenant: { id: "tenant-1", slug: "acme", isActive: false },
     });
-    const result = await verifyCredentialsByEmail({ email: "jane@acme.com", password: PASSWORD });
-    expect(result).toBeNull();
+    await expect(
+      verifyCredentialsByEmail({ email: "jane@acme.com", password: PASSWORD }),
+    ).rejects.toBeInstanceOf(TenantSuspendedError);
   });
 
-  it("ORQ-38: returns null when the user's tenant is suspended (status 'suspended')", async () => {
+  it("ORQ-46: correct creds + suspended tenant (status 'suspended') → throws TenantSuspendedError (after password verify)", async () => {
     mockUserFindUnique.mockResolvedValueOnce({
       ...USER_WITH_TENANT,
       passwordHash: HASH,
       tenant: { id: "tenant-1", slug: "acme", isActive: true, status: "suspended" },
     });
-    const result = await verifyCredentialsByEmail({ email: "jane@acme.com", password: PASSWORD });
+    await expect(
+      verifyCredentialsByEmail({ email: "jane@acme.com", password: PASSWORD }),
+    ).rejects.toBeInstanceOf(TenantSuspendedError);
+  });
+
+  it("ORQ-46 (anti-enumeration): WRONG password + suspended tenant → generic null, NOT the suspended signal", async () => {
+    mockUserFindUnique.mockResolvedValueOnce({
+      ...USER_WITH_TENANT,
+      passwordHash: HASH,
+      tenant: { id: "tenant-1", slug: "acme", isActive: true, status: "suspended" },
+    });
+    const result = await verifyCredentialsByEmail({ email: "jane@acme.com", password: "nope" });
     expect(result).toBeNull();
   });
 

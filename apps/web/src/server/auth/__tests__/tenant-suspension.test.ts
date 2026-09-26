@@ -11,6 +11,18 @@ vi.mock("@/env", () => ({
   env: { AUTH_SECRET: "x".repeat(48) },
 }));
 
+// config.ts imports the `CredentialsSignin` value from the "next-auth" root
+// (ORQ-46); that entrypoint pulls `next/server`, unresolvable in vitest's node
+// env. Mock the root to a lightweight stand-in — the ORQ-46 authorize test
+// below imports THIS same class for its `instanceof` assertion, so the mapped
+// error is checked against the exact class config.ts extends.
+vi.mock("next-auth", () => {
+  class CredentialsSignin extends Error {
+    code = "credentials";
+  }
+  return { CredentialsSignin };
+});
+
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: {
     auth: { check: vi.fn() },
@@ -20,12 +32,21 @@ vi.mock("@/server/lib/rate-limit", () => ({
   },
 }));
 
-const { mockUserFindUnique, mockCustomerFindUnique } = vi.hoisted(() => ({
+const { mockUserFindUnique, mockCustomerFindUnique, mockVerifyCredentials } = vi.hoisted(() => ({
   mockUserFindUnique: vi.fn(),
   mockCustomerFindUnique: vi.fn(),
+  mockVerifyCredentials: vi.fn(),
 }));
 
-vi.mock("@/server/auth/verify-credentials", () => ({ verifyCredentials: vi.fn() }));
+// Keep the REAL TenantSuspendedError class so config.ts's `instanceof` check
+// (which imports it from this same module) matches what the mock throws.
+vi.mock("@/server/auth/verify-credentials", async (importActual) => {
+  const actual: any = await importActual();
+  return {
+    verifyCredentials: mockVerifyCredentials,
+    TenantSuspendedError: actual.TenantSuspendedError,
+  };
+});
 vi.mock("@/server/auth/verify-portal-credentials", () => ({ verifyPortalCredentials: vi.fn() }));
 vi.mock("@orqafy/db", () => ({
   prisma: {
@@ -34,11 +55,18 @@ vi.mock("@orqafy/db", () => ({
   },
 }));
 
+import { CredentialsSignin } from "next-auth";
 import { authConfig } from "../config";
 import { isTenantSuspended } from "../tenant-status";
+import { TenantSuspendedError } from "../verify-credentials";
 
 const jwtCallback = (authConfig.callbacks as any).jwt as (args: any) => any;
 const sessionCallback = (authConfig.callbacks as any).session as (args: any) => any;
+
+// Credentials() wraps the real options under `.options` (see config-portal.test.ts).
+const [staffProviderRaw] = authConfig.providers as any[];
+const staffProvider = staffProviderRaw.options;
+const fakeRequest = (): any => ({ headers: { get: (): string | null => null } });
 
 const STAFF_TOKEN = {
   principalType: "staff",
@@ -230,5 +258,46 @@ describe("customer (portal) jwt/session callbacks — live tenant suspension", (
     expect(session.error).toBe("SESSION_INVALIDATED");
     expect(session.principalType).toBe("customer");
     expect(session.user.tenantIsActive).toBe(false);
+  });
+});
+
+describe("ORQ-46 — staff authorize() maps a suspended-but-valid login to ?error=tenant_suspended", () => {
+  it("verifyCredentials throws TenantSuspendedError (valid creds, suspended tenant) → authorize throws CredentialsSignin with code 'tenant_suspended'", async () => {
+    mockVerifyCredentials.mockRejectedValueOnce(new TenantSuspendedError());
+    const err = await staffProvider
+      .authorize({ email: "jane@acme.com", password: "pw", tenantSlug: "acme" }, fakeRequest())
+      .catch((e: unknown) => e);
+    // A CredentialsSignin subclass so Auth.js surfaces the code to /login; the
+    // server action then lands the user on ?error=tenant_suspended.
+    expect(err).toBeInstanceOf(CredentialsSignin);
+    expect((err as CredentialsSignin).code).toBe("tenant_suspended");
+  });
+
+  it("anti-enumeration: verifyCredentials returns null (wrong password / unknown user, even a suspended tenant) → authorize returns null (generic), NEVER the suspended signal", async () => {
+    mockVerifyCredentials.mockResolvedValueOnce(null);
+    const result = await staffProvider.authorize(
+      { email: "jane@acme.com", password: "wrong", tenantSlug: "acme" },
+      fakeRequest(),
+    );
+    expect(result).toBeNull();
+  });
+
+  it("REGRESSION GUARD: valid creds + active tenant → authorize returns the verified user unchanged", async () => {
+    mockVerifyCredentials.mockResolvedValueOnce({
+      id: "user-1",
+      email: "jane@acme.com",
+      name: "Jane Doe",
+      roles: ["admin"],
+      roleId: "role-1",
+      tenantSlug: "acme",
+      tenantId: "tenant-1",
+      securityVersion: 2,
+      isDemoTenant: false,
+    });
+    const result = await staffProvider.authorize(
+      { email: "jane@acme.com", password: "pw", tenantSlug: "acme" },
+      fakeRequest(),
+    );
+    expect(result).toMatchObject({ id: "user-1", roleId: "role-1" });
   });
 });

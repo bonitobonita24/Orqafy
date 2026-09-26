@@ -10,6 +10,17 @@ vi.mock("@/env", () => ({
   env: { AUTH_SECRET: "x".repeat(48) },
 }));
 
+// config.ts imports the `CredentialsSignin` value from the "next-auth" root
+// (ORQ-46). The root entrypoint pulls `next/server`, which the vitest resolver
+// can't load in the node env — so mock the root to a lightweight stand-in.
+// Subpaths (next-auth/providers/credentials) are untouched by this mock.
+vi.mock("next-auth", () => {
+  class CredentialsSignin extends Error {
+    code = "credentials";
+  }
+  return { CredentialsSignin };
+});
+
 vi.mock("@/server/lib/rate-limit", () => ({
   rateLimiters: {
     auth: { check: vi.fn() },
