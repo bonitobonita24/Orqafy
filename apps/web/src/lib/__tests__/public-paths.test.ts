@@ -24,6 +24,13 @@ describe("isPublic", () => {
     expect(isPublic("/api/health")).toBe(true);
   });
 
+  // ORQ-40 — JSON-LD Organization.logo points here; crawlers must fetch it
+  // without a session (middleware runs on it since ORQ-37).
+  it("/logo.png is public (JSON-LD Organization logo)", () => {
+    expect(isPublic("/logo.png")).toBe(true);
+    expect(isPublic("/logo.pngx")).toBe(false);
+  });
+
   it("an unrelated authed path stays private", () => {
     expect(isPublic("/some-slug/dashboard")).toBe(false);
   });

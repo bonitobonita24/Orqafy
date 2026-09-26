@@ -32,7 +32,7 @@ const jsonLd = [
     "@type": "Organization",
     name: "Orqafy",
     url: SITE_URL,
-    logo: `${SITE_URL}/logo.png`, // TODO(seo): add default OG image asset (also usable as logo)
+    logo: `${SITE_URL}/logo.png`, // public/logo.png — 512×512 Orqafy mark (ORQ-40)
   },
   {
     "@context": "https://schema.org",

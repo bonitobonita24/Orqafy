@@ -18,6 +18,11 @@ export const PUBLIC_PATHS = [
   // request to /login and the browser still logs a favicon error (ORQ-10,
   // same allow-list omission class as robots.txt/sitemap.xml above).
   "/icon.svg",
+  // Orqafy mark as PNG (apps/web/public/logo.png) — the JSON-LD Organization
+  // `logo` on the landing page; crawlers fetch it logged-out (ORQ-40). Its top
+  // segment "logo.png" is auto-reserved by reserved-slugs.ts and already fails
+  // the tenant-slug format (no dots), so no tenant can shadow it.
+  "/logo.png",
   // SEO infrastructure — crawlers must reach these without auth, else the
   // middleware 307-redirects them to /login and search engines never see the
   // robots directives or sitemap (Rule 35 SEO Foundation).
