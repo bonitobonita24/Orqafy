@@ -35,8 +35,10 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 0
 fi
 
-# dev-freshness-check.sh: exit 0 = fresh OR no dev code container running; exit 2 = behind main.
-if bash scripts/dev-freshness-check.sh . 2>&1 | sed 's/^/  /'; then
+# dev-freshness-check.sh: exit 0 = fresh OR no dev code container running; exit 2 = behind main
+# OR (via --expect) a required code service is stopped — so a dev with the worker down but the
+# app fresh still triggers a rebuild below.
+if bash scripts/dev-freshness-check.sh --expect app,worker . 2>&1 | sed 's/^/  /'; then
   echo "  ✓ local dev is fresh (or not running) — nothing to rebuild"
   exit 0
 fi
@@ -58,5 +60,5 @@ if ! $DC "${WORKER_FILES[@]}" up --build -d --no-deps worker; then
   exit 0
 fi
 echo "  ✓ dev rebuilt (app + worker). Re-checking freshness:"
-bash scripts/dev-freshness-check.sh --report-only . 2>&1 | sed 's/^/  /' || true
+bash scripts/dev-freshness-check.sh --report-only --expect app,worker . 2>&1 | sed 's/^/  /' || true
 exit 0

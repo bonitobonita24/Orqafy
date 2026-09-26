@@ -9,12 +9,16 @@
 #
 # Usage:
 #   dev-freshness-check.sh [--report-only] [--branch REF] [--project NAME]
-#                          [--service NAME] [--all-services] [--container NAME] [TARGET_DIR]
+#                          [--service NAME] [--all-services] [--container NAME]
+#                          [--expect NAME[,NAME...]] [TARGET_DIR]
 #   --branch REF     git ref dev must not be behind (default: main; falls back to HEAD)
 #   --project NAME   compose project (default: .env COMPOSE_PROJECT_NAME, else dir name)
 #   --service NAME   check only this compose service
 #   --all-services   check every running service (default: only code services app|worker|web|api|server|next|frontend|backend)
 #   --container NAME check a container matched by name substring
+#   --expect LIST    comma-separated code SERVICE names that MUST be running AND fresh;
+#                    any missing service is reported STALE (=> exit 2 unless --report-only).
+#                    Off by default (backward-compatible); only enforced when dev IS up.
 #   --report-only    never exit non-zero; report only
 #
 # Only CODE services are checked by default — infra (postgres/valkey/minio/mailhog/
@@ -26,7 +30,7 @@
 # container is STALE (unless --report-only).
 set -uo pipefail
 
-REPORT_ONLY=0; REF_BRANCH="main"; PROJECT=""; SERVICE=""; CONTAINER=""; ALL_SERVICES=0; TARGET_DIR="."
+REPORT_ONLY=0; REF_BRANCH="main"; PROJECT=""; SERVICE=""; CONTAINER=""; ALL_SERVICES=0; EXPECT=""; TARGET_DIR="."
 CODE_SVC_RE='^(app|worker|web|api|server|next|frontend|backend)$'
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -36,6 +40,7 @@ while [ $# -gt 0 ]; do
     --project) PROJECT="${2:-}"; shift ;;          --project=*) PROJECT="${1#*=}" ;;
     --service) SERVICE="${2:-}"; shift ;;          --service=*) SERVICE="${1#*=}" ;;
     --container) CONTAINER="${2:-}"; shift ;;      --container=*) CONTAINER="${1#*=}" ;;
+    --expect) EXPECT="${2:-}"; shift ;;            --expect=*) EXPECT="${1#*=}" ;;
     -h|--help) grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) TARGET_DIR="$1" ;;
   esac
@@ -93,11 +98,13 @@ if [ -z "$IDS" ]; then
 fi
 
 # ── 5. per-container freshness (code services only, unless --all-services/--container) ──
-STALE_N=0; CHECKED=0; INFRA=()
+STALE_N=0; CHECKED=0; INFRA=(); RUNNING_SVCS=()
 while IFS= read -r cid; do
   [ -n "$cid" ] || continue
   svc="$(docker inspect --format '{{index .Config.Labels "com.docker.compose.service"}}' "$cid" 2>/dev/null)"
   cname="$(docker inspect --format '{{.Name}}' "$cid" 2>/dev/null | sed 's#^/##')"
+  # record every running compose service (used by --expect enforcement in the verdict)
+  [ -n "$svc" ] && RUNNING_SVCS+=("$svc")
   # scope filter
   if [ -z "$CONTAINER" ] && [ "$ALL_SERVICES" -eq 0 ]; then
     if [ -n "$SERVICE" ]; then
@@ -145,7 +152,26 @@ done <<< "$IDS"
 
 # ── 6. verdict ───────────────────────────────────────────────────────────────
 echo
-if [ "$CHECKED" -eq 0 ]; then
+# --expect enforcement: the dev stack IS up (we passed the no-running-container
+# short-circuit above), so every expected code service MUST be running. A missing one
+# means dev is incomplete (e.g. a stopped worker) — report it STALE so the STALE_N>0
+# path fires. Off entirely when --expect was not passed (backward-compatible).
+if [ -n "$EXPECT" ]; then
+  IFS=',' read -r -a EXPECT_ARR <<< "$EXPECT"
+  for want in "${EXPECT_ARR[@]}"; do
+    want="$(printf '%s' "$want" | tr -d '[:space:]')"
+    [ -n "$want" ] || continue
+    found=0
+    for run in "${RUNNING_SVCS[@]:-}"; do
+      [ "$run" = "$want" ] && { found=1; break; }
+    done
+    if [ "$found" -eq 0 ]; then
+      stale "$want — expected code service NOT running (dev incomplete)"
+      STALE_N=$((STALE_N + 1))
+    fi
+  done
+fi
+if [ "$CHECKED" -eq 0 ] && [ "$STALE_N" -eq 0 ]; then
   skip "no code service (app/worker/…) matched — nothing checked (try --service or --all-services)"
   echo; exit 0
 fi

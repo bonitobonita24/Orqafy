@@ -33,3 +33,17 @@ if [ "$ENV" = "dev" ] && [[ "$CMD" == *"up"* ]]; then
 else
   $DC -f $BASE/docker-compose.app.yml $CMD
 fi
+
+# Dev worker (Rule 39: dev leads every env). The worker's depends_on names postgres +
+# valkey, which are DEFINED in the db/cache compose files — so `-f docker-compose.worker.yml`
+# alone is an invalid compose project ("undefined service valkey"). Include the defining
+# files and target only `worker` with --no-deps (infra is brought up by the blocks above).
+# Stage/prod ship the worker via their MERGED compose, so this dev-only block leaves them
+# untouched.
+if [ "$ENV" = "dev" ]; then
+  if [[ "$CMD" == *"up"* ]]; then
+    $DC -f $BASE/docker-compose.db.yml -f $BASE/docker-compose.cache.yml -f $BASE/docker-compose.worker.yml up --build -d --no-deps worker
+  else
+    $DC -f $BASE/docker-compose.db.yml -f $BASE/docker-compose.cache.yml -f $BASE/docker-compose.worker.yml $CMD
+  fi
+fi
