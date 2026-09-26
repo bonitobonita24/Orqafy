@@ -6,6 +6,7 @@ import { env } from "@/env";
 import { rateLimiters } from "@/server/lib/rate-limit";
 import { verifyCredentials } from "@/server/auth/verify-credentials";
 import { verifyPortalCredentials } from "@/server/auth/verify-portal-credentials";
+import { TENANT_ACCESS_SELECT, isTenantSuspended } from "@/server/auth/tenant-status";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -65,17 +66,31 @@ export const authConfig: NextAuthConfig = {
       ) {
         const dbCustomer = await db.customer.findUnique({
           where: { id: token.customerId as string },
-          select: { isActive: true, portalEnabled: true, customerSecurityVersion: true },
+          select: {
+            isActive: true,
+            portalEnabled: true,
+            customerSecurityVersion: true,
+            // ORQ-38: joined into the SAME lookup — a platform suspend ends
+            // live portal sessions on the next request, not at JWT expiry.
+            tenant: { select: TENANT_ACCESS_SELECT },
+          },
         });
+        const tenantSuspended = dbCustomer !== null && isTenantSuspended(dbCustomer.tenant);
         if (
           dbCustomer === null ||
           dbCustomer.isActive !== true ||
           dbCustomer.portalEnabled !== true ||
-          dbCustomer.customerSecurityVersion !== (token.customerSecurityVersion as number)
+          dbCustomer.customerSecurityVersion !== (token.customerSecurityVersion as number) ||
+          tenantSuspended
         ) {
           token.error = "SESSION_INVALIDATED";
         } else {
           delete token.error;
+        }
+        if (tenantSuspended) {
+          token.tenantSuspended = true;
+        } else {
+          delete token.tenantSuspended;
         }
       }
 
@@ -89,6 +104,11 @@ export const authConfig: NextAuthConfig = {
           // the top-level session.error guard in trpc/context.ts + middleware).
           return {
             ...session,
+            // ORQ-38: lets guards redirect with ?error=tenant_suspended
+            // instead of the generic session_expired.
+            ...(token.tenantSuspended === true && {
+              user: { ...session.user, tenantIsActive: false },
+            }),
             principalType: "customer" as const,
             error: "SESSION_INVALIDATED",
           };
@@ -108,16 +128,38 @@ export const authConfig: NextAuthConfig = {
         return session;
       }
 
-      // Staff session — UNCHANGED. Re-validate securityVersion on each
-      // session to detect role/tenant/status changes.
+      // Staff session. Re-validate securityVersion on each session to detect
+      // role/tenant/status changes. This callback runs on EVERY auth() call —
+      // middleware (Node runtime), server pages/requireTenantSession, and the
+      // tRPC context — so it is the one place a live-session check covers all
+      // of them.
       if (token.userId !== undefined && token.userId !== null) {
         const dbUser = await db.user.findUnique({
           where: { id: token.userId as string },
-          select: { securityVersion: true, isActive: true },
+          select: {
+            securityVersion: true,
+            isActive: true,
+            // ORQ-38: tenant suspension joined into the SAME lookup (no extra
+            // query). Suspension used to only affect new logins — and not even
+            // those, since suspendTenant writes `status` while login read
+            // `isActive`.
+            tenant: { select: TENANT_ACCESS_SELECT },
+          },
         });
         if (dbUser === null || dbUser.isActive !== true || dbUser.securityVersion !== token.securityVersion) {
           // Force sign-out by returning an invalid session shape
           return { ...session, error: "SESSION_INVALIDATED" };
+        }
+        if (isTenantSuspended(dbUser.tenant)) {
+          // Fail-closed: every consumer that honours SESSION_INVALIDATED
+          // rejects this session. tenantIsActive:false only picks the
+          // ?error=tenant_suspended message. No staff identity is copied onto
+          // this shape.
+          return {
+            ...session,
+            user: { ...session.user, tenantIsActive: false },
+            error: "SESSION_INVALIDATED",
+          };
         }
       }
       session.principalType = "staff";
@@ -128,6 +170,7 @@ export const authConfig: NextAuthConfig = {
       session.user.tenantId = token.tenantId as string;
       session.user.securityVersion = token.securityVersion as number;
       session.user.isDemoTenant = token.isDemoTenant as boolean;
+      session.user.tenantIsActive = true;
       return session;
     },
   },

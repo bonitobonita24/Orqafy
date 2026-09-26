@@ -55,6 +55,17 @@ describe("verifyPortalCredentials", () => {
     expect(mockCustomerFindFirst).not.toHaveBeenCalled();
   });
 
+  it("ORQ-38: returns null when the tenant is suspended (status 'suspended', isActive still true)", async () => {
+    mockTenantFindUnique.mockResolvedValueOnce({ ...TENANT, status: "suspended" });
+    const result = await verifyPortalCredentials({
+      email: "jane@customer.com",
+      password: PASSWORD,
+      tenantSlug: "acme",
+    });
+    expect(result).toBeNull();
+    expect(mockCustomerFindFirst).not.toHaveBeenCalled();
+  });
+
   it("returns null when no active customer with that portalEmail exists in the tenant", async () => {
     mockTenantFindUnique.mockResolvedValueOnce(TENANT);
     mockCustomerFindFirst.mockResolvedValueOnce(null);

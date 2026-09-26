@@ -9,6 +9,7 @@
 // pure DB+bcrypt verifier.
 import bcrypt from "bcryptjs";
 import { prisma as db } from "@orqafy/db";
+import { isTenantSuspended } from "@/server/auth/tenant-status";
 
 export interface VerifiedCredentialsUser {
   id: string;
@@ -44,9 +45,10 @@ export async function verifyCredentials(input: {
 
   const tenant = await db.tenant.findUnique({
     where: { slug: tenantSlug },
-    select: { id: true, isActive: true, slug: true },
+    select: { id: true, isActive: true, status: true, slug: true },
   });
-  if (tenant?.isActive !== true) return null;
+  // ORQ-38: suspendTenant writes `status`, not `isActive` — check both.
+  if (tenant === null || isTenantSuspended(tenant)) return null;
 
   const user = await db.user.findFirst({
     where: { email, tenantId: tenant.id, isActive: true },
@@ -113,11 +115,11 @@ export async function verifyCredentialsByEmail(input: {
       isActive: true,
       roleId: true,
       role: { select: { name: true } },
-      tenant: { select: { id: true, slug: true, isActive: true } },
+      tenant: { select: { id: true, slug: true, isActive: true, status: true } },
     },
   });
   if (user === null || !user.isActive) return null;
-  if (user.tenant.isActive !== true) return null;
+  if (isTenantSuspended(user.tenant)) return null;
   if (user.passwordHash === "") return null;
 
   const valid = await bcrypt.compare(password, user.passwordHash);

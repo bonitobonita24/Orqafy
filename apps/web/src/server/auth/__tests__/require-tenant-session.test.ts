@@ -134,6 +134,30 @@ describe("resolveTenantSessionDecision (pure)", () => {
     ).toEqual({ kind: "redirect", url: "/login?error=tenant_suspended" });
   });
 
+  // ORQ-38 — the shape config.ts's session callback actually returns for a
+  // suspended tenant: invalidated (fail-closed for every SESSION_INVALIDATED
+  // consumer) + user.tenantIsActive:false so the guard can say WHY.
+  it("ORQ-38: invalidated session from a suspended tenant → /login?error=tenant_suspended", () => {
+    const suspended = { error: "SESSION_INVALIDATED", user: { tenantIsActive: false } } as any;
+    expect(resolveTenantSessionDecision(suspended, "acme")).toEqual({
+      kind: "redirect",
+      url: "/login?error=tenant_suspended",
+    });
+  });
+
+  it("ORQ-38: suspended-tenant invalidation wins even on the demo slug (no demo fast-path bypass)", () => {
+    const suspended = { error: "SESSION_INVALIDATED", user: { tenantIsActive: false } } as any;
+    expect(resolveTenantSessionDecision(suspended, "demo")).toEqual({
+      kind: "redirect",
+      url: "/login?error=tenant_suspended",
+    });
+  });
+
+  it("ORQ-38: demo tenant's own active session is allowed on the demo slug", () => {
+    const demo = staffSession({}, { tenantSlug: "demo", isDemoTenant: true, tenantIsActive: true });
+    expect(resolveTenantSessionDecision(demo, "demo").kind).toBe("allow");
+  });
+
   it("correct tenant → allow with the verified server-side context", () => {
     expect(resolveTenantSessionDecision(staffSession(), "acme")).toEqual({
       kind: "allow",

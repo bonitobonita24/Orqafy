@@ -16,6 +16,7 @@
 import type { NextRequest } from "next/server";
 import { prisma } from "@orqafy/db";
 import { requireMobileBearer } from "@/server/auth/mobile-bearer";
+import { TENANT_ACCESS_SELECT, isTenantSuspended } from "@/server/auth/tenant-status";
 
 export interface SyncBearerContext {
   userId: string;
@@ -41,12 +42,19 @@ export async function resolveSyncBearerContext(
 
   const dbUser = await prisma.user.findUnique({
     where: { id: payload.userId },
-    select: { securityVersion: true, isActive: true, roleId: true },
+    select: {
+      securityVersion: true,
+      isActive: true,
+      roleId: true,
+      // ORQ-38: tenant suspension joined into the same lookup.
+      tenant: { select: TENANT_ACCESS_SELECT },
+    },
   });
   if (
     dbUser === null ||
     !dbUser.isActive ||
-    dbUser.securityVersion !== payload.securityVersion
+    dbUser.securityVersion !== payload.securityVersion ||
+    isTenantSuspended(dbUser.tenant)
   ) {
     return null;
   }

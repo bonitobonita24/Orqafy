@@ -6,6 +6,7 @@
 // tenant, or email exists".
 import bcrypt from "bcryptjs";
 import { prisma as db } from "@orqafy/db";
+import { isTenantSuspended } from "@/server/auth/tenant-status";
 
 export interface VerifiedPortalCustomer {
   customerId: string;
@@ -33,9 +34,10 @@ export async function verifyPortalCredentials(input: {
 
   const tenant = await db.tenant.findUnique({
     where: { slug: tenantSlug },
-    select: { id: true, isActive: true, slug: true },
+    select: { id: true, isActive: true, status: true, slug: true },
   });
-  if (tenant?.isActive !== true) return null;
+  // ORQ-38: suspendTenant writes `status`, not `isActive` — check both.
+  if (tenant === null || isTenantSuspended(tenant)) return null;
 
   const customer = await db.customer.findFirst({
     where: { portalEmail: email, tenantId: tenant.id, isActive: true },

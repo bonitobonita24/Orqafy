@@ -8,6 +8,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma as db } from "@orqafy/db";
+import { isTenantSuspended } from "@/server/auth/tenant-status";
 import {
   verifyRefreshToken,
   revokeRefreshToken,
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       securityVersion: true,
       roleId: true,
       role: { select: { name: true } },
-      tenant: { select: { slug: true, isActive: true } },
+      tenant: { select: { slug: true, isActive: true, status: true } },
     },
   });
 
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (
     user === null ||
     !user.isActive ||
-    user.tenant.isActive !== true ||
+    isTenantSuspended(user.tenant) || // ORQ-38: status 'suspended' OR isActive false
     user.tenantId !== payload.tenantId ||
     user.securityVersion !== payload.securityVersion
   ) {

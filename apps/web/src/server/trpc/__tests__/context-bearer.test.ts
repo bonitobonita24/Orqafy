@@ -55,6 +55,7 @@ describe("createTRPCContext — mobile Bearer JWT auth source", () => {
       securityVersion: 2,
       isActive: true,
       roleId: "role-1",
+      tenant: { isActive: true, status: "active" },
     });
 
     const { createTRPCContext } = await import("../context");
@@ -87,6 +88,7 @@ describe("createTRPCContext — mobile Bearer JWT auth source", () => {
       securityVersion: 2,
       isActive: true,
       roleId: "role-1",
+      tenant: { isActive: true, status: "active" },
     });
 
     const { createTRPCContext } = await import("../context");
@@ -113,6 +115,7 @@ describe("createTRPCContext — mobile Bearer JWT auth source", () => {
       securityVersion: 3, // DB bumped since token was minted (role/tenant/password change)
       isActive: true,
       roleId: "role-1",
+      tenant: { isActive: true, status: "active" },
     });
     mockAuth.mockResolvedValue(null);
 
@@ -185,6 +188,7 @@ describe("createTRPCContext — mobile Bearer JWT auth source", () => {
       securityVersion: 2,
       isActive: true,
       roleId: "role-1",
+      tenant: { isActive: true, status: "active" },
     });
     mockAuth.mockResolvedValue({
       user: {

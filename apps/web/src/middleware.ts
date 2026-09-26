@@ -31,10 +31,15 @@ export default auth(function middleware(req) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Session was invalidated (role/tenant change, suspension, password change)
+  // Session was invalidated (role/tenant change, suspension, password change).
+  // ORQ-38: the session callback (config.ts) runs on this Node-runtime
+  // middleware's auth() and invalidates a suspended tenant's live session,
+  // flagging user.tenantIsActive=false so the redirect can say why.
   if ((session as { error?: string }).error === "SESSION_INVALIDATED") {
     const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("error", "session_expired");
+    const tenantSuspended =
+      (session.user as { tenantIsActive?: boolean } | undefined)?.tenantIsActive === false;
+    loginUrl.searchParams.set("error", tenantSuspended ? "tenant_suspended" : "session_expired");
     return NextResponse.redirect(loginUrl);
   }
 

@@ -49,6 +49,17 @@ describe("verifyCredentials (tenant-scoped — web login shape)", () => {
     expect(mockUserFindFirst).not.toHaveBeenCalled();
   });
 
+  it("ORQ-38: returns null when the tenant is suspended (status 'suspended', isActive still true)", async () => {
+    mockTenantFindUnique.mockResolvedValueOnce({ ...TENANT, status: "suspended" });
+    const result = await verifyCredentials({
+      email: "jane@acme.com",
+      password: PASSWORD,
+      tenantSlug: "acme",
+    });
+    expect(result).toBeNull();
+    expect(mockUserFindFirst).not.toHaveBeenCalled();
+  });
+
   it("returns null when no matching active user exists in the tenant", async () => {
     mockTenantFindUnique.mockResolvedValueOnce(TENANT);
     mockUserFindFirst.mockResolvedValueOnce(null);
@@ -136,6 +147,16 @@ describe("verifyCredentialsByEmail (global-email — mobile login shape)", () =>
       ...USER_WITH_TENANT,
       passwordHash: HASH,
       tenant: { id: "tenant-1", slug: "acme", isActive: false },
+    });
+    const result = await verifyCredentialsByEmail({ email: "jane@acme.com", password: PASSWORD });
+    expect(result).toBeNull();
+  });
+
+  it("ORQ-38: returns null when the user's tenant is suspended (status 'suspended')", async () => {
+    mockUserFindUnique.mockResolvedValueOnce({
+      ...USER_WITH_TENANT,
+      passwordHash: HASH,
+      tenant: { id: "tenant-1", slug: "acme", isActive: true, status: "suspended" },
     });
     const result = await verifyCredentialsByEmail({ email: "jane@acme.com", password: PASSWORD });
     expect(result).toBeNull();

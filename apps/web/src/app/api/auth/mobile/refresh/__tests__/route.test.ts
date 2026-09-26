@@ -105,6 +105,16 @@ describe("POST /api/auth/mobile/refresh", () => {
     expect(res.status).toBe(401);
   });
 
+  it("ORQ-38: rejects when the tenant is suspended (status 'suspended', isActive still true)", async () => {
+    mockVerifyRefreshToken.mockResolvedValueOnce(REFRESH_PAYLOAD);
+    mockFindUnique.mockResolvedValueOnce({
+      ...DB_USER,
+      tenant: { slug: "acme", isActive: true, status: "suspended" },
+    });
+    const res = await POST(makeRequest({ refreshToken: "rt" }));
+    expect(res.status).toBe(401);
+  });
+
   it("rejects when securityVersion is stale (role/tenant/password changed since mint)", async () => {
     mockVerifyRefreshToken.mockResolvedValueOnce(REFRESH_PAYLOAD);
     mockFindUnique.mockResolvedValueOnce({ ...DB_USER, securityVersion: 4 });

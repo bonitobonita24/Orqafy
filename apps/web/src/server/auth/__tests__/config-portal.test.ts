@@ -258,6 +258,7 @@ describe("jwt callback", () => {
       isActive: true,
       portalEnabled: true,
       customerSecurityVersion: 1,
+      tenant: { isActive: true, status: "active" }, // ORQ-38 join
     });
     const token = await jwtCallback({
       token: {
@@ -276,7 +277,12 @@ describe("jwt callback", () => {
 
 describe("session callback", () => {
   it("staff session — REGRESSION GUARD: re-validates via db.user.findUnique, same shape as before", async () => {
-    mockUserFindUnique.mockResolvedValueOnce({ securityVersion: 2, isActive: true });
+    // ORQ-38: the lookup now joins the tenant (fail-closed when absent).
+    mockUserFindUnique.mockResolvedValueOnce({
+      securityVersion: 2,
+      isActive: true,
+      tenant: { isActive: true, status: "active" },
+    });
     const session = await sessionCallback({
       session: { user: {} },
       token: {

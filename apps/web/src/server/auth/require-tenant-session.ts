@@ -20,12 +20,15 @@ import { auth } from "@/server/auth";
  *
  *   1. no session                         → /login
  *   2. SESSION_INVALIDATED                → /login?error=session_expired
+ *        (…?error=tenant_suspended when config.ts flagged tenantIsActive=false — ORQ-38)
  *   3. customer (portal) principal        → /{slug}/portal   (principal isolation)
  *   4. URL slug "demo"                    → allow any authenticated staff
  *   5. session tenant ≠ URL slug          → notFound()   (middleware redirects to the
  *                                           caller's own dashboard; here we 404 so a
  *                                           bypass never confirms a tenant exists)
  *   6. tenantIsActive === false           → /login?error=tenant_suspended
+ *        (defensive only — since ORQ-38 the session callback always pairs
+ *        tenantIsActive:false with SESSION_INVALIDATED, handled at step 2)
  *
  * Deliberate fail-closed deltas (unreachable for real sessions — config.ts
  * always stamps id + tenantSlug on a staff session): missing user id → /login,
@@ -73,7 +76,15 @@ export function resolveTenantSessionDecision(
   }
 
   if (session.error === "SESSION_INVALIDATED" || session.user.error === "SESSION_INVALIDATED") {
-    return { kind: "redirect", url: "/login?error=session_expired" };
+    // ORQ-38: config.ts invalidates a suspended tenant's live session and
+    // marks user.tenantIsActive=false so we can say why.
+    return {
+      kind: "redirect",
+      url:
+        session.user.tenantIsActive === false
+          ? "/login?error=tenant_suspended"
+          : "/login?error=session_expired",
+    };
   }
 
   // Principal isolation — runs before the demo fast-path, as in middleware.

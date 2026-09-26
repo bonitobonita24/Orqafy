@@ -10,6 +10,12 @@ declare module "next-auth" {
       tenantId: string;
       securityVersion: number;
       isDemoTenant: boolean;
+      /**
+       * ORQ-38 — `false` only on an invalidated session whose tenant is
+       * suspended (always paired with `error: "SESSION_INVALIDATED"`); `true`
+       * on a live staff session. Absent on older shapes.
+       */
+      tenantIsActive?: boolean;
       error?: string;
     } & DefaultSession["user"];
     // Customer-portal principal (T1.2/T1.3) — set ONLY on a portal session,
