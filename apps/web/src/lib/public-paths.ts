@@ -29,6 +29,13 @@ export const PUBLIC_PATHS = [
   // storefront renders broken images for logged-out visitors + crawlers
   // (same omission class as the /{slug}/store 88190c4 fix).
   "/demo/shopix",
+  // Static brand assets (apps/web/public/brand/**, e.g. the official
+  // Powerbyte logo mark in the "Developed by" credit). Rendered on guest
+  // surfaces (storefront footer, portal) — without this the image 307s to
+  // /login and shows broken (same omission class as ORQ-10 /icon.svg).
+  // Scoped to /brand/powerbyte, NOT bare /brand: a tenant whose slug is
+  // "brand" would otherwise have every /brand/<page> route made public.
+  "/brand/powerbyte",
   // Public, token-authorised invoice view — /invoice/[token]. The token is
   // the sole authorisation (unguessable, opaque); the page itself sets
   // robots noindex,nofollow (D-4 Copy-share-link).

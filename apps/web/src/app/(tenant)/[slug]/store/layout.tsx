@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { PowerbyteMark } from "@/components/brand/powerbyte-mark";
 import { CartDrawer } from "@/components/cart/cart-drawer";
 import { WishlistDrawer } from "@/components/store/wishlist-drawer";
 import { Separator } from "@/components/ui/separator";
@@ -95,8 +96,9 @@ export default async function StoreLayout({
               href="https://www.powerbyteitsolutions.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-muted-foreground transition hover:text-primary"
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition hover:text-primary"
             >
+              <PowerbyteMark />
               Developed by Powerbyte IT Solutions
             </a>
           </div>

@@ -17,6 +17,7 @@ import {
   SidebarMenuItem,
   SidebarMenuSkeleton,
 } from "@/components/ui/sidebar";
+import { PowerbyteMark } from "@/components/brand/powerbyte-mark";
 
 // Flat nav — section headers removed (owner: the item names are self-explanatory
 // and most groups just duplicated their single child, e.g. PURCHASING→Purchasing).
@@ -121,8 +122,9 @@ export function AppSidebar({ slug }: AppSidebarProps) {
             href="https://www.powerbyteitsolutions.com/"
             target="_blank"
             rel="noopener noreferrer"
-            className="block text-[10px] text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground hover:underline"
+            className="flex items-center gap-1 text-[10px] text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground hover:underline"
           >
+            <PowerbyteMark className="size-3" />
             Developed by Powerbyte IT Solutions
           </a>
         </div>

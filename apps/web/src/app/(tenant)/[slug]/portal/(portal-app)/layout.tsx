@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { PowerbyteMark } from "@/components/brand/powerbyte-mark";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getPortalTenantBranding } from "@/server/lib/portal-tenant";
 import { PortalNav } from "./portal-nav";
@@ -58,8 +59,9 @@ export default async function PortalAppLayout({ children, params }: PortalAppLay
             href="https://www.powerbyteitsolutions.com/"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-muted-foreground transition hover:text-primary"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition hover:text-primary"
           >
+            <PowerbyteMark />
             Developed by Powerbyte IT Solutions
           </a>
         </div>

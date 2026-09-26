@@ -44,4 +44,14 @@ describe("isPublic", () => {
   it("/{slug}/portal/invoices stays private", () => {
     expect(isPublic("/acme/portal/invoices")).toBe(false);
   });
+
+  // Official Powerbyte logo mark shown on guest surfaces (storefront/portal footer)
+  it("/brand/powerbyte/* static brand assets are public", () => {
+    expect(isPublic("/brand/powerbyte/logo-only-160.png")).toBe(true);
+  });
+
+  it("a tenant slugged 'brand' keeps its app routes private", () => {
+    expect(isPublic("/brand/dashboard")).toBe(false);
+    expect(isPublic("/brand")).toBe(false);
+  });
 });
