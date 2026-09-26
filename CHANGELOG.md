@@ -4,6 +4,14 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.20.5 — 2026-09-26
+
+### [FIXED]
+- add Orqafy logo.png for JSON-LD Organization [ORQ-40] (`e366e97`)
+- suspend/reactivate also toggle tenant.isActive [ORQ-38] (`10c00c7`)
+- show login error messages for suspended/expired sessions [ORQ-39] (`46f8f53`)
+
+
 ## v0.20.4 — 2026-09-26
 
 ### [FIXED]
