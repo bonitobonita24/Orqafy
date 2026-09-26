@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FileText } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { formatCurrency } from "@/lib/quotation-build";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,7 @@ interface PageProps {
 
 export default async function QuotationsPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  await requireTenantSession(slug);
   const { status: rawStatus } = await searchParams;
   const status = isStatus(rawStatus) ? rawStatus : undefined;
 

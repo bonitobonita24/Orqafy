@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -107,6 +108,7 @@ export default async function SupportTicketDetailPage({
   params: Promise<{ id: string; slug: string }>;
 }) {
   const { id, slug } = await params;
+  await requireTenantSession(slug);
 
   const tenant = await prisma.tenant.findUnique({
     where: { slug },

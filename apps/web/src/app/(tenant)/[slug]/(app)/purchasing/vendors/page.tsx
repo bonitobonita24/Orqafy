@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Building2 } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,6 +45,7 @@ export default async function VendorsPage({
   searchParams: Promise<{ filter?: string }>;
 }) {
   const { slug } = await params;
+  await requireTenantSession(slug);
   const sp = await searchParams;
   const activeOnly = sp.filter !== "all";
 

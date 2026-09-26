@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,6 +18,7 @@ export default async function EditAccountPage({
   params: Promise<{ slug: string; accountId: string }>;
 }) {
   const { slug, accountId } = await params;
+  await requireTenantSession(slug);
 
   const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
   if (!tenant) notFound();

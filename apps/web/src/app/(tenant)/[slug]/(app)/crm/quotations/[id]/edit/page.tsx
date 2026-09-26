@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import {
   QuotationBuilder,
@@ -25,6 +26,7 @@ interface CustomerOption {
 
 export default async function EditQuotationPage({ params }: PageProps) {
   const { slug, id } = await params;
+  await requireTenantSession(slug);
 
   const tenant = await prisma.tenant.findUnique({
     where: { slug },

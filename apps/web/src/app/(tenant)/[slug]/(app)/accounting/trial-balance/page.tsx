@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Calculator } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -87,6 +88,7 @@ export default async function TrialBalancePage({
   searchParams: Promise<{ fiscalYearId?: string }>;
 }) {
   const { slug } = await params;
+  await requireTenantSession(slug);
   const { fiscalYearId } = await searchParams;
 
   const data = await getTrialBalance(slug, fiscalYearId);

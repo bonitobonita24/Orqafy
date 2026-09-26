@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { PoForm } from "./po-form";
@@ -23,6 +24,7 @@ export default async function NewPoPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  await requireTenantSession(slug);
   const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
   if (!tenant) return <div>Tenant not found</div>;
   const vendors = await getActiveVendors(tenant.id);

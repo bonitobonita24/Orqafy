@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Wallet } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +74,7 @@ export default async function FundSourcesPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  await requireTenantSession(slug);
   const tenantId = await getTenantId(slug);
   if (tenantId === null) return <div>Tenant not found</div>;
   const fundSources = await getFundSources(tenantId);

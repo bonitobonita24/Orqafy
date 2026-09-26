@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { Card } from "@/components/ui/card";
 import { TaskBoard } from "./task-board";
 
@@ -15,6 +16,7 @@ interface Props {
 
 export default async function TasksPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  await requireTenantSession(slug);
   const { projectId, view } = await searchParams;
 
   const tenant = await prisma.tenant.findUnique({

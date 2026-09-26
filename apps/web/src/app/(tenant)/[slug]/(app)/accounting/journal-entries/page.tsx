@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ReceiptText } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -65,6 +66,7 @@ export default async function JournalEntriesPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { slug } = await params;
+  await requireTenantSession(slug);
   const sp = await searchParams;
   const tenantId = await getTenantId(slug);
   if (tenantId === null) return <div className="p-6 text-sm text-muted-foreground">Tenant not found.</div>;

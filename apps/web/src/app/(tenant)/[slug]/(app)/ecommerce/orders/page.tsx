@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ShoppingBag } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { formatCurrency } from "@/lib/quotation-build";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -132,6 +133,7 @@ interface PageProps {
 
 export default async function EcommerceOrdersPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  await requireTenantSession(slug);
   const {
     status: rawStatus,
     paymentStatus: rawPS,

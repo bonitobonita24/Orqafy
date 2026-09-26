@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Receipt } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -131,6 +132,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string; id: string }>;
 }): Promise<Metadata> {
   const { slug, id } = await params;
+  await requireTenantSession(slug);
   const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
   if (tenant === null) return { title: "Expenses" };
   const project = await prisma.project.findFirst({
@@ -151,6 +153,7 @@ export default async function ProjectExpensesPage({
   searchParams,
 }: PageProps) {
   const { slug, id } = await params;
+  await requireTenantSession(slug);
   const rawParams = await searchParams;
   const page = Math.max(1, Number(rawParams.page ?? "1"));
   const typeFilter =

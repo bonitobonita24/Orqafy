@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { auth } from "@/server/auth";
 import { FileText, Minus, Receipt, TrendingDown, TrendingUp, Wrench } from "@/components/ui/icons";
 import { Badge } from "@/components/ui/badge";
@@ -178,6 +179,7 @@ export default async function ReportsPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  await requireTenantSession(slug);
   // Tenant isolation: scope every aggregate to the signed-in user's tenant.
   // Mirrors reportRouter's ctx.tenantId scoping — without it these cross-module
   // aggregates would span ALL tenants (cross-tenant data leak).

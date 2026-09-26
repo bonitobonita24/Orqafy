@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { CartClient } from "./cart-client";
 
 export const metadata: Metadata = { title: "New POS Sale" };
@@ -20,6 +21,7 @@ export default async function POSNewSalePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  await requireTenantSession(slug);
 
   const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
   if (!tenant) return <div>Tenant not found</div>;

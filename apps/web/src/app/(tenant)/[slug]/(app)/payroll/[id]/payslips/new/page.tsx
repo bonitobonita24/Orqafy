@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { PayslipForm } from "../../payslip-form";
@@ -15,6 +16,7 @@ export default async function AddPayslipPage({
   params: Promise<{ slug: string; id: string }>;
 }) {
   const { slug, id } = await params;
+  await requireTenantSession(slug);
 
   const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
   if (tenant === null) notFound();

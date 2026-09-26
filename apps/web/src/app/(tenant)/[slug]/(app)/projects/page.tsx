@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FolderKanban } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -177,6 +178,7 @@ interface PageProps {
 
 export default async function ProjectsPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  await requireTenantSession(slug);
   const rawParams = await searchParams;
   const page = Math.max(1, Number(rawParams.page ?? "1"));
   const statusFilter =

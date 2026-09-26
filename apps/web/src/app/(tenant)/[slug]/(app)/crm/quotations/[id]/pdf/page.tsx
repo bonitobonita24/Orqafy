@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { QuotationPdfClient } from "./quotation-pdf-client";
 
 export const metadata: Metadata = { title: "Quotation PDF Preview" };
@@ -14,6 +15,7 @@ interface Props {
 
 export default async function QuotationPdfPage({ params }: Props) {
   const { slug, id } = await params;
+  await requireTenantSession(slug);
 
   const tenant = await prisma.tenant.findUnique({
     where: { slug },

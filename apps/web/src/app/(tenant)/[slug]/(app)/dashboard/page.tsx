@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { ArrowRight, Briefcase, FileText, Receipt, Users } from "@/components/ui/icons";
 import { CircularProgress } from "@/components/ui/circular-progress";
 import { DashboardKpiCard } from "./dashboard-kpi-card";
@@ -156,6 +157,7 @@ export default async function DashboardPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  await requireTenantSession(slug);
   const data = await getDashboardData(slug);
   if (!data) notFound();
 

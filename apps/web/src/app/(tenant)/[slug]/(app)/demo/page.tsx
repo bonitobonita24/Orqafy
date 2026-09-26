@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@/server/auth";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { BarChart3, FileText, FolderOpen, HeartHandshake, LayoutDashboard, Receipt, RefreshCw, ShieldAlert, Sparkles } from "@/components/ui/icons";
 
 export const metadata: Metadata = { title: "Demo Workspace" };
@@ -67,6 +68,7 @@ function formatDate(d: Date): string {
 
 export default async function DemoPage({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
+  await requireTenantSession(slug);
   const session = await auth();
   const isDemoTenant = session?.user.isDemoTenant === true;
 

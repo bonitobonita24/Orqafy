@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,6 +64,7 @@ interface PageProps {
 
 export default async function JobOrderDetailPage({ params }: PageProps) {
   const { slug, id } = await params;
+  await requireTenantSession(slug);
   // Resolve tenant first so the jobOrder fetch is tenant-scoped (no cross-tenant
   // IDOR via the [id] route param) and the user list reuses the same tenant.
   const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Package } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,6 +44,7 @@ async function getProducts(tenantId: string) {
 
 export default async function InventoryPage({ params }: PageProps) {
   const { slug } = await params;
+  await requireTenantSession(slug);
 
   const tenant = await prisma.tenant.findUnique({
     where: { slug },

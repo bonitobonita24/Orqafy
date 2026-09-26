@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MessageSquare } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -88,6 +89,7 @@ interface PageProps {
 
 export default async function ContactLogsPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  await requireTenantSession(slug);
   const { customerId: rawCustomerId, type: rawType, page: rawPage } = await searchParams;
   const type = isType(rawType) ? rawType : undefined;
   const customerId =

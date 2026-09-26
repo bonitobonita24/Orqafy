@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Building2, CreditCard, FolderTree, Mail, ShieldCheck, Tag, Users } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { guardPage } from "@/server/rbac/guard-page";
 import { auth } from "@/server/auth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -76,6 +77,7 @@ export default async function SettingsPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  await requireTenantSession(slug);
   await guardPage(slug, "settings");
 
   const tenant = await prisma.tenant.findUnique({

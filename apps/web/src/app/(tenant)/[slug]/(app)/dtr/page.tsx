@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CalendarClock, Clock3 } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { auth } from "@/server/auth";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -112,7 +113,13 @@ async function getLeaveRequests(tenantId: string) {
   });
 }
 
-export default async function DtrPage() {
+export default async function DtrPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  await requireTenantSession(slug);
   const session = await auth();
   const currentUserId = session?.user?.id ?? null;
   const tenantId = session?.user?.tenantId ?? null;

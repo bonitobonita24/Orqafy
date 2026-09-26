@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { VendorForm } from "../../vendor-form";
@@ -38,6 +39,7 @@ export default async function EditVendorPage({
   params: Promise<{ slug: string; vendorId: string }>;
 }) {
   const { slug, vendorId } = await params;
+  await requireTenantSession(slug);
   const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
   if (!tenant) notFound();
   const vendor = await getVendor(vendorId);

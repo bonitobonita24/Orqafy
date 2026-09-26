@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ShoppingCart } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,7 @@ export default async function POSSessionsPage({
   searchParams: SearchParams;
 }) {
   const { slug } = await params;
+  await requireTenantSession(slug);
   const sp = await searchParams;
   const filter = sp.status === "open" || sp.status === "closed" ? sp.status : null;
 

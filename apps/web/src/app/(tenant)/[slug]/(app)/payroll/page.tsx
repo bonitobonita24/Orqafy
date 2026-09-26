@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Wallet } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -76,6 +77,7 @@ export default async function PayrollPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { slug } = await routeParams;
+  await requireTenantSession(slug);
   const sp = await searchParams;
   const activeStatus = sp.status ?? "all";
   const tenantId = await getTenantId(slug);

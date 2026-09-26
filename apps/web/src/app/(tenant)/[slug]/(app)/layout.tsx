@@ -4,6 +4,7 @@ import { AppHeader } from "@/components/layout/app-header";
 import { ContentContainer } from "@/components/layout/content-container";
 import { AppDownloadInterstitial } from "@/components/app-download-interstitial";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 
 export const metadata: Metadata = {
   title: "Orqafy",
@@ -17,6 +18,10 @@ interface AppLayoutProps {
 
 export default async function AppLayout({ children, params }: AppLayoutProps) {
   const { slug } = await params;
+  // ORQ-36 — second layer behind middleware.ts. Layouts don't re-run on client
+  // navigation and don't stop sibling page segments from rendering, so every
+  // direct-DB page under (app) ALSO calls requireTenantSession() itself.
+  await requireTenantSession(slug);
 
   return (
     <SidebarProvider>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PackageSearch } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { formatCurrency } from "@/lib/quotation-build";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -91,6 +92,7 @@ interface PageProps {
 
 export default async function EcommerceOrderDetailPage({ params }: PageProps) {
   const { slug, id } = await params;
+  await requireTenantSession(slug);
 
   const tenant = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } });
   if (!tenant) notFound();

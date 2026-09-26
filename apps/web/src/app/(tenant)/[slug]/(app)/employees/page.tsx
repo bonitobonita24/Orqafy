@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Users } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -85,6 +86,7 @@ export default async function EmployeesPage({
   searchParams: Promise<{ filter?: string }>;
 }) {
   const { slug } = await routeParams;
+  await requireTenantSession(slug);
   const params = await searchParams;
   const filter = params.filter ?? "all";
   const tenantId = await getTenantId(slug);

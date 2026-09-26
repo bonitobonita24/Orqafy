@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -105,6 +106,7 @@ export default async function StockMovementsPage({
   searchParams: Promise<{ type?: string; warehouseId?: string; productId?: string }>;
 }) {
   const { slug } = await params;
+  await requireTenantSession(slug);
   const tenant = await prisma.tenant.findUnique({
     where: { slug },
     select: { id: true },

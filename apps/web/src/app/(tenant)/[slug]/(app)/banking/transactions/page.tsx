@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Receipt } from "@/components/ui/icons";
 import { prisma } from "@orqafy/db";
+import { requireTenantSession } from "@/server/auth/require-tenant-session";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -137,6 +138,7 @@ const CREDIT_TYPES = new Set([
 
 export default async function TransactionsLedgerPage({ params: paramsPromise, searchParams }: PageProps) {
   const { slug } = await paramsPromise;
+  await requireTenantSession(slug);
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page ?? "1"));
   const typeFilter = sp.type ?? undefined;
