@@ -15,10 +15,15 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   BUILT `00da7e8` on `chore/official-powerbyte-logo`: logo mark beside the 3 "Developed by" credits (sidebar/store/portal),
   `/brand/powerbyte` public-path + tests; typecheck/lint/1571 tests green. LEFT: visual check light+dark;
   owner [WHAT]s: favicon mark, © line, JSON-LD `/logo.png` missing. HARD HOLD. `source: owner 2026-09-21 broadcast`
-- 🔴 **Reserved tenant slugs miss public-path prefixes** `[ORQ-35]` — `register/actions.ts` RESERVED +
-  `trpc/routers/registration.ts` RESERVED_SLUGS (duplicated) lack `brand`/`invoice` (maybe `store`/`tm`/`privacy`) →
-  a tenant with that slug gets its `/<slug>/*` routes treated as public. Fix: one shared constant + test that every
-  public-path top segment is reserved + audit existing tenant slugs. `source: agent-found 2026-09-26`
+- 🟡 **Reserved tenant slugs miss public-path prefixes** `[ORQ-35]` — BUILT `ac29e42` on `fix/orq-35-reserved-slugs`:
+  single `lib/reserved-slugs.ts` wired into `/register` action + tRPC registration; guard tests tie it to PUBLIC_PATHS,
+  top-level route dirs, matcher exclusions. Was exploitable: `invoice`/`privacy`/`demo-login` + `api*`/`images*`/`fonts*`/`icons*`.
+  typecheck/lint/1621 tests green. LEFT: run read-only `apps/web/scripts/check-reserved-tenant-slugs.ts` per env
+  (owner-gated for staging/prod). HARD HOLD. `source: agent-found 2026-09-26`
+- 🔴 **Tenant `(app)` layout has no auth — middleware is sole gate** `[ORQ-36]` — add `auth()` + session-tenant ↔ slug
+  check in `(tenant)/[slug]/(app)/layout.tsx` (redirect/notFound), + no-session test. Defense-in-depth, HIGH. `source: agent-found 2026-09-26`
+- 🔴 **Middleware matcher exclusions not segment-anchored** `[ORQ-37]` — `(?!api|…|images|fonts|icons)` skips any
+  path starting with those words; anchor to whole segments, verify static/API unchanged. `source: agent-found 2026-09-26`
 - 🔵 **[OWNER-PARKED 2026-09-05 — not a to-do] Cross-host deploy residuals from the EC2 split** `[ORQ-27]` — surfaced by ORQ-25.
   (a) `staging-refresh-and-deploy.sh` prod→staging is same-host `pg_dump|psql`, but prod=Hostinger / staging=EC2 →
   step 2 auto-skips (gate degraded to deploy+migrate only). **Owner decision 2026-09-05: LEAVE THE GATE DEGRADED**
