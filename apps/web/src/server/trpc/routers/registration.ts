@@ -4,25 +4,7 @@ import { createTRPCRouter, publicProcedure } from "../trpc";
 import { prisma } from "@orqafy/db";
 import { createQueues } from "@orqafy/jobs";
 import { jobConnection } from "../../jobs/connection";
-
-const RESERVED_SLUGS = new Set([
-  "platform",
-  "demo",
-  "admin",
-  "api",
-  "www",
-  "mail",
-  "static",
-  "assets",
-  "app",
-  "auth",
-  "login",
-  "register",
-  "signup",
-  "dashboard",
-  "billing",
-  "support",
-]);
+import { isReservedSlug } from "@/lib/reserved-slugs";
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
 
@@ -40,7 +22,7 @@ function validateSlugFormat(slug: string): { valid: boolean; error?: string } {
         "Slug must contain only lowercase letters, digits, and hyphens, and must not start or end with a hyphen.",
     };
   }
-  if (RESERVED_SLUGS.has(slug)) {
+  if (isReservedSlug(slug)) {
     return { valid: false, error: `"${slug}" is a reserved slug.` };
   }
   return { valid: true };

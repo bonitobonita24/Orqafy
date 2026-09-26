@@ -5,6 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { prisma } from "@orqafy/db";
 import { createQueues } from "@orqafy/jobs";
 import { jobConnection } from "@/server/jobs/connection";
+import { isReservedSlug } from "@/lib/reserved-slugs";
 
 interface RegisterInput {
   slug: string;
@@ -26,11 +27,7 @@ export async function registerTenant(input: RegisterInput): Promise<{ error: str
     return { error: "Workspace ID must use only lowercase letters, digits, and hyphens." };
   }
 
-  const RESERVED = new Set([
-    "platform","demo","admin","api","www","mail","static","assets",
-    "app","auth","login","register","signup","dashboard","billing","support",
-  ]);
-  if (RESERVED.has(slug)) {
+  if (isReservedSlug(slug)) {
     return { error: `"${slug}" is a reserved workspace ID.` };
   }
   if (ownerPassword.length < 8) {
