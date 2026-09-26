@@ -4,6 +4,31 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.20.4 — 2026-09-26
+
+### [FIXED]
+- enforce tenant suspension on live sessions [ORQ-38] (`8d50a92`)
+- anchor middleware matcher exclusions to whole segments [ORQ-37] (`6fe267b`)
+- tenant (app) layout + direct-DB pages verify session and tenant [ORQ-36] (`d08aee9`)
+- single reserved tenant-slug list covering public-path prefixes [ORQ-35] (`e199f32`)
+- run demo-latest retag on workstation, keep EC2 pull-only [ORQ-32] (`acdf997`)
+
+### [DOCS]
+- ORQ-37/38 built; log ORQ-39 login error messages (`2994395`)
+- ORQ-36 built (0dfed5d, unmerged); log ORQ-38 dead suspended-tenant check (`a8eab2e`)
+- ORQ-35 built (ac29e42); log ORQ-36 tenant-layout auth + ORQ-37 matcher anchoring (`413b6c4`)
+- ORQ-34 built (00da7e8), ORQ-35 reserved-slug gap logged (`a64dc8d`)
+- ORQ-33 done (dev restart no), ORQ-34 logo adoption in progress (`9b87161`)
+- 2026-09-10 handoff — ORQ-32 done + FF-merged, queue empty (`c920736`)
+- ORQ-32 done — demo retag on workstation, EC2 pull-only (`5c00a3e`)
+- v0.20.3 deployed to all envs (ORQ-31); next un-gated = ORQ-32 (`b08829b`)
+- v0.20.3 shipped to staging/prod/demo (ORQ-31); log demo push-scope residual (ORQ-32) (`9d21d9a`)
+
+### [CHORE]
+- adopt official Powerbyte logo set (`d048870`)
+- set dev compose restart policy to "no" (`59d40ff`)
+
+
 ## v0.20.3 — 2026-09-09
 
 ### [FIXED]
