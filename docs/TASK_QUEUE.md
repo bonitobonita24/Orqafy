@@ -8,22 +8,10 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 ## 🔴 / 🟡 Open
 
 > 2026-09-26: v0.20.5 LIVE on prod/staging/demo (all EC2). Next un-gated: **ORQ-45 → ORQ-44 → ORQ-34 visual**. Owner [WHAT]s: ORQ-41/42/46 + Docker Hub token rotation (PENDING_DECISIONS.md). ORQ-27 owner-PARKED ((a) now moot).
-> 2026-09-27 (resume): owner answered all 4 open decisions. ORQ-41 (provisioning login) = KEEP, no change (CLOSED). Copyright-mark = KEEP text, no change (CLOSED). ORQ-46 = fix approved (show suspended msg after password verifies) → now un-gated. ORQ-42 = keep Orqafy icon + generate missing raster set → ORQ-47 (new). ORQ-45 in progress.
+> 2026-09-27 (resume): owner answered all 4 open decisions (ORQ-41 provisioning KEEP-closed; copyright-mark KEEP-text-closed; ORQ-46 approved; ORQ-42 → ORQ-47). Shipped to LOCAL main (4 ahead of origin, HARD HOLD): **ORQ-45, ORQ-46, ORQ-47** — all verified. Remaining un-gated: **ORQ-44** (compose reconcile), **ORQ-34 visual**, branch housekeeping. Owner action: D-DOCKERHUB-TOKEN rotation.
 
 - 🟡 **Powerbyte logo — visual check only** `[ORQ-34]` — code LIVE in v0.20.4+ (mark beside the 3 "Developed by" credits).
   LEFT: screenshot sidebar/store/portal footers in light+dark on dev (:42951). Favicon/© line = owner [WHAT] ORQ-42.
-- 🔴 **`start.sh dev up` never builds/starts the worker** `[ORQ-45]` — `deploy/compose/start.sh` runs db/cache/storage/pgadmin/
-  infra/app only; `docker-compose.worker.yml` is never included → Rule 39 app-only-rebuild footgun, and dev-freshness-check
-  passes vacuously when the worker isn't running. Add worker (`--build`, sequential after app). Done = `start.sh dev up -d`
-  leaves `orqafy_dev_worker` up + FRESH. `source: agent-found 2026-09-26`
-- 🔴 **Suspended-tenant fresh login shows generic error** `[ORQ-46]` — ORQ-38 E2E (dev, 2026-09-26): a fresh login to a
-  suspended tenant is rejected with "Invalid email, password, or workspace." rather than the `tenant_suspended` message
-  (reload with an existing session does redirect to `/login?error=tenant_suspended`). **Owner decided 2026-09-27:** show the
-  suspended message only AFTER credentials verify (no anonymous workspace enumeration). Done = correct password to a suspended
-  workspace → `tenant_suspended` message; wrong password → generic error unchanged. `source: agent-found 2026-09-26`
-- 🔴 **Generate missing favicon raster set** `[ORQ-47]` — owner decided 2026-09-27 (ORQ-42): keep the Orqafy product mark as the
-  tab icon; generate the missing `favicon.ico` / apple-touch-icon / web-manifest from `apps/web/src/app/icon.svg`. Done =
-  `/favicon.ico` 200 (non-link-honoring clients stop probing), apple-touch + manifest present. `source: owner 2026-09-27`
 - 🔴 **Repo prod compose drifted from EC2 host** `[ORQ-44]` — `deploy/compose/prod/*.yml` still `certresolver=letsencrypt`,
   no valkey `--maxmemory`, no `www` router; live host (`/etc/komodo/stacks/orqafy-prod/`) has `cloudflare` + `--maxmemory 200mb`.
   Scripts never copy compose (no live risk) — reconcile repo to host reality. Done = repo files match host modulo secrets. `source: agent-found 2026-09-26`
@@ -35,6 +23,20 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   2026-09-05: HOLD** (installer written+inert; enable live only when ready to touch the EC2 box). `source: agent-found 2026-09-05`
 
 ## ✅ Done recently
+- ✅ **Favicon raster set generated** `[ORQ-47]` — `favicon.ico` (16/32/48), `apple-icon.png` (180), `icon.png` (512),
+  `manifest.ts`, `/icons/{192,512}.png` from `icon.svg` via sharp+png-to-ico; reproducible `apps/web/scripts/gen-icons.mjs`.
+  icon.svg design unchanged. Install also corrected a pre-existing lockfile drift (@types/node lock=25.9.3 vs web pin ^22.10.7);
+  frozen-lockfile consistent, workspace typecheck 11/11. `259a2fb`, merged local main, HARD HOLD. `source: owner 2026-09-27` (2026-09-27)
+- ✅ **Reveal `tenant_suspended` only after credentials verify** `[ORQ-46]` — both `verifyCredentials`/`verifyCredentialsByEmail`
+  run the full user-lookup + bcrypt for a suspended tenant and throw a framework-agnostic `TenantSuspendedError` ONLY after a
+  valid password; config.ts → `CredentialsSignin` code `tenant_suspended` → login redirect; mobile → 403. Wrong password → generic
+  null (anti-enumeration test included). Full web suite 1732/1732, workspace typecheck 11/11. `verify-portal-credentials.ts`
+  (customer portal) flagged as optional follow-up. `30f3080`, merged local main, HARD HOLD. `source: owner 2026-09-27` (2026-09-27)
+- ✅ **`start.sh dev up` now builds/starts the worker + freshness detects stopped code services** `[ORQ-45]` — dev-only worker
+  block added to `start.sh` (db+cache defining files, `--no-deps worker --build`); `dev-freshness-check.sh` gained opt-in
+  `--expect app,worker` flag that flags an expected-but-not-running code service as STALE (exit 2); `ensure-dev-fresh.sh` callers
+  wired. Verified with live stop-worker proof (exit 2) + backward-compat (no flag → exit 0). `0aafb95`, merged local main, HARD HOLD.
+  `source: agent-found 2026-09-26` (2026-09-27)
 - ✅ **v0.20.5 deployed staging → prod → demo (all EC2)** — `sha-b0100fb`; all health 200; prod backup
   `/home/ubuntu/orqafy-prod-backup-pre-promotion-prod-sha-70aad59-20260926-143155.sql.gz`; dev rebuilt FRESH;
   ORQ-38 E2E PASS on dev; audits 0 slug collisions / 0 suspended-but-active in every env. (2026-09-26)
