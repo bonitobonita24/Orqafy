@@ -47,7 +47,7 @@ export async function verifyCredentials(input: {
     where: { slug: tenantSlug },
     select: { id: true, isActive: true, status: true, slug: true },
   });
-  // ORQ-38: suspendTenant writes `status`, not `isActive` — check both.
+  // ORQ-38: check both — rows suspended before ORQ-38b have only `status` set.
   if (tenant === null || isTenantSuspended(tenant)) return null;
 
   const user = await db.user.findFirst({

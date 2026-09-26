@@ -72,9 +72,12 @@ export const platformRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Tenant not found." });
       }
 
+      // ORQ-38b: write BOTH flags. Auth guards read status OR isActive
+      // (tenant-status.ts), but storefront/sitemap/settings read isActive
+      // only — keeping them in lockstep closes that gap. Idempotent.
       await prisma.tenant.update({
         where: { id: input.tenantId },
-        data: { status: "suspended" },
+        data: { status: "suspended", isActive: false },
       });
 
       await prisma.tenantAuditLog.create({
@@ -84,7 +87,8 @@ export const platformRouter = createTRPCRouter({
           userId: ctx.userId,
           entity: "Tenant",
           entityId: input.tenantId,
-          after: { reason: input.reason },
+          before: { status: tenant.status, isActive: tenant.isActive },
+          after: { reason: input.reason, status: "suspended", isActive: false },
         },
       });
 
@@ -106,9 +110,10 @@ export const platformRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Tenant not found." });
       }
 
+      // ORQ-38b: restore BOTH flags (mirror of suspendTenant). Idempotent.
       await prisma.tenant.update({
         where: { id: input.tenantId },
-        data: { status: "active" },
+        data: { status: "active", isActive: true },
       });
 
       await prisma.tenantAuditLog.create({
@@ -118,7 +123,8 @@ export const platformRouter = createTRPCRouter({
           userId: ctx.userId,
           entity: "Tenant",
           entityId: input.tenantId,
-          after: { reason: input.reason },
+          before: { status: tenant.status, isActive: tenant.isActive },
+          after: { reason: input.reason, status: "active", isActive: true },
         },
       });
 

@@ -3,8 +3,9 @@
  * app right now?".
  *
  * Two fields can take a tenant offline and they are written by different
- * paths: `platform.suspendTenant` sets `status = "suspended"` (and leaves
- * `isActive` untouched), while `isActive = false` is the older hard-off flag.
+ * paths: `platform.suspendTenant` sets `status = "suspended"` (and, since
+ * ORQ-38b, also `isActive = false` — rows suspended earlier still carry
+ * `isActive = true`), while `isActive = false` is the older hard-off flag.
  * Every auth gate (login, the Auth.js session/jwt callbacks, mobile bearer +
  * refresh, sync bearer) must treat EITHER as suspended — checking only one
  * of them is how suspension silently failed to block anything.

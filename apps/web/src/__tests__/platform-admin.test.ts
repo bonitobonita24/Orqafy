@@ -414,6 +414,55 @@ describe("platform.suspendTenant", () => {
     expect(prisma.tenantAuditLog.create).toHaveBeenCalled();
   });
 
+  // ORQ-38b: suspension must flip BOTH flags so every isActive-only reader
+  // (storefront, sitemap, settings/account) agrees with status-aware guards.
+  it("sets status='suspended' AND isActive=false in one write", async () => {
+    const { prisma } = await import("@orqafy/db");
+    vi.mocked(prisma.tenant.findFirst).mockResolvedValue({
+      id: "t1",
+      status: "active",
+      isActive: true,
+    } as never);
+    vi.mocked(prisma.tenant.update).mockResolvedValue({} as never);
+    vi.mocked(prisma.tenantAuditLog.create).mockResolvedValue({} as never);
+
+    const caller = createCallerFactory(router)(platformOwnerCtx());
+    await caller.platform.suspendTenant({ tenantId: "t1", reason: "Payment failed" });
+
+    expect(prisma.tenant.update).toHaveBeenCalledTimes(1);
+    expect(prisma.tenant.update).toHaveBeenCalledWith({
+      where: { id: "t1" },
+      data: { status: "suspended", isActive: false },
+    });
+    expect(prisma.tenantAuditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "PLATFORM:SUSPEND_TENANT",
+        before: { status: "active", isActive: true },
+        after: { reason: "Payment failed", status: "suspended", isActive: false },
+      }),
+    });
+  });
+
+  it("is idempotent on an already-suspended tenant (same write, no error)", async () => {
+    const { prisma } = await import("@orqafy/db");
+    vi.mocked(prisma.tenant.findFirst).mockResolvedValue({
+      id: "t1",
+      status: "suspended",
+      isActive: false,
+    } as never);
+    vi.mocked(prisma.tenant.update).mockResolvedValue({} as never);
+    vi.mocked(prisma.tenantAuditLog.create).mockResolvedValue({} as never);
+
+    const caller = createCallerFactory(router)(platformOwnerCtx());
+    const result = await caller.platform.suspendTenant({ tenantId: "t1", reason: "again" });
+
+    expect(result.success).toBe(true);
+    expect(prisma.tenant.update).toHaveBeenCalledWith({
+      where: { id: "t1" },
+      data: { status: "suspended", isActive: false },
+    });
+  });
+
   it("rejects regular user with FORBIDDEN", async () => {
     const caller = createCallerFactory(router)(regularUserCtx());
     await expect(
@@ -428,6 +477,81 @@ describe("platform.suspendTenant", () => {
     const caller = createCallerFactory(router)(platformOwnerCtx());
     await expect(
       caller.platform.suspendTenant({ tenantId: "ghost-id", reason: "test" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. platform.reactivateTenant — ORQ-38b restores BOTH status + isActive
+// ---------------------------------------------------------------------------
+describe("platform.reactivateTenant", () => {
+  const router = createTRPCRouter({ platform: platformRouter });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("sets status='active' AND isActive=true and audits before/after", async () => {
+    const { prisma } = await import("@orqafy/db");
+    vi.mocked(prisma.tenant.findFirst).mockResolvedValue({
+      id: "t1",
+      status: "suspended",
+      isActive: false,
+    } as never);
+    vi.mocked(prisma.tenant.update).mockResolvedValue({} as never);
+    vi.mocked(prisma.tenantAuditLog.create).mockResolvedValue({} as never);
+
+    const caller = createCallerFactory(router)(platformOwnerCtx());
+    const result = await caller.platform.reactivateTenant({ tenantId: "t1", reason: "Paid" });
+
+    expect(result.success).toBe(true);
+    expect(prisma.tenant.update).toHaveBeenCalledWith({
+      where: { id: "t1" },
+      data: { status: "active", isActive: true },
+    });
+    expect(prisma.tenantAuditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "PLATFORM:REACTIVATE_TENANT",
+        before: { status: "suspended", isActive: false },
+        after: { reason: "Paid", status: "active", isActive: true },
+      }),
+    });
+  });
+
+  it("is idempotent on an already-active tenant", async () => {
+    const { prisma } = await import("@orqafy/db");
+    vi.mocked(prisma.tenant.findFirst).mockResolvedValue({
+      id: "t1",
+      status: "active",
+      isActive: true,
+    } as never);
+    vi.mocked(prisma.tenant.update).mockResolvedValue({} as never);
+    vi.mocked(prisma.tenantAuditLog.create).mockResolvedValue({} as never);
+
+    const caller = createCallerFactory(router)(platformOwnerCtx());
+    const result = await caller.platform.reactivateTenant({ tenantId: "t1", reason: "noop" });
+
+    expect(result.success).toBe(true);
+    expect(prisma.tenant.update).toHaveBeenCalledWith({
+      where: { id: "t1" },
+      data: { status: "active", isActive: true },
+    });
+  });
+
+  it("rejects regular user with FORBIDDEN", async () => {
+    const caller = createCallerFactory(router)(regularUserCtx());
+    await expect(
+      caller.platform.reactivateTenant({ tenantId: "t1", reason: "test" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("throws NOT_FOUND for unknown tenant", async () => {
+    const { prisma } = await import("@orqafy/db");
+    vi.mocked(prisma.tenant.findFirst).mockResolvedValue(null);
+
+    const caller = createCallerFactory(router)(platformOwnerCtx());
+    await expect(
+      caller.platform.reactivateTenant({ tenantId: "ghost-id", reason: "test" }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });
