@@ -8,6 +8,7 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 ## 🔴 / 🟡 Open
 
 > 2026-09-26: v0.20.5 LIVE on prod/staging/demo (all EC2). Next un-gated: **ORQ-45 → ORQ-44 → ORQ-34 visual**. Owner [WHAT]s: ORQ-41/42/46 + Docker Hub token rotation (PENDING_DECISIONS.md). ORQ-27 owner-PARKED ((a) now moot).
+> 2026-09-27 (resume): owner answered all 4 open decisions. ORQ-41 (provisioning login) = KEEP, no change (CLOSED). Copyright-mark = KEEP text, no change (CLOSED). ORQ-46 = fix approved (show suspended msg after password verifies) → now un-gated. ORQ-42 = keep Orqafy icon + generate missing raster set → ORQ-47 (new). ORQ-45 in progress.
 
 - 🟡 **Powerbyte logo — visual check only** `[ORQ-34]` — code LIVE in v0.20.4+ (mark beside the 3 "Developed by" credits).
   LEFT: screenshot sidebar/store/portal footers in light+dark on dev (:42951). Favicon/© line = owner [WHAT] ORQ-42.
@@ -17,8 +18,12 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   leaves `orqafy_dev_worker` up + FRESH. `source: agent-found 2026-09-26`
 - 🔴 **Suspended-tenant fresh login shows generic error** `[ORQ-46]` — ORQ-38 E2E (dev, 2026-09-26): a fresh login to a
   suspended tenant is rejected with "Invalid email, password, or workspace." rather than the `tenant_suspended` message
-  (reload with an existing session does redirect to `/login?error=tenant_suspended`). May be intentional anti-enumeration —
-  needs an owner [WHAT] before any change. `source: agent-found 2026-09-26`
+  (reload with an existing session does redirect to `/login?error=tenant_suspended`). **Owner decided 2026-09-27:** show the
+  suspended message only AFTER credentials verify (no anonymous workspace enumeration). Done = correct password to a suspended
+  workspace → `tenant_suspended` message; wrong password → generic error unchanged. `source: agent-found 2026-09-26`
+- 🔴 **Generate missing favicon raster set** `[ORQ-47]` — owner decided 2026-09-27 (ORQ-42): keep the Orqafy product mark as the
+  tab icon; generate the missing `favicon.ico` / apple-touch-icon / web-manifest from `apps/web/src/app/icon.svg`. Done =
+  `/favicon.ico` 200 (non-link-honoring clients stop probing), apple-touch + manifest present. `source: owner 2026-09-27`
 - 🔴 **Repo prod compose drifted from EC2 host** `[ORQ-44]` — `deploy/compose/prod/*.yml` still `certresolver=letsencrypt`,
   no valkey `--maxmemory`, no `www` router; live host (`/etc/komodo/stacks/orqafy-prod/`) has `cloudflare` + `--maxmemory 200mb`.
   Scripts never copy compose (no live risk) — reconcile repo to host reality. Done = repo files match host modulo secrets. `source: agent-found 2026-09-26`
