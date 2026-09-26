@@ -1,12 +1,57 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-09-26 by CLAUDE_CODE — v0.20.5 LIVE on prod/staging/demo (all EC2); ORQ-33..43 done; next = ORQ-45/44; 4 owner decisions open (see top session block).
+> Last updated: 2026-09-27 by CLAUDE_CODE — resume: 4 owner decisions answered; ORQ-45/46/47 shipped to LOCAL main (5 ahead of origin, HARD HOLD); dev rebuilt+verified. Next = ORQ-44, ORQ-34 visual.
+> Previously: 2026-09-26 by CLAUDE_CODE — v0.20.5 LIVE on prod/staging/demo (all EC2); ORQ-33..43 done.
 > Previously: 2026-09-10 by CLAUDE_CODE (owner: resume → ORQ-32 → "FF-merge to local main" → "save session"). **ORQ-32 DONE + FF-merged to local `main`** — demo-latest retag moved off the pull-only EC2 box to the workstation. main @`5c00a3e`, **2 ahead of origin, HARD HOLD** (unpushed; push = release moment, owner-gated). LIVE envs UNCHANGED on v0.20.3 / sha-70aad59. Framework **V32.54.0**. **Task queue EMPTY of un-gated work.** No open [WHAT] decisions.
 
 ---
 
-## ⭐ SESSION 2026-09-26 — broadcasts adopted + auth-hardening wave (ORQ-33..43) → v0.20.4 + v0.20.5 LIVE on all envs
+## ⭐ SESSION 2026-09-27 — resume: 4 decisions answered + ORQ-45/46/47 shipped to LOCAL main (verified)
+
+```
+[FOCUS: Orqafy]  ·  2026-09-27  ·  cold-start authority: memory/session_resume_orq45_46_47_2026-09-27.md
+
+## ⏳ TODO — next session works these IN ORDER (both tagged `next` on the board)
+1. [ ] ORQ-44 — reconcile repo `deploy/compose/{prod,stage,demo}/*` to live EC2 host files (certresolver=cloudflare,
+   valkey --maxmemory, www router); regenerate MERGED. ⚠ SECRET-SAFE: read RAW compose only (never `docker compose config`
+   which interpolates .env secrets — that class caused D-DOCKERHUB-TOKEN). done/verify: repo files match host modulo secrets;
+   `docker compose config` exit 0. NO deploy. Single serial worker (or isolation:"worktree") — do NOT parallelize editing workers.
+2. [ ] ORQ-34 — visual check Powerbyte mark in sidebar(authed)/store/portal footers, light+dark. Dev UP+FRESH on :42951.
+   Public landing + storefront footers need NO login; authed sidebar needs a dev cred (local_dev vault: webmaster@localhost.com,
+   pw in Server-Setups SOPS `universal-login-credentials.enc.yaml`). Screenshots → screenshots/.
+
+## ⚖️ OPEN DECISIONS (owner) — 1 owner-ACTION remains
+- D-DOCKERHUB-TOKEN (owner action) — rotate the EC2 Docker Hub cred exposed in the ORQ-43 probe transcript (rec: yes).
+- ORQ-27 (a) moot / (b) demo cron parked — owner may close/re-scope. All other decisions RESOLVED this session.
+
+## ✅ DONE THIS SESSION (built AND verified — evidence)
+- 4 owner decisions answered: ORQ-41 provisioning login=KEEP (closed), copyright-mark=KEEP text (closed),
+  ORQ-46 approved, ORQ-42 keep Orqafy icon + gen raster → spun off ORQ-47. Recorded in PENDING_DECISIONS.md + board comments.
+- ORQ-45 (`0aafb95`) — `start.sh` dev now builds worker (db+cache defining files, `--no-deps worker --build`);
+  `dev-freshness-check.sh` gained opt-in `--expect app,worker` (stopped code service → exit 2); `ensure-dev-fresh.sh` wired.
+  Verified: dev rebuild built `orqafy_dev_worker`; freshness `--expect app,worker` → both FRESH exit 0.
+- ORQ-46 (`30f3080`) — reveal `tenant_suspended` only AFTER credential verify (bcrypt runs on suspended path; wrong-pwd → generic
+  null; anti-enumeration test). config.ts→CredentialsSignin code; login redirect; mobile→403. Web suite 1732/1732, typecheck 11/11.
+- ORQ-47 (`259a2fb`) — favicon.ico(16/32/48)+apple-icon(180)+icon.png(512)+manifest.ts+/icons via sharp+png-to-ico;
+  reproducible `apps/web/scripts/gen-icons.mjs`. Corrected pre-existing lockfile @types/node drift (frozen-lockfile consistent).
+  Verified: `/favicon.ico` → HTTP 200 on dev.
+- Dev rebuilt off main @4ff3620, app+worker FRESH. 10 merged local branches pruned.
+- ⚠ INCIDENT + recovery: dispatched ORQ-46/47 as PARALLEL editing workers WITHOUT isolation:"worktree" → shared-worktree
+  checkout collision (ORQ-46 loose edits landed on the ORQ-47 branch tree). Fully recovered (no work lost), lesson logged
+  (`orchestration.subagents.shared-worktree-parallel-edit-collision`). RULE: never parallelize file-editing subagents without
+  isolation:"worktree" — serialize or use worktrees.
+
+## 🔒 STATE / GROUND TRUTH
+- git: main @4ff3620, **5 ahead of origin, HARD HOLD** (push = release moment → would cut v0.20.6). Tree clean. Framework V32.54.0.
+- LIVE (UNCHANGED): prod + staging + demo ALL on EC2 18.138.220.90, v0.20.5 / sha-b0100fb. Nothing shipped this session.
+- local dev: UP + FRESH off main @4ff3620 (restart:"no" — won't auto-start with Docker Desktop). App :42951 healthy, worker Up.
+- ⚠ ALREADY-DONE guard: ORQ-45/46/47 + 4 decisions DONE+verified — do not re-run.
+```
+
+---
+
+## SESSION 2026-09-26 — broadcasts adopted + auth-hardening wave (ORQ-33..43) → v0.20.4 + v0.20.5 LIVE on all envs
 
 ```
 [FOCUS: Orqafy]  ·  2026-09-26 22:50  ·  cold-start authority: memory/session_auth_hardening_v0.20.5_2026-09-26.md

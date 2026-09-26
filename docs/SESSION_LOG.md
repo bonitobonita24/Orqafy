@@ -1,5 +1,24 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-09-27 — Answered the 4 pending questions, then built + verified three fixes (all local, nothing shipped)
+
+**In your words:** resume session; answered the 4 waiting decisions; "start ORQ-45"; then let it run the un-gated queue; "stop here — solid checkpoint."
+
+✅ **Done (all LOCAL on `main`, 5 ahead of origin — nothing pushed or deployed)**
+- **Your 4 decisions, recorded:** keep letting people log in while a workspace is still provisioning (no change); the copyright footer line stays plain text; approved the suspended-login message fix; keep the Orqafy tab icon and just generate the missing icon files.
+- **Dev worker now actually starts (ORQ-45).** The dev startup command was silently skipping the background worker, and the freshness check couldn't tell when the worker was down. Both fixed and proven on a real dev rebuild (worker built and running; the check now fails loudly if it's stopped).
+- **Suspended-workspace login message (ORQ-46).** Trying to log into a suspended workspace now shows the clear "suspended" message — but only after your email + password are correct, so it can't be used to fish for which workspaces exist. Full test suite green (1732/1732).
+- **Favicon files (ORQ-47).** Generated the missing `favicon.ico` + Apple touch icon + web manifest from the existing Orqafy mark; the browser 404 is gone (`/favicon.ico` now returns 200). Design unchanged.
+- Rebuilt local dev fresh, pruned 10 old merged branches.
+
+💬 **Notes / honest limits**
+- ⚠ I made a dispatch mistake: I ran two code workers in parallel that shared one git working directory, and their branch switches briefly tangled. I caught it, recovered everything cleanly (no work lost), and logged the lesson so it won't recur — from now on parallel code workers get isolated worktrees or run one at a time.
+- **One thing for you:** rotate the EC2 Docker Hub credential that got printed into a local transcript during last session's ORQ-43 probe (D-DOCKERHUB-TOKEN).
+- Pushing `main` is the release moment (would cut ~v0.20.6) — held for your word.
+
+⏳ **Next**
+- ORQ-44 (align the repo's compose files with the live EC2 host) and ORQ-34 (screenshot the Powerbyte mark in the footers, light + dark). Both tagged `next` on the board.
+
 ## 2026-09-26 — Caught up on fleet notices, closed a cluster of login/tenant security holes, shipped v0.20.5 everywhere
 
 **In your words:** resume, do the two waiting fleet notices, then "fix ORQ-35", "merge then do ORQ-36", "do all next options", "do all… save session" — all work in Opus 5.5 subagents.
