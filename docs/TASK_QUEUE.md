@@ -9,6 +9,10 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 > Owner-queued order: ORQ-25 ✅ · ORQ-24 ✅ · ORQ-23 ✅ · **ORQ-29 MERGED+RELEASED v0.20.1** · **D-GOVSYNC (V32.54.0) APPLIED** · **ORQ-31 (CI audit RCE fix) RELEASED v0.20.3 + DEPLOYED staging/prod/demo 2026-09-09** · **ORQ-32 (demo retag → workstation) DONE (local, HARD HOLD)** · ORQ-27 owner-PARKED. **No un-gated work open.**
 
+- 🟡 **🚨 Adopt official Powerbyte logo + favicon set** `[ORQ-34]` — copy kit from
+  `Branding-Marketing-Framework/brand-assets/official-logo/`; apply to Powerbyte company-brand spots
+  (footer credit etc.), theme-matched DarkBG/LightBG. Orqafy product mark kept; favicon swap may be a [WHAT].
+  In progress on `chore/official-powerbyte-logo` (worktree), HARD HOLD. `source: owner 2026-09-21 broadcast`
 - 🔵 **[OWNER-PARKED 2026-09-05 — not a to-do] Cross-host deploy residuals from the EC2 split** `[ORQ-27]` — surfaced by ORQ-25.
   (a) `staging-refresh-and-deploy.sh` prod→staging is same-host `pg_dump|psql`, but prod=Hostinger / staging=EC2 →
   step 2 auto-skips (gate degraded to deploy+migrate only). **Owner decision 2026-09-05: LEAVE THE GATE DEGRADED**
@@ -17,6 +21,10 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   2026-09-05: HOLD** (installer written+inert; enable live only when ready to touch the EC2 box). `source: agent-found 2026-09-05`
 
 ## ✅ Done recently
+- ✅ **Dev compose restart policy → `"no"`** `[ORQ-33]` — all 9 services in 8 `deploy/compose/dev/*.yml` set
+  `restart: "no"` so Docker Desktop stops auto-relaunching the fleet; stage/prod/demo keep `unless-stopped`.
+  `docker compose config` resolves `"no"` per file; stopgap `docker update --restart=no` on 9 existing
+  `orqafy_dev_*` containers. `59d40ff` on `chore/dev-compose-restart-no`, HARD HOLD. `source: owner 2026-09-23 broadcast` (2026-09-26)
 - ✅ **Demo retag runs on workstation, EC2 stays pull-only** `[ORQ-32]` — `push-to-demo.sh` step 2 ran
   `docker buildx imagetools create -t demo-latest` via ssh ON the EC2 demo box (pull-only scope) →
   `insufficient_scope: authorization failed`. Moved that one registry-side manifest op to run on the
