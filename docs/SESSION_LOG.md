@@ -1,5 +1,37 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-09-26 — Caught up on fleet notices, closed a cluster of login/tenant security holes, shipped v0.20.5 everywhere
+
+**In your words:** resume, do the two waiting fleet notices, then "fix ORQ-35", "merge then do ORQ-36", "do all next options", "do all… save session" — all work in Opus 5.5 subagents.
+
+✅ **Done**
+- **Dev containers no longer auto-start** when Docker Desktop opens (ORQ-33).
+- **Official Powerbyte logo mark** now sits beside the "Developed by Powerbyte" credits (ORQ-34).
+- **Security fixes, all live:**
+  - A workspace named `invoice`, `privacy` or `demo-login` would have had its pages open without login. Those names are now blocked (ORQ-35).
+  - Every tenant page now checks the login itself, not just the front-door middleware (ORQ-36).
+  - The middleware no longer skips pages whose workspace name merely *starts with* `api`/`images`/`fonts`/`icons` (ORQ-37).
+  - Suspending a tenant now actually locks it out, including people already logged in. Before, it blocked nothing (ORQ-38).
+- **Login page** now explains why you landed there (suspended workspace, expired session) (ORQ-39).
+- **Search engines** get a real Orqafy logo image (ORQ-40).
+- **Deploy scripts fixed:** prod had moved to the AWS server on 09-17, but the scripts still pointed at the old one. They're retargeted now (ORQ-43).
+- **Released v0.20.4 and v0.20.5 and deployed them:** staging → prod → demo. Prod's database was backed up first, and all three sites are healthy.
+- **Checked the live prod site myself.** Local dev is rebuilt and up to date.
+- **Tested suspending a tenant end-to-end on dev.** It gets locked out, and reactivating works.
+- **Checked every environment:** no clashing workspace names, and no half-suspended tenants.
+
+⏳ **Next**
+- Make `start.sh` start the dev background worker too (ORQ-45).
+- Sync the repo's prod config files with what's really on the server (ORQ-44).
+- Look at the logo on screen in light and dark (ORQ-34).
+
+💬 **Decisions for you**
+- Should tenants still being set up be blocked from logging in? (ORQ-41)
+- Tab icon: my recommendation is to keep the Orqafy mark. The © line: my recommendation is to leave it as text. (ORQ-42)
+- Should the suspended message also show on a fresh login? My recommendation: only after the password is correct. (ORQ-46)
+- **Please rotate the Docker Hub token on the AWS box.** A check printed it into a local agent log.
+- My slip: I missed the 09-17 "prod moved to AWS" notice at the start. The deploy agent caught it before touching anything, and it's logged as a lesson.
+
 ## 2026-09-10 — Fixed the demo-deploy scope problem (ORQ-32), merged to local main
 
 **In your words:** resume, work the queue → then "go with your suggested FF-merging the branch to local main".

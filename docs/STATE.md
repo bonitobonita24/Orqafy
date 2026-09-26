@@ -1,11 +1,60 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-09-10 by CLAUDE_CODE (owner: resume → ORQ-32 → "FF-merge to local main" → "save session"). **ORQ-32 DONE + FF-merged to local `main`** — demo-latest retag moved off the pull-only EC2 box to the workstation. main @`5c00a3e`, **2 ahead of origin, HARD HOLD** (unpushed; push = release moment, owner-gated). LIVE envs UNCHANGED on v0.20.3 / sha-70aad59. Framework **V32.54.0**. **Task queue EMPTY of un-gated work.** No open [WHAT] decisions.
+> Last updated: 2026-09-26 by CLAUDE_CODE — v0.20.5 LIVE on prod/staging/demo (all EC2); ORQ-33..43 done; next = ORQ-45/44; 4 owner decisions open (see top session block).
+> Previously: 2026-09-10 by CLAUDE_CODE (owner: resume → ORQ-32 → "FF-merge to local main" → "save session"). **ORQ-32 DONE + FF-merged to local `main`** — demo-latest retag moved off the pull-only EC2 box to the workstation. main @`5c00a3e`, **2 ahead of origin, HARD HOLD** (unpushed; push = release moment, owner-gated). LIVE envs UNCHANGED on v0.20.3 / sha-70aad59. Framework **V32.54.0**. **Task queue EMPTY of un-gated work.** No open [WHAT] decisions.
 
 ---
 
-## ⭐ SESSION 2026-09-10 — ORQ-32: demo retag → workstation (EC2 pull-only), FF-merged
+## ⭐ SESSION 2026-09-26 — broadcasts adopted + auth-hardening wave (ORQ-33..43) → v0.20.4 + v0.20.5 LIVE on all envs
+
+```
+[FOCUS: Orqafy]  ·  2026-09-26 22:50  ·  cold-start authority: memory/session_auth_hardening_v0.20.5_2026-09-26.md
+
+## ⏳ TODO — next session works these IN ORDER
+1. [ ] ORQ-45 — `deploy/compose/start.sh` omits docker-compose.worker.yml (dev worker never built/started) +
+   `scripts/dev-freshness-check.sh` passes vacuously when a code service is DOWN. done/verify: `start.sh dev up -d --build`
+   rebuilds app AND worker; freshness exits non-zero with worker stopped. Branch fix/orq-45-*, local.
+2. [ ] ORQ-44 — reconcile repo `deploy/compose/{prod,stage,demo}/*` to live EC2 host files (certresolver=cloudflare,
+   valkey --maxmemory, www router); regenerate MERGED. done/verify: diff vs `ssh ubuntu@18.138.220.90 sudo cat` = empty
+   for those keys; `docker compose config` exit 0. NO deploy.
+3. [ ] ORQ-34 — visual check of Powerbyte mark in sidebar/store/portal footers, light+dark (dev is UP on :42951). Screenshots.
+4. [ ] Housekeeping: delete merged local branches (chore/dev-compose-restart-no, chore/official-powerbyte-logo,
+   fix/orq-35..40/38b/43) with `git branch -d`.
+
+## ⚖️ OPEN DECISIONS (owner) — surface FIRST (all in PENDING_DECISIONS.md + board `next`+`decision`)
+- [ ] ORQ-41 D-PROVISIONING — block `provisioning` tenants from login? (no rec)
+- [ ] ORQ-42 D-FAVICON + D-COPYRIGHT-MARK — rec: keep Orqafy tab icon (gen missing ico/apple/manifest); © line stays text
+- [ ] ORQ-46 D-SUSPEND-LOGIN-MSG — fresh login to suspended workspace shows generic error; rec: show suspended msg only AFTER password verifies
+- [ ] D-DOCKERHUB-TOKEN (owner action) — the ORQ-43 read-only probe printed EC2 `~/.docker/config.json` Docker Hub cred into a local agent transcript; rotate it (rec: yes)
+- ORQ-27: half (a) now moot (prod on same EC2 host → staging refresh ran for real); (b) demo cron still parked — owner may close/re-scope
+
+## ✅ DONE THIS SESSION (verified — evidence)
+- ORQ-33 dev compose `restart: "no"` (8 files/9 svcs; stage/prod/demo untouched) — broadcast 2026-09-23.
+- ORQ-34 Powerbyte logo-only mark beside 3 "Developed by" credits; `/brand/powerbyte` public path — broadcast 2026-09-21.
+- ORQ-35 single `lib/reserved-slugs.ts` (was exploitable: invoice/privacy/demo-login); ORQ-36 `requireTenantSession` in (app)
+  layout + 74 direct-Prisma pages + sweep test; ORQ-37 middleware matcher segment-anchored (tested via Next getMiddlewareMatchers);
+  ORQ-38 suspension actually enforced (session cb/portal jwt/bearer/logins) + ORQ-38b suspend toggles isActive;
+  ORQ-39 login `?error=` alerts (no raw echo); ORQ-40 Orqafy `/logo.png` for JSON-LD.
+- Released **v0.20.4** (2243973) + **v0.20.5** (b0100fb); CI + Docker green both.
+- ORQ-43 prod deploy/rollback/verify scripts retargeted Hostinger→EC2 (3938fb8) — broadcast 2026-09-17 (missed at resume; lesson logged).
+- DEPLOYED sha-b0100fb: staging (prod-data refresh ran) → PROD (backup /home/ubuntu/orqafy-prod-backup-pre-promotion-prod-sha-70aad59-20260926-143155.sql.gz)
+  → DEMO (backup …pre-pushtodemo-20260926-143318). All /api/health 200; prod /logo.png 200, suspended msg renders (PM-verified).
+- Dev rebuilt app+worker FRESH; ORQ-38 E2E on dev PASS (suspend → redirect+msg, tRPC 401, login rejected, reactivate OK); screenshots/orq38-*.png.
+- Audits all envs: 0 reserved-slug collisions (demo=system), 0 suspended-but-active tenants.
+- Tests 1647 → 1726 web; typecheck/lint/build/audit green.
+
+## 🔒 STATE / GROUND TRUTH
+- git: main @abe8fd3 (+ this save commit) · in sync with origin · tag v0.20.5. Framework V32.54.0.
+- LIVE: prod + staging + demo ALL on EC2 18.138.220.90, all on v0.20.5 / sha-b0100fb. Hostinger copies STOPPED (rollback-only).
+- Prod rollback: `bash deploy/rollback.sh prod prod-sha-70aad59` (paired backup above).
+- local dev: UP + FRESH (restart:"no" — won't auto-start with Docker Desktop). Dev DB has throwaway tenants orq38-target/orq38-ops (active).
+- ⚠ ALREADY-DONE guard: ORQ-32..40, 43 + v0.20.4/v0.20.5 releases + all-env deploy DONE+verified — do not re-run.
+```
+
+---
+
+## SESSION 2026-09-10 — ORQ-32: demo retag → workstation (EC2 pull-only), FF-merged
 
 ```
 [FOCUS: Orqafy]  ·  2026-09-10 00:05  ·  cold-start authority: docs/memory/MEMORY.md → session_orq32_demo_retag_workstation_2026-09-10.md

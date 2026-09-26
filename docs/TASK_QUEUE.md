@@ -7,36 +7,10 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 ## 🔴 / 🟡 Open
 
-> Owner-queued order: ORQ-25 ✅ · ORQ-24 ✅ · ORQ-23 ✅ · **ORQ-29 MERGED+RELEASED v0.20.1** · **D-GOVSYNC (V32.54.0) APPLIED** · **ORQ-31 (CI audit RCE fix) RELEASED v0.20.3 + DEPLOYED staging/prod/demo 2026-09-09** · **ORQ-32 (demo retag → workstation) DONE (local, HARD HOLD)** · ORQ-27 owner-PARKED. **No un-gated work open.**
+> 2026-09-26: v0.20.5 LIVE on prod/staging/demo (all EC2). Next un-gated: **ORQ-45 → ORQ-44 → ORQ-34 visual**. Owner [WHAT]s: ORQ-41/42/46 + Docker Hub token rotation (PENDING_DECISIONS.md). ORQ-27 owner-PARKED ((a) now moot).
 
-- 🟡 **🚨 Adopt official Powerbyte logo + favicon set** `[ORQ-34]` — copy kit from
-  `Branding-Marketing-Framework/brand-assets/official-logo/`; apply to Powerbyte company-brand spots
-  (footer credit etc.), theme-matched DarkBG/LightBG. Orqafy product mark kept; favicon swap may be a [WHAT].
-  BUILT `00da7e8` on `chore/official-powerbyte-logo`: logo mark beside the 3 "Developed by" credits (sidebar/store/portal),
-  `/brand/powerbyte` public-path + tests; typecheck/lint/1571 tests green. LEFT: visual check light+dark;
-  owner [WHAT]s: favicon mark, © line, JSON-LD `/logo.png` missing. HARD HOLD. `source: owner 2026-09-21 broadcast`
-- 🟡 **Reserved tenant slugs miss public-path prefixes** `[ORQ-35]` — BUILT `ac29e42` on `fix/orq-35-reserved-slugs`:
-  single `lib/reserved-slugs.ts` wired into `/register` action + tRPC registration; guard tests tie it to PUBLIC_PATHS,
-  top-level route dirs, matcher exclusions. Was exploitable: `invoice`/`privacy`/`demo-login` + `api*`/`images*`/`fonts*`/`icons*`.
-  typecheck/lint/1621 tests green. LEFT: run read-only `apps/web/scripts/check-reserved-tenant-slugs.ts` per env
-  (owner-gated for staging/prod). HARD HOLD. `source: agent-found 2026-09-26`
-- 🟡 **Tenant `(app)` layout has no auth — middleware is sole gate** `[ORQ-36]` — BUILT `0dfed5d` on
-  `fix/orq-36-tenant-layout-auth` (NOT merged): `server/auth/require-tenant-session.ts` (cache()'d, mirrors middleware;
-  wrong tenant → notFound) in `(app)/layout` + 74 direct-Prisma pages; static sweep test enforces it. 1647 tests green.
-  MERGED to local main `d08aee9`. `source: agent-found 2026-09-26`
-- 🟡 **Suspended-tenant check is dead** `[ORQ-38]` — worse than logged: `suspendTenant` writes only `status`, all gates read
-  `isActive` → suspension blocked nothing. BUILT `4768b4f` (`fix/orq-38-suspended-tenant-session`): shared `isTenantSuspended()`
-  in session/portal-jwt callbacks, mobile+sync bearer, all login paths; 1676 tests green. LEFT: live E2E (suspend → reload/tRPC/portal).
-  Owner [WHAT]: suspend also set `isActive=false`? block `provisioning`? `source: agent-found 2026-09-26`
-- 🟡 **Middleware matcher not segment-anchored** `[ORQ-37]` — BUILT `c0e3d91` (`fix/orq-37-matcher-anchoring`): anchored
-  `(?:/|$)`, tests via Next's `getMiddlewareMatchers`; ORQ-35 prefix slug block dropped (exact reservation kept). 1674 green.
-- 🔴 **Login page ignores `?error=`** `[ORQ-39]` — `(auth)/login/page.tsx` shows nothing for `tenant_suspended`/`session_expired`;
-  map codes → shadcn Alert + tests. `source: agent-found 2026-09-26`
-- 🔴 **Middleware matcher exclusions not segment-anchored** `[ORQ-37]` — `(?!api|…|images|fonts|icons)` skips any
-  path starting with those words; anchor to whole segments, verify static/API unchanged. `source: agent-found 2026-09-26`
-- ✅ **Retarget prod deploy/rollback/verify to AWS EC2** `[ORQ-43]` — `3938fb8`; v0.20.5 (`sha-b0100fb`) deployed to prod
-  via the retargeted script 2026-09-26: health 200, app+worker rev b0100fb, 0 pending migrations, backup
-  `/home/ubuntu/orqafy-prod-backup-pre-promotion-prod-sha-70aad59-20260926-143155.sql.gz`; demo cascaded green. `source: owner 2026-09-17 broadcast`
+- 🟡 **Powerbyte logo — visual check only** `[ORQ-34]` — code LIVE in v0.20.4+ (mark beside the 3 "Developed by" credits).
+  LEFT: screenshot sidebar/store/portal footers in light+dark on dev (:42951). Favicon/© line = owner [WHAT] ORQ-42.
 - 🔴 **`start.sh dev up` never builds/starts the worker** `[ORQ-45]` — `deploy/compose/start.sh` runs db/cache/storage/pgadmin/
   infra/app only; `docker-compose.worker.yml` is never included → Rule 39 app-only-rebuild footgun, and dev-freshness-check
   passes vacuously when the worker isn't running. Add worker (`--build`, sequential after app). Done = `start.sh dev up -d`
@@ -56,6 +30,18 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   2026-09-05: HOLD** (installer written+inert; enable live only when ready to touch the EC2 box). `source: agent-found 2026-09-05`
 
 ## ✅ Done recently
+- ✅ **v0.20.5 deployed staging → prod → demo (all EC2)** — `sha-b0100fb`; all health 200; prod backup
+  `/home/ubuntu/orqafy-prod-backup-pre-promotion-prod-sha-70aad59-20260926-143155.sql.gz`; dev rebuilt FRESH;
+  ORQ-38 E2E PASS on dev; audits 0 slug collisions / 0 suspended-but-active in every env. (2026-09-26)
+- ✅ **Retarget prod deploy/rollback/verify to AWS EC2** `[ORQ-43]` — `3938fb8`. `source: owner 2026-09-17 broadcast` (2026-09-26)
+- ✅ **Orqafy `/logo.png` for JSON-LD** `[ORQ-40]` — 512px from icon.svg, public path. v0.20.5. (2026-09-26)
+- ✅ **Login `?error=` messages** `[ORQ-39]` — shadcn Alert per code, generic fallback, no raw echo. v0.20.5. (2026-09-26)
+- ✅ **Suspension enforced on live sessions + suspend toggles isActive** `[ORQ-38/38b]` — `isTenantSuspended()` in session cb,
+  portal jwt, bearer ctxs, logins; E2E on dev. v0.20.4/v0.20.5. (2026-09-26)
+- ✅ **Middleware matcher segment-anchored** `[ORQ-37]` — v0.20.4. (2026-09-26)
+- ✅ **`requireTenantSession` in (app) layout + 74 direct-Prisma pages** `[ORQ-36]` — v0.20.4. (2026-09-26)
+- ✅ **Single reserved tenant-slug list** `[ORQ-35]` — was exploitable: invoice/privacy/demo-login. v0.20.4. (2026-09-26)
+- ✅ **Powerbyte logo mark in "Developed by" credits** `[ORQ-34 code]` — v0.20.4. (2026-09-26)
 - ✅ **Dev compose restart policy → `"no"`** `[ORQ-33]` — all 9 services in 8 `deploy/compose/dev/*.yml` set
   `restart: "no"` so Docker Desktop stops auto-relaunching the fleet; stage/prod/demo keep `unless-stopped`.
   `docker compose config` resolves `"no"` per file; stopgap `docker update --restart=no` on 9 existing
