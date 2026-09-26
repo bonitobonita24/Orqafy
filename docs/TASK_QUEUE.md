@@ -34,10 +34,17 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   map codes → shadcn Alert + tests. `source: agent-found 2026-09-26`
 - 🔴 **Middleware matcher exclusions not segment-anchored** `[ORQ-37]` — `(?!api|…|images|fonts|icons)` skips any
   path starting with those words; anchor to whole segments, verify static/API unchanged. `source: agent-found 2026-09-26`
-- 🟡 **Retarget prod deploy/rollback/verify to AWS EC2** `[ORQ-43]` — `push-to-prod.sh`, `rollback.sh` (prod),
-  `komodo-verify.sh`, `DEPLOYMENT.md` → `ubuntu@18.138.220.90` / `~/.ssh/powerbyte_ec2_komodo` / backups `/home/ubuntu`;
-  prod retag runs on workstation (EC2 pull-only); prod-sha pinned from `sha-*` SOURCE_TAG. Done = v0.20.5 prod deploy green
-  via the retargeted script. `source: owner 2026-09-17 broadcast`
+- ✅ **Retarget prod deploy/rollback/verify to AWS EC2** `[ORQ-43]` — `3938fb8`; v0.20.5 (`sha-b0100fb`) deployed to prod
+  via the retargeted script 2026-09-26: health 200, app+worker rev b0100fb, 0 pending migrations, backup
+  `/home/ubuntu/orqafy-prod-backup-pre-promotion-prod-sha-70aad59-20260926-143155.sql.gz`; demo cascaded green. `source: owner 2026-09-17 broadcast`
+- 🔴 **`start.sh dev up` never builds/starts the worker** `[ORQ-45]` — `deploy/compose/start.sh` runs db/cache/storage/pgadmin/
+  infra/app only; `docker-compose.worker.yml` is never included → Rule 39 app-only-rebuild footgun, and dev-freshness-check
+  passes vacuously when the worker isn't running. Add worker (`--build`, sequential after app). Done = `start.sh dev up -d`
+  leaves `orqafy_dev_worker` up + FRESH. `source: agent-found 2026-09-26`
+- 🔴 **Suspended-tenant fresh login shows generic error** `[ORQ-46]` — ORQ-38 E2E (dev, 2026-09-26): a fresh login to a
+  suspended tenant is rejected with "Invalid email, password, or workspace." rather than the `tenant_suspended` message
+  (reload with an existing session does redirect to `/login?error=tenant_suspended`). May be intentional anti-enumeration —
+  needs an owner [WHAT] before any change. `source: agent-found 2026-09-26`
 - 🔴 **Repo prod compose drifted from EC2 host** `[ORQ-44]` — `deploy/compose/prod/*.yml` still `certresolver=letsencrypt`,
   no valkey `--maxmemory`, no `www` router; live host (`/etc/komodo/stacks/orqafy-prod/`) has `cloudflare` + `--maxmemory 200mb`.
   Scripts never copy compose (no live risk) — reconcile repo to host reality. Done = repo files match host modulo secrets. `source: agent-found 2026-09-26`
