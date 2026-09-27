@@ -1,5 +1,28 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-09-27 (afternoon) — Compose files synced with the live server, dev stack renamed, logo check mostly done
+
+**In your words:** do ORQ-44 in subagents; merge it and do the logo check; fix the dev-stack name clash here; then "save session and stop the reboot loop for now."
+
+✅ **Done**
+- **Repo compose files now match the live server (ORQ-44).** Prod, staging and demo now use the Cloudflare certificate setting. Prod also gained the www→orqafy.com redirect and the Valkey memory cap, and now matches the live layout on EC2. The files were checked to load cleanly, and there are no secrets in them. Merged to local `main`.
+- **Dev stack no longer clashes with Orqafy-Self-Hosted (ORQ-49).** Both projects used the same Docker name, so they kept taking over each other's containers. This one is now `orqafy_saas_dev` and keeps its existing data. Both stacks now run side by side. It's on a branch, not merged yet.
+- **Logo check (ORQ-34):** the sidebar and store footer look right in light and dark (screenshots sent).
+
+🔨 **Partial**
+- ORQ-34: the customer portal footer is still unchecked, because dev has no portal customer to log in as.
+
+⏳ **Next (waiting on you)**
+- OK to merge the ORQ-49 branch into local `main`?
+- OK to invite a test portal customer in dev to finish the logo check?
+- Should the portal login page show the "Developed by" credit? (rec: no)
+
+💬 **Notes**
+- A worker ran `git stash` by mistake. It was restored immediately and nothing was lost. The safety hook didn't catch it, so that's noted for the AIEF side.
+- The deploy lint check now wrongly rejects the Cloudflare setting. That fix belongs to the framework (ORQ-48).
+- Still yours: rotate the Docker Hub token on EC2.
+- The reboot loop was stopped at your request.
+
 ## 2026-09-27 — Answered the 4 pending questions, then built + verified three fixes (all local, nothing shipped)
 
 **In your words:** resume session; answered the 4 waiting decisions; "start ORQ-45"; then let it run the un-gated queue; "stop here — solid checkpoint."

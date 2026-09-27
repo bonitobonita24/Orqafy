@@ -1,13 +1,52 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-09-27 by CLAUDE_CODE — resume: 4 owner decisions answered; ORQ-45/46/47 shipped to LOCAL main (5 ahead of origin, HARD HOLD); dev rebuilt+verified. Next = ORQ-44, ORQ-34 visual.
+> Last updated: 2026-09-27 (pm) by CLAUDE_CODE — ORQ-44 merged to local main; ORQ-49 dev rename done on branch; ORQ-34 sidebar+store PASS (portal pending). Owner: "save session + stop the reboot loop for now" → loop STOPPED.
+> Previously: 2026-09-27 (am) by CLAUDE_CODE — resume: 4 owner decisions answered; ORQ-45/46/47 shipped to LOCAL main (5 ahead of origin, HARD HOLD); dev rebuilt+verified.
 > Previously: 2026-09-26 by CLAUDE_CODE — v0.20.5 LIVE on prod/staging/demo (all EC2); ORQ-33..43 done.
 > Previously: 2026-09-10 by CLAUDE_CODE (owner: resume → ORQ-32 → "FF-merge to local main" → "save session"). **ORQ-32 DONE + FF-merged to local `main`** — demo-latest retag moved off the pull-only EC2 box to the workstation. main @`5c00a3e`, **2 ahead of origin, HARD HOLD** (unpushed; push = release moment, owner-gated). LIVE envs UNCHANGED on v0.20.3 / sha-70aad59. Framework **V32.54.0**. **Task queue EMPTY of un-gated work.** No open [WHAT] decisions.
 
 ---
 
-## ⭐ SESSION 2026-09-27 — resume: 4 decisions answered + ORQ-45/46/47 shipped to LOCAL main (verified)
+## ⭐ SESSION 2026-09-27 (pm) — ORQ-44 merged · ORQ-49 dev rename · ORQ-34 partial — LOOP STOPPED by owner
+
+```
+[FOCUS: Orqafy]  ·  2026-09-27 pm  ·  cold-start authority: memory/session_orq44_49_34_loop_stopped_2026-09-27.md
+Owner said "save session and stop reboot loop for now" → close-session --stop --force (owner-rest). Next session starts only when the owner opens one.
+
+## ⏳ TODO — next session (ask owner #1-#3 first; they were asked 2026-09-27 and not answered yet)
+1. [ ] [owner OK needed] FF-merge `fix/orq-49-dev-compose-unique-name` (272112d + 9ad6657 + this handoff commit) → local main. The repo is CHECKED OUT on that branch.
+2. [ ] [owner OK needed] ORQ-34 portal: invite a portal customer in DEV only, then screenshot the (portal-app) footer light+dark → close ORQ-34.
+3. [ ] [WHAT] Should portal/login/page.tsx carry the "Developed by" credit? Rec: NO (bare login screen).
+4. [ ] ORQ-48 (low, cross-seat): lint-deploy C2 rejects certresolver=cloudflare → fix in AIEF, NOT from here.
+5. [ ] Push local main (release ≈ v0.20.6) — owner word only.
+
+## ⚖️ OPEN (owner)
+- D-DOCKERHUB-TOKEN — rotate the EC2 Docker Hub cred (owner action, rec yes).
+- ORQ-27 — parked.
+
+## ✅ DONE THIS SESSION (verified)
+- ORQ-44 compose reconcile (db9cf51 + f6ecbb9):
+  - prod/stage/demo now use cloudflare certresolver; prod also gets the www→apex router, valkey --maxmemory 200mb noeviction, and the live EC2 shape.
+  - PM verify: `config --quiet` exit 0 for all 3 env sets + both MERGED files (needs a placeholder .env; the live shape uses env_file .env). Secret-scan clean.
+  - FF-merged to local main.
+- ORQ-49 (branch, 272112d + 9ad6657): dev project renamed orqafy_dev → orqafy_saas_dev. Existing volumes pinned by name, so the data is kept (3 tenants).
+  - Self-Hosted (:56483) untouched; both run side by side.
+  - Freshness `--expect app,worker` exit 0; :42951 returns 200.
+  - `.env.dev` edited locally (gitignored).
+- ORQ-34: sidebar + store footer light/dark PASS (PM viewed screenshots/orq34-*.png). Portal not reachable: dev has no portal customer.
+- Board: ORQ-44 Ready to Test/main_local · ORQ-49 Ready to Test/dev · ORQ-34 On-Going · ORQ-48 + ORQ-49 created.
+- Worker incident: a worker ran `git stash` (git-guard did NOT block it). Restored at once, nothing lost, lesson logged.
+
+## 🔒 GROUND TRUTH
+- git: checked out on fix/orq-49-dev-compose-unique-name. Local main @92274ee is 9 ahead of origin. HARD HOLD.
+- LIVE: unchanged, v0.20.5 / sha-b0100fb, all envs on EC2.
+- dev: orqafy_saas_dev UP + FRESH on :42951 (restart:"no"). Self-Hosted's orqafy_dev_* also UP (not ours).
+```
+
+---
+
+## SESSION 2026-09-27 (am) — resume: 4 decisions answered + ORQ-45/46/47 shipped to LOCAL main (verified)
 
 ```
 [FOCUS: Orqafy]  ·  2026-09-27  ·  cold-start authority: memory/session_resume_orq45_46_47_2026-09-27.md
