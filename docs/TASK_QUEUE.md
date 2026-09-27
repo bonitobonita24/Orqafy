@@ -12,6 +12,8 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 - 🟡 **Powerbyte logo — visual check only** `[ORQ-34]` — code LIVE in v0.20.4+ (mark beside the 3 "Developed by" credits).
   LEFT: screenshot sidebar/store/portal footers in light+dark on dev (:42951). Favicon/© line = owner [WHAT] ORQ-42.
+  2026-09-27 static check PASS: all 3 credits (`app-sidebar.tsx:121-129`, `store/layout.tsx:95-103`, `portal/(portal-app)/layout.tsx:58-66`) render `<PowerbyteMark/>` + href powerbyteitsolutions.com, `target=_blank`, `rel="noopener noreferrer"`; mark = single green logo-only glyph on transparent (no darkBG/whiteBG pair exists for logo-only; reads on both themes), path `/brand/powerbyte` is public.
+  🔴 BLOCKED (agent-found 2026-09-27): screenshots not taken. This repo's dev stack is NOT running. The `orqafy_dev_*` containers on the host belong to `1_COMPANY_DEV/Orqafy-Self-Hosted` (:56483, no `apps/web/public` → mark 404 there). Both repos set `COMPOSE_PROJECT_NAME=orqafy_dev`, so `start.sh dev up` here would take over or clobber the other stack and its volumes. Fix: give one repo a unique `COMPOSE_PROJECT_NAME` (Rule 22), then start this dev stack and take the 6 screenshots.
 - 🔴 **lint-deploy C2 rejects `certresolver=cloudflare`** — `scripts/lint-deploy.sh` C2 is a case check but only accepts
   `letsencrypt`, so the live EC2 `cloudflare` resolver fails it (prod/stage/demo app.yml). Framework deliverable #20 →
   fix upstream in AIEF (accept any lowercase resolver), then re-sync; don't hand-edit here. `source: agent-found 2026-09-27`
