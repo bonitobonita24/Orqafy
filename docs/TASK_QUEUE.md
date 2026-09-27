@@ -13,7 +13,10 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 - 🟡 **Powerbyte logo — visual check only** `[ORQ-34]` — code LIVE in v0.20.4+ (mark beside the 3 "Developed by" credits).
   LEFT: screenshot sidebar/store/portal footers in light+dark on dev (:42951). Favicon/© line = owner [WHAT] ORQ-42.
   2026-09-27 static check PASS: all 3 credits (`app-sidebar.tsx:121-129`, `store/layout.tsx:95-103`, `portal/(portal-app)/layout.tsx:58-66`) render `<PowerbyteMark/>` + href powerbyteitsolutions.com, `target=_blank`, `rel="noopener noreferrer"`; mark = single green logo-only glyph on transparent (no darkBG/whiteBG pair exists for logo-only; reads on both themes), path `/brand/powerbyte` is public.
-  🔴 BLOCKED (agent-found 2026-09-27): screenshots not taken. This repo's dev stack is NOT running. The `orqafy_dev_*` containers on the host belong to `1_COMPANY_DEV/Orqafy-Self-Hosted` (:56483, no `apps/web/public` → mark 404 there). Both repos set `COMPOSE_PROJECT_NAME=orqafy_dev`, so `start.sh dev up` here would take over or clobber the other stack and its volumes. Fix: give one repo a unique `COMPOSE_PROJECT_NAME` (Rule 22), then start this dev stack and take the 6 screenshots.
+  2026-09-27 visual (dev :42951, stack `orqafy_saas_dev` after ORQ-49; `screenshots/orq34-*.png`): **sidebar light+dark PASS**,
+  **store light+dark PASS** (green mark visible, credit legible, nothing broken). **Portal NOT VERIFIED**: no seeded portal customer
+  in dev DB (`customers.portal_email` all null), and `portal/login/page.tsx` has no credit, so the `(portal-app)/layout.tsx:58-66`
+  footer can't be reached; portal PNGs show the login page only. LEFT: seed or invite a dev portal customer, then shoot the portal footer.
 - 🔴 **lint-deploy C2 rejects `certresolver=cloudflare`** — `scripts/lint-deploy.sh` C2 is a case check but only accepts
   `letsencrypt`, so the live EC2 `cloudflare` resolver fails it (prod/stage/demo app.yml). Framework deliverable #20 →
   fix upstream in AIEF (accept any lowercase resolver), then re-sync; don't hand-edit here. `source: agent-found 2026-09-27`
@@ -25,6 +28,9 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   2026-09-05: HOLD** (installer written+inert; enable live only when ready to touch the EC2 box). `source: agent-found 2026-09-05`
 
 ## ✅ Done recently
+- ✅ **Dev compose project unique: `orqafy_saas_dev`** `[ORQ-49]` — was `orqafy_dev`, colliding with Orqafy-Self-Hosted's dev
+  containers. Volumes pinned to the old `orqafy_dev_{postgres,valkey,minio,pgadmin}_data` + `app_hot_*` (data kept, 3 tenants);
+  Self-Hosted untouched. Verified: health 200, freshness exit 0. (`272112d`, 2026-09-27)
 - ✅ **Repo compose reconciled to live EC2 host** `[ORQ-44]` — prod rewritten to the live shape (cloudflare certresolver,
   `www`→apex 301 router, valkey `--maxmemory 200mb noeviction`, `.env` env_file, INTERNAL_* URLs, no pgbouncer) +
   prod MERGED regenerated; stage/demo certresolver → cloudflare. Kept: V32.10 limits, prod `:-latest` fallback.
