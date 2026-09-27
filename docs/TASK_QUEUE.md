@@ -12,9 +12,9 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 
 - 🟡 **Powerbyte logo — visual check only** `[ORQ-34]` — code LIVE in v0.20.4+ (mark beside the 3 "Developed by" credits).
   LEFT: screenshot sidebar/store/portal footers in light+dark on dev (:42951). Favicon/© line = owner [WHAT] ORQ-42.
-- 🔴 **Repo prod compose drifted from EC2 host** `[ORQ-44]` — `deploy/compose/prod/*.yml` still `certresolver=letsencrypt`,
-  no valkey `--maxmemory`, no `www` router; live host (`/etc/komodo/stacks/orqafy-prod/`) has `cloudflare` + `--maxmemory 200mb`.
-  Scripts never copy compose (no live risk) — reconcile repo to host reality. Done = repo files match host modulo secrets. `source: agent-found 2026-09-26`
+- 🔴 **lint-deploy C2 rejects `certresolver=cloudflare`** — `scripts/lint-deploy.sh` C2 is a case check but only accepts
+  `letsencrypt`, so the live EC2 `cloudflare` resolver fails it (prod/stage/demo app.yml). Framework deliverable #20 →
+  fix upstream in AIEF (accept any lowercase resolver), then re-sync; don't hand-edit here. `source: agent-found 2026-09-27`
 - 🔵 **[OWNER-PARKED 2026-09-05 — not a to-do] Cross-host deploy residuals from the EC2 split** `[ORQ-27]` — surfaced by ORQ-25.
   (a) `staging-refresh-and-deploy.sh` prod→staging is same-host `pg_dump|psql`, but prod=Hostinger / staging=EC2 →
   step 2 auto-skips (gate degraded to deploy+migrate only). **Owner decision 2026-09-05: LEAVE THE GATE DEGRADED**
@@ -23,6 +23,10 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   2026-09-05: HOLD** (installer written+inert; enable live only when ready to touch the EC2 box). `source: agent-found 2026-09-05`
 
 ## ✅ Done recently
+- ✅ **Repo compose reconciled to live EC2 host** `[ORQ-44]` — prod rewritten to the live shape (cloudflare certresolver,
+  `www`→apex 301 router, valkey `--maxmemory 200mb noeviction`, `.env` env_file, INTERNAL_* URLs, no pgbouncer) +
+  prod MERGED regenerated; stage/demo certresolver → cloudflare. Kept: V32.10 limits, prod `:-latest` fallback.
+  Detail: `docs/DEPLOY_COMPOSE_RECONCILIATION.md`. Branch `fix/orq-44-compose-reconcile` (`db9cf51`, 2026-09-27)
 - ✅ **Favicon raster set generated** `[ORQ-47]` — `favicon.ico` (16/32/48), `apple-icon.png` (180), `icon.png` (512),
   `manifest.ts`, `/icons/{192,512}.png` from `icon.svg` via sharp+png-to-ico; reproducible `apps/web/scripts/gen-icons.mjs`.
   icon.svg design unchanged. Install also corrected a pre-existing lockfile drift (@types/node lock=25.9.3 vs web pin ^22.10.7);
