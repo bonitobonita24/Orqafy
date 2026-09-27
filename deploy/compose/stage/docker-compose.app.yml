@@ -45,5 +45,5 @@ services:
       - "traefik.http.routers.orqafy_staging_app.rule=Host(`${APP_DOMAIN}`)"
       - "traefik.http.routers.orqafy_staging_app.entrypoints=websecure"
       - "traefik.http.routers.orqafy_staging_app.tls=true"
-      - "traefik.http.routers.orqafy_staging_app.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.orqafy_staging_app.tls.certresolver=cloudflare"
       - "traefik.http.services.orqafy_staging_app.loadbalancer.server.port=3000"

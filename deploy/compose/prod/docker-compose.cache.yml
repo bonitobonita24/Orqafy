@@ -16,10 +16,12 @@ services:
     cpus: 0.25
     container_name: ${COMPOSE_PROJECT_NAME}_valkey
     hostname: ${COMPOSE_PROJECT_NAME}_valkey
-    env_file: ../../../.env.prod
+    # env_file is co-located in the stack run directory (Komodo writes the Stack
+    # Environment to .env there) — NOT a relative path back to the repo root.
+    env_file: .env
     environment:
       TZ: Asia/Manila
-    command: valkey-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    command: valkey-server --requirepass ${REDIS_PASSWORD} --appendonly yes --maxmemory 200mb --maxmemory-policy noeviction
     volumes:
       - valkey_data:/data
     ports:

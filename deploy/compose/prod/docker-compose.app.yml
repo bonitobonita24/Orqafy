@@ -8,6 +8,10 @@ networks:
 
 services:
   app:
+    # NO build: key — image pulled from Docker Hub only.
+    # Fallback tag is `latest` (the prod channel). Live host file says `:-staging-latest`, but the
+    # stack .env always pins APP_IMAGE_TAG=latest (push-to-prod.sh), so the fallback never fires —
+    # repo keeps the prod-correct fallback deliberately (ORQ-44).
     image: ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${APP_IMAGE_TAG:-latest}
     mem_limit: 768m
     memswap_limit: 768m
@@ -15,32 +19,44 @@ services:
     cpus: 1.0
     container_name: ${COMPOSE_PROJECT_NAME}_app
     hostname: ${COMPOSE_PROJECT_NAME}_app
-    env_file: ../../../.env.prod
+    # env_file is co-located in the stack run directory (Komodo writes the Stack
+    # Environment to .env there) — NOT a relative path back to the repo root.
+    env_file: .env
     environment:
-      - TZ=Asia/Manila
-      - NODE_ENV=production
-      - PORT=${APP_PORT}
+      TZ: Asia/Manila
+      NODE_ENV: production
+      PORT: "3000"
+      AUTH_TRUST_HOST: "true"
       # Persistent media default = Telegram on dev+staging+prod (media-storage-default.md).
-      # TELEGRAM_* real values come from Server-Setups (SOPS+age) via .env.prod at deploy time — never hardcode.
-      - STORAGE_BACKEND=telegram
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - TELEGRAM_DEFAULT_CHANNEL_ID=${TELEGRAM_DEFAULT_CHANNEL_ID}
+      # TELEGRAM_* real values come from Server-Setups (SOPS+age) via the stack .env — never hardcode.
+      STORAGE_BACKEND: telegram
+      # Internal DB/cache URLs override whatever the .env's public-facing values are,
+      # so the app always talks to the co-located containers by Docker hostname.
+      DATABASE_URL: ${INTERNAL_DATABASE_URL}
+      DIRECT_URL: ${INTERNAL_DIRECT_URL}
+      REDIS_URL: ${INTERNAL_REDIS_URL}
     networks: [app_network, proxy]
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      valkey:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:${APP_PORT}/api/health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.rule=Host(`${APP_DOMAIN}`)"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.entrypoints=websecure"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.tls=true"
-      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_app.tls.certresolver=letsencrypt"
-      - "traefik.http.services.${COMPOSE_PROJECT_NAME}_app.loadbalancer.server.port=3000"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.orqafy_prod_app.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.orqafy_prod_app.entrypoints=websecure"
+      - "traefik.http.routers.orqafy_prod_app.tls=true"
+      - "traefik.http.routers.orqafy_prod_app.tls.certresolver=cloudflare"
+      - "traefik.http.services.orqafy_prod_app.loadbalancer.server.port=3000"
+      # www.orqafy.com → 301 to the apex (same service, redirectregex middleware).
+      - "traefik.http.routers.orqafy_prod_www.rule=Host(`www.orqafy.com`)"
+      - "traefik.http.routers.orqafy_prod_www.entrypoints=websecure"
+      - "traefik.http.routers.orqafy_prod_www.tls=true"
+      - "traefik.http.routers.orqafy_prod_www.tls.certresolver=cloudflare"
+      - "traefik.http.routers.orqafy_prod_www.service=orqafy_prod_app"
+      - "traefik.http.routers.orqafy_prod_www.middlewares=orqafy_prod_wwwredir"
+      - "traefik.http.middlewares.orqafy_prod_wwwredir.redirectregex.regex=^https://www.orqafy.com/(.*)"
+      - "traefik.http.middlewares.orqafy_prod_wwwredir.redirectregex.replacement=https://orqafy.com/$$1"
+      - "traefik.http.middlewares.orqafy_prod_wwwredir.redirectregex.permanent=true"

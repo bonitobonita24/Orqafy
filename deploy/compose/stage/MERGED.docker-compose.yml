@@ -1,7 +1,7 @@
 # =============================================================
 # ORQAFY STAGING — Komodo Stack compose (single-file merge)
 # =============================================================
-# Regenerated 2026-07-19 to match the LIVE stack at
+# Regenerated 2026-07-19 (certresolver refreshed 2026-09-27, ORQ-44 — EC2-Komodo) to match the LIVE stack at
 # /etc/komodo/stacks/orqafy-staging/ (ground-truthed via read-only SSH) —
 # see docs/DEPLOY_COMPOSE_RECONCILIATION.md for the full reconciliation record.
 #
@@ -182,5 +182,5 @@ services:
       - "traefik.http.routers.orqafy_staging_app.rule=Host(`${APP_DOMAIN}`)"
       - "traefik.http.routers.orqafy_staging_app.entrypoints=websecure"
       - "traefik.http.routers.orqafy_staging_app.tls=true"
-      - "traefik.http.routers.orqafy_staging_app.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.orqafy_staging_app.tls.certresolver=cloudflare"
       - "traefik.http.services.orqafy_staging_app.loadbalancer.server.port=3000"

@@ -75,3 +75,18 @@ different deploy model entirely (local build), and prod has not yet had a live s
 Deploy model is now locked as **(a)**: Komodo/the gate script keep deploying the hand-placed
 `/etc/komodo/stacks/*` files; the repo compose stays a **verbatim mirror**, not a template/generator
 input. No templating/generator system was introduced. See `docs/DECISIONS_LOG.md`.
+
+## 2026-09-27 — ORQ-44: prod/stage/demo re-reconciled to EC2-Komodo
+Host compose (`/etc/komodo/stacks/orqafy-{prod,staging,demo}/*.yml`, never `.env`) pulled read-only.
+- **prod** (first ground-truth since the ORQ-43 Hostinger→EC2 move): repo files rewritten to the live
+  shape — co-located `env_file: .env`, INTERNAL_* DB/cache URL overrides, `AUTH_TRUST_HOST`, fixed port
+  3000 health checks, hardcoded `orqafy_prod_*` Traefik names + `traefik.docker.network=proxy`,
+  `certresolver=cloudflare`, the `www.orqafy.com` → apex 301 router/middleware, valkey
+  `--maxmemory 200mb --maxmemory-policy noeviction`; pgbouncer + depends_on + worker healthcheck dropped
+  (not live). `prod/MERGED.docker-compose.yml` regenerated from the 5 individual files.
+- **stage/demo**: only drift was `certresolver=letsencrypt` → `cloudflare` (stage MERGED too).
+- **Kept on purpose (documented diffs):** V32.10 resource limits (host has none); prod image fallback
+  `:-latest` (host `:-staging-latest`, never fires — `.env` pins `latest`); stage MERGED keeps its
+  no-host-ports hardening; `prod/docker-compose.pgadmin.yml` stays repo-only (not deployed).
+- **Known false positive:** `scripts/lint-deploy.sh` C2 accepts only `certresolver=letsencrypt`, so it
+  flags the live `cloudflare` resolver. Framework-side fix needed (AIEF back-port).
