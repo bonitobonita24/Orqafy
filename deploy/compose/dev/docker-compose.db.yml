@@ -5,7 +5,7 @@ networks:
 
 volumes:
   postgres_data:
-    name: ${COMPOSE_PROJECT_NAME}_postgres_data
+    name: orqafy_dev_postgres_data  # ORQ-49: pinned to the pre-rename volume (old project orqafy_dev) so dev data survives the orqafy_saas_dev rename
   pgbouncer_data:
     name: ${COMPOSE_PROJECT_NAME}_pgbouncer_data
 

@@ -11,11 +11,11 @@ networks:
 
 volumes:
   app_hot_node_modules:
-    name: ${COMPOSE_PROJECT_NAME}_app_hot_node_modules
+    name: orqafy_dev_app_hot_node_modules  # ORQ-49: pinned to the pre-rename volume (old project orqafy_dev) so dev data survives the orqafy_saas_dev rename
   app_hot_next:
-    name: ${COMPOSE_PROJECT_NAME}_app_hot_next
+    name: orqafy_dev_app_hot_next  # ORQ-49: pinned to the pre-rename volume (old project orqafy_dev) so dev data survives the orqafy_saas_dev rename
   app_hot_turbo:
-    name: ${COMPOSE_PROJECT_NAME}_app_hot_turbo
+    name: orqafy_dev_app_hot_turbo  # ORQ-49: pinned to the pre-rename volume (old project orqafy_dev) so dev data survives the orqafy_saas_dev rename
 
 services:
   app:

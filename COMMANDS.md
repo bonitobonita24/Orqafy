@@ -209,10 +209,10 @@ pnpm db:seed                                       # re-seed (creates webmaster 
 |---|---|
 | `cat .env.dev \| grep _PORT` | List all assigned ports for dev environment |
 | `docker stats` | Live CPU/memory/network stats for all containers |
-| `docker exec -it orqafy_dev_postgres psql -U orqafy_dev -d orqafy_dev` | Open PostgreSQL shell |
-| `docker exec -it orqafy_dev_valkey valkey-cli` | Open Valkey (Redis) CLI |
-| `docker logs orqafy_dev_app --tail 100` | Last 100 lines of app logs |
-| `docker inspect orqafy_dev_app \| grep IPAddress` | Get container IP address |
+| `docker exec -it orqafy_saas_dev_postgres psql -U orqafy_dev -d orqafy_dev` | Open PostgreSQL shell |
+| `docker exec -it orqafy_saas_dev_valkey valkey-cli` | Open Valkey (Redis) CLI |
+| `docker logs orqafy_saas_dev_app --tail 100` | Last 100 lines of app logs |
+| `docker inspect orqafy_saas_dev_app \| grep IPAddress` | Get container IP address |
 | `pnpm --filter @orqafy/web dev` | Start only the web app (no Docker) |
 | `pnpm turbo run build --filter=@orqafy/web` | Build only the web app |
 | `git log --oneline -10` | Last 10 commits |

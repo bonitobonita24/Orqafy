@@ -11,7 +11,7 @@ This mirrors the fleet-proven FRMS / Marine-Guardian setup. See the global rules
 
 | Env | COMPOSE_PROJECT_NAME | Traefik host (`APP_DOMAIN`) | Default image tag | Storage backend | Trigger |
 |-----|----------------------|----------------------------|-------------------|-----------------|---------|
-| **dev**  | `orqafy_dev`     | localhost (no Traefik)          | built from source     | MinIO/S3 (dev) or Telegram dev channel | local commit + rebuild |
+| **dev**  | `orqafy_saas_dev` | localhost (no Traefik)          | built from source     | MinIO/S3 (dev) or Telegram dev channel | local commit + rebuild |
 | **demo** | `orqafy_demo`    | `demo.orqafy.com`     | `demo-latest`         | **MinIO/S3** (`STORAGE_BACKEND=s3`) | manual push |
 | **staging** | `orqafy_staging` | `staging.orqafy.com` | `staging-latest`   | **Telegram** (`STORAGE_BACKEND=telegram`) | auto on push to `main` → data-first gate |
 | **prod** | `orqafy_prod`    | `orqafy.com`          | `latest`              | **Telegram** (`STORAGE_BACKEND=telegram`) | manual push (owner word only) |
