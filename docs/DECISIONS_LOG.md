@@ -1816,3 +1816,35 @@ app-internal gain. Owner chose to keep. **This closes the item; the SessionStart
 STALE — do not re-surface.**
 
 — recorded by CLAUDE_CODE (PM/Opus), 2026-09-01.
+
+---
+
+## 2026-10-08 — W3: ratified RBAC slug divergence — SessionStart hook false-alarm is STALE (re-affirmed)
+
+**Decision (no change — record-keeping only):** Orqafy's RBAC uses owner-RATIFIED role slugs
+`tenant_super_admin` / `platform_owner` / `admin`, intentionally diverging from the fleet-standard slugs
+`tenant_superadmin` / `tenant_manager` / `tenant_admin` (decided ORQ-21, this log 2026-09-01 — owner
+declined the rename; roles are a data-driven `roles` table with string slugs, NOT a Postgres enum).
+
+**Consequence noted this session:** the SessionStart fleet hook greps for the standard slug
+`tenant_superadmin` and FALSE-ALARMS "no `tenant_superadmin` role found → offer Scenario-42 retrofit"
+every session. That offer is STALE — the 3-tier RBAC retrofit is COMPLETE (built + merged 2026-08-09) and
+was independently RE-VERIFIED 2026-10-08: all 4 checks green — web 1732/1732 + db 61/61 tests, exactly 1
+owner/tenant across `demo`/`orq38-ops`/`orq38-target`, the partial-unique index
+`one_tenant_owner_per_tenant` present, all 3 role slugs seeded per tenant.
+
+**Action for future sessions:** verify-only — do NOT rebuild or re-offer the retrofit on this hook's
+say-so. (Global lesson already logged: `process.resume.stale-sessionstart-rbac-retrofit-offer`.)
+
+— recorded by CLAUDE_CODE (worker, governance-doc pass), 2026-10-08.
+
+---
+
+## 2026-10-08 — ORQ-50 resolved: customer-portal login page stays bare (no Powerbyte credit)
+
+**Decision:** The customer portal login page
+(`apps/web/src/app/(tenant)/[slug]/portal/login/page.tsx`) stays BARE — no "Developed by Powerbyte"
+credit. Owner call, 2026-10-08. The credit remains on the 3 already-verified surfaces (authed sidebar,
+storefront footer, portal-app footer — ORQ-34, verified 2026-10-08). No code change.
+
+— recorded by CLAUDE_CODE (worker, governance-doc pass), 2026-10-08.
