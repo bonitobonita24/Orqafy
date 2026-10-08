@@ -1,5 +1,19 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-10-08 — Loop restarted: ORQ-49 merged, portal logo check finished
+
+**In your words:** run the reboot loop first.
+
+✅ **Done**
+- **Merged the dev-stack rename (ORQ-49) into local `main`.** Both Orqafy and Orqafy-Self-Hosted dev stacks keep running side by side. Local only, not pushed.
+- **Finished the logo check (ORQ-34).** Brought dev back up (it had been stopped 10 days; its data was preserved), created a test portal login on the demo workspace, and confirmed the customer-portal footer shows the green Powerbyte mark + "Developed by Powerbyte IT Solutions" credit in both light and dark. That was the last unchecked spot — sidebar and store already passed. Screenshots sent. ORQ-34 is done.
+
+💬 **Notes / still waiting on you**
+- Should the portal **login** page carry the "Developed by" credit? (rec: no — keep the bare login screen.)
+- Docker Hub token on EC2 still needs rotating (your action).
+- Local `main` is 12 commits ahead of origin — a push is a release, your word only.
+- I left a throwaway portal login (`portal-test@orqafy.dev`) on a demo customer in **dev only** — handy for future portal checks.
+
 ## 2026-09-27 (afternoon) — Compose files synced with the live server, dev stack renamed, logo check mostly done
 
 **In your words:** do ORQ-44 in subagents; merge it and do the logo check; fix the dev-stack name clash here; then "save session and stop the reboot loop for now."

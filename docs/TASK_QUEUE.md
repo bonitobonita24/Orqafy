@@ -10,13 +10,6 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 > 2026-09-26: v0.20.5 LIVE on prod/staging/demo (all EC2). Next un-gated: **ORQ-45 → ORQ-44 → ORQ-34 visual**. Owner [WHAT]s: ORQ-41/42/46 + Docker Hub token rotation (PENDING_DECISIONS.md). ORQ-27 owner-PARKED ((a) now moot).
 > 2026-09-27 (resume): owner answered all 4 open decisions (ORQ-41 provisioning KEEP-closed; copyright-mark KEEP-text-closed; ORQ-46 approved; ORQ-42 → ORQ-47). Shipped to LOCAL main (4 ahead of origin, HARD HOLD): **ORQ-45, ORQ-46, ORQ-47** — all verified. Remaining un-gated: **ORQ-44** (compose reconcile), **ORQ-34 visual**, branch housekeeping. Owner action: D-DOCKERHUB-TOKEN rotation.
 
-- 🟡 **Powerbyte logo — visual check only** `[ORQ-34]` — code LIVE in v0.20.4+ (mark beside the 3 "Developed by" credits).
-  LEFT: screenshot sidebar/store/portal footers in light+dark on dev (:42951). Favicon/© line = owner [WHAT] ORQ-42.
-  2026-09-27 static check PASS: all 3 credits (`app-sidebar.tsx:121-129`, `store/layout.tsx:95-103`, `portal/(portal-app)/layout.tsx:58-66`) render `<PowerbyteMark/>` + href powerbyteitsolutions.com, `target=_blank`, `rel="noopener noreferrer"`; mark = single green logo-only glyph on transparent (no darkBG/whiteBG pair exists for logo-only; reads on both themes), path `/brand/powerbyte` is public.
-  2026-09-27 visual (dev :42951, stack `orqafy_saas_dev` after ORQ-49; `screenshots/orq34-*.png`): **sidebar light+dark PASS**,
-  **store light+dark PASS** (green mark visible, credit legible, nothing broken). **Portal NOT VERIFIED**: no seeded portal customer
-  in dev DB (`customers.portal_email` all null), and `portal/login/page.tsx` has no credit, so the `(portal-app)/layout.tsx:58-66`
-  footer can't be reached; portal PNGs show the login page only. LEFT: seed or invite a dev portal customer, then shoot the portal footer.
 - 🔴 **lint-deploy C2 rejects `certresolver=cloudflare`** — `scripts/lint-deploy.sh` C2 is a case check but only accepts
   `letsencrypt`, so the live EC2 `cloudflare` resolver fails it (prod/stage/demo app.yml). Framework deliverable #20 →
   fix upstream in AIEF (accept any lowercase resolver), then re-sync; don't hand-edit here. `source: agent-found 2026-09-27`
@@ -28,6 +21,13 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   2026-09-05: HOLD** (installer written+inert; enable live only when ready to touch the EC2 box). `source: agent-found 2026-09-05`
 
 ## ✅ Done recently
+- ✅ **Powerbyte logo visual check — ALL surfaces PASS (sidebar/store/portal, light+dark)** `[ORQ-34]` — final piece
+  (portal footer) verified 2026-10-08. Seeded a dev portal customer on the `demo` tenant (`portal-test@orqafy.dev`,
+  `portal_enabled=true`), logged into `/demo/portal`, captured `screenshots/orq34-portal-{light,dark}.png`:
+  `(portal-app)/layout.tsx` footer renders `<PowerbyteMark/>` (green glyph) + "Developed by Powerbyte IT Solutions"
+  (`target=_blank rel="noopener noreferrer"` → powerbyteitsolutions.com), legible both themes. Sidebar + store were
+  already PASS (2026-09-27). Code was LIVE since v0.20.4. Portal-login-credit remains owner `[WHAT]` (separate).
+  Dev-only data seed noted in STATE (cross-scope). (2026-10-08)
 - ✅ **Dev compose project unique: `orqafy_saas_dev`** `[ORQ-49]` — was `orqafy_dev`, colliding with Orqafy-Self-Hosted's dev
   containers. Volumes pinned to the old `orqafy_dev_{postgres,valkey,minio,pgadmin}_data` + `app_hot_*` (data kept, 3 tenants);
   Self-Hosted untouched. Verified: health 200, freshness exit 0. (`272112d`, 2026-09-27)

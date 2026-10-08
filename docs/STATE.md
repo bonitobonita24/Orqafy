@@ -8,6 +8,43 @@
 
 ---
 
+## ⭐ SESSION 2026-10-08 — LOOP RESTARTED: ORQ-49 merged · ORQ-34 portal CLOSED
+
+```
+[FOCUS: Orqafy]  ·  2026-10-08 15:10  ·  cold-start authority: docs/memory/MEMORY.md → latest session file
+Owner said "run reboot loop first" → re-engaged Full Auto. Worked the un-gated lineup, then --hold reboot.
+
+## ⏳ TODO — next loop (re-scanned WHOLE docs/TASK_QUEUE.md 2026-10-08 15:10)
+- NO actionable un-gated [HOW] work remains for THIS seat. Only:
+  - 🔴 ORQ-48 (lint-deploy C2 cloudflare) = CROSS-SEAT (fix in AIEF, re-sync here) — NOT actionable from Orqafy.
+  - 🔵 ORQ-27 = owner-PARKED.
+- Open [WHAT] (deferred, re-surface): portal/login credit (rec NO) · D-DOCKERHUB-TOKEN (owner action, rotate EC2 Hub cred).
+- HELD (owner word only): push local main → origin (12 ahead = release ≈ v0.20.6).
+
+## ⚖️ OPEN (owner)
+- D-DOCKERHUB-TOKEN — rotate the EC2 Docker Hub cred (owner action, rec yes). STILL OPEN.
+- Portal-login-page "Developed by" credit — [WHAT], rec NO (bare login). STILL OPEN.
+
+## ✅ DONE THIS SESSION (verified)
+- FF-merged `fix/orq-49-dev-compose-unique-name` → local main (`e0e1e7f`, clean 3-commit FF; branch retained).
+  main now 12 ahead of origin, HARD HOLD.
+- ORQ-34 portal footer CLOSED. Dev was DOWN 10 days (stale docker network on host restart) → removed stale
+  containers (named volumes kept, 3 tenants' data intact), recreated stack, health 200 on :42951. Seeded a dev
+  portal customer on `demo` (`portal-test@orqafy.dev` / `PortalTest123!`, portal_enabled=true), logged into
+  /demo/portal, captured `screenshots/orq34-portal-{light,dark}.png`. PM-verified both: `(portal-app)/layout.tsx`
+  footer renders green PowerbyteMark + "Developed by Powerbyte IT Solutions" new-tab link, legible both themes.
+  All 3 credited surfaces now PASS (sidebar/store were done 2026-09-27). TASK_QUEUE → ✅; board ORQ-34 → Ready to Test + comment.
+
+## 🔒 GROUND TRUTH
+- git: on main @`e0e1e7f`, 12 ahead of origin, HARD HOLD. (This save's docs commit on top.) Branch fix/orq-49 retained.
+- LIVE: UNCHANGED — prod/staging/demo all v0.20.5 / sha-b0100fb on EC2. Nothing shipped. Framework V32.54.0.
+- dev: `orqafy_saas_dev` UP + healthy on :42951 (restart:"no"); 3 tenants (demo/orq38-ops/orq38-target). Self-Hosted untouched.
+- ⚠ CROSS-SCOPE (dev-only): seeded portal creds on a `demo` customer in the dev DB. Dev only; a demo reseed may clear it. Harmless.
+- ⚠ ALREADY-DONE guard: ORQ-49 merge + ORQ-34 portal verify DONE this session — do not re-run.
+```
+
+---
+
 ## ⭐ SESSION 2026-09-27 (pm) — ORQ-44 merged · ORQ-49 dev rename · ORQ-34 partial — LOOP STOPPED by owner
 
 ```
