@@ -17,13 +17,26 @@ import { prisma as db } from "@orqafy/db";
 // matrixMiddleware); mutations compose `writeProcedure.use(matrixMiddleware(...))`
 // so the demo-tenant mutation guard survives alongside the matrix grant check.
 // assign/changeStatus/close all map to "update" (they mutate an existing
-// ticket's fields/status, not create or delete it). The pre-existing
-// role-based guards (Administrator/Manager checks) inside update/assign
-// remain unchanged — the matrix grant is an ADDITIONAL gate, not a
-// replacement for that business logic.
+// ticket's fields/status, not create or delete it). The role-based business
+// logic inside update/assign/comment.list/comment.create remains a SEPARATE,
+// ADDITIONAL gate on top of the matrix grant — see SUPPORT_MANAGER_ROLES below.
 const supportViewProcedure = matrixProcedure("support", "view");
 const supportCreateProcedure = writeProcedure.use(matrixMiddleware("support", "create"));
 const supportUpdateProcedure = writeProcedure.use(matrixMiddleware("support", "update"));
+
+/**
+ * Support-ticket STAFF-MANAGEMENT allow-list (ORQ-51, owner ruling
+ * 2026-10-08): assigning tickets, overriding the creator-only edit
+ * restriction, and seeing/posting internal-only comments is allowed for
+ * Support Agent + admins. Mirrors the `ADMIN_ROLES` pattern in
+ * `routers/admin-xendit-config.ts` / `routers/smtp-config.ts`.
+ *
+ * Previously these four gates checked two dead role display-names (an
+ * admin-sounding name and a manager-sounding name) that matched no seeded
+ * role (packages/db/src/seed/roles.ts), so they were unreachable (assign had
+ * NO fallback at all, making it unreachable by ANY real role).
+ */
+const SUPPORT_MANAGER_ROLES = ["Support Agent", "Admin", "Tenant Super Admin", "Platform Owner"];
 
 // Schema stores status + priority as String (not Prisma enums) — comments in
 // schema.prisma define the allowed values.
@@ -195,9 +208,7 @@ const ticketRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const existing = await loadTicketForTenant(input.id, ctx);
 
-      const isAdmin =
-        ctx.roles?.includes("Administrator") === true ||
-        ctx.roles?.includes("Manager") === true;
+      const isAdmin = ctx.roles?.some((r) => SUPPORT_MANAGER_ROLES.includes(r)) === true;
 
       if (!isAdmin && existing.createdById !== ctx.userId) {
         throw new TRPCError({
@@ -227,9 +238,7 @@ const ticketRouter = createTRPCRouter({
       }).strict()
     )
     .mutation(async ({ ctx, input }) => {
-      const isAdmin =
-        ctx.roles?.includes("Administrator") === true ||
-        ctx.roles?.includes("Manager") === true;
+      const isAdmin = ctx.roles?.some((r) => SUPPORT_MANAGER_ROLES.includes(r)) === true;
 
       if (!isAdmin) {
         throw new TRPCError({
@@ -325,9 +334,7 @@ const commentRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       await loadTicketForTenant(input.ticketId, ctx);
 
-      const isPrivileged =
-        ctx.roles?.includes("Administrator") === true ||
-        ctx.roles?.includes("Manager") === true;
+      const isPrivileged = ctx.roles?.some((r) => SUPPORT_MANAGER_ROLES.includes(r)) === true;
 
       return db.ticketComment.findMany({
         where: {
@@ -359,9 +366,7 @@ const commentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await loadTicketForTenant(input.ticketId, ctx);
 
-      const isPrivileged =
-        ctx.roles?.includes("Administrator") === true ||
-        ctx.roles?.includes("Manager") === true;
+      const isPrivileged = ctx.roles?.some((r) => SUPPORT_MANAGER_ROLES.includes(r)) === true;
 
       const isInternal =
         input.isInternal === true && isPrivileged ? true : false;

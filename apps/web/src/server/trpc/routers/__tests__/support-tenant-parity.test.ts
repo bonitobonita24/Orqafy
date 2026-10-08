@@ -87,7 +87,9 @@ function makeReq(): NextRequest {
   return {} as NextRequest;
 }
 
-function ctxForTenant(tenantId: string, roles: string[] = ["Administrator"]) {
+// ORQ-51: default role updated from the dead "Administrator" name (matched
+// no seeded role) to the real seeded "Admin" role, now in SUPPORT_MANAGER_ROLES.
+function ctxForTenant(tenantId: string, roles: string[] = ["Admin"]) {
   return {
     req: makeReq(),
     userId: "user-1",
