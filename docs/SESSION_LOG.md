@@ -1,5 +1,24 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-10-09 — RBAC double-check + a real support-ticket security fix
+
+**In your words:** plan & do the 2 standing notes (effort tier + RBAC); verify the 5 Squirlnote "Pending" tasks; then save session and stop the reboot loop.
+
+✅ **Done**
+- **Switched to Quality-first effort** for this work (the planning Architect ran at high effort).
+- **Checked the RBAC "retrofit" — it was a false alarm.** The session hook keeps offering a 3-tier RBAC retrofit, but Orqafy already did that back in July and you ratified the naming in September (ORQ-21). I verified it's genuinely in place (all tests green, exactly one owner per tenant, the one-owner DB rule present). So: nothing to rebuild. I documented why the hook keeps nagging so it's understood next time.
+- **Verified your 5 "Pending" board cards.** 2 were already resolved and just hadn't been moved (ORQ-41 provisioning login, ORQ-42 favicon) → moved to Ready to Test for your close. 3 are genuinely pending: ORQ-27 (parked), ORQ-48 (a framework-side fix, not ours to do here), ORQ-50.
+- **Fixed a real security hole (ORQ-51).** The support-ticket code gated "assign/manage" on two role names that don't exist ("Administrator" and "Manager") — so *nobody* could assign a ticket by role. Per your call, assign/manage is now Support Agent + admins. Done test-first; branch verified, held for your merge.
+
+💬 **Decisions**
+- Portal **login** page "Developed by" credit → **NO** (kept bare), per your call. ORQ-50 closed.
+- Support-ticket manage access → **Support Agent + admins** (ORQ-51).
+
+⏳ **Waiting on you (next session)**
+- Merge the ORQ-51 fix to main + rebuild dev (then it's live on dev).
+- Rotate the EC2 Docker Hub credential (D-DOCKERHUB-TOKEN).
+- Push `main` → origin when you want to cut the next release (now ~15 commits ahead; nothing is deployed).
+
 ## 2026-10-08 — Loop restarted: ORQ-49 merged, portal logo check finished
 
 **In your words:** run the reboot loop first.

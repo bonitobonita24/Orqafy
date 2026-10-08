@@ -1,10 +1,45 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-09-27 (pm) by CLAUDE_CODE — ORQ-44 merged to local main; ORQ-49 dev rename done on branch; ORQ-34 sidebar+store PASS (portal pending). Owner: "save session + stop the reboot loop for now" → loop STOPPED.
+> Last updated: 2026-10-09 by CLAUDE_CODE — RBAC 3-tier retrofit VERIFIED already-complete (not rebuilt; hook false-alarm); ORQ-51 support.ts dead-gate FIXED+verified on branch (HARD HOLD); ORQ-50=NO; board reconciled. Owner: "save session + stop reboot loop" → loop STOPPED (interactive).
+> Previously: 2026-09-27 (pm) by CLAUDE_CODE — ORQ-44 merged to local main; ORQ-49 dev rename done on branch; ORQ-34 sidebar+store PASS (portal pending). Owner: "save session + stop the reboot loop for now" → loop STOPPED.
 > Previously: 2026-09-27 (am) by CLAUDE_CODE — resume: 4 owner decisions answered; ORQ-45/46/47 shipped to LOCAL main (5 ahead of origin, HARD HOLD); dev rebuilt+verified.
 > Previously: 2026-09-26 by CLAUDE_CODE — v0.20.5 LIVE on prod/staging/demo (all EC2); ORQ-33..43 done.
 > Previously: 2026-09-10 by CLAUDE_CODE (owner: resume → ORQ-32 → "FF-merge to local main" → "save session"). **ORQ-32 DONE + FF-merged to local `main`** — demo-latest retag moved off the pull-only EC2 box to the workstation. main @`5c00a3e`, **2 ahead of origin, HARD HOLD** (unpushed; push = release moment, owner-gated). LIVE envs UNCHANGED on v0.20.3 / sha-70aad59. Framework **V32.54.0**. **Task queue EMPTY of un-gated work.** No open [WHAT] decisions.
+
+---
+
+## ⭐ SESSION 2026-10-09 — RBAC verify (retrofit already done) · ORQ-51 support dead-gate fix · board reconcile
+
+```
+[FOCUS: Orqafy]  ·  2026-10-09  ·  cold-start authority: docs/memory/MEMORY.md → latest session file
+Owner: resume → "plan the 2 standing notes & do it" (effort tier + RBAC) → verified 5 Squirlnote Pending → fixed ORQ-51 → "save session + stop reboot loop".
+
+## ⏳ TODO — next session (re-scan WHOLE docs/TASK_QUEUE.md first)
+- [ ] [OWNER] FF-merge fix/orq-51-support-deadgate (3011341) → local main + dev rebuild (Rule 39) → then move board ORQ-51 → Ready to Test. Branch verified, HARD HOLD.
+- [ ] [OWNER] D-DOCKERHUB-TOKEN — rotate EC2 Docker Hub cred (owner action, rec yes). STILL OPEN.
+- [ ] [OWNER] Push local main → origin (15 ahead after this save = release ≈ v0.20.6). HARD HOLD.
+- 🔴 ORQ-48 (lint-deploy C2 cloudflare) = CROSS-SEAT AIEF fix + re-sync — NOT actionable from Orqafy seat.
+- 🔵 ORQ-27 = owner-PARKED.
+
+## ⚖️ OPEN (owner)
+- D-DOCKERHUB-TOKEN — rotate EC2 Hub cred (owner action).
+- Resolved this session: ORQ-50 portal credit = NO; D-SUPPORT-DEADGATE/ORQ-51 = Support Agent + admins (built, awaits merge).
+
+## ✅ DONE THIS SESSION (built AND verified — evidence)
+- Effort tier → Quality-first engaged (Architect ran at high effort).
+- RBAC 3-tier retrofit VERIFIED ALREADY COMPLETE (NOT rebuilt): Architect plan + worker verify — web 1732/1732 + db 61/61 tests, 1 owner/tenant (demo/orq38-ops/orq38-target), partial unique index one_tenant_owner_per_tenant present, 3 role slugs seeded/tenant. SessionStart RBAC-retrofit hook = FALSE ALARM (ratified slug tenant_super_admin vs fleet tenant_superadmin, ORQ-21). Global lesson: process.resume.stale-sessionstart-rbac-retrofit-offer.
+- ORQ-51 support.ts dead-gate FIXED+verified (branch fix/orq-51-support-deadgate @3011341, HARD HOLD): BOTH "Administrator" AND "Manager" were dead names → ticket ASSIGN reachable by NO real role. Owner ruled Support Agent + admins. SUPPORT_MANAGER_ROLES allow-list on all 4 gates; TDD 18/18 pass; grep clean; typecheck clean. AWAITS owner FF-merge + dev rebuild.
+- Governance docs (6fdaf83, main): DECISIONS_LOG ratified-divergence note + ORQ-50=NO; TASK_QUEUE ORQ-51 blocked→built; PENDING_DECISIONS updated (gitignored, on disk).
+- Board reconciled: 5 Pending verified → ORQ-41/42 stale-resolved → Ready to Test; ORQ-50=NO → Ready to Test; ORQ-51 created (bug/security/rbac/api) → On-Going w/ fix evidence. Pending now = ORQ-27(parked) + ORQ-48(cross-seat).
+
+## 🔒 GROUND TRUTH
+- git: on main, 14 ahead of origin (+ this save's docs commit = 15), HARD HOLD. Branch fix/orq-51-support-deadgate @3011341 retained (UNMERGED). Framework V32.54.0.
+- LIVE: UNCHANGED — prod/staging/demo all v0.20.5 / sha-b0100fb (EC2). Nothing shipped.
+- dev: orqafy_saas_dev (was UP :42951 earlier; may idle-down). ORQ-51 fix NOT yet in dev (branch unmerged).
+- ⚠ ALREADY-DONE guard: RBAC verify + ORQ-51 fix + governance docs DONE this session — do NOT re-run.
+- Loop: STOPPED (owner request). Interactive session, no reboot.
+```
 
 ---
 
