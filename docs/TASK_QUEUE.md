@@ -10,10 +10,10 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 > 2026-09-26: v0.20.5 LIVE on prod/staging/demo (all EC2). Next un-gated: **ORQ-45 → ORQ-44 → ORQ-34 visual**. Owner [WHAT]s: ORQ-41/42/46 + Docker Hub token rotation (PENDING_DECISIONS.md). ORQ-27 owner-PARKED ((a) now moot).
 > 2026-09-27 (resume): owner answered all 4 open decisions (ORQ-41 provisioning KEEP-closed; copyright-mark KEEP-text-closed; ORQ-46 approved; ORQ-42 → ORQ-47). Shipped to LOCAL main (4 ahead of origin, HARD HOLD): **ORQ-45, ORQ-46, ORQ-47** — all verified. Remaining un-gated: **ORQ-44** (compose reconcile), **ORQ-34 visual**, branch housekeeping. Owner action: D-DOCKERHUB-TOKEN rotation.
 
-- 🔴 **lint-deploy C2 rejects `certresolver=cloudflare`** — `scripts/lint-deploy.sh` C2 is a case check but only accepts
+- 🔴 **lint-deploy C2 rejects `certresolver=cloudflare`** `gate: cross-seat(AIEF)` — `scripts/lint-deploy.sh` C2 is a case check but only accepts
   `letsencrypt`, so the live EC2 `cloudflare` resolver fails it (prod/stage/demo app.yml). Framework deliverable #20 →
   fix upstream in AIEF (accept any lowercase resolver), then re-sync; don't hand-edit here. `source: agent-found 2026-09-27`
-- 🔵 **[OWNER-PARKED 2026-09-05 — not a to-do] Cross-host deploy residuals from the EC2 split** `[ORQ-27]` — surfaced by ORQ-25.
+- 🔵 **[OWNER-PARKED 2026-09-05 — not a to-do] Cross-host deploy residuals from the EC2 split** `[ORQ-27]` `gate: owner` — surfaced by ORQ-25.
   (a) `staging-refresh-and-deploy.sh` prod→staging is same-host `pg_dump|psql`, but prod=Hostinger / staging=EC2 →
   step 2 auto-skips (gate degraded to deploy+migrate only). **Owner decision 2026-09-05: LEAVE THE GATE DEGRADED**
   (don't build a cross-host prod-read pipe — safer; revisit if staging must validate against real prod data).
