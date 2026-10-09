@@ -91,7 +91,7 @@ function adminCtx() {
   return {
     req: makeReq(),
     userId: "user-admin",
-    roles: ["Administrator"] as string[],
+    roles: ["Platform Owner"] as string[],
     roleId: "role-1",
     tenantSlug: "acme",
     tenantId: "tenant-acme",
@@ -104,7 +104,7 @@ function staffCtx() {
   return { ...adminCtx(), userId: "user-staff", roles: ["Staff"] as string[] };
 }
 function managerCtx() {
-  return { ...adminCtx(), userId: "user-mgr", roles: ["Manager"] as string[] };
+  return { ...adminCtx(), userId: "user-mgr", roles: ["Support Agent"] as string[] };
 }
 
 // ── Fake fixtures (mirror schema fields exactly — no tenantId) ───────────────
@@ -356,7 +356,7 @@ describe("support.ticket.update", () => {
     );
   });
 
-  it("allows an Administrator to update another user's ticket", async () => {
+  it("allows a Platform Owner to update another user's ticket", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({
       id: "ticket-1",
       tenantId: "tenant-acme",
@@ -419,7 +419,7 @@ describe("support.ticket.assign", () => {
     ).rejects.toThrow(/administrators or managers/i);
   });
 
-  it("allows Manager to assign and auto-progresses open → in_progress", async () => {
+  it("allows Support Agent to assign and auto-progresses open → in_progress", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({
       id: "ticket-1",
       tenantId: "tenant-acme",
@@ -682,7 +682,7 @@ describe("support.comment.list", () => {
     );
   });
 
-  it("includes internal comments for Administrator", async () => {
+  it("includes internal comments for Platform Owner", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({ id: "ticket-1", tenantId: "tenant-acme" });
     mockDb.ticketComment.findMany.mockResolvedValueOnce([
       { ...fakeComment, user: fakeUser },
@@ -700,7 +700,7 @@ describe("support.comment.list", () => {
     );
   });
 
-  it("includes internal comments for Manager", async () => {
+  it("includes internal comments for Support Agent", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({ id: "ticket-1", tenantId: "tenant-acme" });
     mockDb.ticketComment.findMany.mockResolvedValueOnce([]);
 
@@ -758,7 +758,7 @@ describe("support.comment.create", () => {
     expect(data.isInternal).toBe(false);
   });
 
-  it("honors isInternal=true for Administrator", async () => {
+  it("honors isInternal=true for Platform Owner", async () => {
     mockDb.supportTicket.findUnique.mockResolvedValueOnce({ id: "ticket-1", tenantId: "tenant-acme" });
     mockDb.ticketComment.create.mockResolvedValueOnce(fakeInternalComment);
 
