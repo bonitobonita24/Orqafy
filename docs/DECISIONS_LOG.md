@@ -1848,3 +1848,16 @@ credit. Owner call, 2026-10-08. The credit remains on the 3 already-verified sur
 storefront footer, portal-app footer — ORQ-34, verified 2026-10-08). No code change.
 
 — recorded by CLAUDE_CODE (worker, governance-doc pass), 2026-10-08.
+
+---
+
+## 2026-10-10 — D-DOCKERHUB-TOKEN resolved: EC2 Docker Hub credential NOT rotated (risk-accepted)
+
+**Decision:** The EC2 Docker Hub credential exposed in the ORQ-43 read-only probe transcript will NOT be
+rotated. Owner call, 2026-10-10. Rationale: the owner is the sole Docker Hub accessor and the credential
+only ever appeared in a LOCAL agent transcript (never published to any external surface), so the practical
+exposure risk is acceptable. No change to Docker Hub, EC2 `docker login`, or the Server-Setups vault.
+
+**Reversibility:** Re-open and rotate if Docker Hub access is ever shared beyond the owner.
+
+— recorded by CLAUDE_CODE (owner decision, 2026-10-10).
