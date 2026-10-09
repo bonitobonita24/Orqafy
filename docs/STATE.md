@@ -17,12 +17,12 @@
 Owner: "merge ORQ-51 + do Squirlnote Pending" → "don't rotate EC2 Hub cred (sole accessor)" → "save session but KEEP Full Auto running every reboot, I need to sleep". Loop slot 23 (live). Full Auto engaged.
 
 ## ⏳ TODO — next loop iteration (⚠RESCAN the WHOLE docs/TASK_QUEUE.md + Squirlnote Pending FIRST — do NOT trust this list as the whole queue)
-- Re-scan result @2026-10-10 04:00 (loop slot 23, resume — re-verified WHOLE TASK_QUEUE + PENDING_DECISIONS, not a shortlist): NO actionable un-gated [HOW] work for THIS seat. Open queue items are:
+- Re-scan result @2026-10-10 05:08 (loop slot 23, resume — re-verified WHOLE TASK_QUEUE + PENDING_DECISIONS end-to-end + live `git log origin/main..main`, not a shortlist): NO actionable un-gated [HOW] work for THIS seat. Open queue items are:
   - 🔴 ORQ-48 (lint-deploy C2 rejects certresolver=cloudflare) `gate: cross-seat(AIEF)` = fix in Powerbyte-AIEF then re-sync — NOT actionable here.
   - 🔵 ORQ-27 `gate: owner` = owner-PARKED (both halves decided 2026-09-05).
-  - PENDING_DECISIONS: all [WHAT] resolved/closed/parked; only old product [WHAT] D-3 (/crm/contacts page build-or-leave) unanswered since June = owner-gated scope, defer.
-- git: main 3 ahead of origin = 17e6fdc + a44e062 + db2c2ca, ALL docs-only (STATE/SESSION_LOG/TASK_QUEUE), HARD HOLD. v0.21.0 code already pushed @675e5d4. Pushing these 3 docs commits = owner word (release moment).
-- ⚠ dev-freshness-check reports app+worker STALE — this is a DOCS-ONLY timing artifact: the 2 commits after the 02:10/02:11 image build touch NO apps/packages/prisma code (verified `git diff --name-only 675e5d4..a44e062`). Dev serves current CODE. Do NOT rebuild (pure churn + past OOM risk). Rule 39 purpose = no staler CODE than shipped; satisfied.
+  - PENDING_DECISIONS: all [WHAT] resolved/closed/parked; only old product [WHAT] D-3 (/crm/contacts page build-or-leave) unanswered since June = owner-gated scope, defer. (D-4 is STALE — shipped as ORQ-2; D-DOCKERHUB-TOKEN CLOSED = no-rotate.)
+- git: main 4 ahead of origin = 0019e8b + 17e6fdc + a44e062 + db2c2ca, ALL docs-only (STATE/SESSION_LOG/TASK_QUEUE handoff churn — verified via `git diff --name-only origin/main..main` = only those 3 docs paths), HARD HOLD. v0.21.0 code already pushed @675e5d4. Orqafy IS on the Full-Auto auto-push allowlist, BUT these are post-release doc-churn commits with no code/staging value → cutting a version for them is worse than holding; push at the next REAL release moment (owner word), not for handoff churn.
+- ⚠ dev-freshness-check reports app+worker STALE — this is a DOCS-ONLY timing artifact: every commit after the 02:10/02:11 image build touches NO apps/packages/prisma code (verified `git diff --name-only origin/main..main` = 3 docs paths only). Dev serves current CODE. Do NOT rebuild (pure churn + past OOM risk). Rule 39 purpose = no staler CODE than shipped; satisfied.
 - Owner-gated (needs explicit owner word, do NOT auto-do): PROMOTE v0.21.0 → prod/demo (manual; prod/demo still on v0.20.5 / sha-b0100fb).
 - If still nothing un-gated next iteration → rewrite a FRESH timestamped re-scan note + --hold again. Never idle on a stale handoff; never invent speculative overnight changes to a clean released app.
 
