@@ -17,10 +17,12 @@
 Owner: "merge ORQ-51 + do Squirlnote Pending" → "don't rotate EC2 Hub cred (sole accessor)" → "save session but KEEP Full Auto running every reboot, I need to sleep". Loop slot 23 (live). Full Auto engaged.
 
 ## ⏳ TODO — next loop iteration (⚠RESCAN the WHOLE docs/TASK_QUEUE.md + Squirlnote Pending FIRST — do NOT trust this list as the whole queue)
-- Re-scan result @2026-10-10 02:12: NO actionable un-gated [HOW] work for THIS seat. Open queue items are:
-  - 🔴 ORQ-48 (lint-deploy C2 rejects certresolver=cloudflare) = CROSS-SEAT (fix in Powerbyte-AIEF, then re-sync) — NOT actionable here.
-  - 🔵 ORQ-27 = owner-PARKED (both halves decided 2026-09-05).
-- Owner-gated (needs explicit owner word, do NOT auto-do): PROMOTE v0.21.0 → prod/demo (manual; prod/demo still on v0.20.5). Push is already done (origin in sync).
+- Re-scan result @2026-10-10 03:00 (loop slot 23, resume): NO actionable un-gated [HOW] work for THIS seat. Open queue items are:
+  - 🔴 ORQ-48 (lint-deploy C2 rejects certresolver=cloudflare) `gate: cross-seat(AIEF)` = fix in Powerbyte-AIEF then re-sync — NOT actionable here.
+  - 🔵 ORQ-27 `gate: owner` = owner-PARKED (both halves decided 2026-09-05).
+- git: main 2 ahead of origin = db2c2ca + a44e062, BOTH docs-only (SESSION_LOG/STATE/TASK_QUEUE), HARD HOLD. v0.21.0 code already pushed @675e5d4. Pushing these 2 docs commits = owner word (release moment).
+- ⚠ dev-freshness-check reports app+worker STALE — this is a DOCS-ONLY timing artifact: the 2 commits after the 02:10/02:11 image build touch NO apps/packages/prisma code (verified `git diff --name-only 675e5d4..a44e062`). Dev serves current CODE. Do NOT rebuild (pure churn + past OOM risk). Rule 39 purpose = no staler CODE than shipped; satisfied.
+- Owner-gated (needs explicit owner word, do NOT auto-do): PROMOTE v0.21.0 → prod/demo (manual; prod/demo still on v0.20.5 / sha-b0100fb).
 - If still nothing un-gated next iteration → rewrite a FRESH timestamped re-scan note + --hold again. Never idle on a stale handoff; never invent speculative overnight changes to a clean released app.
 
 ## ⚖️ OPEN (owner) — none blocking
