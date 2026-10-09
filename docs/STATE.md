@@ -1,11 +1,49 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-10-09 by CLAUDE_CODE — RBAC 3-tier retrofit VERIFIED already-complete (not rebuilt; hook false-alarm); ORQ-51 support.ts dead-gate FIXED+verified on branch (HARD HOLD); ORQ-50=NO; board reconciled. Owner: "save session + stop reboot loop" → loop STOPPED (interactive).
+> Last updated: 2026-10-10 by CLAUDE_CODE — ORQ-51 FF-merged to main; full-suite gate caught + fixed a 19-test regression (support.test.ts stale dead-role names); RELEASED v0.21.0 (pushed origin, Full-Auto auto-push, build-only CI); dev rebuilt FRESH off release; push security-review finding reviewed (intended fix, no new vuln); D-DOCKERHUB-TOKEN resolved (owner: no-rotate). Owner: "save session + keep Full Auto running overnight" → loop continues on paced --hold.
+> Previously: 2026-10-09 by CLAUDE_CODE — RBAC 3-tier retrofit VERIFIED already-complete (not rebuilt; hook false-alarm); ORQ-51 support.ts dead-gate FIXED+verified on branch (HARD HOLD); ORQ-50=NO; board reconciled. Owner: "save session + stop reboot loop" → loop STOPPED (interactive).
 > Previously: 2026-09-27 (pm) by CLAUDE_CODE — ORQ-44 merged to local main; ORQ-49 dev rename done on branch; ORQ-34 sidebar+store PASS (portal pending). Owner: "save session + stop the reboot loop for now" → loop STOPPED.
 > Previously: 2026-09-27 (am) by CLAUDE_CODE — resume: 4 owner decisions answered; ORQ-45/46/47 shipped to LOCAL main (5 ahead of origin, HARD HOLD); dev rebuilt+verified.
 > Previously: 2026-09-26 by CLAUDE_CODE — v0.20.5 LIVE on prod/staging/demo (all EC2); ORQ-33..43 done.
 > Previously: 2026-09-10 by CLAUDE_CODE (owner: resume → ORQ-32 → "FF-merge to local main" → "save session"). **ORQ-32 DONE + FF-merged to local `main`** — demo-latest retag moved off the pull-only EC2 box to the workstation. main @`5c00a3e`, **2 ahead of origin, HARD HOLD** (unpushed; push = release moment, owner-gated). LIVE envs UNCHANGED on v0.20.3 / sha-70aad59. Framework **V32.54.0**. **Task queue EMPTY of un-gated work.** No open [WHAT] decisions.
+
+---
+
+## ⭐ SESSION 2026-10-10 — ORQ-51 merged + regression fixed · RELEASED v0.21.0 · Full Auto overnight
+
+```
+[FOCUS: Orqafy]  ·  2026-10-10  ·  cold-start authority: docs/memory/MEMORY.md → latest session file
+Owner: "merge ORQ-51 + do Squirlnote Pending" → "don't rotate EC2 Hub cred (sole accessor)" → "save session but KEEP Full Auto running every reboot, I need to sleep". Loop slot 23 (live). Full Auto engaged.
+
+## ⏳ TODO — next loop iteration (⚠RESCAN the WHOLE docs/TASK_QUEUE.md + Squirlnote Pending FIRST — do NOT trust this list as the whole queue)
+- Re-scan result @2026-10-10 02:12: NO actionable un-gated [HOW] work for THIS seat. Open queue items are:
+  - 🔴 ORQ-48 (lint-deploy C2 rejects certresolver=cloudflare) = CROSS-SEAT (fix in Powerbyte-AIEF, then re-sync) — NOT actionable here.
+  - 🔵 ORQ-27 = owner-PARKED (both halves decided 2026-09-05).
+- Owner-gated (needs explicit owner word, do NOT auto-do): PROMOTE v0.21.0 → prod/demo (manual; prod/demo still on v0.20.5). Push is already done (origin in sync).
+- If still nothing un-gated next iteration → rewrite a FRESH timestamped re-scan note + --hold again. Never idle on a stale handoff; never invent speculative overnight changes to a clean released app.
+
+## ⚖️ OPEN (owner) — none blocking
+- All [WHAT] resolved: D-DOCKERHUB-TOKEN=no-rotate (CLOSED), D-SUPPORT-DEADGATE/ORQ-51=Support Agent+admins (shipped v0.21.0), ORQ-50=NO (closed).
+- Only standing owner action: promote v0.21.0 to prod/demo when ready.
+
+## ✅ DONE THIS SESSION (built AND verified — evidence)
+- ORQ-51 FF-merged to main (rebased onto main, clean): support.ts dead-gate (dead "Administrator"/"Manager" names) → real SUPPORT_MANAGER_ROLES allow-list (Support Agent + Admin/Tenant Super Admin/Platform Owner). support-authz 12/12 on main.
+- ⚠ REGRESSION caught by FULL-SUITE gate (NOT the targeted test): pre-existing support.test.ts still seeded callers with the dead role names → 19 failures. Fixed on fix/orq-51-support-test-alignment (realigned helpers: adminCtx→Platform Owner, managerCtx→Support Agent; staffCtx unchanged for negative tests; titles updated) → FF-merged @66d3f77. Full suite GREEN: web 1744/1744, typecheck 11/11, lint 11/11, build 4/4.
+- RELEASED v0.21.0 (gen-release-notes --apply; minor bump — batch has ORQ-47 feat; version-sync 10 pkgs + footer). Pushed origin main @675e5d4 + tag v0.21.0 (Full-Auto scoped auto-push, # HARDHOLD-OK; Orqafy allowlisted; CI = build-only Model B, NO deploy). pre-push shellcheck green.
+- Push security-review finding (authz/info-disclosure in support.ts) REVIEWED: intended ORQ-51 fix (dead gate → correct roles); tenant isolation (loadTicketForTenant), assignee tenant-check, non-privileged internal-comment filtering all intact; no new vuln. No code change.
+- dev rebuilt off v0.21.0: app 02:10 + worker 02:11 both FRESH (dev-freshness-check --expect app,worker, real exit 0), health 200 :42951.
+- D-DOCKERHUB-TOKEN resolved (owner: no-rotate, sole accessor) → PENDING_DECISIONS + DECISIONS_LOG (b7a234a).
+- 2 global lessons logged: bash.verification.pipe-to-tail-masks-exit-code · orqafy.test.turbo-run-test-invocation-and-full-suite-blast-radius.
+- Board: ORQ-51 → Ready to Test, stage=pushed, with regression+fix+release comment. Pending lane = ORQ-27(parked)+ORQ-48(cross-seat) only.
+
+## 🔒 GROUND TRUTH
+- git: on main @675e5d4, IN SYNC with origin (pushed), tree clean after this save commit. Tag v0.21.0 pushed. Framework V32.54.0.
+- LIVE: UNCHANGED — prod/staging/demo all v0.20.5 / sha-b0100fb (EC2). v0.21.0 is BUILT (CI) but NOT deployed anywhere (manual promotion only).
+- dev: orqafy_saas_dev app+worker UP + FRESH off v0.21.0, health 200 :42951. 3 tenants (demo/orq38-ops/orq38-target).
+- Loop: slot 23, Full Auto, rebooting on paced --hold (owner asleep). HARD HOLD on prod/demo stays absolute.
+- ⚠ ALREADY-DONE guard: ORQ-51 merge + regression fix + v0.21.0 release + push + dev rebuild DONE+verified — do NOT re-run.
+```
 
 ---
 

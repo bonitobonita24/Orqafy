@@ -1,5 +1,25 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-10-10 — Merged ORQ-51, caught + fixed a regression, released v0.21.0, Full Auto overnight
+
+**In your words:** merge ORQ-51 and work the Squirlnote Pending tasks; don't rotate the EC2 Docker Hub cred (you're the only one with access — fine); then save the session but keep Full Auto running after every reboot because you're going to sleep.
+
+✅ **Done**
+- **Merged the ORQ-51 support-ticket fix to main.** Rebased cleanly, verified (12/12), merged.
+- **Caught a regression before it shipped.** Running the *full* test suite (not just the new test) surfaced 19 failures: an older support test file still used the dead role names the fix removed. I realigned it to the real roles (Platform Owner / Support Agent), kept the negative tests intact, and re-verified the whole suite green (1744/1744 web).
+- **Released v0.21.0** and pushed to GitHub (authorized Full-Auto release). This only builds the image — **nothing was deployed**; prod/demo stay on v0.20.5 and still need your explicit word to promote.
+- **A security scan of the push flagged the support authz change.** I reviewed it: it's the intended fix (dead gate → correct roles), tenant isolation + internal-comment hiding all still hold. No new hole.
+- Board + docs updated; two engineering footguns logged so they don't recur.
+
+💬 **Decisions**
+- EC2 Docker Hub credential → **not rotated** (your call — sole accessor, only ever in a local transcript). Logged, closed.
+- Support-ticket manage access confirmed live: **Support Agent + admins** (ORQ-51, v0.21.0).
+
+⏳ **Waiting on you / overnight**
+- **Promote v0.21.0 to prod/demo** when you want (manual, your word — nothing auto-deploys).
+- ORQ-48 (lint-deploy cloudflare) is a framework-side fix (AIEF seat); ORQ-27 stays parked.
+- Full Auto is left running on a paced hold — no actionable un-gated work remained after the release, so it re-scans periodically rather than inventing changes overnight.
+
 ## 2026-10-09 — RBAC double-check + a real support-ticket security fix
 
 **In your words:** plan & do the 2 standing notes (effort tier + RBAC); verify the 5 Squirlnote "Pending" tasks; then save session and stop the reboot loop.
