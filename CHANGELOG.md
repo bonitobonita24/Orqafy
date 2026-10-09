@@ -4,6 +4,37 @@ All notable changes per release. A version is assigned at each push/merge to `ma
 entries are auto-derived from Conventional-Commit types. See
 `~/.claude/rules/release-changelog-discipline.md`.
 
+## v0.21.0 — 2026-10-10
+
+### [FEATURE]
+- generate raster favicon/app-icon set from icon.svg [ORQ-47] (`259a2fb`)
+
+### [FIXED]
+- realign support.test.ts role setup to real privileged roles [ORQ-51] (`66d3f77`)
+- replace dead Administrator/Manager authz gates with real role allow-list [ORQ-51] (`6b57d2c`)
+- unique compose project + container names, pin existing volumes [ORQ-49] (`272112d`)
+- reconcile prod/stage/demo compose to live EC2 host [ORQ-44] (`db9cf51`)
+- reveal tenant_suspended only after credentials verify [ORQ-46] (`30f3080`)
+- start dev worker + detect stopped code services [ORQ-45] (`0aafb95`)
+- retarget prod deploy/rollback/verify to AWS EC2 [ORQ-43] (`3938fb8`)
+
+### [DOCS]
+- D-DOCKERHUB-TOKEN resolved — EC2 Docker Hub cred not rotated (owner risk-accepted) (`b7a234a`)
+- ORQ-51 merged to local main (support dead-gate fix) — moved to Done (`f50ef4c`)
+- 2026-10-09 save — RBAC verify (retrofit already done), ORQ-51 support dead-gate fixed on branch, ORQ-50=NO, board reconciled (`1f46627`)
+- record W3 RBAC-slug divergence note, ORQ-50 resolved, ORQ-51 blocked (`6fdaf83`)
+- loop 2026-10-08 — ORQ-49 merged to local main, ORQ-34 portal footer verified+closed (`c67c83a`)
+- 2026-09-27 pm checkpoint — ORQ-44 merged, ORQ-49 done on branch, ORQ-34 partial, loop stopped (`e0e1e7f`)
+- ORQ-49 done, ORQ-34 visual result (`9ad6657`)
+- ORQ-34 visual check result (`92274ee`)
+- ORQ-44 done (db9cf51); log lint-deploy C2 cloudflare false positive (`f6ecbb9`)
+- 2026-09-27 checkpoint — ORQ-45/46/47 shipped local main, decisions answered (`db0560e`)
+- ORQ-45/46/47 done + merged local main (4 ahead, HARD HOLD) (`4ff3620`)
+- record 2026-09-27 owner decisions — ORQ-46 un-gated, spin off ORQ-47 (`631fa67`)
+- 2026-09-26 handoff — v0.20.5 live all envs, ORQ-33..43 done, next ORQ-45/44 (`0ffa33f`)
+- ORQ-43 done + agent-found ORQ-45/46 from v0.20.5 rollout (`abe8fd3`)
+
+
 ## v0.20.5 — 2026-09-26
 
 ### [FIXED]
