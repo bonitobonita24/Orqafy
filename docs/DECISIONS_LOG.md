@@ -1861,3 +1861,15 @@ exposure risk is acceptable. No change to Docker Hub, EC2 `docker login`, or the
 **Reversibility:** Re-open and rotate if Docker Hub access is ever shared beyond the owner.
 
 — recorded by CLAUDE_CODE (owner decision, 2026-10-10).
+
+---
+
+## 2026-10-10 — D-3 resolved: `/crm/contacts` stays unbuilt (contacts remain per-customer)
+
+**Decision:** No global Contacts list page. Contacts stay managed per customer via the "Add Contact" dialog
+on the customer detail page. The URL `/{slug}/crm/contacts` remains unbuilt (it 404s), but nothing links to it,
+so no user ever reaches it. Owner call, 2026-10-10 (open since the 2026-06-24 functional sweep). No code change.
+
+**Reversibility:** If a tenant-wide contacts view is ever needed, build it as a Phase 7 Feature Update.
+
+— recorded by CLAUDE_CODE (owner decision, 2026-10-10).
