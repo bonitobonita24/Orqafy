@@ -1,5 +1,30 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-10-10 (day) — D-3 decided, ORQ-48 shipped, framework synced to V32.64, ORQ-52 fixed, PM model → Opus 5.5
+
+**In your words:** resume; answer the open decision and work the queue, then do everything I offered (merge ORQ-48, framework sync, push docs, PM model default, keep looping) and keep working Squirlnote Pending/On-Going.
+
+✅ **Done**
+- **D-3 decided: `/crm/contacts` stays unbuilt.** Contacts stay per customer. Logged and closed. D-4 closed as stale (shipped as ORQ-2).
+- **ORQ-48 fixed, merged and pushed.** AIEF had already released the cloudflare-resolver fix, so I re-synced it. C2 passes on prod, stage and demo. Pushed to GitHub (`fd3f334`) with no version cut and no deploy.
+- **Framework synced V32.54 → V32.64** on branch `chore/framework-sync-v32.64`. Governance files only; typecheck green; 4 new on-demand deliverables.
+- **ORQ-52 fixed:** lint-deploy no longer scans `node_modules`, so lint ends at **0 failures**. Fixed upstream on an AIEF branch (POW-56, which you authorized) and overlaid onto the sync branch.
+- **PM model default → Opus 5.5** in the global docs and `.zshrc`. Architect stays on 4.8, workers on Sonnet 5.
+
+🔨 **Partial / waiting on a merge**
+- ORQ-53 (sync) and ORQ-52 are on branches, verified, waiting for **your merge** to local main.
+
+💬 **Decisions / notes**
+- I briefly put 2 labels and a link on the wrong board card, because Orqafy-Self-Hosted also uses the `ORQ-` prefix. I undid all three. The lesson is now a hard rule: raw card IDs only.
+- Loops that were already running still have 4.8 baked in and will use it until relaunched. I didn't edit `claude-loop`, because changing it live is unsafe.
+- AIEF `deploy.sh` resets CLAUDE.md's live-state block on every sync. I re-ran `sync-context.sh` and logged it as a lesson.
+
+⏳ **Next / waiting on you**
+- Merge `chore/framework-sync-v32.64` (ORQ-53 + ORQ-52).
+- AIEF seat: merge POW-56. Until then, a future framework sync would undo ORQ-52.
+- Promote v0.21.0 to prod/demo when you're ready (still on v0.20.5).
+- Full Auto keeps looping on a paced hold.
+
 ## 2026-10-10 — Merged ORQ-51, caught + fixed a regression, released v0.21.0, Full Auto overnight
 
 **In your words:** merge ORQ-51 and work the Squirlnote Pending tasks; don't rotate the EC2 Docker Hub cred (you're the only one with access — fine); then save the session but keep Full Auto running after every reboot because you're going to sleep.

@@ -1,12 +1,36 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-10-10 by CLAUDE_CODE — ORQ-51 FF-merged to main; full-suite gate caught + fixed a 19-test regression (support.test.ts stale dead-role names); RELEASED v0.21.0 (pushed origin, Full-Auto auto-push, build-only CI); dev rebuilt FRESH off release; push security-review finding reviewed (intended fix, no new vuln); D-DOCKERHUB-TOKEN resolved (owner: no-rotate). Owner: "save session + keep Full Auto running overnight" → loop continues on paced --hold.
+> Last updated: 2026-10-10 (day) by CLAUDE_CODE — D-3 closed; ORQ-48 merged+pushed; framework V32.64 sync + ORQ-52 on branch chore/framework-sync-v32.64 (awaits owner merge); PM default → Opus 5.5. Loop continues (paced --hold).
+> Previously: 2026-10-10 by CLAUDE_CODE — ORQ-51 FF-merged to main; full-suite gate caught + fixed a 19-test regression (support.test.ts stale dead-role names); RELEASED v0.21.0 (pushed origin, Full-Auto auto-push, build-only CI); dev rebuilt FRESH off release; push security-review finding reviewed (intended fix, no new vuln); D-DOCKERHUB-TOKEN resolved (owner: no-rotate). Owner: "save session + keep Full Auto running overnight" → loop continues on paced --hold.
 > Previously: 2026-10-09 by CLAUDE_CODE — RBAC 3-tier retrofit VERIFIED already-complete (not rebuilt; hook false-alarm); ORQ-51 support.ts dead-gate FIXED+verified on branch (HARD HOLD); ORQ-50=NO; board reconciled. Owner: "save session + stop reboot loop" → loop STOPPED (interactive).
 > Previously: 2026-09-27 (pm) by CLAUDE_CODE — ORQ-44 merged to local main; ORQ-49 dev rename done on branch; ORQ-34 sidebar+store PASS (portal pending). Owner: "save session + stop the reboot loop for now" → loop STOPPED.
 > Previously: 2026-09-27 (am) by CLAUDE_CODE — resume: 4 owner decisions answered; ORQ-45/46/47 shipped to LOCAL main (5 ahead of origin, HARD HOLD); dev rebuilt+verified.
 > Previously: 2026-09-26 by CLAUDE_CODE — v0.20.5 LIVE on prod/staging/demo (all EC2); ORQ-33..43 done.
 > Previously: 2026-09-10 by CLAUDE_CODE (owner: resume → ORQ-32 → "FF-merge to local main" → "save session"). **ORQ-32 DONE + FF-merged to local `main`** — demo-latest retag moved off the pull-only EC2 box to the workstation. main @`5c00a3e`, **2 ahead of origin, HARD HOLD** (unpushed; push = release moment, owner-gated). LIVE envs UNCHANGED on v0.20.3 / sha-70aad59. Framework **V32.54.0**. **Task queue EMPTY of un-gated work.** No open [WHAT] decisions.
+
+---
+
+## ⭐ SESSION 2026-10-10 (day) — D-3 · ORQ-48 shipped · V32.64 sync + ORQ-52 on branch · PM → Opus 5.5
+
+```
+[FOCUS: Orqafy]  ·  2026-10-10 day  ·  cold-start authority: memory/session_d3_orq48_govsync_v32.64_2026-10-10.md
+⚠RESCAN docs/TASK_QUEUE.md + Squirlnote Orqafy Pending/On-Going (project cmssmkgn1000gesgmjzt7uvaa — RAW ids only, ORQ prefix collides with Self-Hosted) FIRST; this list is not the whole queue.
+
+## ⏳ TODO — next iteration
+- Owner-gated (do NOT self-merge): FF-merge `chore/framework-sync-v32.64` (91ad5e8+598ffb3 = ORQ-53 sync + ORQ-52 lint fix) → local main. Verified. After merge: main ahead of origin; push only on owner word (or Full-Auto allowlist rules: verified + gen-release-notes).
+- Cross-seat: POW-56 (AIEF fix/lint-deploy-prune-vendored-dirs @29920d3, worktree in this session's scratchpad aief-orq52) awaits AIEF-seat merge. Until merged, a re-sync from AIEF main reverts ORQ-52.
+- Owner-gated: promote v0.21.0 → prod/demo (still v0.20.5).
+- ORQ-27 owner-PARKED. No open [WHAT] (D-3 closed today).
+- If nothing un-gated: rewrite this handoff with a fresh timestamp and close-session --hold. Never replay stale.
+
+## ✅ DONE (verified)
+- D-3 closed (leave unbuilt) eca257f. ORQ-48 merged + pushed (origin main = fd3f334, no version). Framework V32.64 on branch (typecheck 0, lint 0 FAIL). ORQ-52 fixed (AIEF 29920d3 + Orqafy 598ffb3). PM default Opus 5.5 (~/.claude d412b08 local, .zshrc). Board: ORQ-48 Ready to Test (main_local→pushed), ORQ-52/53 On-Going (branch), POW-56 Pending.
+
+## 🔒 GROUND TRUTH
+- git: main == origin/main @fd3f334 + this handoff docs commit. Branches: chore/framework-sync-v32.64 (unmerged). LIVE prod/staging/demo v0.20.5. Dev FRESH (code unchanged since v0.21.0).
+- ⚠ Running loop slot 23 still has CLAUDE_LOOP_MODEL=claude-opus-4-8 in env → reboots land on 4.8 until relaunched (owner set 5.5 default).
+```
 
 ---
 
