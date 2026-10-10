@@ -10,11 +10,11 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 > 2026-09-26: v0.20.5 LIVE on prod/staging/demo (all EC2). Next un-gated: **ORQ-45 → ORQ-44 → ORQ-34 visual**. Owner [WHAT]s: ORQ-41/42/46 + Docker Hub token rotation (PENDING_DECISIONS.md). ORQ-27 owner-PARKED ((a) now moot).
 > 2026-09-27 (resume): owner answered all 4 open decisions (ORQ-41 provisioning KEEP-closed; copyright-mark KEEP-text-closed; ORQ-46 approved; ORQ-42 → ORQ-47). Shipped to LOCAL main (4 ahead of origin, HARD HOLD): **ORQ-45, ORQ-46, ORQ-47** — all verified. Remaining un-gated: **ORQ-44** (compose reconcile), **ORQ-34 visual**, branch housekeeping. Owner action: D-DOCKERHUB-TOKEN rotation.
 
-- 🟡 **[ORQ-53] Framework governance sync V32.54.0 → V32.64.0** `gate: owner-merge` — branch `chore/framework-sync-v32.64`
+- 🟡 **[ORQ-53] Framework governance sync V32.54.0 → V32.64.0** `gate: owner(FF-merge of branch)` — branch `chore/framework-sync-v32.64`
   (`91ad5e8` sync + `598ffb3` ORQ-52 overlay/managed-region refresh). Governance-only (32 files; no apps/packages/prisma/compose/env).
   Verified: typecheck 0, scripts bash -n + exec, lint-deploy 0 FAIL, CLAUDE.md V32.64 + managed region regenerated.
   Done = owner FF-merges to local main. `source: owner 2026-10-10`
-- 🟡 **[ORQ-52] lint-deploy shellcheck pass scans `node_modules/`** `gate: owner-merge + cross-seat(AIEF POW-56)` — fixed upstream on
+- 🟡 **[ORQ-52] lint-deploy shellcheck pass scans `node_modules/`** `gate: owner(FF-merge; also cross-seat AIEF POW-56)` — fixed upstream on
   AIEF branch `fix/lint-deploy-prune-vendored-dirs` (`29920d3`, unmerged; POW-56) and overlaid into Orqafy on the ORQ-53 branch.
   lint-deploy FAIL(1) → 0 FAIL. ⚠ Until POW-56 merges in AIEF, a future framework sync would revert it. `source: agent-found 2026-10-10`
 - 🔵 **[OWNER-PARKED 2026-09-05 — not a to-do] Cross-host deploy residuals from the EC2 split** `[ORQ-27]` `gate: owner` — surfaced by ORQ-25.
