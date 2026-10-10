@@ -103,9 +103,9 @@ else
 fi
 
 # =============================================================================
-# C2 — Traefik certresolver case (must be lowercase letsencrypt)
+# C2 — Traefik certresolver case (must be lowercase 'letsencrypt' or 'cloudflare')
 # =============================================================================
-header "C2  Traefik certresolver case — must be lowercase 'letsencrypt'"
+header "C2  Traefik certresolver case — must be lowercase 'letsencrypt' or 'cloudflare'"
 
 if [ "${#COMPOSE_FILES[@]}" -eq 0 ]; then
   skip "no compose files found"
@@ -114,10 +114,11 @@ else
   for cf in "${COMPOSE_FILES[@]}"; do
     rel="${cf#"$TARGET_DIR/"}"
     if grep -qE 'certresolver' "$cf" 2>/dev/null; then
-      # Check for any non-lowercase variant
-      BAD_LINES="$(grep -nE 'certresolver' "$cf" | grep -vE 'certresolver=letsencrypt[^A-Za-z]?' || true)"
+      # Accept lowercase 'letsencrypt' or 'cloudflare' (DNS-01 on the EC2-Komodo
+      # powerbyte.app standard); flag any other value or wrong case.
+      BAD_LINES="$(grep -nE 'certresolver' "$cf" | grep -vE 'certresolver=(letsencrypt|cloudflare)[^A-Za-z]?' || true)"
       if [ -n "$BAD_LINES" ]; then
-        fail "$rel — wrong certresolver case (must be lowercase 'letsencrypt'):"
+        fail "$rel — invalid certresolver (must be lowercase 'letsencrypt' or 'cloudflare'):"
         while IFS= read -r line; do
           printf "      %s\n" "$line"
         done <<< "$BAD_LINES"
