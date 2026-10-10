@@ -1427,6 +1427,37 @@ master key). Add these to CREDENTIALS.md's GitHub Secrets section.
 to the prod channel → set `<APP>_PROD_TAG` → `DeployStack <app>-prod` (UI button or the helper with prod
 env). Do not add a prod auto-deploy step. See the runbook §6.
 
+**GitHub primary / local fallback (V32.61) — resilience when GitHub literally cannot run.** The
+pipeline above (`docker-publish.yml` build/push → `komodo-deploy.sh` staging redeploy) is the
+DEFAULT path, always preferred. A committed **`scripts/release-local.sh`** is the FALLBACK, used
+ONLY when GitHub is unavailable (billing block, spending-limit stop, stuck-queued run, no run ever
+appears) — NEVER a way to skip CI, and NEVER triggered by a genuine test/build failure (that STOPS,
+no fallback). Both `release-local.sh` and its Komodo-API sibling **`deploy/komodo/komodo-exec.sh`**
+are materialized by the repo-root `cicd-gen/` generator (never hand-ported), alongside
+`ci.yml`/`docker-publish.yml`/`push.sh`/`start.sh`/etc. Fixed-order steps:
+1. **Preflight** — clean tree on `main`, in sync with `origin`.
+2. **Full-suite gate** — `prisma generate`, whole-project typecheck, ALL test suites, eslint, web
+   build. Never build/publish on a partial gate (lesson: a nearby-tests-only gate once shipped RED).
+3. **Version** — `gen-release-notes` (bump + changelog; `--apply` only on `--confirm-bump`).
+4. **Push** — `--push` (self-appends `# HARDHOLD-OK` only when the owner has authorized the push).
+5. **Poll GitHub** for the pushed sha's `docker-publish.yml` run (via `gh`, ~10 min):
+   - **Success** → do NOTHING locally (never double-build).
+   - **Unavailable** (no run / billing block / spending-limit annotation / stuck queued) → run the
+     local image build + Komodo staging deploy via `komodo-exec.sh` (Komodo API terminal; SSH
+     fallback when the API is unreachable).
+   - **Genuine test/build FAILURE reported by GitHub** → **STOP + report, exit non-zero, NO
+     fallback** — a red build must never be laundered through a local rebuild.
+6. **Local image build** (`scripts/publish-image.sh` equivalent) — only on the "unavailable" branch.
+7. **Staging deploy** — only with `--deploy-staging` (routes through the same data-first
+   `staging-refresh-and-deploy.sh` gate as the primary path).
+
+**Hard rules (identical to the primary path, never loosened for the fallback):** STAGING is the
+ceiling — prod/demo stay 100% manual regardless of which path built the image. **NO self-hosted
+runners.** Never make a private repo public to get free minutes — first check a Free-plan downgrade
+/ `$0` spending limit, else escalate as a `[WHAT]`. Full contract: `~/.claude/library/cicd-standard.md`
+§ "Dual-path CI/CD — GitHub primary, local fallback"; reference impl: Marine-Guardian
+`scripts/release-local.sh`, `deploy/komodo/komodo-exec.sh`, `docs/runbooks/local-cicd.md`.
+
 ### Rule 5b — Observability & Extended Testing (opt-in, target-gated)
 
 Mostly **CLI / Docker tools, not installable Claude skills** — driven by the templates below

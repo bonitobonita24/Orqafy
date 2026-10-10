@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://powerbyteitsolutions.com/aief/report-schema.json",
+  "title": "AIEF Audit Findings Report",
+  "description": "Machine-checkable OUTPUT CONTRACT for a `full audit check` / Rule 38 audit run (deliverable #45, V32.60). Adapted (reference-and-adapt, MIT) from cloudflare/security-audit-skill's report-schema.json. Every finding carries the four taxonomy axes — severity, confidence, dataFlowRole, preconditions — plus mandatory non-empty evidence. FLOOR-NOT-CEILING: this contract standardizes a finding's SHAPE so findings are comparable, sortable and machine-checkable; it NEVER caps what an audit may report. The paired validator is scripts/validate-findings.mjs (zero-dep, advisory, always exit 0).",
+  "schemaVersion": "1.0",
+  "type": "object",
+  "required": ["schemaVersion", "generator", "target", "findings"],
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Contract version. Bump only on a breaking field change."
+    },
+    "generator": {
+      "type": "string",
+      "description": "What produced this report — a swarm label (e.g. 'full-audit-check-trigger.md swarm'), a tool name, or an agent id."
+    },
+    "target": {
+      "type": "string",
+      "description": "TARGET-NEUTRAL label for what was audited — a repo / app / surface name. NEVER a person; the report describes the code, not the author."
+    },
+    "generated": {
+      "type": "string",
+      "description": "ISO-8601 timestamp. Injected at file-write time only; omitted from the deterministic in-memory object so the object is byte-stable."
+    },
+    "summary": {
+      "type": "object",
+      "description": "Derived counts. May be regenerated from `findings` by the validator.",
+      "additionalProperties": true,
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "confirmed": { "type": "integer", "minimum": 0 },
+        "plausible": { "type": "integer", "minimum": 0 },
+        "bySeverity": {
+          "type": "object",
+          "description": "Count keyed by severity level.",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" }
+    }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "required": ["id", "title", "severity", "confidence", "dataFlowRole", "preconditions", "evidence"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable identifier for the finding (dedupe key across re-runs)."
+        },
+        "title": {
+          "type": "string",
+          "description": "One-line statement of the defect."
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low", "info"],
+          "description": "Impact rank — real-defect > drift > advisory > nit. Ties to audit.md §6 buckets: critical/high = the CRITICAL/HIGH blocking tiers, medium/low = advisory, info = nit."
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["confirmed", "plausible"],
+          "description": "Adversarial-disproof verdict. CONFIRMED = survived a fresh agent's attempt to falsify it (a precondition/code-path proving it real). PLAUSIBLE = could neither be confirmed nor disproven — downgraded, never dropped silently."
+        },
+        "dataFlowRole": {
+          "type": "string",
+          "enum": ["source", "sink", "sanitizer", "passthrough", "none"],
+          "description": "Where in the data flow the finding sits — an untrusted SOURCE, a dangerous SINK, a SANITIZER, a PASSTHROUGH link, or NONE (not a data-flow finding)."
+        },
+        "preconditions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "The conditions that must hold for the finding to be real/exploitable (the adversarial-disproof output). An empty array means unconditional."
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" },
+          "description": "REQUIRED, non-empty. Each entry is a concrete anchor — a `file:line`, a grep-hit, or a command-output line. 'Every finding names its evidence.'"
+        },
+        "dimension": {
+          "type": "string",
+          "description": "Optional — the audit dimension (e.g. 'D1-security') or coverage-ledger unit (surface × boundary × dimension) this finding belongs to."
+        },
+        "recommendation": {
+          "type": "string",
+          "description": "Optional remediation guidance."
+        }
+      }
+    }
+  }
+}

@@ -1,6 +1,211 @@
 # SPEC-DRIVEN PLATFORM — V32
 
 <!-- ═══════════ SYNC IMPACT REPORT — auto-maintained on every version bump ═══════════
+Version:  V32.63 → V32.64
+Bump:     MINOR (adds an advisory Phase 8 + Phase 7 MODEL HOOK referencing the GLOBAL `archify` skill — no new Rule/Scenario/deliverable/phase-hook; counts unchanged)
+Summary:  ARCHITECTURE-DIAGRAM EMIT HOOK. Adds an advisory, non-blocking phases.md MODEL HOOK: at Phase 8,
+          once a buildout batch lands real architecture, Opus dispatches the globally-installed `archify`
+          skill (Skill tool name `archify`; CLI ~/.claude/skills/archify/bin/archify.mjs) to inspect repo
+          evidence and emit a SOURCE-BACKED `docs/ARCHITECTURE.html` (fail-closed — asserts only what the
+          code proves), feeding the app's docs site / app-showcase / Docs-Hub. A lighter Phase 7 cue
+          refreshes the diagram when a Feature Update alters the architecture surface (new router/module/
+          service/queue/integration). `.archify/` is gitignored (cache); `docs/ARCHITECTURE.html` is
+          committed. `archify` is a GLOBAL skill, NOT a framework deliverable (referenced like
+          designer-skills / web-motion) — so NO deliverable/count change and deploy.sh is untouched.
+          Advisory, never a gate. HARD HOLD — local only.
+Dependent files reviewed (propagation checklist):
+  [x] Master_Prompt.md             — this Sync Impact Report block (authority)
+  [x] specdrivenprompt/phases.md   — Phase 8 emit MODEL HOOK + Phase 7 refresh MODEL HOOK
+  [x] Framework_Feature_Index.md   — Current-version line -> V32.64 + version-chain clause; footer "Last updated" -> V32.64
+  [x] CLAUDE_compact.md            — H1 title version -> V32.64 (+ discipline-chain clause)
+  [x] README.md                    — version badge + 'Framework Features' heading -> V32.64
+  [x] public/documentation-hub.html · public/Prompt_References.html · specdrivenprompt/Prompt_References.html — current-version markers -> V32.64
+  [x] CLAUDE.md (repo)             — Skills-Library-Awareness per-phase table: archify at Phase 8 (+ Phase 7)
+  [x] package.json                 — 32.64.0 (C0 binding: package major.minor === FFI framework version)
+  [x] scripts/check-framework-alignment.sh — run as the gate, exit 0 required
+  Canonical counts:                UNCHANGED — 41 Rules · 51 Scenarios · 45 deliverables · 62 Prompts (39 NEW ✨) · 18 Phase Hooks · 6 MCP servers · 6 agents · 20 Bootstrap Steps
+  [ ] deploy.sh                    — intentionally NOT touched (archify is a global skill, not a deliverable)
+═══════════════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════ SYNC IMPACT REPORT — auto-maintained on every version bump ═══════════
+Version:  V32.62 → V32.63
+Bump:     MINOR (fixes a REAL defect in an existing deliverable #17 deploy.sh + doc alignment — no Rule/Scenario/deliverable count change)
+Summary:  DEPLOY-SCRIPT PERMISSIONS-MERGE FIX. Closes a real, previously-latent defect in `deploy.sh`'s
+          Group 5b `settings.json` create-or-merge step, surfaced by a full audit check of the V32.62
+          release. The merge used `jq -s '.[0] * .[1]'`; jq's `*` deep-merges OBJECTS but REPLACES
+          ARRAYS outright. So whenever a target app already had its own `permissions.ask` (or
+          `.allow`/`.deny`) array, the dest array replaced the framework's wholesale and the framework's
+          guard entries were SILENTLY DROPPED — while the success message still claimed existing keys were
+          preserved. V32.62 was the first release to ship an array under `permissions`, which is what
+          exposed it; the defect itself predates V32.62. FIX: the three `permissions` array keys now UNION
+          + de-duplicate both sides; every other key keeps the existing deep-merge / dest-wins-on-scalar
+          semantics; neither side having `permissions` still yields no `permissions` key; the success
+          message is now honest. Verified with 8 jq test cases plus a run against the real shipped
+          `settings.json`. Separately, `AI_Tools_Reference.md`'s `permissions.ask` documentation is aligned
+          from the colon form to the space form actually shipped in `settings.json` — NOTE: both forms are
+          functionally identical (per code.claude.com/docs/en/permissions, "the `:*` suffix is an
+          equivalent way to write a trailing wildcard, so `Bash(ls:*)` matches the same commands as
+          `Bash(ls *)`"), so this is a doc-CONSISTENCY fix, NOT a matcher bugfix. HARD HOLD — local only.
+Dependent files reviewed (propagation checklist):
+  [x] Master_Prompt.md             — this Sync Impact Report block (deliverable #17 fixed in place)
+  [x] specdrivenprompt/deploy.sh   — permissions.ask/allow/deny UNION+dedupe on merge; honest success message
+  [x] specdrivenprompt/AI_Tools_Reference.md — permissions.ask pattern form aligned to the shipped settings.json (space form)
+  [x] .gitignore                   — ignore `_tempfiles/` (owner-local personal files; prevents a stray `git add -A`)
+  [x] CLAUDE_compact.md            — H1 title version → V32.63
+  [x] Framework_Feature_Index.md   — Current-version line → V32.63 + V32.63 timeline row; footer → V32.63
+  [x] README.md                    — version badge + 'Framework Features' heading → V32.63
+  [x] public/documentation-hub.html · public/Prompt_References.html · specdrivenprompt/Prompt_References.html — current-version markers → V32.63
+  [x] package.json                 — 32.63.0 (C0 binding: package major.minor === FFI framework version)
+  [x] scripts/check-framework-alignment.sh — run as the gate, exit 0 required
+  [ ] counts UNCHANGED (41 Rules · 51 Scenarios · 45 deliverables) — deliberately no count edit
+═══════════════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════ SYNC IMPACT REPORT — auto-maintained on every version bump ═══════════
+Version:  V32.61 → V32.62
+Bump:     MINOR (additive guardrails on two existing deliverables #18 spec-executor.md + #19 settings.json — no Rule/Scenario/deliverable count change)
+Summary:  FRAMEWORK-HYGIENE ADDITIVE HARVEST (H1b + H5). Strengthens the existing Architect-Execute Model's
+          Sonnet executor (deliverable #18 `spec-executor.md`) with two hard fail-closed operating-rule
+          clauses: (1) forbidden cross-layer / no-improvise — needing an MCP tool, an out-of-scope file, or
+          a sibling layer's job (planning/architecture/cross-file decomposition/doc research) is itself the
+          signal the executor is bypassing its intended path; it MUST STOP and report BLOCKED rather than
+          work around it; (2) fail-closed verify — no DONE claim without confirmable verify evidence (a green
+          test, a built artifact, the expected diff); missing evidence STOPS the task and reports BLOCKED
+          instead of proceeding to a dependent step. A one-line cross-ref was added to
+          `memory-governance.md` §4 (Architect-Execute Model) pointing at the contract. Separately,
+          deliverable #19 `settings.json` gains two additive knobs, deployed via `deploy.sh` Group 5b
+          create-or-merge (existing keys preserved): `env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE = "80"` (per the
+          Claude Code env-vars docs — a 1-100 percentage of the auto-compact window that triggers
+          compaction earlier than the model's default; cannot raise the threshold above default) and a
+          `permissions.ask` array covering 5 non-git destructive Bash patterns (`Bash(rm *)`,
+          `Bash(chmod *)`, `Bash(npm *)`, `Bash(docker *)`, `Bash(kill *)` — as-shipped space form; the
+          `:*` suffix form is functionally identical per the Claude Code permissions docs) — git operations are already
+          covered by the existing `git-guard.sh` PreToolUse hook, so deliberately no git pattern was added
+          here. Both deliverables' existing operating rules / keys are preserved in full — nothing removed
+          or narrowed. HARD HOLD — local only.
+Dependent files reviewed (propagation checklist):
+  [x] Master_Prompt.md             — this Sync Impact Report block (deliverables #18/#19 extended in place)
+  [x] specdrivenprompt/spec-executor.md — two new operating-rule bullets (forbidden cross-layer/no-improvise; fail-closed verify)
+  [x] specdrivenprompt/memory-governance.md — §4 gains a one-line cross-ref to the spec-executor.md contract
+  [x] specdrivenprompt/settings.json — env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE="80" + permissions.ask (5 non-git Bash patterns); existing keys preserved
+  [x] CLAUDE_compact.md            — H1 title version → V32.62; WHO YOU ARE preamble gains the V32.62 clause
+  [x] Framework_Feature_Index.md   — Current-version line → V32.62 + V32.62 timeline row; footer → V32.62
+  [x] README.md                    — shields.io version badge + 'Framework Features' heading → V32.62
+  [x] package.json                 — version → 32.62.0
+  [x] public/documentation-hub.html · public/Prompt_References.html · specdrivenprompt/Prompt_References.html — current-version markers → V32.62
+  [x] scripts/check-framework-alignment.sh — run gate mode (not --report-only); PASS required before commit
+  Canonical counts:                UNCHANGED — 41 Rules · 51 Scenarios · 45 deliverables · 62 Prompts
+                                   (39 NEW ✨) · 14 UI Rules · 6 MCP servers · 18 Phase Hooks · 6 agents ·
+                                   20 Bootstrap Steps.
+═══════════════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════ SYNC IMPACT REPORT — auto-maintained on every version bump ═══════════
+Version:  V32.60 → V32.61
+Bump:     MINOR (extends Rule 36 CI/CD Pipeline Standard — additive resilience mechanic; no Rule/Scenario/deliverable/count change)
+Summary:  DUAL-PATH CI/CD — GITHUB PRIMARY, LOCAL FALLBACK (POW-46). Wires the already-live global fleet
+          discipline (`~/.claude/library/cicd-standard.md` § "Dual-path CI/CD") into the framework's OWN
+          CI/CD authority. GitHub-hosted runners stay the DEFAULT build+publish path; a committed
+          `scripts/release-local.sh` (orchestrator) + `deploy/komodo/komodo-exec.sh` (Komodo-API exec, SSH
+          fallback) are the FALLBACK, materialized by `cicd-gen/` alongside the rest of the generator's
+          output set — fired ONLY when GitHub literally cannot run (billing block / spending-limit stop /
+          stuck-queued / no run ever appears), never a way to skip CI. Contract: full-suite gate
+          (typecheck/tests/eslint/build) before ANY build, primary or fallback; a genuine test/build FAILURE
+          reported by GitHub STOPS the pipeline with no fallback (never launders a red build through a local
+          rebuild); STAGING stays the ceiling (prod/demo remain 100% manual either way); NO self-hosted
+          runners; never make a private repo public for free minutes. Rule 36 body extended (CI/CD authority
+          now names the fallback); no new Rule, no new Scenario, no new deliverable — the existing #32
+          `cicd.md` deliverable and Phase 6 wiring absorb it. HARD HOLD — local only.
+Dependent files reviewed (propagation checklist):
+  [x] Master_Prompt.md             — this Sync Impact Report block (Rule 36 authority extended)
+  [x] specdrivenprompt/cicd.md     — §1 dual-path paragraph; §10 scaffold-output list gains the fallback pair; Hard-rules new bullet
+  [x] specdrivenprompt/templates.md — Rule 5c gains "GitHub primary / local fallback (V32.61)" subsection (7-step contract)
+  [x] specdrivenprompt/phases.md   — Phase 6 STAGING AUTO-DEPLOY block gains the GitHub-unavailable fallback pointer
+  [x] CLAUDE_compact.md            — H1 title version → V32.61
+  [x] Framework_Feature_Index.md   — Current-version line → V32.61 + V32.61 timeline row; footer → V32.61
+  [x] README.md                    — shields.io version badge + 'Framework Features' heading → V32.61
+  [x] package.json                 — version → 32.61.0
+  [x] documentation-hub.html · Prompt_References.html — current-version markers → V32.61
+  Canonical counts:                UNCHANGED — 41 Rules · 51 Scenarios · 45 deliverables · 62 Prompts
+                                   (39 NEW ✨) · 14 UI Rules · 6 MCP servers · 18 Phase Hooks · 6 agents ·
+                                   20 Bootstrap Steps.
+═══════════════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════ SYNC IMPACT REPORT — auto-maintained on every version bump ═══════════
+Version:  V32.59 → V32.60
+Bump:     MINOR (new deliverable #45 report-schema.json + validate-findings.mjs — additive machine-checkable audit-finding contract; no Rule/Scenario change, deliverables 44→45)
+Summary:  AUDIT FINDINGS-SCHEMA OUTPUT CONTRACT (POW-37 Part B — cloudflare/security-audit-skill harvest). New deliverable #45, a file PAIR: report-schema.json (the finding contract — severity · confidence · dataFlowRole · preconditions taxonomy + mandatory non-empty evidence, adapted reference-and-adapt/MIT from cloudflare/security-audit-skill) + a zero-dep validate-findings.mjs validator (advisory — checks a findings report's SHAPE, not its truth; --report-only/always-exit-0; --strict per-app opt-in gate; --self-test failable gate; ranks findings severity→confidence; writes a manifest to test-artifacts/audit/). Wired into Rule 38 audit.md §6 as the standard finding output contract. FLOOR-not-ceiling — standardizes a finding's shape, never caps what an audit reports. HARD HOLD — local only.
+Dependent files reviewed (propagation checklist):
+  [x] Master_Prompt.md             — this Sync Impact Report block (Rule 38 authority extended by the new finding-contract deliverable; Rule 38 body itself unchanged)
+  [x] specdrivenprompt/audit.md    — new §6.1 "Machine-checkable finding output contract" referencing report-schema.json + validate-findings.mjs
+  [x] specdrivenprompt/report-schema.json + validate-findings.mjs — NEW deliverable #45 (source of truth) + __tests__/validate-findings.test.mjs (node --test)
+  [x] specdrivenprompt/deploy.sh   — new Group 19 ships validate-findings.mjs (chmod +x) + report-schema.json to scripts/
+  [x] CLAUDE.md                    — deliverable #45 entry; canonical count 44→45 deliverable files; "The 45 Deliverable Files" heading
+  [x] CLAUDE_compact.md            — H1 title version → V32.60
+  [x] CLAUDE_framework_repo.md     — deliverable-count statements 44→45
+  [x] Framework_Feature_Index.md   — Current-version line → V32.60 + V32.60 timeline row; footer → V32.60 + 45-file deliverable set
+  [x] README.md                    — shields.io version badge + 'Framework Features' heading → V32.60; 44-file → 45-file
+  [x] package.json                 — version → 32.60.0
+  [x] documentation-hub.html · Prompt_References.html — current-version markers → V32.60; 44 → 45 deliverable files
+  Canonical counts:                41 Rules · 51 Scenarios · 45 deliverables (was 44) · 62 Prompts (39 NEW ✨) ·
+                                   14 UI Rules · 6 MCP servers · 18 Phase Hooks · 6 agents · 20 Bootstrap Steps.
+═══════════════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════ SYNC IMPACT REPORT — auto-maintained on every version bump ═══════════
+Version:  V32.58 → V32.59
+Bump:     MINOR (extends Rule 36 CI/CD Pipeline Standard — additive behavioral mechanic; no Rule/Scenario/deliverable/count change)
+Summary:  PROD→DEMO CASCADE + FULL-AUTO SCOPED AUTO-PUSH POINTER. Back-ports the two 2026-09-21 fleet deploy-policy
+          changes — already LIVE in the always-loaded global rules (`~/.claude/rules/deploy-discipline.md` +
+          `full-auto-mode-preset.md`, broadcast to every seat) — into the framework's OWN CI/CD authority, so an
+          app-repo session reading only `.ai_prompt/cicd.md` / Rule 36 sees the current model instead of the
+          stale manual-demo one. (1) A completed + verified MANUAL prod promotion now AUTO-CASCADES the same
+          promoted tag to the `*-demo` stack (migrate-YES / reseed-NEVER / backup-first; gated on the prod step
+          succeeding; a demo-update failure is reported and NEVER blocks or rolls back the prod deploy already
+          done) — the client demo never lags the live product; still never on a bare `main` push. (2) A pointer to
+          the ONE standing HARD-HOLD carve-out: inside a Full-Auto / loop session an ALLOWLISTED repo may
+          self-authorize a push to `main` — verified-done only, auto-versioned, with STAGING as the ceiling
+          (prod/demo stay 100% manual); never AIEF or a held repo; interactive sessions unchanged. Counts
+          UNCHANGED (behavior added to an existing Rule + Scenario + deliverable). HARD HOLD — local only.
+Dependent files reviewed (propagation checklist):
+  [x] Master_Prompt.md             — this Sync Impact Report block; Rule 36 body (CI-deploy clause + Demo paragraph + Authority paragraph)
+  [x] specdrivenprompt/cicd.md     — §5 demo-cascade note; §6 two-update-paths rewrite; Hard-rules (CI-never-deploys clause, new Demo-tracks-prod bullet, HARD-HOLD auto-push carve-out)
+  [x] CLAUDE_compact.md            — Rule 36 one-liner (cascade + auto-push carve-out); H1 title version → V32.59
+  [x] scenarios.md                 — Scenario 45 generator list (`push-to-demo.sh` = also the prod cascade)
+  [x] Framework_Feature_Index.md   — Current-version line → V32.59 + V32.59 narrative entry; footer → V32.59 + changelog chain
+  [x] README.md                    — shields.io version badge + 'Framework Features' heading → V32.59
+  [x] package.json                 — version → 32.59.0
+  [x] documentation-hub.html · Prompt_References.html/.md — current-version markers → V32.59
+  Canonical counts:                UNCHANGED — 41 Rules · 51 Scenarios · 44 deliverables · 62 Prompts (39 NEW ✨) ·
+                                   14 UI Rules · 6 MCP servers · 18 Phase Hooks · 6 agents · 20 Bootstrap Steps.
+═══════════════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════ SYNC IMPACT REPORT — auto-maintained on every version bump ═══════════
+Version:  V32.54 → V32.58   (folds in the previously-unrecorded v32.55 / v32.56 / v32.57 fleet-script releases)
+Bump:     MINOR (tooling + versioning-policy — no Rule/Scenario/deliverable/count change)
+Summary:  VERSION UNIFICATION. The framework-doc version (FFI "Current framework version", README badge +
+          heading, CLAUDE_compact H1 title, FFI footer, Prompt_References/documentation-hub current-version
+          markers) and the release version (`package.json` + git tag) are now ONE number. The two had drifted:
+          v32.55/56/57 (the POW-13 `close-session.sh` gate work) advanced the tag under the retired two-axis
+          convention but left every doc anchor at V32.54. This release advances all current-version anchors to
+          V32.58, backfills the changelog record of v32.55/56/57, and adds an alignment-linter BINDING
+          (check-framework-alignment.sh C0) asserting `package.json` major.minor === FFI framework version so
+          the two can never silently drift again (patch stays a package-only detail). Policy going forward:
+          every release bumps BOTH together; the V32.x SemVer-for-rules classification still governs the bump
+          size. HARD HOLD — local only.
+Dependent files reviewed (propagation checklist):
+  [x] Master_Prompt.md             — this Sync Impact Report block
+  [x] Framework_Feature_Index.md   — Current-version line → V32.58 + backfilled v32.55/56/57 narrative;
+                                     footer → V32.58 + backfilled changelog chain
+  [x] README.md                    — shields.io version badge + "Framework Features" heading → V32.58
+  [x] CLAUDE_compact.md            — H1 title version → V32.58
+  [x] documentation-hub.html · Prompt_References.html/.md — current-version markers → V32.58
+  [x] scripts/check-framework-alignment.sh — NEW C0 package.json ↔ FFI version binding
+  [x] package.json                 — version → 32.58.0
+  [x] CLAUDE.md (repo)             — Sync Impact Report note: unified single-version policy
+  Canonical counts:                UNCHANGED — 41 Rules · 51 Scenarios · 44 deliverables · 62 Prompts
+                                   (39 NEW ✨) · 14 UI Rules · 6 MCP servers · 18 Phase Hooks · 6 agents ·
+                                   20 Bootstrap Steps. No count changed — this is tooling + policy only.
+═══════════════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════ SYNC IMPACT REPORT — auto-maintained on every version bump ═══════════
 Version:  V32.53 → V32.54
 Bump:     MINOR (adds on-demand deliverable #44 content-voice.md — the Content Human-Voice Pass; strengthens
           the V32.53 humanize/ai-check phase cue into a documented on-demand pass; NO new Rule)
@@ -2515,19 +2720,19 @@ Full implementation detail — the Next.js primitive checklist with code shape, 
 
 Every framework-built app ships via the canonical CI/CD pipeline: **build once, promote forward.** A single image is built and tagged at CI time; that identical image is then PROMOTED — never rebuilt — from dev → staging → prod, and to demo by retagging the same verified bytes. Rebuilding per environment is prohibited: it breaks the guarantee that what passed staging is byte-identical to what reaches prod.
 
-**CI gates and publishes — it never deploys.** `ci.yml` runs governance → quality → security checks; `docker-publish.yml` builds, tags, and pushes the image to the registry. Neither workflow auto-deploys ANY environment. Deployment is always a separate, deliberate step (agent-triggered or a manual promotion), per the existing 3-tier deploy contract (`deploy-discipline.md`): staging deploys on the push-to-`main` line (auto stays ON), prod and demo are explicit manual promotions.
+**CI gates and publishes — it never deploys.** `ci.yml` runs governance → quality → security checks; `docker-publish.yml` builds, tags, and pushes the image to the registry. Neither workflow auto-deploys ANY environment. Deployment is always a separate, deliberate step (agent-triggered or a manual promotion), per the existing 3-tier deploy contract (`deploy-discipline.md`): staging deploys on the push-to-`main` line (auto stays ON), production is an explicit manual promotion, and **demo is updated either by an explicit push OR by an auto-cascade that follows a completed+verified prod promotion** (V32.59 — never on a bare `main` push).
 
 **Staging rehearses on a fresh production-data copy — data-first, before the image.** Before the candidate image is deployed to staging, staging's database is refreshed FROM a production copy (per the standing `staging-refresh-gate.md` pattern: backup staging → prod→staging data refresh → pull candidate image → `prisma migrate deploy` (+ drift-resolve fallback) → bring staging up → health-verify). This rehearses the SAME migration against real prod-shaped data before the same image is ever considered for promotion to prod. Production stays READ-ONLY throughout (`pg_dump` only).
 
 **Production migrations are a deliberate manual step — never automatic, never destructive.** `prisma migrate deploy` against production runs ONLY as an explicit, human-triggered step — never automatically on container boot, never bundled silently into a deploy script. It is rehearsed on staging FIRST (see above) so a migration that would fail or drift is caught before it ever touches production. **Production DATA is never wiped, reloaded, or reseeded** by any part of this pipeline — the data-refresh direction is always prod → staging, never the reverse, and prod's own data is touched only by its own deliberate migration step.
 
-**Demo: migrate-YES, reseed-NEVER, with a 6-hour golden self-heal.** Demo stacks (`*-demo`) receive schema migrations on promotion (`prisma migrate deploy` + drift-resolve, same as staging/prod) but are **NEVER reseeded** — the curated demo dataset is preserved across promotions, consistent with the existing demo deploy tier. In addition, a scheduled `demo-reset.sh` runs on a **6-hour cadence** to restore the demo stack to its last-known-good ("golden") state — undoing any data mutation a client demo session may have introduced — without touching the schema or requiring a redeploy.
+**Demo: migrate-YES, reseed-NEVER, with a 6-hour golden self-heal.** Demo stacks (`*-demo`) receive schema migrations on promotion (`prisma migrate deploy` + drift-resolve, same as staging/prod) but are **NEVER reseeded** — the curated demo dataset is preserved across promotions, consistent with the existing demo deploy tier. In addition, a scheduled `demo-reset.sh` runs on a **6-hour cadence** to restore the demo stack to its last-known-good ("golden") state — undoing any data mutation a client demo session may have introduced — without touching the schema or requiring a redeploy. **Demo tracks prod (V32.59):** a manual PROD promotion that completes and verifies **auto-cascades the SAME promoted tag to the `*-demo` stack** (migrate-YES / reseed-NEVER / backup-first — the same demo push, `push-to-demo.sh <prod-tag>`), so the client demo never lags the live product. The cascade is **gated on the prod step succeeding**; a demo-update failure is reported and **never blocks or rolls back the prod deploy already done**. It applies per app that has a `*-demo` stack, and only ever follows a real prod promotion — never a bare `main` push.
 
 **Rollback couples the image with its matching schema — or guardrails the mismatch.** Because forward promotion carries a schema migration alongside the image, a rollback that reverts the IMAGE without also reverting the SCHEMA can leave code and database out of sync. The pipeline either (a) rolls back image + schema together as a coupled unit, or (b) where a schema rollback is unsafe/irreversible, guardrails the mismatch explicitly (documented incompatible-rollback warning, blocked rollback path, or a forward-fix requirement) rather than allowing a silent version-skew deploy. **Fix-forward is the preferred remedy** — rolling forward with a corrective release is safer than rolling back a coupled image+schema pair, and is attempted first wherever practical.
 
 **Every environment runs as a REGISTERED Komodo Stack — Production included; a hand-installed stack is a defect the pipeline must catch.** The three deployment environments (Local Dev · Staging · Production) — with Demo as the added client-facing tier — are all first-class, and each non-dev environment must exist as a **registered Komodo Stack resource**, never a container hand-installed directly on the server. A hand-installed stack is invisible to Komodo's stack list, cannot be promoted or rolled back through the pipeline, and drifts silently — the exact failure mode that left one app's production untracked. The generator therefore emits a **Stack Registration Audit** (`deploy/komodo-verify.sh` / `cicd-gen --audit`): for each env stack — **Production first and loudest** — it confirms the stack is Komodo-tracked (`km list stacks` / the `ListStacks` read API); an on-host stack directory that is absent from Komodo's list is flagged and **scripted-registered via a ResourceSync TOML stanza** (a declarative `[[stack]]` synced from git), falling back to the manual Komodo-UI procedure (Scenario 32) only when the CLI/API is unavailable. The audit is **fail-open on tooling** (no Komodo CLI/creds → warn, never block) and **fail-closed on a real untracked-prod finding**, and runs advisory/report-only by default (a Phase-6 backstop, never a hard blocker — same posture as `dev-freshness-check.sh` #37). **Production stays a MANUAL-trigger promotion in Komodo — never auto-deployed by a merge to `main`** (staging keeps Model-A auto-on-`main`; prod is the Tier-3 manual promotion, per `deploy-discipline.md`). Per-environment access is provisioned with **secure per-env credentials** generated into the Server-Setups SOPS vault (never the app repo), and every app follows the fleet **domain/subdomain pattern** — `<app>.<domain>` (prod) · a `<app>-staging` stack/subdomain · `<app>-demo.<domain>` — declared once at scaffold. The pipeline drives Komodo through a thin **deploy-platform seam** (register-stack · deploy-stack · verify-stack) so a future non-Komodo platform can slot in without rewriting the promotion scripts. The deploy mechanic itself remains SSH + `docker compose` against the file-on-host Komodo stack — the DeployStack/ResourceSync API is used for stack REGISTRATION and verification, not to replace the proven promotion path.
 
-**Authority + generator.** Full implementation detail — the `ci.yml`/`docker-publish.yml` shape, the promote-by-retag mechanics, the staging data-first sequence, the production manual-migration procedure, the demo migrate-never-reseed + 6-hour self-heal job, and the coupled-rollback guardrail — lives in the on-demand deliverable **`.ai_prompt/cicd.md` (#32)**, read at Phase 6 (Docker + CI/CD wiring) and on the Scenario 45 retrofit. Each app's pipeline is generated (not hand-authored) by the repo-root **`cicd-gen/`** generator, which delegates the staging data-refresh step to the existing `staging-gate/` generator rather than duplicating it. **HARD HOLD** — wiring or changing an app's CI/CD pipeline lands as LOCAL commits only; no staging/prod/demo deploy without the owner's explicit word (`deploy-discipline.md`).
+**Authority + generator.** Full implementation detail — the `ci.yml`/`docker-publish.yml` shape, the promote-by-retag mechanics, the staging data-first sequence, the production manual-migration procedure, the demo migrate-never-reseed + 6-hour self-heal job, the **prod→demo cascade** (V32.59), and the coupled-rollback guardrail — lives in the on-demand deliverable **`.ai_prompt/cicd.md` (#32)**, read at Phase 6 (Docker + CI/CD wiring) and on the Scenario 45 retrofit. Each app's pipeline is generated (not hand-authored) by the repo-root **`cicd-gen/`** generator, which delegates the staging data-refresh step to the existing `staging-gate/` generator rather than duplicating it. **HARD HOLD** — wiring or changing an app's CI/CD pipeline lands as LOCAL commits only; no staging/prod/demo deploy without the owner's explicit word (`deploy-discipline.md`). The ONE standing carve-out (owner-authorized 2026-09-21): inside a **Full-Auto / loop session** an **allowlisted** repo may self-authorize a push to `main` — verified-done only, auto-versioned, with **staging as the ceiling** (prod/demo stay 100% manual); never AIEF or a held repo, and interactive sessions are unchanged (`deploy-discipline.md`).
 
 ---
 

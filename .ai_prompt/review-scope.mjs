@@ -379,12 +379,139 @@ export {
 };
 
 // ---------------------------------------------------------------------------
+// SELF-TEST (POW-24). Feeds embedded fixture diffs through the SAME real
+// parse+gate+lens+scanner+manifest pipeline the CLI uses (buildManifest, which
+// calls parseDiff → reviewWorthy → resolveLenses → resolveScanners) — no diff
+// duplication, no git, no filesystem — and asserts the manifest each produces.
+// Prints one line per assertion, then `PASS — N/N assertions passed`; exits 0
+// on all-pass, 1 on ANY regression (so the mechanical gate can actually fail).
+// Mirrors design-fidelity.mjs selfTest() so the checklist's
+// `node <deliverable>.mjs --self-test` is a genuine gate, not a false green.
+// ---------------------------------------------------------------------------
+
+const _isTTY = process.stdout.isTTY;
+const _RST = _isTTY ? "\x1b[0m" : "";
+const _RED = _isTTY ? "\x1b[31m" : "";
+const _GRN = _isTTY ? "\x1b[32m" : "";
+const _CYN = _isTTY ? "\x1b[36m" : "";
+const _PASS = `${_GRN}PASS${_RST}`;
+const _FAIL = `${_RED}FAIL${_RST}`;
+
+function selfTest() {
+  let failures = 0;
+  const results = [];
+  const record = (label, ok) => {
+    results.push({ label, ok });
+    if (!ok) failures += 1;
+  };
+
+  // Fixture 1: a tRPC router file (review-worthy) → L1 tenant-scoping lens at
+  // content confidence + L3 rbac, via the real resolveLenses path.
+  const routerDiff =
+    "diff --git a/src/server/routers/invoice.ts b/src/server/routers/invoice.ts\n" +
+    "+++ b/src/server/routers/invoice.ts\n" +
+    "+list: publicProcedure.query(async ({ctx}) => ctx.db.invoice.findMany())\n";
+  const m1 = buildManifest(routerDiff, {});
+  const f1 = m1.files.find((f) => f.file === "src/server/routers/invoice.ts");
+  const l1 = f1 && f1.lenses.find((l) => l.id === "L1");
+  record(
+    "review-worthy tRPC router → L1 (content) + L3 lenses floored",
+    !!f1 && f1.reviewWorthy === true && !!l1 && l1.confidence === "content" &&
+      f1.lenses.some((l) => l.id === "L3"),
+  );
+
+  // Fixture 2: a route handler force-fires L1/L3/L4 at path confidence even
+  // with no db call (security.md route-handler-bypass).
+  const routeDiff =
+    "diff --git a/src/app/api/webhook/route.ts b/src/app/api/webhook/route.ts\n" +
+    "+++ b/src/app/api/webhook/route.ts\n" +
+    "+export async function POST(req){ const b = await req.json(); return Response.json({ok:1}); }\n";
+  const f2 = buildManifest(routeDiff, {}).files.find((f) => f.file === "src/app/api/webhook/route.ts");
+  const byId2 = Object.fromEntries((f2 ? f2.lenses : []).map((l) => [l.id, l]));
+  record(
+    "route handler force-fires L1+L3+L4 at path confidence",
+    !!byId2.L1 && byId2.L1.confidence === "path" && byId2.L1.rule === "route-handler-bypass" &&
+      !!byId2.L3 && !!byId2.L4,
+  );
+
+  // Fixture 3: a .env secret → gitleaks (T1) scanner floored, via resolveScanners.
+  const envDiff =
+    "diff --git a/.env b/.env\n" +
+    "+++ b/.env\n" +
+    '+API_KEY="abcdef0123456789ABCDEF"\n';
+  const f3 = buildManifest(envDiff, {}).files.find((f) => f.file === ".env");
+  record(
+    ".env secret → gitleaks scanner floored",
+    !!f3 && f3.scanners.some((s) => s.tool === "gitleaks" && s.tier === 1),
+  );
+
+  // Fixture 4: skip/floor behavior — a lockfile is certain-noise → skipped,
+  // never a review-worthy file.
+  const lockDiff =
+    "diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml\n+++ b/pnpm-lock.yaml\n+  foo: bar\n";
+  const m4 = buildManifest(lockDiff, {});
+  record(
+    "lockfile skipped (certain-noise), never review-worthy",
+    m4.files.length === 0 && m4.skipped.some((s) => s.file === "pnpm-lock.yaml"),
+  );
+
+  // Fixture 5: a deletion is worthy with empty lenses + a deletion reason
+  // (never run through resolveLenses — no surviving content).
+  const delDiff =
+    "diff --git a/src/server/routers/x.ts b/src/server/routers/x.ts\n" +
+    "deleted file mode 100644\n--- a/src/server/routers/x.ts\n+++ /dev/null\n";
+  const f5 = buildManifest(delDiff, {}).files.find((f) => f.file === "src/server/routers/x.ts");
+  record(
+    "deletion → worthy, empty lenses, deletion reason",
+    !!f5 && f5.lenses.length === 0 && /deletion/i.test(f5.reason),
+  );
+
+  // Fixture 6: a known-empty input yields the empty floor (no crash, no files).
+  const m6 = buildManifest("", {});
+  record(
+    "empty input → empty floor (0 files, 0 skipped) + FLOOR posture",
+    m6.summary.filesChanged === 0 && m6.files.length === 0 && m6.skipped.length === 0 &&
+      m6.posture === "FLOOR-NOT-CEILING",
+  );
+
+  console.log(`\n${_CYN}=== review-scope.mjs self-test ===${_RST}`);
+  for (const { label, ok } of results) {
+    console.log(`  [${ok ? _PASS : _FAIL}] ${label}`);
+  }
+  const overall = failures === 0;
+  console.log(`\n${overall ? _PASS : _FAIL} — ${results.length - failures}/${results.length} assertions passed\n`);
+  process.exit(overall ? 0 : 1);
+}
+
+const HELP = `review-scope.mjs — deterministic code-review pre-scope tool (deliverable #40)
+
+Usage:
+  node scripts/review-scope.mjs                 Scope the working-tree diff → manifest, exit 0
+  node scripts/review-scope.mjs --base <ref>    Scope \`git diff <ref>\` instead
+  node scripts/review-scope.mjs --diff <file>   Scope a saved diff file instead
+  node scripts/review-scope.mjs --self-test     Run embedded-fixture regression, print PASS N/N
+  node scripts/review-scope.mjs --help          This message
+
+Exit codes:
+  0  scoped (always — never blocks a review) / self-test PASS
+  1  self-test found a regression`;
+
+// ---------------------------------------------------------------------------
 // CLI entry (Task 3). Always exits 0 — this tool never blocks a review; on
 // any failure to read a diff it falls back to an empty-diff manifest that
 // explains what happened, still writes it, and exits 0.
 // ---------------------------------------------------------------------------
 
 if (import.meta.url === `file://${process.argv[1]}`) {
+  const cliArgs = process.argv.slice(2);
+  if (cliArgs.includes("--help") || cliArgs.includes("-h")) {
+    console.log(HELP);
+    process.exit(0);
+  }
+  if (cliArgs.includes("--self-test")) {
+    selfTest(); // calls process.exit() itself
+  }
+
   const { readFileSync, mkdirSync, writeFileSync } = await import("node:fs");
   const { execSync } = await import("node:child_process");
 

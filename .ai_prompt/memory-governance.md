@@ -375,6 +375,8 @@ Opus 4.6 plans, decomposes, and reviews. Sonnet 4.6 executes ALL file writes.
 
 By separating planning from execution, Sonnet never needs to read full PRODUCT.md or reason about decomposition. One Opus planning session enables many parallel Sonnet executions.
 
+**Executor fail-closed contract:** every dispatched Sonnet execution runs under `spec-executor.md`'s hard contract — no cross-layer improvising (an MCP/out-of-scope/sibling-layer need is a STOP-and-report-BLOCKED signal, never a workaround) and no DONE claim without confirmable verify evidence (missing green test / artifact / diff → report BLOCKED). See `.claude/agents/spec-executor.md` for the full clauses.
+
 **V32 hard rule:** Opus NEVER calls Edit/Write on project files. If a task requires Opus to "just write it inline," the task hasn't been decomposed enough.
 
 ### Opus Role (strictly limited — V32 R1)

@@ -541,12 +541,147 @@ export {
 };
 
 // ---------------------------------------------------------------------------
+// SELF-TEST (POW-24). Feeds embedded fixtures through the SAME real functions
+// the CLI uses — classifyTarget, parsePrimerFlags, and buildManifest (which
+// calls parseDiff → auditWorthy → resolveDimensions → resolveGates) — with no
+// git and no filesystem, and asserts the classification/manifest each produces.
+// Prints one line per assertion, then `PASS — N/N assertions passed`; exits 0
+// on all-pass, 1 on ANY regression (so the mechanical gate can actually fail).
+// Mirrors design-fidelity.mjs / review-scope.mjs selfTest() so the checklist's
+// `node <deliverable>.mjs --self-test` is a genuine gate, not a false green.
+// ---------------------------------------------------------------------------
+
+const _isTTY = process.stdout.isTTY;
+const _RST = _isTTY ? "\x1b[0m" : "";
+const _RED = _isTTY ? "\x1b[31m" : "";
+const _GRN = _isTTY ? "\x1b[32m" : "";
+const _CYN = _isTTY ? "\x1b[36m" : "";
+const _PASS = `${_GRN}PASS${_RST}`;
+const _FAIL = `${_RED}FAIL${_RST}`;
+
+function selfTest() {
+  let failures = 0;
+  const results = [];
+  const record = (label, ok) => {
+    results.push({ label, ok });
+    if (!ok) failures += 1;
+  };
+
+  // Fixture 1: the target-type classifier — framework/app signals + override.
+  record(
+    "classifyTarget: framework/app signals + explicit override",
+    classifyTarget({ hasSpecPrompt: true, hasMasterPrompt: true }) === "framework" &&
+      classifyTarget({ hasProduct: true, hasInputs: true }) === "app" &&
+      classifyTarget({ override: "session", isGitRepo: true }) === "session" &&
+      classifyTarget({ isGitRepo: true }) === "foreign",
+  );
+
+  // Fixture 2: a count-bearing framework file → cross-ref-drift dimension +
+  // the check-framework-alignment.sh gate, on targetType=framework.
+  const fwDiff =
+    "diff --git a/specdrivenprompt/Master_Prompt.md b/specdrivenprompt/Master_Prompt.md\n" +
+    "+++ b/specdrivenprompt/Master_Prompt.md\n+41 Rules · 51 Scenarios\n";
+  const m2 = buildManifest(fwDiff, { targetType: "framework" });
+  const s2 = m2.surfaces.find((s) => s.file === "specdrivenprompt/Master_Prompt.md");
+  record(
+    "framework count-file → cross-ref-drift dimension + alignment gate floored",
+    !!s2 && s2.dimensions.some((d) => d.id === "cross-ref-drift") &&
+      m2.relevantGates.includes("check-framework-alignment.sh"),
+  );
+
+  // Fixture 3: an app route handler → D1-security dimension.
+  const secDiff =
+    "diff --git a/src/app/api/x/route.ts b/src/app/api/x/route.ts\n" +
+    "+++ b/src/app/api/x/route.ts\n" +
+    "+export async function POST(req){ const b = await req.json(); }\n";
+  const s3 = buildManifest(secDiff, { targetType: "app" }).surfaces.find(
+    (s) => s.file === "src/app/api/x/route.ts",
+  );
+  record(
+    "app route handler → D1-security dimension floored",
+    !!s3 && s3.dimensions.some((d) => d.id === "D1-security"),
+  );
+
+  // Fixture 4: the primer-FLAG gate — a .tsx component floors D3-a11y ONLY when
+  // GOV_LGU=yes (and then at "hard" confidence); parsePrimerFlags reads the
+  // marker region. Proves both the flag parser and the flag-gated dimension.
+  const flags = parsePrimerFlags(
+    "<!-- AIEF:PRIMER START -->\nGOV_LGU: yes\nDATA_SENSITIVITY: personal\n<!-- AIEF:PRIMER END -->",
+  );
+  const tsxDiff =
+    "diff --git a/src/components/Button.tsx b/src/components/Button.tsx\n" +
+    "+++ b/src/components/Button.tsx\n+export const Button = () => <button/>;\n";
+  const noFlag = buildManifest(tsxDiff, { targetType: "app", flags: {} }).surfaces.find(
+    (s) => s.file === "src/components/Button.tsx",
+  );
+  const withFlag = buildManifest(tsxDiff, { targetType: "app", flags }).surfaces.find(
+    (s) => s.file === "src/components/Button.tsx",
+  );
+  const d3 = withFlag && withFlag.dimensions.find((d) => d.id === "D3-a11y");
+  record(
+    "primer-FLAG gate: D3-a11y floors only when GOV_LGU=yes (hard)",
+    flags.GOV_LGU === "yes" &&
+      !!noFlag && !noFlag.dimensions.some((d) => d.id === "D3-a11y") &&
+      !!d3 && d3.confidence === "hard",
+  );
+
+  // Fixture 5: skip/floor behavior — a lockfile is certain-noise → skipped.
+  const m5 = buildManifest(
+    "diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml\n+++ b/pnpm-lock.yaml\n+  foo: bar\n",
+    { targetType: "app" },
+  );
+  record(
+    "lockfile skipped (certain-noise), never audit-worthy",
+    m5.surfaces.length === 0 && m5.skipped.some((s) => s.file === "pnpm-lock.yaml"),
+  );
+
+  // Fixture 6: a known-empty input yields the empty floor (no crash).
+  const m6 = buildManifest("", { targetType: "app" });
+  record(
+    "empty input → empty floor (0 surfaces, 0 skipped) + FLOOR posture",
+    m6.summary.surfacesChanged === 0 && m6.surfaces.length === 0 && m6.skipped.length === 0 &&
+      m6.posture === "FLOOR-NOT-CEILING",
+  );
+
+  console.log(`\n${_CYN}=== audit-scope.mjs self-test ===${_RST}`);
+  for (const { label, ok } of results) {
+    console.log(`  [${ok ? _PASS : _FAIL}] ${label}`);
+  }
+  const overall = failures === 0;
+  console.log(`\n${overall ? _PASS : _FAIL} — ${results.length - failures}/${results.length} assertions passed\n`);
+  process.exit(overall ? 0 : 1);
+}
+
+const HELP = `audit-scope.mjs — deterministic full-audit pre-scope tool (deliverable #42)
+
+Usage:
+  node scripts/audit-scope.mjs                     Scope the working-tree diff → manifest, exit 0
+  node scripts/audit-scope.mjs --base <ref>        Scope \`git diff <ref>\` instead
+  node scripts/audit-scope.mjs --diff <file>       Scope a saved diff file instead
+  node scripts/audit-scope.mjs --target-type <t>   Force target type (framework|app|foreign|session)
+  node scripts/audit-scope.mjs --self-test         Run embedded-fixture regression, print PASS N/N
+  node scripts/audit-scope.mjs --help              This message
+
+Exit codes:
+  0  scoped (always — never blocks an audit) / self-test PASS
+  1  self-test found a regression`;
+
+// ---------------------------------------------------------------------------
 // CLI entry. Always exits 0 — this tool never blocks an audit; on any failure
 // to read a diff it falls back to a degraded empty-diff manifest that explains
 // what happened, still writes it, and exits 0.
 // ---------------------------------------------------------------------------
 
 if (import.meta.url === `file://${process.argv[1]}`) {
+  const cliArgs = process.argv.slice(2);
+  if (cliArgs.includes("--help") || cliArgs.includes("-h")) {
+    console.log(HELP);
+    process.exit(0);
+  }
+  if (cliArgs.includes("--self-test")) {
+    selfTest(); // calls process.exit() itself
+  }
+
   const { readFileSync, existsSync, mkdirSync, writeFileSync } = await import("node:fs");
   const { execSync } = await import("node:child_process");
 

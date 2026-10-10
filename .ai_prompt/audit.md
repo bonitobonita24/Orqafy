@@ -341,6 +341,38 @@ This mirrors `phases.md`'s CVE resolution decision tree line-for-line in spirit 
 escalation, same DECISIONS_LOG.md record shape, same "CRITICAL is never accepted" rule) — extended
 from "npm CVEs only" to "any T1/T2 tool finding."
 
+### 6.1 Machine-checkable finding output contract — `report-schema.json` + `validate-findings.mjs` (V32.60, deliverable #45)
+
+A `full audit check` — and any Rule 38 audit run — that emits STRUCTURED findings writes them as a
+`findings.json` conforming to **`report-schema.json`** (deliverable #45, adapted reference-and-adapt / MIT
+from `cloudflare/security-audit-skill`). A shared contract makes findings comparable, sortable, and
+machine-checkable — WITHOUT capping what an audit may report (FLOOR-not-ceiling).
+
+Every finding carries four taxonomy axes + mandatory evidence:
+
+| Field | Values | Meaning |
+|---|---|---|
+| `severity`      | `critical` · `high` · `medium` · `low` · `info` | Impact rank (real-defect > drift > advisory > nit). Maps to §6: critical/high = the CRITICAL/HIGH blocking tiers, medium/low = advisory, info = nit. |
+| `confidence`    | `confirmed` · `plausible` | Adversarial-disproof verdict — CONFIRMED survived falsification; PLAUSIBLE could be neither confirmed nor disproven (downgraded, never silently dropped). |
+| `dataFlowRole`  | `source` · `sink` · `sanitizer` · `passthrough` · `none` | Where in the data flow the finding sits (untrusted source → dangerous sink). |
+| `preconditions` | `string[]` (empty = unconditional) | Conditions that must hold for the finding to be real/exploitable (the adversarial-disproof output). |
+| `evidence`      | `string[]` (**REQUIRED, non-empty**) | Concrete anchors — `file:line`, grep-hit, or command-output. "Every finding names its evidence." |
+
+Validate a report with the paired zero-dep tool — **advisory: it checks SHAPE, not truth; never blocks by
+default**:
+
+```
+node scripts/validate-findings.mjs test-artifacts/audit/findings.json   # exit 0 always (advisory)
+node scripts/validate-findings.mjs --strict <file>                       # opt-in gate: exit 1 on a contract violation
+node scripts/validate-findings.mjs --self-test                           # failable mechanical self-test
+```
+
+It reports required-field / enum / non-empty-evidence violations, ranks findings severity→confidence, and
+writes `test-artifacts/audit/findings-validation.{json,md}`. `--strict` is the per-app OPT-IN gate (same
+posture as the Tier-2 `audit.tier2.enforce` gate above); the default is advisory / exit 0. The validator
+enforces the CONTRACT (a finding's shape); the TRUTH of a finding stays with the 🧠 audit swarm's
+adversarial-disproof step (`~/.claude/library/full-audit-check-trigger.md` §5).
+
 ---
 
 ## 7. Deliberately NOT adopted (and why)

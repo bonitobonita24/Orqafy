@@ -2453,7 +2453,9 @@ never deploys) · `docker-publish.yml` (build + publish only, tags `latest`/`sta
 `sha-<short>`, no auto staging-deploy) · `push.sh` (dev builds+tests, staging/prod are pure
 registry re-tags) · `start.sh` (brings a stack up, DB-first, namespaced by
 `${COMPOSE_PROJECT_NAME}`) · `push-to-demo.sh` (promote a source tag → `demo-latest`, migrate YES,
-reseed NEVER) · **`rollback.sh` (NEW)** — couples image + schema rollback so old code never runs
+reseed NEVER — also the **auto-cascade** invoked after a completed+verified prod promotion, V32.59, so
+the client demo never lags the live product; gated on prod succeeding, a demo-update failure never
+blocks/rolls back the prod deploy) · **`rollback.sh` (NEW)** — couples image + schema rollback so old code never runs
 on new schema · **`demo-reset.sh` (NEW)** — infra-level self-heal that restores demo to its curated
 baseline on a schedule without ever touching a live promotion. Staging-refresh generation stays
 delegated to **`staging-gate/`** — `cicd-gen/` does not re-generate it.

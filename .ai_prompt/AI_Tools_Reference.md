@@ -521,6 +521,17 @@ Bootstrap Step 20 creates `style-dictionary.config.json` and wires the build int
 | Governance | `memory-governance.md §6` documents the registry schema and Stop-hook wiring |
 | Why | Rule 32 requires durable learning — lessons stored only in context are lost at the next session boundary |
 
+#### `.claude/settings.json` — Framework Settings Knobs
+
+| Field | Value |
+|---|---|
+| File | `.claude/settings.json` (project-scoped Claude Code settings; deployed via `deploy.sh` Group 5b create-or-merge — existing keys always preserved) |
+| `skillListingBudgetFraction` / `maxSkillDescriptionChars` | Skill-listing context-budget caps (V32.7.2) |
+| `hooks.Stop` | `design-stop-hook.sh` — Rule 32 Verifiable-Done evidence-field gate (V32.8) |
+| `env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` (V32.62) | `"80"` — per the Claude Code env-vars docs, an integer-string 1–100 setting the percentage of the auto-compact window at which compaction triggers; lower values compact earlier; the variable can only lower the threshold, never raise it above the model's default; applies to both main conversations and subagents |
+| `permissions.ask` (V32.62) | 5 non-git destructive Bash patterns — `Bash(rm *)`, `Bash(chmod *)`, `Bash(npm *)`, `Bash(docker *)`, `Bash(kill *)` — prompt for confirmation before running. (Space-form to match the shipped `settings.json` exactly; the `:*` colon-form documented here previously is an equally valid way to write the same trailing wildcard per the Claude Code permissions docs — `Bash(ls:*)` matches the same commands as `Bash(ls *)` — this was a doc-consistency fix, not a matcher bugfix.) Git operations are already covered by the separate `git-guard.sh` PreToolUse hook, so no git pattern is added here |
+| Why | Keeps every framework-built app's Claude Code session compacting proactively (fewer mid-task truncations) and gated on the small set of non-git commands most likely to cause irreversible local damage, without touching the git-guard.sh coverage |
+
 #### `superpowers:verification-before-completion` (Driver Skill)
 
 | Field | Value |

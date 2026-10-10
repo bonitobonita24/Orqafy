@@ -668,11 +668,32 @@ else
         # We want our new keys to inject without overwriting user's existing keys,
         # so we merge as: existing * ours (existing takes precedence on key collision)
         # To ensure our keys are ADDED (not overwritten by existing), reverse the merge:
-        # .[0]=ours (base), .[1]=existing (wins on conflict) — existing keys always preserved
+        # .[0]=ours (base), .[1]=existing (wins on conflict) — existing keys always preserved.
+        # V32.63 FIX: jq's `*` deep-merges OBJECTS but REPLACES arrays outright — so a plain
+        # `.[0] * .[1]` SILENTLY DROPS the framework's permissions.ask/allow/deny guard entries
+        # whenever the target app already has its own permissions.ask/allow/deny (dest wins
+        # wholesale, src entries vanish with no warning). Every other key keeps the existing
+        # deep-merge/dest-wins-on-scalar-collision semantics unchanged; only the three
+        # permissions array keys are special-cased to UNION + de-dupe both sides instead of
+        # one replacing the other. Neither side having `permissions` (or a given array key)
+        # still yields no `permissions` key / no empty array in the output.
         SETTINGS_TMP=$(mktemp)
-        jq -s '.[0] * .[1]' "$SETTINGS_SRC" "$SETTINGS_DEST" > "$SETTINGS_TMP"
+        jq -s '
+          .[0] as $s | .[1] as $d |
+          ($s * $d) as $merged |
+          (if $merged.permissions == null then $merged
+           else
+             $merged
+             | .permissions.ask   = (if ($s.permissions.ask   == null and $d.permissions.ask   == null) then null else (($s.permissions.ask   // []) + ($d.permissions.ask   // [])) | unique end)
+             | .permissions.allow = (if ($s.permissions.allow == null and $d.permissions.allow == null) then null else (($s.permissions.allow // []) + ($d.permissions.allow // [])) | unique end)
+             | .permissions.deny  = (if ($s.permissions.deny  == null and $d.permissions.deny  == null) then null else (($s.permissions.deny  // []) + ($d.permissions.deny  // [])) | unique end)
+             | .permissions |= with_entries(select(.value != null))
+           end)
+        ' "$SETTINGS_SRC" "$SETTINGS_DEST" > "$SETTINGS_TMP"
         mv "$SETTINGS_TMP" "$SETTINGS_DEST"
-        echo "  🔄 settings.json  (merged — framework keys injected, existing keys preserved;"
+        echo "  🔄 settings.json  (merged — other keys deep-merged with existing values preserved"
+        echo "                     on collision; permissions.ask/allow/deny UNIONED + de-duped"
+        echo "                     from both files (neither side's entries are dropped);"
         echo "                     backup saved as .${TIMESTAMP}.bak)"
       fi
     fi
@@ -921,6 +942,23 @@ if [ -f "$PROJECT/scripts/audit-scope.mjs" ]; then
 fi
 echo ""
 
+# ============================================================
+# GROUP 19 — scripts/ target: validate-findings.mjs audit-finding contract validator
+#            + report-schema.json finding contract (V32.60, deliverable #45)
+# The machine-checkable audit-finding OUTPUT CONTRACT. report-schema.json is the finding
+# contract (severity · confidence · dataFlowRole · preconditions taxonomy + mandatory
+# non-empty evidence); validate-findings.mjs is the paired zero-dep advisory validator
+# (checks SHAPE not truth; --report-only/always-exit-0; --strict opt-in gate; --self-test).
+# Wired per audit.md §6. Overwrite-with-backup (framework-owned); the .mjs gets chmod +x.
+# ============================================================
+echo "─── Group 19: scripts/validate-findings.mjs + report-schema.json — audit-finding contract (V32.60) ───"
+overwrite_with_backup "$AI_PROMPT/validate-findings.mjs" "$PROJECT/scripts/validate-findings.mjs"
+if [ -f "$PROJECT/scripts/validate-findings.mjs" ]; then
+  chmod +x "$PROJECT/scripts/validate-findings.mjs"
+fi
+overwrite_with_backup "$AI_PROMPT/report-schema.json" "$PROJECT/scripts/report-schema.json"
+echo ""
+
 # 7c: tests/visual/ scaffold — create directory + .gitkeep ONLY if the directory is absent.
 # Never overwrite existing snapshot files inside tests/visual/.
 if [ ! -d "$PROJECT/tests/visual" ]; then
@@ -976,6 +1014,8 @@ echo "    scripts/dev-freshness-check.sh          ← dev-freshness detection ba
 echo "    scripts/build-primer.sh                 ← Capability-Primer regenerator, chmod +x (V32.40, deliverable #38)"
 echo "    scripts/review-scope.mjs                ← review pre-scope engine, chmod +x (V32.51, deliverable #40)"
 echo "    scripts/audit-scope.mjs                 ← full-audit pre-scope engine, chmod +x (V32.52, deliverable #42)"
+echo "    scripts/validate-findings.mjs           ← audit-finding contract validator, chmod +x (V32.60, deliverable #45)"
+echo "    scripts/report-schema.json              ← audit-finding output contract (V32.60, deliverable #45)"
 echo ""
 echo "  Merged additively (APPEND/MERGE bucket):"
 echo "    .gitignore                              ← V32 entries added, user entries preserved"
@@ -1032,6 +1072,8 @@ echo "    dev-freshness-check.sh                    ← dev-freshness detection 
 echo "    build-primer.sh                           ← Capability-Primer regenerator (deploys to scripts/build-primer.sh, V32.40)"
 echo "    review-scope.mjs                          ← review pre-scope engine (deploys to scripts/review-scope.mjs, V32.51)"
 echo "    audit-scope.mjs                           ← full-audit pre-scope engine (deploys to scripts/audit-scope.mjs, V32.52)"
+echo "    validate-findings.mjs                     ← audit-finding contract validator (deploys to scripts/validate-findings.mjs, V32.60)"
+echo "    report-schema.json                        ← audit-finding output contract (deploys to scripts/report-schema.json, V32.60)"
 echo "    (Note: sd.config.mjs, design-validate.mjs, STATE.md.template, design-fidelity.config.json,"
 echo "     docs/design-baseline/manifest.json are scaffolded by bootstrap.md Step 20 from"
 echo "     templates.md — not deployed by this script)"

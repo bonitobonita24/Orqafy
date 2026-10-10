@@ -126,11 +126,12 @@ for cand in "docs/DECISIONS_LOG.md" "docs/PRODUCT.md"; do
   fi
 done
 
-# Last 3 CHANGELOG_AI.md entry headlines (lines starting with "## " or "### ").
+# Latest 3 CHANGELOG_AI.md entry headlines (lines starting with "## " or "### ").
+# CHANGELOG_AI.md is newest-on-top, so take the FIRST 3 headings (head), not the last.
 CHANGELOG_LINES=""
 if [ -f "$PROJECT_ROOT/docs/CHANGELOG_AI.md" ]; then
   CHANGELOG_LINES="$(grep -E '^#{2,3}[[:space:]]' "$PROJECT_ROOT/docs/CHANGELOG_AI.md" 2>/dev/null \
-    | sed -E 's/^#{2,3}[[:space:]]*//' | tail -n 3 || true)"
+    | sed -E 's/^#{2,3}[[:space:]]*//' | head -n 3 || true)"
 fi
 
 # Rev: STATE.md Updated: field, else short git HEAD, else "unknown". Never `date`.

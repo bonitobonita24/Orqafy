@@ -4039,7 +4039,7 @@ Report back: active framework version + dispatch rule count
 
 Claude should respond with:
 
-> *Active framework version (as of this writing): V32.54 — run `git log origin/main -1` for the exact commit. Re-derive the live value from CLAUDE.md's header + `git log origin/main -1`.*
+> *Active framework version (as of this writing): V32.58 — run `git log origin/main -1` for the exact commit. Re-derive the live value from CLAUDE.md's header + `git log origin/main -1`.*
 > *Dispatch rule count: 9 (R1-R5 Zero-Opus-Execution + R6-R9 Dispatch Discipline)*
 > *Governance Extraction Schema: present in memory-governance.md §4 — confirmed*
 > *Ready to resume.*

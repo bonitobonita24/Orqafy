@@ -54,6 +54,19 @@ it has broken the standard.
    Staging auto-deploy is deliberately absent: auto-deploying would skip the prod-data refresh and
    defeat the rehearsal that makes staging worth having.
 
+**Dual-path CI/CD (V32.61) — GitHub primary, local fallback.** GitHub-hosted runners are the
+DEFAULT build+publish path for both workflows above; a committed **`scripts/release-local.sh`**
+(orchestrator) + **`deploy/komodo/komodo-exec.sh`** (Komodo-API exec, SSH fallback) are the
+FALLBACK, materialized by `cicd-gen/` alongside the rest of §10's output set. The fallback fires
+ONLY when GitHub literally cannot run (billing block, spending-limit stop, stuck-queued run, no run
+ever appears) — never a way to skip CI. Contract: full-suite gate (typecheck/tests/eslint/build)
+before ANY build, primary or fallback; a genuine test/build FAILURE reported by GitHub STOPS the
+pipeline with no fallback; STAGING is the ceiling (prod/demo stay 100% manual either way); NO
+self-hosted runners; never make a private repo public for free minutes. Full detail:
+`templates.md` Rule 5c + `~/.claude/library/cicd-standard.md` § "Dual-path CI/CD — GitHub primary,
+local fallback"; reference impl: Marine-Guardian `scripts/release-local.sh` +
+`deploy/komodo/komodo-exec.sh` + `docs/runbooks/local-cicd.md`.
+
 ## 2. Image-tag promotion — re-tag forward, never rebuild between tiers
 
 `dev-latest → staging-latest → latest`, with `demo-latest` a registry retag from a chosen source tag
@@ -104,11 +117,23 @@ app does not migrate on boot.
 un-migrated schema; old code must never keep writing mid-migration. `migrate deploy` applies only
 *pending* migrations — a no-op run is always safe to re-invoke.
 
-## 6. Demo — deliberate-push env, migrate YES / reseed NEVER — plus SELF-HEAL
+**Demo cascade — a completed prod promotion auto-updates demo (owner-set 2026-09-21).** When step 8
+goes green, the **SAME promoted tag is auto-cascaded to the `*-demo` stack** (the §6 demo push:
+`push-to-demo.sh <prod-tag>`) so the client demo never lags the live product. The cascade is **gated
+on the prod step succeeding + verifying** — it runs only after a real, verified prod promotion (never
+on a bare `main` push). A demo-update failure is **reported, never silently skipped, and never blocks
+or rolls back the prod deploy already done**. Applies to every app that has a `*-demo` stack.
 
-Demo push: backup demo DB → retag source → `demo-latest` → `migrate deploy` + drift-resolve →
-**never reseed** → verify. Curated demo rows are the product being shown to a client; they are
-sacred.
+## 6. Demo — migrate YES / reseed NEVER — updated by explicit push OR prod cascade — plus SELF-HEAL
+
+**Demo updates TWO ways, both preserving the curated dataset** (always migrate, **never reseed**, back
+up the demo DB first): (1) an **explicit "push to demo"** word, and (2) **automatically as a cascade
+right after a manual PROD promotion** (§5) — the same verified build that just reached prod is promoted
+to demo. Either path runs the same push: backup demo DB → retag source (the just-promoted prod tag on a
+cascade) → `demo-latest` → `migrate deploy` + drift-resolve → **never reseed** → verify. Demo is a
+**deliberate-update env** — never CI-auto-deployed on a bare `main` push; a demo update only ever
+follows an explicit owner push-to-demo OR a completed+verified prod promotion. Curated demo rows are the
+product being shown to a client; they are sacred.
 
 **Demo self-heal.** An infra-level **`demo-reset.sh`** (host cron / Komodo scheduled action —
 **not** an in-app job, so it still runs if the app itself is broken) auto-resets a messed-up demo on
@@ -205,9 +230,10 @@ Generated per app by the repo-root **`cicd-gen/`** generator — never hand-port
 staging-refresh step is delegated to **`staging-gate/`**. The generator materializes:
 `ci.yml` · `docker-publish.yml` · `push.sh` · `start.sh` · `staging-refresh-and-deploy.sh`
 (via `staging-gate/`) · `push-to-demo.sh` · `rollback.sh` · `demo-reset.sh` · **`komodo-verify.sh`**
-(the §8.1 Stack Registration Audit). It fails loudly on a missing required token rather than guessing
-a value (host/IP, compose project name, DB workspace package, health path, per-env domains — all
-discovered, never fabricated).
+(the §8.1 Stack Registration Audit) · **`scripts/release-local.sh`** + **`deploy/komodo/komodo-exec.sh`**
+(V32.61 — the GitHub-unavailable local-build/deploy fallback, §1). It fails loudly on a missing
+required token rather than guessing a value (host/IP, compose project name, DB workspace package,
+health path, per-env domains — all discovered, never fabricated).
 
 ## 11. Retrofit / adoption on an existing app (owner-gated)
 
@@ -224,9 +250,22 @@ is per-app and **owner-gated** — local commits only until the owner explicitly
 
 - **HARD HOLD.** Generating the pipeline templates/scripts for an app is LOCAL only. Actually wiring
   or deploying any of it on a live app is per-app, owner-gated — no staging/prod/demo push without
-  the owner's explicit word (`~/.claude/rules/deploy-discipline.md`).
+  the owner's explicit word (`~/.claude/rules/deploy-discipline.md`). ONE standing carve-out
+  (owner-authorized 2026-09-21): inside a **Full-Auto / loop session**, an **allowlisted** repo may
+  self-authorize a push to `main` — **verified-done only, auto-versioned, with staging as the ceiling**
+  (prod/demo stay 100% manual); never AIEF or a held repo. Interactive sessions are unchanged. Detail:
+  `~/.claude/rules/deploy-discipline.md`.
 - **CI never auto-deploys** an environment; staging deploys only via the data-first gate
-  (`~/.claude/rules/staging-refresh-gate.md`); production and demo are deliberate manual promotions.
+  (`~/.claude/rules/staging-refresh-gate.md`); production is a deliberate manual promotion, and demo is
+  updated by an explicit push OR auto-cascaded from a completed+verified prod promotion (§5/§6) — never
+  CI-auto-deployed on a bare `main` push.
+- **The local fallback (§1, `release-local.sh`/`komodo-exec.sh`) never widens the ceiling.** It fires
+  only when GitHub cannot run, never on a genuine test/build failure (that STOPS, no fallback), and
+  reaches staging only — same NO-self-hosted-runners / never-make-a-private-repo-public guardrails as
+  the primary path.
+- **Demo tracks prod (owner-set 2026-09-21).** A completed, verified prod promotion auto-cascades the
+  same tag to the `*-demo` stack (migrate-yes / reseed-never / backup-first); a demo-update failure is
+  reported and never blocks or rolls back the prod deploy.
 - **Production is only ever READ** by the staging refresh (`pg_dump`, never written); production
   data is never wiped, reloaded, or reseeded — only migrated in place.
 - **Every non-dev environment is a REGISTERED Komodo Stack — Production included.** A hand-installed
