@@ -21,6 +21,7 @@ Mid-flight discovery: a 2nd framework branch (chore/sync-lint-deploy-v32.64.1, A
 owner chose "Sync + canonical lint" → took governance sync + v32.64.2 lint, dropped superseded ORQ-52 (598ffb3).
 
 ## ⏳ TODO — next session (re-scan WHOLE docs/TASK_QUEUE.md + Squirlnote Orqafy Pending first; RAW ids — ORQ prefix collides)
+- RE-SCAN @2026-10-11 ~18:25 (loop slot 23 tick, resume): re-verified WHOLE TASK_QUEUE + PENDING_DECISIONS end-to-end + live `git status` — tree CLEAN, main @e88f514 IN SYNC with origin (0/0). NO actionable un-gated [HOW] work. No open [WHAT]. v0.21.0 live+healthy on all 3 envs. Full bar met → paced --hold (owner directive "keep Full Auto running"). Not a frozen-loop: there is genuinely nothing un-gated, not stale work being skipped.
 - NO actionable un-gated [HOW] work remains for THIS seat. Open items are all owner/cross-seat:
   - Cross-seat: POW-56 (AIEF) — AIEF main should merge `fix/lint-deploy-prune-vendored-dirs` so future syncs carry v32.64.2. We adopted it directly here; this only keeps AIEF upstream consistent.
   - Housekeeping (optional): prune integrated branches `chore/framework-sync-v32.64` + `chore/sync-lint-deploy-v32.64.1` (cherry-picked, so need `git branch -D` — git-guard blocks; owner/manual).
