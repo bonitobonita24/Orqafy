@@ -1,5 +1,21 @@
 # Orqafy — Session Log (human-readable, newest on top)
 
+## 2026-10-11 — Framework V32.64 merged + v0.21.0 promoted to all environments
+
+**In your words:** merge the framework-sync branch now, then promote v0.21.0, then push the docs commits — then save the session and leave a handoff for next time.
+
+✅ **Done**
+- **Framework merged to main.** I found a second lint-deploy branch had landed overnight (AIEF-canonical v32.64.2) — you chose to take the governance sync plus that canonical lint-deploy and drop our older local ORQ-52 fix (it's a subset). main now has the V32.54→V32.64 sync and the better lint-deploy (which also skips agent worktrees). Lint gate: clean, exit 0.
+- **v0.21.0 is now LIVE on production, staging, and demo** (all were on v0.20.5). I ran the proper safe sequence: rehearsed on staging against a fresh copy of prod data → promoted to prod (DB backed up first, no reseed, no pending migrations) → cascaded to demo. All three return health 200.
+- **Pushed to GitHub** (`fd3f334..aaf6be8`). The 4 commits are all governance/docs/tooling — no app code — so no new version was cut (v0.21.0 stays the app version). CI is build-only; nothing redeployed from the push.
+
+💬 **Notes / leftovers**
+- Rollback is one command if ever needed: `deploy/rollback.sh prod prod-sha-b0100fb` (its paired DB backup is on the server).
+- **POW-56** is an AIEF-seat item: AIEF's own main should merge the same lint-deploy fix so future syncs stay consistent. We already adopted it here directly.
+- Two now-integrated branches can be pruned later (they were cherry-picked, so they need a force-delete the git guard blocks).
+
+---
+
 ## 2026-10-10 (day) — D-3 decided, ORQ-48 shipped, framework synced to V32.64, ORQ-52 fixed, PM model → Opus 5.5
 
 **In your words:** resume; answer the open decision and work the queue, then do everything I offered (merge ORQ-48, framework sync, push docs, PM model default, keep looping) and keep working Squirlnote Pending/On-Going.

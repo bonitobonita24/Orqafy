@@ -10,13 +10,6 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
 > 2026-09-26: v0.20.5 LIVE on prod/staging/demo (all EC2). Next un-gated: **ORQ-45 → ORQ-44 → ORQ-34 visual**. Owner [WHAT]s: ORQ-41/42/46 + Docker Hub token rotation (PENDING_DECISIONS.md). ORQ-27 owner-PARKED ((a) now moot).
 > 2026-09-27 (resume): owner answered all 4 open decisions (ORQ-41 provisioning KEEP-closed; copyright-mark KEEP-text-closed; ORQ-46 approved; ORQ-42 → ORQ-47). Shipped to LOCAL main (4 ahead of origin, HARD HOLD): **ORQ-45, ORQ-46, ORQ-47** — all verified. Remaining un-gated: **ORQ-44** (compose reconcile), **ORQ-34 visual**, branch housekeeping. Owner action: D-DOCKERHUB-TOKEN rotation.
 
-- 🟡 **[ORQ-53] Framework governance sync V32.54.0 → V32.64.0** `gate: owner(FF-merge of branch)` — branch `chore/framework-sync-v32.64`
-  (`91ad5e8` sync + `598ffb3` ORQ-52 overlay/managed-region refresh). Governance-only (32 files; no apps/packages/prisma/compose/env).
-  Verified: typecheck 0, scripts bash -n + exec, lint-deploy 0 FAIL, CLAUDE.md V32.64 + managed region regenerated.
-  Done = owner FF-merges to local main. `source: owner 2026-10-10`
-- 🟡 **[ORQ-52] lint-deploy shellcheck pass scans `node_modules/`** `gate: owner(FF-merge; also cross-seat AIEF POW-56)` — fixed upstream on
-  AIEF branch `fix/lint-deploy-prune-vendored-dirs` (`29920d3`, unmerged; POW-56) and overlaid into Orqafy on the ORQ-53 branch.
-  lint-deploy FAIL(1) → 0 FAIL. ⚠ Until POW-56 merges in AIEF, a future framework sync would revert it. `source: agent-found 2026-10-10`
 - 🔵 **[OWNER-PARKED 2026-09-05 — not a to-do] Cross-host deploy residuals from the EC2 split** `[ORQ-27]` `gate: owner` — surfaced by ORQ-25.
   (a) `staging-refresh-and-deploy.sh` prod→staging is same-host `pg_dump|psql`, but prod=Hostinger / staging=EC2 →
   step 2 auto-skips (gate degraded to deploy+migrate only). **Owner decision 2026-09-05: LEAVE THE GATE DEGRADED**
@@ -25,6 +18,15 @@ Mirrored to the PROD Squirlnote board (project **Orqafy**, prefix `ORQ`) per `pr
   2026-09-05: HOLD** (installer written+inert; enable live only when ready to touch the EC2 box). `source: agent-found 2026-09-05`
 
 ## ✅ Done recently
+- ✅ **v0.21.0 PROMOTED to prod + staging + demo** — standard gate: staging rehearsal (fresh prod data) → push-to-prod
+  (backup-first, migrate=no-pending, reseed-never, health 200) → demo cascade (health 200). All 3 envs now on `sha-675e5d4`,
+  up from v0.20.5. Rollback: `deploy/rollback.sh prod prod-sha-b0100fb`. (`source: owner 2026-10-11`)
+- ✅ **[ORQ-53] Framework sync V32.54.0 → V32.64.0 MERGED to main** — cherry-picked governance sync `91ad5e8` → `300f6e8`;
+  pushed `fd3f334..aaf6be8`. `source: owner 2026-10-10`
+- ✅ **[ORQ-52] lint-deploy vendored/worktree prune — adopted AIEF-canonical v32.64.2** — took canonical lint-deploy from
+  `chore/sync-lint-deploy-v32.64.1` (prunes node_modules-family AND `.claude/worktrees`); dropped superseded local fix
+  `598ffb3`; committed `aaf6be8`, pushed. lint-deploy gate exit 0. ⚠ POW-56 (AIEF main merge) keeps future syncs consistent.
+  `source: agent-found 2026-10-10`
 - ✅ **[ORQ-48] lint-deploy C2 accepts `certresolver=cloudflare`** — re-synced AIEF fix (v32.60.1); C2 PASS on prod/stage/demo (`5cf9919`, pushed `fd3f334`, 2026-10-10)
 - ✅ **D-3 `/crm/contacts`** — owner: leave unbuilt, contacts stay per-customer (`eca257f`, 2026-10-10)
 - ✅ **support.ts RBAC dead-gate fixed + merged to local main** `[ORQ-51]` — owner ruled (Support Agent + admin triad);

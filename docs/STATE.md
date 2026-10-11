@@ -1,13 +1,52 @@
 # Project State — Orqafy
 
 > Auto-maintained by Claude Code after each task. Do NOT edit manually.
-> Last updated: 2026-10-10 (day) by CLAUDE_CODE — D-3 closed; ORQ-48 merged+pushed; framework V32.64 sync + ORQ-52 on branch chore/framework-sync-v32.64 (awaits owner merge); PM default → Opus 5.5. Loop continues (paced --hold).
+> Last updated: 2026-10-11 by CLAUDE_CODE — framework V32.64 sync + AIEF-canonical lint-deploy v32.64.2 MERGED to main (ORQ-52 superseded/dropped); v0.21.0 PROMOTED to prod+staging+demo (all healthy, up from v0.20.5); main pushed to origin (fd3f334..aaf6be8). All 3 owner-authorized actions done+verified. No open [WHAT].
+> Previously: 2026-10-10 (day) by CLAUDE_CODE — D-3 closed; ORQ-48 merged+pushed; framework V32.64 sync + ORQ-52 on branch chore/framework-sync-v32.64 (awaits owner merge); PM default → Opus 5.5. Loop continues (paced --hold).
 > Previously: 2026-10-10 by CLAUDE_CODE — ORQ-51 FF-merged to main; full-suite gate caught + fixed a 19-test regression (support.test.ts stale dead-role names); RELEASED v0.21.0 (pushed origin, Full-Auto auto-push, build-only CI); dev rebuilt FRESH off release; push security-review finding reviewed (intended fix, no new vuln); D-DOCKERHUB-TOKEN resolved (owner: no-rotate). Owner: "save session + keep Full Auto running overnight" → loop continues on paced --hold.
 > Previously: 2026-10-09 by CLAUDE_CODE — RBAC 3-tier retrofit VERIFIED already-complete (not rebuilt; hook false-alarm); ORQ-51 support.ts dead-gate FIXED+verified on branch (HARD HOLD); ORQ-50=NO; board reconciled. Owner: "save session + stop reboot loop" → loop STOPPED (interactive).
 > Previously: 2026-09-27 (pm) by CLAUDE_CODE — ORQ-44 merged to local main; ORQ-49 dev rename done on branch; ORQ-34 sidebar+store PASS (portal pending). Owner: "save session + stop the reboot loop for now" → loop STOPPED.
 > Previously: 2026-09-27 (am) by CLAUDE_CODE — resume: 4 owner decisions answered; ORQ-45/46/47 shipped to LOCAL main (5 ahead of origin, HARD HOLD); dev rebuilt+verified.
 > Previously: 2026-09-26 by CLAUDE_CODE — v0.20.5 LIVE on prod/staging/demo (all EC2); ORQ-33..43 done.
 > Previously: 2026-09-10 by CLAUDE_CODE (owner: resume → ORQ-32 → "FF-merge to local main" → "save session"). **ORQ-32 DONE + FF-merged to local `main`** — demo-latest retag moved off the pull-only EC2 box to the workstation. main @`5c00a3e`, **2 ahead of origin, HARD HOLD** (unpushed; push = release moment, owner-gated). LIVE envs UNCHANGED on v0.20.3 / sha-70aad59. Framework **V32.54.0**. **Task queue EMPTY of un-gated work.** No open [WHAT] decisions.
+
+---
+
+## ⭐ SESSION 2026-10-11 — framework V32.64 merged (canonical lint-deploy) · v0.21.0 PROMOTED to all envs · pushed
+
+```
+[FOCUS: Orqafy]  ·  2026-10-11  ·  cold-start authority: memory/session_v0.21.0_promote_v32.64_merge_2026-10-11.md
+Owner (interactive resume): "merge now → promote v0.21.0 → push docs commits" → then "save session + make a handoff".
+Mid-flight discovery: a 2nd framework branch (chore/sync-lint-deploy-v32.64.1, AIEF-canonical) landed overnight;
+owner chose "Sync + canonical lint" → took governance sync + v32.64.2 lint, dropped superseded ORQ-52 (598ffb3).
+
+## ⏳ TODO — next session (re-scan WHOLE docs/TASK_QUEUE.md + Squirlnote Orqafy Pending first; RAW ids — ORQ prefix collides)
+- NO actionable un-gated [HOW] work remains for THIS seat. Open items are all owner/cross-seat:
+  - Cross-seat: POW-56 (AIEF) — AIEF main should merge `fix/lint-deploy-prune-vendored-dirs` so future syncs carry v32.64.2. We adopted it directly here; this only keeps AIEF upstream consistent.
+  - Housekeeping (optional): prune integrated branches `chore/framework-sync-v32.64` + `chore/sync-lint-deploy-v32.64.1` (cherry-picked, so need `git branch -D` — git-guard blocks; owner/manual).
+  - ORQ-27 owner-PARKED. No open [WHAT].
+- If nothing un-gated next iteration → rewrite a FRESH timestamped handoff + close-session --hold. Never replay stale.
+
+## ✅ DONE THIS SESSION (built AND verified — evidence)
+- MERGE: cherry-picked governance sync 91ad5e8 (V32.54→V32.64, 32 files) onto main @300f6e8; overlaid AIEF-canonical lint-deploy (scripts/ + .ai_prompt/ copies) from chore/sync-lint-deploy-v32.64.1 @8d04145 → committed @aaf6be8; ORQ-52 local fix (598ffb3) DROPPED as superseded (v32.64.2 does vendored-dir prune AND .claude/worktrees prune). sync-context.sh regenerated CLAUDE.md managed region. lint-deploy gate exit 0 (C2 cloudflare PASS, C8 shellcheck 32/32 clean, worktrees prune present in both copies).
+- PROMOTE v0.21.0 (sha-675e5d4) to ALL envs via the standard gate:
+  - Stage A staging-refresh-and-deploy sha-675e5d4: staging reloaded from prod data, migrated, app+worker healthy on sha-675e5d4.
+  - Stage B push-to-prod sha-675e5d4 (exit 0): prod DB backed up (pre-promotion-prod-sha-b0100fb-20261011-074940.sql.gz), retag→latest/prod-sha-675e5d4 (Hub push OK), redeploy, migrate = "No pending migrations", health 200.
+  - Stage C push-to-demo sha-675e5d4 (exit 0): redeploy, migrate no-op (reseed-never, data preserved), health 200; Rule 39 dev FRESH.
+  - Verified all 3: prod orqafy:latest / demo orqafy:demo-latest / staging orqafy:sha-675e5d4 — all = sha-675e5d4, all healthy.
+- PUSH: fd3f334..aaf6be8 main->main (4 commits: 2 docs + governance sync + canonical lint; ZERO app source; no version bump — ORQ-48 precedent; Model-B build-only CI, no deploy). Pre-push shellcheck green.
+- Cleared stale MEMORY.md "ASK OWNER FIRST" line (v32.64.1 merge resolved).
+
+## ⚖️ OPEN (owner) — none blocking
+- No open [WHAT]. Standing optional: POW-56 AIEF-seat merge; prune 2 integrated branches.
+
+## 🔒 GROUND TRUTH
+- git: on main @<this save's docs commit> (parent aaf6be8), IN SYNC with origin before the save commit (save commit = local, HARD HOLD). Framework V32.64.0. Branches chore/framework-sync-v32.64 + chore/sync-lint-deploy-v32.64.1 retained (integrated, prunable).
+- LIVE: prod + staging + demo ALL on v0.21.0 / sha-675e5d4 (EC2 18.138.220.90), all /api/health 200. Up from v0.20.5.
+- Prod rollback: `bash deploy/rollback.sh prod prod-sha-b0100fb` (paired backup on /home/ubuntu).
+- dev: orqafy_saas_dev app+worker FRESH off main. 3 tenants (demo/orq38-ops/orq38-target).
+- ⚠ ALREADY-DONE guard: V32.64 merge + v0.21.0 all-env promote + push DONE+verified — do NOT re-run.
+```
 
 ---
 
