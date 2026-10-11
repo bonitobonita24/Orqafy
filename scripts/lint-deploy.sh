@@ -53,8 +53,17 @@ skip()  { printf "  [%b] %s\n" "$SKIP" "$*"; }
 header(){ printf "\n%b=== %s ===%b\n" "$CYN" "$*" "$RST"; }
 
 # ── Enumerate files ───────────────────────────────────────────────────────────
-mapfile -t COMPOSE_FILES < <(find "$TARGET_DIR" -name 'docker-compose*.yml' -o -name 'docker-compose*.yaml' 2>/dev/null | sort)
-mapfile -t SHELL_FILES   < <(find "$TARGET_DIR" -name '*.sh' 2>/dev/null | sort)
+# Project files only: prune vendored/generated trees so third-party scripts and
+# composes inside node_modules (e.g. jscodeshift.sh) never produce false FAILs,
+# and nested agent worktrees (.claude/worktrees/*) so each checkout copy of the
+# repo is not scanned again.
+find_project_files() {
+  find "$TARGET_DIR" \( -name node_modules -o -name .git -o -name .pnpm-store -o -name .next -o -name .turbo \
+    -o -path '*/.claude/worktrees' \) -prune \
+    -o -type f \( "$@" \) -print 2>/dev/null | sort
+}
+mapfile -t COMPOSE_FILES < <(find_project_files -name 'docker-compose*.yml' -o -name 'docker-compose*.yaml')
+mapfile -t SHELL_FILES   < <(find_project_files -name '*.sh')
 
 # Prod/stage compose files: any file under a path component named prod, stage, staging
 # (dev composes are excluded from the TLS and build: checks)
@@ -231,7 +240,7 @@ fi
 # =============================================================================
 header "C6  push.sh docker login guard"
 
-mapfile -t PUSH_SCRIPTS < <(find "$TARGET_DIR" -name 'push.sh' 2>/dev/null | sort)
+mapfile -t PUSH_SCRIPTS < <(find_project_files -name 'push.sh')
 
 if [ "${#PUSH_SCRIPTS[@]}" -eq 0 ]; then
   skip "no push.sh found in $TARGET_DIR"
@@ -252,7 +261,7 @@ fi
 # =============================================================================
 header "C7  start.sh project-name derivation (COMPOSE_PROJECT_NAME alignment)"
 
-mapfile -t START_SCRIPTS < <(find "$TARGET_DIR" -name 'start.sh' 2>/dev/null | sort)
+mapfile -t START_SCRIPTS < <(find_project_files -name 'start.sh')
 
 if [ "${#START_SCRIPTS[@]}" -eq 0 ]; then
   skip "no start.sh found in $TARGET_DIR"
