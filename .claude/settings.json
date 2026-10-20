@@ -4,15 +4,6 @@
   "env": {
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80"
   },
-  "permissions": {
-    "ask": [
-      "Bash(chmod *)",
-      "Bash(docker *)",
-      "Bash(kill *)",
-      "Bash(npm *)",
-      "Bash(rm *)"
-    ]
-  },
   "hooks": {
     "Stop": [
       {
