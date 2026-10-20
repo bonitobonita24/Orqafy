@@ -473,6 +473,12 @@ Ask: describe your app in plain English. What does it do, who is it for, what's 
 Listen for: industry, users, key workflows, any compliance hints (government, financial, medical).
 Infer Owner: If the user says "my app," "our app," "Powerbyte," or the app name matches a known Powerbyte product → Owner = "Powerbyte I.T. Solutions". If the user mentions a client name or says "for [company]" → Owner = that company name. If ambiguous, ask once: "Is this a Powerbyte product or are you building this for a client?"
 
+ASK (NEW V32.66 — Scenario 52): "Standalone app, or an extension of an existing app? If extension: which parent repo + API?"
+→ Standalone (default) → `app_type: standalone` in §1 Identity. No further action.
+→ Extension → `app_type: extension` + `parent_app: <repo/slug>` + `parent_api: <contract source — the
+  parent's typed client, or its OpenAPI spec>` in §1 Identity. Flag for Scenario 52 at build time (skip
+  server scaffolding; auth/RBAC/data come from the parent).
+
 **Step 2 — Users and roles**
 Ask: who uses this app? What can each type of user do? What are they NOT allowed to do?
 Listen for: 2–5 distinct role types. Map permissions immediately. Flag if roles seem ambiguous.
@@ -1191,6 +1197,23 @@ DELIVERY:
   (artifact type: application/vnd.ant.react). User views it inline with full interactivity.
 - Claude Code host: write the component to docs/MOCKUP.jsx (project folder). Instruct the
   user to preview via Vite dev server or the HTML archive generated in Step 7a.
+```
+
+**Step 5b — Lean mockup verification (Claude Code PA host only — NEW V32.66).** Before presenting
+the mockup to the human for visual judgment, run ONE automated scan — never substitute this for the
+human's Step 6 alignment check, it only catches what a script can catch first:
+```
+IF PA host == Claude Code session:
+  → Dispatch Agent(subagent_type: "checker") against docs/MOCKUP.jsx (+ the Step 7a HTML archive
+    once it exists) for: DOM overlap/truncation, contrast, touch-target size, cross-screen data
+    consistency, console errors. Checker reports PASS / FAIL / NEEDS-JUDGMENT with evidence; it
+    never edits.
+  → Loop cap: build → ONE checker pass → fix → ONE re-check. A third failing pass STOPS and reports
+    to the PM/human instead of looping again.
+  → Design judgment (does this look right, does the flow make sense) stays with the human/PM —
+    the checker only clears mechanical defects before Step 6's human alignment check runs.
+IF PA host == Claude.ai chat (no subagent tooling):
+  → Skip this step. Human eyeballs the inline artifact as before (unchanged).
 ```
 
 **Step 6 — Alignment questions after mockup delivery.** Output this exact message after delivering the mockup (inline artifact on Claude.ai, or docs/MOCKUP.jsx write confirmation on Claude Code):

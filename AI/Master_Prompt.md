@@ -1,6 +1,241 @@
 # SPEC-DRIVEN PLATFORM — V32
 
 <!-- ═══════════ SYNC IMPACT REPORT — auto-maintained on every version bump ═══════════
+Version:  package.json 32.67.5 → 32.67.6 (FFI framework version stays V32.67 — C0 single-version policy)
+Bump:     PATCH, per SemVer-for-rules (additive advisory docs + an advisory flag; nothing removed, no gate changed)
+Summary:  POW-93 HARVEST. (1) design-fidelity.mjs `--tells` / `--tells=all`: advisory render-based design
+          tells (default: pure #000 text, opaque-black shadow; opt-in token-aware radius-monotony,
+          near-dup greys, single shadow stack, flat padding) — never changes the exit code. (2) design-principles.md
+          "Gates pass ≠ taste" critic pass. (5) cicd.md §1.1 + audit.md §2.1 per-step egress-host tables
+          (generic public hosts only; concrete values stay in Server-Setups).
+Dependent files reviewed (propagation checklist):
+  [x] specdrivenprompt/design-fidelity.mjs (--self-test 12/12) · design-principles.md · cicd.md · audit.md
+  [x] package.json 32.67.5 → 32.67.6 · Framework_Feature_Index.md V32.67.6 row
+  [x] vitest 233/233 · scripts/check-framework-alignment.sh — PASS
+  Canonical counts: ALL UNCHANGED (48 deliverables)
+═══════════════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════ SYNC IMPACT REPORT — auto-maintained on every version bump ═══════════
+Version:  package.json 32.67.4 → 32.67.5 (FFI framework version stays V32.67 — C0 single-version policy)
+Bump:     PATCH, per SemVer-for-rules (security hardening of an existing gate; nothing added/removed)
+Summary:  STOP-HOOK ADOPTION GATE HARDENED. Adoption judged from committed STATE.md (HEAD:./ path,
+          fail-closed if tracked but unreadable); anchored YAML `evidence:` key match; adopted block
+          must keep `captured_output:`; not-adopted falls through to the step-5 record gate.
+Dependent files reviewed (propagation checklist):
+  [x] specdrivenprompt/design-stop-hook.sh · templates.md §V32.8 · tests/design-stop-hook.test.js (231/231)
+  [x] package.json 32.67.4 → 32.67.5 · Framework_Feature_Index.md V32.67.5 row
+  [x] scripts/check-framework-alignment.sh — PASS
+  Canonical counts: ALL UNCHANGED
+═══════════════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════ SYNC IMPACT REPORT — auto-maintained on every version bump ═══════════
+Version:  package.json 32.67.3 → 32.67.4 (FFI framework version stays V32.67 — C0 single-version policy)
+Bump:     PATCH, per SemVer-for-rules (bug fix; no Rule/Phase/security-level removed, redefined or added)
+Summary:  STOP HOOK EVIDENCE GATE ADOPTION-GATED. `design-stop-hook.sh` step 4 allows when STATE.md has
+          no YAML `evidence:` key (schema not adopted); adopted apps keep full enforcement. Fixes MG
+          false blocks after session saves leave STATE.md uncommitted.
+Dependent files reviewed (propagation checklist):
+  [x] specdrivenprompt/design-stop-hook.sh · templates.md §V32.8 · tests/design-stop-hook.test.js (223/223)
+  [x] package.json 32.67.3 → 32.67.4 · Framework_Feature_Index.md V32.67.4 row
+  [x] scripts/check-framework-alignment.sh — PASS
+  Canonical counts: ALL UNCHANGED
+═══════════════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════ SYNC IMPACT REPORT — auto-maintained on every version bump ═══════════
+Version:  package.json 32.67.2 → 32.67.3 (FFI framework version stays V32.67 — C0 single-version policy)
+Bump:     PATCH, per SemVer-for-rules (bug fix in deployed settings + hook; no Rule/Phase/security-level
+          removed or redefined, nothing added)
+Summary:  APP SETTINGS HONOR BYPASS + STOP-HOOK PATH. Framework `settings.json` drops `permissions.ask`
+          (rm/chmod/npm/docker/kill prompted even under bypassPermissions — owner decision 2026-10-19);
+          `deploy.sh` strips those 5 from existing apps. Stop hook anchored to `$CLAUDE_PROJECT_DIR` and
+          the hook cd's there (relative path failed from subdirectories). Remaining protection: git-guard
+          hook + Claude Code built-in critical-path rm refusal.
+Dependent files reviewed (propagation checklist):
+  [x] specdrivenprompt/settings.json · deploy.sh · design-stop-hook.sh
+  [x] specdrivenprompt/templates.md · bootstrap.md · AI_Tools_Reference.md — wording aligned
+  [x] tests/deploy-settings-merge.test.js (new) · tests/design-stop-hook.test.js — 219/219
+  [x] package.json 32.67.2 → 32.67.3 · Framework_Feature_Index.md V32.67.3 row
+  [x] scripts/check-framework-alignment.sh — PASS
+  Canonical counts: ALL UNCHANGED
+═══════════════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════ SYNC IMPACT REPORT — auto-maintained on every version bump ═══════════
+Version:  package.json 32.67.1 → 32.67.2 (FFI framework version stays V32.67 — C0 single-version
+          policy binds major.minor only; patch is a package-only detail)
+Bump:     PATCH, per SemVer-for-rules (non-behavioral — no Rule/Phase/security-level removed or
+          redefined, no Rule/Scenario/Prompt/gate/phase-hook/deliverable added; a presentation/
+          wording reorganization of a derived surface, `CLAUDE_compact.md`)
+Summary:  CLAUDE_COMPACT.MD SLIMMED (POW-89). `specdrivenprompt/CLAUDE_compact.md` cut from 351
+          lines / 66,791 bytes (~66.8 KB) to 283 lines / 20,475 bytes (~20 KB) to resolve the
+          startup "155.8k chars, over the 150k limit" overflow warning. Line 13's 31 KB verbatim
+          V32.x changelog (a pure duplicate of the history already in this file's changelog +
+          `Framework_Feature_Index.md`) is CUT, not moved. The context-budget/dispatch detail
+          (500-line gate, V32.1 Sonnet-overhead note, V32.2 R6-R9 dispatch discipline, V32.3 Smart
+          Governance Hydration) and the Agent Stack + MCP Server install/URL detail are compressed
+          to one-line pointers — their full bodies were CONFIRMED already present in
+          `memory-governance.md` §1/§4 + `phases.md` and `AI_Tools_Reference.md` §1/§2 respectively
+          before any text was cut (no block deleted without a confirmed existing home). Rules
+          31/33-41 bodies compressed to one line + `Read .ai_prompt/<file>` pointer with their
+          HARD-HOLD lines kept verbatim; Rules 1/7/32 + GLOBAL PRIORITY ORDER + FILE OWNERSHIP
+          NEVER-COMMIT list kept verbatim; all 41 Rules keep ≥1 line; the
+          `<!-- AIEF:MANAGED START/END -->` block, the `## MCP SERVERS (6 total …)` header, and the
+          `# SPEC-DRIVEN PLATFORM — V32.67` H1 anchor kept verbatim (gate-load-bearing). Stale §N
+          SESSION START text ("Rules: 33 active", "V31 loaded") corrected to 41/V32.67. All inline
+          changelog prose dropped per owner default (2026-10-18) — the card now points to this
+          changelog + `Framework_Feature_Index.md` instead of duplicating it.
+          ALSO (same PATCH): `design-stop-hook.sh` gates only on an uncommitted `docs/STATE.md` change
+          and skips the record gate until an app's first record exists (false-positive fix, +4 tests);
+          `design-principles.md` gains color-ramp / shadow-construction / baseline-alignment guidance
+          (adapted from s0xDk/refactoring-ui-skill, MIT).
+Dependent files reviewed (propagation checklist):
+  [x] specdrivenprompt/CLAUDE_compact.md — rewritten per the POW-89 committed plan
+                                      (docs/plans/POW-89-slim-claude-compact.md)
+  [x] package.json                 — 32.67.1 → 32.67.2
+  [x] specdrivenprompt/Framework_Feature_Index.md — new V32.67.2 timeline row (footer/current-version
+                                      line UNCHANGED — framework doc version stays V32.67)
+  [x] scripts/check-framework-alignment.sh — run as the gate, PASS
+  [x] specdrivenprompt/design-stop-hook.sh + tests/design-stop-hook.test.js — false-positive fix
+  [x] specdrivenprompt/design-principles.md — Refactoring-UI techniques (no count change)
+  [ ] CLAUDE.md (repo) Canonical Counts block — NOT touched (no count change)
+  [ ] public/documentation-hub.html / Prompt_References.html — NOT touched (no count/version change)
+  Canonical counts:                41 Rules · 52 Scenarios · 48 deliverables · 62 Prompts (39 NEW ✨) · 18 Phase Hooks · 6 MCP servers · 6 agents · 20 Bootstrap Steps (ALL UNCHANGED)
+═══════════════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════ SYNC IMPACT REPORT — auto-maintained on every version bump ═══════════
+Version:  V32.66 → V32.67
+Bump:     MINOR, per project convention (a behavioral bug fix in an existing deliverable's content —
+          mirrors the V32.63 Deploy-Script Permissions-Merge Fix precedent; no Rule/Scenario/
+          deliverable/phase/security-level added, removed, or redefined; PATCH in SemVer-for-rules
+          severity terms, but this framework's post-V32.58 doc version is a single incrementing
+          counter with no decimal-patch slot — C0 binds package.json's major.minor to the FFI
+          version, so every release bumps the counter by one regardless of severity)
+Summary:  SKILL-LISTING SETTINGS-KEY FIX (deliverable #19 `settings.json`). Two defects verified
+          in the shipped `settings.json`: (1) `maxSkillDescriptionChars: 1024` was never a real
+          Claude Code key (0 occurrences in the 2.1.301/2.1.302 builds — the real key is
+          `skillListingMaxDescChars`), so the description-length cap never applied; (2) project
+          settings OVERRIDE user settings, so `skillListingBudgetFraction: 0.01` pinned every app
+          seat at 1% of context regardless of the owner's own user-level setting (measured: the
+          listing needs ~20-25K tokens, so at 1% roughly half the skills reach the model as bare
+          names, least-used first). Fix: `settings.json` drops `skillListingBudgetFraction`
+          outright (apps now inherit the user-level budget fraction — the single control, sized to
+          the owner's installed skills) and renames `maxSkillDescriptionChars` →
+          `skillListingMaxDescChars`. `deploy.sh`'s Group 5b merge step (jq) now also strips both
+          stale keys from the TARGET's EXISTING `.claude/settings.json` during merge
+          (`del(.maxSkillDescriptionChars, .skillListingBudgetFraction)` applied to the dest side
+          before the deep-merge), so a re-deploy migrates already-deployed apps off the stale keys
+          even though the current source no longer carries them; verified with a before/after jq
+          test (stale keys gone, new key present, an unrelated key preserved; the existing
+          permissions.ask/allow/deny UNION + de-dupe behavior from V32.63 is untouched). Source:
+          code.claude.com/docs/en/skills.md (Troubleshooting "Skill descriptions are cut short";
+          frontmatter reference).
+Dependent files reviewed (propagation checklist):
+  [x] Master_Prompt.md             — this Sync Impact Report block (authority)
+  [x] specdrivenprompt/settings.json — `skillListingBudgetFraction` removed; `maxSkillDescriptionChars`
+                                      renamed → `skillListingMaxDescChars`
+  [x] specdrivenprompt/deploy.sh   — Group 5b merge jq strips both stale keys from the dest during
+                                      merge; comment documents the V32.67 fix
+  [x] CLAUDE.md (repo)             — deliverable #19 line description corrected
+  [x] specdrivenprompt/AI_Tools_Reference.md — settings-knobs table row corrected
+  [x] specdrivenprompt/bootstrap.md — Step 7 merged-shape example + merge-note corrected
+  [x] specdrivenprompt/templates.md — merge-note + merged-shape example corrected
+  [x] public/documentation-hub.html — deliverable #19 table row corrected
+  [x] specdrivenprompt/Framework_Feature_Index.md — current-version line → V32.67; new timeline row
+  [x] package.json                 — 32.67.0 (C0 binding: package major.minor === FFI framework version)
+  [x] scripts/check-framework-alignment.sh — run as the gate, exit 0 required
+  [ ] specdrivenprompt/Master_Prompt.md narrative changelog entry list — NOT appended (this is a
+                                      PATCH-level bug fix in deliverable content, not a new Rule/
+                                      Scenario/Phase; historical entries describing what V32.7.2
+                                      originally shipped are left unmodified per Rule 4)
+  Canonical counts:                41 Rules · 52 Scenarios · 48 deliverables · 62 Prompts (39 NEW ✨) · 18 Phase Hooks · 6 MCP servers · 6 agents · 20 Bootstrap Steps (ALL UNCHANGED)
+═══════════════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════ SYNC IMPACT REPORT — auto-maintained on every version bump ═══════════
+Version:  V32.65 → V32.66
+Bump:     MINOR (adds Scenario 52, no new Rule/deliverable/phase removed or redefined)
+Summary:  LEAN MOCKUP VERIFICATION + EXTENSION APP PROFILE (POW-76 / POW-77). POW-76 replaces the
+          full vision-read mockup QA loop with a scripted verification pass: `Planning_Assistant.md`
+          Phase 2.8 Step 5b + a new `phases.md` MODEL HOOK (before Phase 1) run a Haiku 5.5 `checker`
+          agent over each regenerated mockup (DOM/contrast/overlap/truncation scan), capped at
+          build→check→fix→ONE re-check (a third failing pass stops and reports to the PM), and the PM
+          then samples only 2-3 screenshots by eye instead of reviewing every regeneration visually.
+          No Rule/Scenario/deliverable/phase-hook count change. POW-77 adds **SCENARIO 52 — Extension
+          App** (`specdrivenprompt/scenarios.md`) for a client-only app on a mother app's backend
+          (first case: Marine-Guardian-Sentinel on Marine-Guardian) — `docs/PRODUCT.md` §1 Identity
+          gains `app_type: standalone|extension`, `parent_app`, `parent_api`; a per-phase skip/swap
+          matrix (no DB/compose/PgBouncer/Valkey/MinIO scaffolding, no Prisma schema — a typed
+          parent-API client contract + optional WatermelonDB/SQLite offline cache instead, Expo/EAS
+          build instead of Docker/Komodo); L1-L6 security stack INHERITED from the parent (L3 RBAC /
+          L4 Session / L5 AuditLog / L6 Prisma-guardrails owned by the parent — the client only
+          hides/shows UI and never authorizes); a cross-seat need-list `docs/PARENT_DEPENDENCIES.md`
+          (the extension app's seat NEVER edits the mother app's repo). `templates.md` (PRODUCT.md §1
+          fields + extension-variant `.env`/EAS/`PARENT_DEPENDENCIES.md` stub), `Planning_Assistant.md`
+          (Step 1 standalone-vs-extension interview question), and `bootstrap.md` (Phase 0 skip-map
+          callout) updated in place. HARD HOLD — local only.
+Dependent files reviewed (propagation checklist):
+  [x] Master_Prompt.md             — this Sync Impact Report block (authority); Scenario 52 body lives
+                                      ONLY in `scenarios.md` per the since-Scenario-33 convention (no
+                                      scenario body duplicated into Master_Prompt.md)
+  [x] specdrivenprompt/scenarios.md — new SCENARIO 52 (Extension App); header scenario-count 1-51 → 1-52
+  [x] specdrivenprompt/Planning_Assistant.md — Step 1 interview question (standalone vs extension)
+  [x] specdrivenprompt/phases.md   — MODEL HOOK before Phase 1 (lean mockup verification skip matrix)
+  [x] specdrivenprompt/bootstrap.md — Extension-App skip map callout at Phase 0 intro
+  [x] specdrivenprompt/templates.md — PRODUCT.md §1 Identity app_type/parent_app/parent_api fields
+  [x] CLAUDE.md (repo)             — Canonical Counts (Scenarios 51→52); intro prose scenario count
+  [x] specdrivenprompt/CLAUDE_framework_repo.md — canonical counts: Scenarios 51→52
+  [x] CLAUDE_compact.md            — H1 title version → V32.66; lead discipline-chain clause
+  [x] Framework_Feature_Index.md   — Current-version line → V32.66; new V32.66 timeline row; footer → V32.66
+  [x] README.md                    — version badge + 'Framework Features' heading → V32.66; scenario count 51→52
+  [x] public/documentation-hub.html · public/Prompt_References.html · specdrivenprompt/Prompt_References.html — current-version markers + sd-counts callout → V32.66 / 52 scenarios
+  [x] package.json                 — 32.66.0 (C0 binding: package major.minor === FFI framework version)
+  [x] scripts/check-framework-alignment.sh — run as the gate, exit 0 required
+  Canonical counts:                41 Rules · 52 Scenarios (was 51) · 48 deliverables · 62 Prompts (39 NEW ✨) · 18 Phase Hooks · 6 MCP servers · 6 agents · 20 Bootstrap Steps
+═══════════════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════ SYNC IMPACT REPORT — auto-maintained on every version bump ═══════════
+Version:  V32.64 → V32.65
+Bump:     MINOR (adds 3 new deliverables #46-#48 + a new Rule-32 RECORD GATE consumer on the existing
+          design-stop-hook.sh + a new opt-in lefthook pre-commit template — no Rule/Scenario/phase removed
+          or redefined)
+Summary:  HAR-HARVEST VALIDATION LAYER (POW-65). Adds `scripts/verify-record.sh` (deliverable #46) —
+          tree-hash-bound validation records: a PASS verdict is bound to the exact content of the working
+          tree (git tree-hash), not a branch/commit/say-so; records land in `test-artifacts/validations/
+          <hash>.json`. Adds `scripts/run-stages.mjs` + `scripts/stages.json` (deliverable #47, one number
+          for the file pair, per the #45 convention) — a stage registry + runner (`--quick` stops at the
+          first BLOCKING failure; `--full` never stops early), writing `{status,mode,treeHash,stages[]}` to
+          `test-artifacts/stages/last.json`; this JSON is what `verify-record.sh write`'s default
+          `RUN_STAGES_CMD` gates a record on. Adds `scripts/readiness-smoke.sh` (deliverable #48) — a
+          post-deploy READINESS-vs-LIVENESS smoke (login + authed data/page routes, not just "is the
+          process up"). All three clone the `lint-deploy.sh` graceful-degrade posture and are adapted from
+          os-factory/har (Apache-2.0). Wires `design-stop-hook.sh` step 5 with a new **RECORD GATE**
+          (`verify-record.sh check --worktree`, owner bypass token `VERIFY-OK`) — this is what turns a
+          done-claim from a self-report into a mechanically-bound fact (hardens Rule 32 Verifiable-Done),
+          and adds an opt-in `lefthook.yml` pre-commit record-gate template in `templates.md`. Companion
+          (global, NOT a deliverable): a swarm main-checkout edit guard (conductor active-wave marker) in
+          `~/.claude/hooks/` that forces worktree isolation during an active wave — pairs with the RECORD
+          GATE (a conductor can bind a done-claim to a validation record on the exact worktree a worker
+          touched) but ships outside this repo. HARD HOLD — local only.
+Dependent files reviewed (propagation checklist):
+  [x] Master_Prompt.md             — this Sync Impact Report block (authority)
+  [x] specdrivenprompt/deploy.sh   — GROUP 20-22 (verify-record.sh / run-stages.mjs+stages.json /
+                                      readiness-smoke.sh), deliverable-count comments, EXPECTED LAYOUT +
+                                      DEPLOYED TARGET LOCATIONS lists, gitignore entries, SUMMARY echoes
+  [x] specdrivenprompt/phases.md   — Phase 5 OUTPUT CONTRACT (run-stages.mjs + verify-record.sh write);
+                                      Phase 6 post-deploy advisory (readiness-smoke.sh --report-only)
+  [x] specdrivenprompt/design-stop-hook.sh — step 5 RECORD GATE (done-claims bound to a validation record)
+  [x] specdrivenprompt/templates.md — opt-in lefthook.yml pre-commit record-gate template
+  [x] specdrivenprompt/LESSONS_REGISTRY.md — fingerprint verify.record.tree-hash-bound-done-claim
+  [x] CLAUDE.md (repo)             — deliverables #46-#48 entries; "45 deliverable files" -> 48 throughout;
+                                      Canonical Counts block
+  [x] CLAUDE_compact.md            — H1 title version -> V32.65; file-loading map rows; deliverable count 45->48
+  [x] Framework_Feature_Index.md   — Current-version line -> V32.65; V32.65 timeline row; footer -> V32.65
+  [x] README.md                    — version badge + 'Framework Features' heading -> V32.65
+  [x] public/documentation-hub.html · public/Prompt_References.html · specdrivenprompt/Prompt_References.html — current-version markers + sd-counts callout -> V32.65 / 48 deliverables
+  [x] package.json                 — 32.65.0 (C0 binding: package major.minor === FFI framework version)
+  [x] scripts/check-framework-alignment.sh — run as the gate, exit 0 required
+  Canonical counts:                41 Rules · 51 Scenarios · 48 deliverables (was 45) · 62 Prompts (39 NEW ✨) · 18 Phase Hooks · 6 MCP servers · 6 agents · 20 Bootstrap Steps
+═══════════════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════ SYNC IMPACT REPORT — auto-maintained on every version bump ═══════════
 Version:  V32.63 → V32.64
 Bump:     MINOR (adds an advisory Phase 8 + Phase 7 MODEL HOOK referencing the GLOBAL `archify` skill — no new Rule/Scenario/deliverable/phase-hook; counts unchanged)
 Summary:  ARCHITECTURE-DIAGRAM EMIT HOOK. Adds an advisory, non-blocking phases.md MODEL HOOK: at Phase 8,

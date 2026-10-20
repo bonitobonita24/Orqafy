@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "stages": [
+    {
+      "id": "lint-deploy",
+      "cmd": "bash scripts/lint-deploy.sh deploy/compose",
+      "tier": "quick",
+      "blocking": true,
+      "description": "Pre-deploy footgun linter (compose parse, Traefik cert-case/tls label, healthcheck host, no build: in stage/prod, push.sh login guard, start.sh project-name, shellcheck)."
+    },
+    {
+      "id": "validate-findings",
+      "cmd": "node scripts/validate-findings.mjs --self-test",
+      "tier": "quick",
+      "blocking": true,
+      "description": "Audit-finding output-contract validator self-test (report-schema.json shape checks)."
+    },
+    {
+      "id": "review-scope",
+      "cmd": "node scripts/review-scope.mjs",
+      "tier": "quick",
+      "blocking": false,
+      "description": "Deterministic code-review pre-scope manifest (security.md lens + audit-app.sh scanner map per changed file)."
+    },
+    {
+      "id": "lint-design",
+      "cmd": "bash scripts/lint-design.sh --report-only",
+      "tier": "full",
+      "blocking": false,
+      "description": "Design anti-slop gate advisory pass (D1-D8 cardinal sins + P1a-P1u taste advisories)."
+    },
+    {
+      "id": "design-fidelity",
+      "cmd": "node scripts/design-fidelity.mjs",
+      "tier": "full",
+      "blocking": true,
+      "description": "Mockup-anchored layout-fidelity gate — built app vs the approved docs/MOCKUP.jsx baseline."
+    },
+    {
+      "id": "spec-gap-check",
+      "cmd": "bash scripts/spec-gap-check.sh --report-only",
+      "tier": "full",
+      "blocking": false,
+      "description": "Cross-artifact gap check — PRODUCT.md <-> inputs.yml <-> schema <-> IMPLEMENTATION_MAP.md <-> STATE.md <-> primer.yml drift/staleness."
+    },
+    {
+      "id": "audit-app-t1",
+      "cmd": "bash scripts/audit-app.sh --tier=1 --report-only .",
+      "tier": "full",
+      "blocking": false,
+      "description": "Tier-1 audit (Gitleaks, Semgrep, tsc, ESLint) — cheap static scan."
+    },
+    {
+      "id": "audit-app-t2",
+      "cmd": "bash scripts/audit-app.sh --tier=2 --report-only .",
+      "tier": "full",
+      "blocking": false,
+      "description": "Tier-2 audit (Trivy, OSV-Scanner, Syft SBOM, BackstopJS) — moderate-cost scan."
+    },
+    {
+      "id": "audit-scope",
+      "cmd": "node scripts/audit-scope.mjs",
+      "tier": "full",
+      "blocking": false,
+      "description": "Deterministic full-audit pre-scope manifest (target-type classification + audit-dimension/gate map)."
+    },
+    {
+      "id": "readiness-smoke",
+      "cmd": "bash scripts/readiness-smoke.sh --report-only",
+      "tier": "full",
+      "blocking": false,
+      "description": "Readiness-vs-liveness smoke (health endpoint, login flow, authed data/page routes)."
+    }
+  ]
+}

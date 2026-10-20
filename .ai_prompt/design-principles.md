@@ -6,6 +6,8 @@ description: Library-agnostic UI/UX design-principles reference. Read on-demand 
 # Design Principles — On-Demand Reference (V32.12)
 
 > Condensed from typeui.sh design fundamentals (MIT). Source: <https://typeui.sh> — MIT License.
+> Color-ramp, shadow and baseline-alignment techniques adapted from s0xDk/refactoring-ui-skill
+> (MIT), which distills *Refactoring UI* by Adam Wathan & Steve Schoger.
 > The design system (docs/DESIGN.md + ui-rules.md) tells you WHICH token/component; this file
 > tells you WHY a structural choice is correct and HOW to avoid principle violations.
 > INHERIT-not-REPLACE: never contradict the design system. If a principle conflicts with a
@@ -94,6 +96,7 @@ description: Library-agnostic UI/UX design-principles reference. Read on-demand 
 - Use a soft grid (consistent columns + spacing, no baseline snapping) for most digital products.
 - Collapse column grids aggressively on mobile — most 3–4 column grids become 1–2 at 360px.
 - Use container queries when a component must adapt to its own size, not the viewport.
+- Align mixed-size text sharing one line (a card title beside a "See all" link, a label beside its value) with `items-baseline`, not `items-center` — centering offsets the baselines and reads subtly wrong, especially when the sizes are close.
 
 **Content container & responsive gutter (structural DEFAULT — never full-bleed dense content):**
 
@@ -208,6 +211,13 @@ ALL-CAPS without positive tracking reads cramped and amateur; display text witho
 - When a palette color fails contrast, shift it along its own hue axis (darker or lighter variant) — never replace with an unrelated hue.
 - Do not use grey text on colored backgrounds — match hue family.
 
+**Building a color ramp (authoring `docs/tokens.json` DTCG shades, not a runtime system):**
+- Anchor the base shade (`500`) first — for a primary/accent, the shade that works as a button background. Then fix the darkest (`900`, usually the text-on-tint color) and lightest (`100`, usually the background tint), and fill the remaining steps (`700`/`300`, then `800`/`600`/`400`/`200`) each as the midpoint between its neighbours.
+- Raise saturation as a step moves away from `500` toward either extreme — saturation reads as washed out near 0%/100% lightness, so the lightest and darkest steps need *more* saturation than the base, not the same amount.
+- To shift a shade's perceived lightness without draining its intensity, rotate hue a few degrees toward the nearest brightness peak (yellow/cyan/magenta) to lighten it, or toward the nearest trough (red/green/blue) to darken it — cap the rotation at ~20–30° or it reads as a different hue.
+- Give greys a slight warm or cool tint (a touch of saturation toward the brand hue) rather than true 0%-saturation grey — flat grey looks lifeless next to a tinted ramp.
+- These are authoring-time rules for the ramp that compiles into `--sd-color-*` (R12, ui-rules.md) and bridges to the shadcn semantic vars in `globals.css` (OKLCH or HSL, per `tokens.json`) — they extend that one pipeline, never a second token system.
+
 **Agent rules — DO:**
 - Define semantic color roles before designing any surface.
 - Verify every text/background pairing with a contrast checker before shipping.
@@ -257,6 +267,11 @@ The 12 operative laws an agent applies when designing flows (law → build impli
 - Button type (submit/destructive/navigate) × style (primary/secondary/ghost) × state (default/loading/error…) are three orthogonal dimensions — do not encode functional differences into style alone.
 - Focus must be visible: `:focus-visible` outline, not removed. Never `outline: 0` without a replacement.
 - **Button affordance — a button must LOOK clickable (fleet standard).** Every button carries a **subtle raised/embossed elevation** — a small `shadow-xs`/`shadow-sm` (or a committed border on outline styles) — so it visibly reads as a pressable control, not static text. A completely flat, borderless, shadowless block is the failure clients repeatedly mistake for a non-button. Rule: **primary/secondary/CTA buttons are never flat** — they must show elevation (shadow) and/or fill/border. Reserve genuinely flat treatments (`ghost`, `link`) for **tertiary/inline** actions only (e.g. an inline "cancel" beside an elevated primary, a text link inside prose) — never for the main action of a surface. Keep the shadow *small* (barely-raised emboss, not a heavy drop shadow). **The shadow is the ONLY addition** — button colours (fill, border, text, hover) always follow the CURRENT THEME's accent/token values (`var(--primary)`, `var(--accent)`, …); never change, tint, or introduce a new accent colour for a button, and never encode elevation as a colour shift. This is an affordance-clarity requirement, not decoration (Aesthetic-Usability + Recognition-over-Recall). DESIGN.md decides the exact shadow token/values; this contract decides elevation must EXIST on non-tertiary buttons.
+
+**Shadow construction (how DESIGN.md's elevation tokens should be built):**
+- Build each elevation step as TWO shadows in one `box-shadow` declaration, not one — a larger, softer "cast" shadow (bigger offset/blur) plus a tighter "contact" shadow hugging the element — e.g. `box-shadow: 0 10px 20px hsl(.../.15), 0 3px 6px hsl(.../.10)`. The contact shadow is what keeps edges defined at low elevation; let it fade out as elevation rises rather than scaling both shadows together. A second separate `box-shadow` rule on the same selector replaces the first — it never combines with it.
+- For a raised control (button, card), add a light-from-above cue: an `inset 0 1px 0` top highlight one shade lighter than the surface, in the same declaration as the cast/contact pair. For a pressed/inset control (input, checkbox), invert it — an `inset` bottom lip lighter than the control's own face, with the light blocked at the top instead.
+- Dark-mode surfaces carry shadow less (shadows barely register on a dark surface, and a glowing dark-mode shadow is already an anti-slop tell above) — lean on a lighter surface step to signal elevation there, and keep any dark-mode shadow faint.
 
 **Feedback rules:**
 - Loading states must set expectations: progress indicator for determinate waits, skeleton screens for predictable content layouts, spinner only for indeterminate short waits.
@@ -392,6 +407,20 @@ Concrete tells that separate "shipped by a designer" from "default LLM output." 
 
 **Testable checks:**
 - [ ] `bash scripts/lint-design.sh --report-only <ui-dir>` reviewed; no unresolved D1–D8 sins.
+
+### Gates pass ≠ taste (critic pass)
+
+A green `design-fidelity.mjs` / `lint-design.sh` / design-auditor score / contrast-overlap scan proves only
+the **absence of known defects** — it cannot tell you the design is good. After every gate passes, run one
+short critic pass that judges taste directly. This pass is **judgment, not mechanical** — it is done by the
+PM or a worker, never delegated to the Haiku checker. Findings here are advisory unless they also break a
+written rule above; a taste finding that only breaks taste does not block Phase 5 close on its own.
+
+- [ ] Hierarchy reads at a glance (squint test) — no re-scanning needed to find what matters.
+- [ ] Exactly one clear focal point per screen.
+- [ ] Density fits the task — not padded to look busy, not cramped to look dense.
+- [ ] It looks deliberately designed, not default-assembled (no generic "AI dashboard tile" feel).
+- [ ] Nothing here would make a real designer wince on first look.
 
 ---
 

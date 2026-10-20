@@ -1,0 +1,21 @@
+# docs/primer.yml — Capability Primer source (agent-authored from docs/PRODUCT.md).
+# Flat KEY: value. Unknown/uncertain = ?  (NEVER guess — an unknown stays `?`).
+# scripts/build-primer.sh renders the AIEF:PRIMER region of CLAUDE.md from these.
+# Field contract + rationale: ~/.claude/templates/capability-primer.md (SLICE 1).
+STACK: ?          # deviations from the locked stack, or "locked-stack"
+REALTIME: ?       # SSE | WS | none
+JOBS: ?           # BullMQ | none  (+ what they run)
+TENANCY: ?        # single | multi
+TENANCY_MODEL: ?  # subdomain | subdirectory | separate-schema | -  (- if single)
+RBAC: ?           # 3-tier | custom-roles | none
+GOV_LGU: ?        # yes | no
+PUBLIC_FACING: ?  # yes | no
+MOBILE: ?         # none | responsive-web | native-expo
+A11Y_GATE: ?      # WCAG | standard
+PII: ?            # yes | no
+FINANCIAL: ?      # yes | no
+COMPLIANCE: ?     # PH-DPA | BIR-7yr | GDPR | none  (comma-join if several)
+INTEGRATIONS: ?   # comma list of the ones that pull a specific skill/SDK (Xendit, Stripe, Resend, Turnstile) or -
+MODULES: ?        # N surfaces (detail lives in docs/CAPABILITY_PRIMER.md)
+SECURITY: ?       # L-levels active (e.g. L1-L6) or none
+INVISIBLE_DIMS_IN_SCOPE: ?  # Rule 40 radar scope — subset of: security,seo,a11y,privacy,audit,perf,observability,iso,reliability,maintainability (derived from PRODUCT.md, NEVER guessed; unknown stays ?)

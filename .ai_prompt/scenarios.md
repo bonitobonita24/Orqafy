@@ -1,4 +1,4 @@
-# Spec-Driven Platform V32.51 — Scenarios 1-51
+# Spec-Driven Platform V32.66 — Scenarios 1-52
 
 > Loaded contextually when user triggers a named scenario.
 > Read ONLY the scenario matching the user's request.
@@ -2868,6 +2868,66 @@ left to guess file-by-file relevance from scratch.
   replace, `security.md` §L1-L6 and the existing audit toolkit (`audit.md` #35 — Rule 38).
 
 Full standard: `.ai_prompt/review-scope.md` (#41), `.ai_prompt/security.md` §L1-L6.
+
+---
+
+### SCENARIO 52 — Extension App (client-only app on a mother app's backend) (NEW V32.66)
+
+**Trigger:** `docs/PRODUCT.md` §1 Identity declares `app_type: extension` (first case: Marine-Guardian-Sentinel,
+an Expo Android GPS patrol app whose mother app is Marine-Guardian) — or the owner says anything like
+"this is an extension/companion app for X", "thin client of the mother app's API", "no own backend, just
+hits the parent's API".
+
+**CONTEXT:** An extension app is a thin CLIENT of a mother app's API. It has no own server, no own
+database, and no own web tier — auth, RBAC capabilities, and data all come from the mother app via its
+typed API client (or OpenAPI contract). A client-local offline cache (WatermelonDB/SQLite, synced to the
+parent API) IS allowed — it is a client cache, never a server database. `docs/PRODUCT.md` §1 Identity
+carries `app_type: standalone|extension` (default `standalone`), `parent_app: <repo/slug>`, and
+`parent_api: <contract source>` — cross-referenced from §6 Data, §7 Integrations, §8 Deployment.
+
+**STEPS — per-phase skip/swap matrix:**
+1. **Phase 0 (Bootstrap):** skip all DB/compose/PgBouncer/Valkey/MinIO scaffolding (Steps that create
+   `docker-compose.yml` service blocks for Postgres/PgBouncer/Valkey/MinIO are not run). Keep git init,
+   governance docs, and the credentials pointer (`CREDENTIALS.md` holds only the extension app's own
+   secrets — e.g. parent-API client id — never the mother app's).
+2. **Phase 3 (Spec → Architecture):** no Prisma schema, no `inputs.yml` DB block. Generate a **typed
+   parent-API client contract** (from the parent's typed client or OpenAPI spec) instead, plus a local
+   cache schema (WatermelonDB/SQLite) when offline support is declared.
+3. **Phase 4 Parts:** skip every server Part — tRPC server, Prisma, Postgres, Valkey, BullMQ, Auth.js
+   provider. Keep client/UI/mobile Parts (Expo app shell, screens, local cache, parent-API client wiring).
+4. **Phase 5 (Validation):** contract tests run against the parent's typed client (+ offline sync tests
+   for the local cache); no migration tests (there is no owned schema to migrate).
+5. **Phase 6 (Build/Deploy):** Expo/EAS build only — no Docker Compose, no Komodo stack (there is no
+   server to deploy).
+6. **Phase 7/8 (Feature Update / Buildout):** every feature stays client-only. Any need that reaches into
+   the mother app's API (a new endpoint, a capability, a token scope) is NOT built from this seat — it is
+   recorded in the cross-seat dependency list (`docs/PARENT_DEPENDENCIES.md`) and built only in the mother
+   app's own seat.
+
+**L1–L6 security stack — inherited, not duplicated:**
+```
+L1 Transport           OWN         TLS to the parent API, same as any HTTPS client.
+L2 Input validation    OWN+PARENT  Client validates before send; the parent app RE-VALIDATES
+                                   server-side — the client's validation is UX only, never trusted.
+L3 RBAC                INHERITED   Capabilities come from the parent's token/claims. The client ONLY
+                                   hides/shows UI based on them — it never authorizes; the parent is
+                                   the sole authority on what an action is allowed to do.
+L4 Session             PARENT      Parent-issued token, held in secure device storage (Expo
+                                   SecureStore/Keychain) — the extension app never mints its own.
+L5 AuditLog            PARENT      All auditable actions are logged by the parent app's AuditLog.
+L6 Prisma guardrails   PARENT      N/A on the client — there is no owned Prisma schema.
+```
+
+**Cross-seat dependency list:** `docs/PARENT_DEPENDENCIES.md` — every API/capability/token-scope the
+extension app needs FROM the mother app, written as a dated, titled entry (what's needed · why · which
+screen/flow it blocks). **NEVER edit the mother app's repo from the extension app's seat** — that work is
+the mother app owner's to plan and build in its own seat. No mother-app task is ever auto-created; the
+dependency list is a request, not a ticket.
+
+**Notes:**
+- A locked `app_type: extension` never implies a lesser security posture — L1-L6 still fully apply, just
+  with L3/L4/L5/L6 owned by the parent instead of duplicated.
+- If the parent's typed client/OpenAPI contract is missing or stale, flag it — never guess the API shape.
 
 ---
 

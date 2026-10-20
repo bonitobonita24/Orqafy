@@ -245,3 +245,33 @@ _Promoted: 2026-07-28_
 _Promoted: 2026-08-16_
 
 ---
+
+## process.debug.prove-the-mutation
+
+| Field | Value |
+|---|---|
+| **fingerprint** | `process.debug.prove-the-mutation` |
+| **machine_signature** | (AI-judged: a regression test/repro built by mutating a fixture or injecting a failure is reported "red" or "green" with no diff/evidence showing the mutation actually landed in the file under test) |
+| **scope** | `framework` |
+| **failure** | A forced-red step (editing a fixture, injecting a fault to make a test fail before the fix) can silently no-op — wrong file edited, a stale build/cache served the old bytes, a guard swallowed the edit — and the test still reports a result. That result looks legitimate (a red, then a green after the fix) even though the mutation never applied, so the "regression test" proves nothing. |
+| **standing_check** | Before trusting a forced red (Phase 5-style fix-verify loop, or any `test-driven-development`/`systematic-debugging` red step): `git diff <mutated-file>` (or diff against a pristine checkout/stash of the same file) to confirm the mutation is actually present, BEFORE relying on the test's red/green outcome. |
+| **check_location** | `.ai_prompt/phases.md` Phase 5 fix-verify loop + `superpowers:systematic-debugging` Phase 5 (Fix + regression test) |
+
+_Promoted: 2026-10-11 (adapted from mattpocock/skills `skills/engineering/diagnosing-bugs/SKILL.md`, MIT)_
+
+---
+
+## verify.record.tree-hash-bound-done-claim
+
+| Field | Value |
+|---|---|
+| **fingerprint** | `verify.record.tree-hash-bound-done-claim` |
+| **machine_signature** | (AI-judged: a done-claim / Stop-hook evidence field asserting a phase/gate is complete with no corresponding `test-artifacts/validations/<hash>.json` record whose tree-hash matches the current working tree — or a record present for a DIFFERENT tree-hash than the one being claimed done) |
+| **scope** | `framework` |
+| **failure** | A done-claim with no validation record bound to the current tree hash is a self-report, not Verifiable-Done (Rule 32) — it asserts a PASS without anything mechanically tying that PASS to the exact bytes being claimed. Re-running the same unchanged tree should still count as covered; changing one byte after a PASS was recorded should NOT silently inherit that old PASS. Without a tree-hash-bound record, both directions are indistinguishable from a human's say-so. |
+| **standing_check** | At any Phase 5 close / design-stop-hook.sh done-claim: `bash scripts/verify-record.sh check --worktree` (deliverable #46) MUST exit 0 (a matching "pass" record found, or cannot-compute) before the claim is accepted — this is design-stop-hook.sh step 5's RECORD GATE, bypassable only with the explicit owner token `VERIFY-OK <reason>` in the evidence line. The record itself is produced by `node scripts/run-stages.mjs --full` (deliverable #47) feeding `bash scripts/verify-record.sh write`, never hand-written. |
+| **check_location** | `scripts/verify-record.sh` (hash/write/check/--self-test) + `scripts/run-stages.mjs`+`scripts/stages.json` + `scripts/design-stop-hook.sh` step 5 RECORD GATE + `.ai_prompt/templates.md` opt-in `lefthook.yml` pre-commit record-gate template |
+
+_Promoted: 2026-10-11 (POW-65 HAR harvest; pattern adapted from os-factory/har, Apache-2.0)_
+
+---

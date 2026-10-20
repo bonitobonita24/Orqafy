@@ -470,6 +470,38 @@ All feature descriptions, architecture decisions, and workflow descriptions live
 If the user wants to add a feature, change a flow, add a module, or remove anything —
 they edit PRODUCT.md first. The agent propagates every change to all other files.
 
+**§1 Identity — `app_type` / `parent_app` / `parent_api` fields (NEW V32.66 — Scenario 52).** Every
+`docs/PRODUCT.md` §1 Identity carries three first-class fields:
+```
+app_type:    standalone | extension   (default: standalone)
+parent_app:  <repo/slug of the mother app>          — required when app_type: extension
+parent_api:  <contract source — e.g. the parent's typed client, or its OpenAPI spec>
+             — required when app_type: extension
+```
+Cross-referenced from §6 Data (no owned server DB when extension), §7 Integrations (the parent API is
+the integration), and §8 Deployment (no Docker/Komodo stack when extension — Expo/EAS only).
+
+**Extension-app variant — what's DIFFERENT from the standalone templates below:**
+- **No DB/Valkey `.env` block.** `DATABASE_URL`, `PGBOUNCER_URL`, `VALKEY_URL`, and MinIO/S3 vars are
+  omitted entirely from every env file (dev/staging/prod/demo) — there is no owned server to configure.
+  Keep only the parent-API base URL + the extension app's own client credentials (if any).
+- **EAS config, not Docker Compose.** `eas.json` (build profiles) + `app.json`/`app.config.ts` replace
+  the `docker-compose.*.yml` set — there is no server stack to containerize.
+- **`docs/PARENT_DEPENDENCIES.md` — cross-seat dependency list (template stub, create at Phase 0):**
+```markdown
+# Parent Dependencies — <Extension App Name>
+
+Cross-seat dependency list (Scenario 52). Every API/capability/token-scope this extension app needs
+FROM `<parent_app>` — a REQUEST to that app's own seat, never a ticket this seat creates there.
+NEVER edit the mother app's repo from this seat.
+
+## Open
+- **<short title>** — needed for: <screen/flow it blocks>. Why: <1-2 sentences>. `YYYY-MM-DD`
+
+## Resolved
+- **<short title>** — delivered by `<parent_app>` as <endpoint/capability>. `YYYY-MM-DD`
+```
+
 ### Rule 2 — Agents own the spec files
 
 `inputs.yml` and `inputs.schema.json` are generated and maintained exclusively
@@ -491,6 +523,34 @@ HUMAN        → uncommitted (git diff HEAD) — manual edit, or in-flight Claud
 **Governance writes are non-blocking.** Never hold up implementation waiting for a
 CHANGELOG_AI or agent-log write. Append governance docs after the implementation step,
 not before or during.
+
+**When does a proposal/decision earn a `DECISIONS_LOG.md` entry? (the ADR qualification test —
+V32.65, harvest)** Not every choice is architectural. Write a `DECISIONS_LOG.md` entry only when
+ALL THREE hold: **(1) hard to reverse** (changing it later costs real rework) · **(2) surprising
+without context** (a future reader would wonder "why was it done this way?") · **(3) the result
+of a real trade-off** (genuine alternatives existed and one was picked for specific reasons). A
+decision can be reversed cheaply, isn't surprising, or had no real alternative → skip the entry;
+noting "did the obvious thing" adds nothing. One short paragraph (what was decided + why) is
+enough — fill in Considered Options / Consequences only when they carry real information.
+(adapted from mattpocock/skills skills/engineering/domain-modeling/ADR-FORMAT.md, MIT)
+
+**Optional governance doc — `docs/REJECTED.md` (declined-proposal register, on-demand, NOT one
+of the 9 mandatory governance docs in Rule 4).** Create it lazily — only when the first proposal
+is consciously declined. Template:
+
+```markdown
+# Rejected Proposals — <Project Name>
+
+Concepts/features consciously declined. A re-proposal gets pointed at its existing row, not
+re-litigated from scratch — unless new evidence (an observed failure, not a hypothetical) reopens it.
+
+| Concept | Why rejected | Date / prior ask |
+|---|---|---|
+| <short name> | <1-2 sentences> | YYYY-MM-DD, <who asked / issue ref if any> |
+```
+
+Append a row whenever a real proposal is weighed and declined (not a reflexive "no," a considered
+one). (adapted from mattpocock/skills `.out-of-scope/*.md` + `SCOPE.md`, MIT)
 
 ### Rule 4 — Hydrate all 9 governance docs before changing anything
 
@@ -2155,8 +2215,10 @@ evidence:
   contract: "[the machine-executable done-condition for LAST_DONE]"
   check_command: "[the exact command that proves it]"
   captured_output: |
-    [real terminal output from check_command — never left empty; the Stop hook
-    (scripts/design-stop-hook.sh) blocks a done-claim whose evidence is empty/absent]
+    [real terminal output from check_command — never left empty once this `evidence:` key
+    exists; the Stop hook (scripts/design-stop-hook.sh) blocks a done-claim whose evidence
+    block is present but captured_output is empty — adoption-gated: an app with no
+    `evidence:` key anywhere in STATE.md hasn't opted into this gate yet]
 ```
 See "`evidence:` block for STATE.md / Smart-Checkpoint" below for the full schema + a worked example.
 
@@ -3263,8 +3325,13 @@ pass_criteria: "exit 0; all 5 Playwright contracts green"
 
 ### `evidence:` block for STATE.md / Smart-Checkpoint
 
-Every done-claim in STATE.md must carry this block. A claim without it is a structurally
-malformed artifact — the Stop hook blocks it.
+Every done-claim in STATE.md must carry this block. **Adoption-gated (fix/stop-hook-evidence-adoption):**
+the Stop hook only enforces this on an app that has adopted the schema — i.e. STATE.md already
+contains the YAML `evidence:` key somewhere. An app that has never added the key (e.g. one that
+records evidence via a Markdown "## EVIDENCE"/"## SESSION N" heading instead) is not yet
+gated at all; it opts in by adding this exact `evidence:` block once. Once adopted, a
+done-claim whose `evidence:` block IS present but left empty/malformed is a structurally
+malformed artifact — the Stop hook blocks that.
 
 ```yaml
 evidence:
@@ -3313,14 +3380,28 @@ _Promoted: YYYY-MM-DD_
 **ONE canonical copy here.** `bootstrap.md` Phase 0 and `deploy.sh` reference this.
 Merges into `.claude/settings.json` in target app projects (extends deliverable #19).
 
-The Stop hook blocks a done-claim whose `evidence:` field is empty or absent.
-Harness-executed = binds even when the model decides otherwise.
+The Stop hook blocks a done-claim whose `evidence:` field is present but left empty.
+Adoption-gated: adoption is judged from the COMMITTED `docs/STATE.md` (`git show HEAD:...`),
+never the dirty working copy alone (hardened V32.67.5 — a working-copy-only check let an
+agent delete the `evidence:` key to silently bypass the gate). An app whose **committed**
+STATE.md has no `evidence:` key anywhere has not opted into the schema (per §V32.8 above)
+and skips only this step's own check — the record gate (step 5) still applies. An app that
+HAS committed the YAML key but whose working copy no longer has it is treated as evidence
+tampering and blocks the done-claim. A project opts in by committing the YAML `evidence:`
+block once. Harness-executed = binds even when the model decides otherwise.
 
 **Mechanism:** Claude Code Stop hooks are command-type only. Blocking is signalled by the
 script exiting **non-zero**. There is no `matcher`/`action`/`message` schema for Stop hooks —
 those keys are silently ignored. The companion script `scripts/design-stop-hook.sh` reads
 `docs/STATE.md`, checks for an empty/missing `captured_output`, and exits 1 to block or 0
 to allow. stdout JSON is ignored; only the exit code matters.
+
+**Command path (V32.67.3):** the hook command is `bash "$CLAUDE_PROJECT_DIR/scripts/design-stop-hook.sh"`
+— `$CLAUDE_PROJECT_DIR`-anchored, not the bare relative `bash scripts/design-stop-hook.sh` shown
+in earlier framework versions. A relative path resolves against the session's cwd, not the
+project root; a session launched in a subdirectory failed with "No such file or directory"
+(observed live in Marine-Guardian-Sentinel). `$CLAUDE_PROJECT_DIR` is the absolute project root
+Claude Code always sets for hook commands, so this runs correctly regardless of cwd.
 
 ```json
 {
@@ -3330,7 +3411,7 @@ to allow. stdout JSON is ignored; only the exit code matters.
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/design-stop-hook.sh",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/design-stop-hook.sh\"",
             "timeout": 30
           }
         ]
@@ -3341,20 +3422,25 @@ to allow. stdout JSON is ignored; only the exit code matters.
 ```
 
 **Merge note:** When the target app already has a `settings.json` (deliverable #19 ships
-`skillListingBudgetFraction` + `maxSkillDescriptionChars`), merge the `hooks` key — do not
-overwrite the file. Final merged shape:
+`skillListingMaxDescChars`; V32.67 — `skillListingBudgetFraction` was removed so apps inherit
+the user-level budget fraction, and `maxSkillDescriptionChars` was renamed to the real Claude
+Code key `skillListingMaxDescChars` — a re-deploy strips both stale keys from an existing
+target), merge the `hooks` key — do not overwrite the file. V32.67.3 ALSO strips the framework's
+now-retired `permissions.ask` entries (see "RETIRED: framework `permissions.ask` rules" below)
+and migrates any existing dest Stop-hook command exactly equal to the old relative form to the
+`$CLAUDE_PROJECT_DIR` form above — any other app-added `ask` entry or custom Stop-hook command
+is left untouched. Final merged shape (no framework `permissions.ask` block ships any more):
 
 ```json
 {
-  "skillListingBudgetFraction": 0.01,
-  "maxSkillDescriptionChars": 1024,
+  "skillListingMaxDescChars": 1024,
   "hooks": {
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/design-stop-hook.sh",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/design-stop-hook.sh\"",
             "timeout": 30
           }
         ]
@@ -3363,6 +3449,55 @@ overwrite the file. Final merged shape:
   }
 }
 ```
+
+**RETIRED (V32.67.3): framework `permissions.ask` rules.** V32.62–V32.67 shipped a
+`permissions.ask` array of 5 non-git destructive Bash patterns (`Bash(rm *)`, `Bash(chmod *)`,
+`Bash(npm *)`, `Bash(docker *)`, `Bash(kill *)`). Owner decision 2026-10-19: an app session
+running under bypassPermissions must not be prompted at all, and the Claude Code permissions
+docs state `permissions.ask` rules fire "even in bypassPermissions mode" — so these were
+silently defeating the owner's bypass choice on every framework-built app. The current
+`settings.json` ships no `permissions` block; `deploy.sh` Group 5b migrates an already-deployed
+app's `.claude/settings.json` by stripping exactly those 5 strings on the next re-deploy.
+Destructive-command protection for a bypassed session still comes from Claude Code's own
+built-in critical-path `rm` protection and the separate `git-guard.sh` PreToolUse hook (git
+operations only) — neither of those re-prompts under bypassPermissions.
+
+---
+
+### OPT-IN: `lefthook.yml` pre-commit record gate (HAR harvest M1 consumers)
+
+> Record gate adapted from os-factory/har (Apache-2.0).
+
+Guarantees that "verified" cannot silently outlive a one-character edit: the Stop hook
+(§ above) only checks that STATE.md's `evidence:` block is non-empty, not that the
+*current* staged tree still passes. This pre-commit entry closes that gap by refusing a
+commit whose **staged** tree has no passing `scripts/verify-record.sh` record — a record
+keyed to the tree-hash, not to a branch, message, or human say-so.
+
+**Default OFF, per-app opt-in.** `deploy.sh` never wires this; it is added to a target
+app's own `lefthook.yml` only when that app has explicitly adopted `verify-record.sh` +
+`run-stages.mjs`. Add a `pre-commit` entry alongside any existing commands (shellcheck,
+lint, etc.) — do not replace an app's existing `lefthook.yml` content:
+
+```yaml
+# lefthook.yml — OPT-IN record-gate entry (default OFF; add only if this app has
+# adopted scripts/verify-record.sh). Documented bypass mirrors the fleet HARDHOLD-OK
+# convention: VERIFY_OK=1 git commit -m "..."
+pre-commit:
+  commands:
+    verify-record:
+      run: |
+        if [ -n "${VERIFY_OK:-}" ]; then exit 0; fi
+        bash scripts/verify-record.sh check --staged
+      skip:
+        - merge
+        - rebase
+```
+
+Bypass a documented exception the same way `git-guard.sh`'s `HARDHOLD-OK` works for pushes:
+`VERIFY_OK=1 git commit -m "..."`. Fail-open posture is inherited from `verify-record.sh`
+itself — no `scripts/verify-record.sh`, no git, or an unparseable stages run never blocks
+unrelated commits; it only blocks when a record genuinely does not exist for the staged tree.
 
 ---
 

@@ -71,6 +71,18 @@ TOKEN BUDGET REFERENCE (applies to ALL phases):
 
 **This is not optional.** Every phase section below assumes this pre-flight has been run.
 
+**MODEL HOOK (V32.66 — Extension App build posture):** before applying the Universal Context Budget to
+any phase, check `docs/PRODUCT.md` §1 Identity for `app_type: extension`. If set, this session is building
+a thin CLIENT of a mother app's API (no own server/DB/web tier) — apply the Scenario 52 skip/swap matrix at
+every phase: Phase 0 skips DB/compose/PgBouncer/Valkey/MinIO scaffolding; Phase 3 skips the Prisma schema/
+`inputs.yml` DB block in favor of a typed parent-API client contract (+ local cache schema if offline);
+Phase 4 skips every server Part (tRPC server, Prisma, Postgres, Valkey, BullMQ, Auth.js provider) and keeps
+only client/UI/mobile Parts; Phase 5 runs contract tests against the parent's typed client instead of
+migration tests; Phase 6 is an Expo/EAS build, never Docker/Komodo. Any API/capability need that reaches
+into the mother app goes to `docs/PARENT_DEPENDENCIES.md` (built only in the mother app's own seat — never
+edited from here). Full matrix + the inherited L1-L6 posture: `scenarios.md` Scenario 52. MODEL HOOK, not a
+new phase hook — Phase Hooks count stays 18.
+
 ---
 
 ## PHASE 1 — SET UP DEV ENVIRONMENT (OPTIONAL — skip if already done)
@@ -633,6 +645,24 @@ Note (Phase 2.8 — design principles): When docs/DESIGN.md / ui-rules.md are si
 **MODEL HOOK (V32.53 — Per-phase loadout: consult the global Capability Map; own-library-first, Black Magic gated):** At each phase's loadout step, arm the task from the CURRENT curated library, not memory. The global always-on chain (`~/.claude/rules/analyze-confirm-gate.md` HAND-1 → `skill-loadout-card.md` STEP 0.5) rescans the LIVE available-skills list for a fit not yet tabled (especially a newly-added skill) and consults `~/.claude/library/capability-map.md` — the curated **dev-phase × task × skills × Black Magic** map. **OUR OWN library (installed skills · MCPs · plugins) is always the default.** **AI Black Magic is GATED — NEVER auto-queried** (token cost): reach for it ONLY when (BM-1) curating our own coding/dev skills or the map, (BM-2) a genuine capability gap after ALREADY searching our library (search-skill/scan-project + the map + external-skill-catalogs) with no match, or (BM-3) the owner explicitly asks. New/better skills now prescribed by phase: **`design-brief`** (design translator — run FIRST at Phase 2.8/3.3 before the design system is chosen); **`humanize` + `ai-check`** (docs/showcase/marketing copy — app-showcase, Phase 7 content); **`doubt-driven-development`** (high-stakes/irreversible decisions — pairs with the Phase 3 pre-lock Spec Expert Panel); **`video-shot-planner` · `app-showcase` · `image` · `dataviz` · `web-motion`** (showcase/marketing/charts, cross-phase). These are provided GLOBALLY (every seat loads `~/.claude/`), so a build session already has them — this hook makes the framework aware of the current loadout discipline. MODEL HOOK, not a new phase hook — Phase Hooks count stays 18.
 
 **MODEL HOOK (V32.54 — Content Human-Voice Pass, on-demand):** Whenever you AUTHOR human-facing PUBLISHED prose at a design/content phase — mockup marketing/landing copy at Phase 2.8/3.3, feature-update content at Phase 7, or any showcase/marketing/docs copy via the app-showcase pipeline — **Read `.ai_prompt/content-voice.md`** and run the humanize + `ai-check` pass automatically. Either write-human-first (the `humanize` skill's generate mode) OR humanize-rewrite the draft, then gate it through `ai-check` before the content is called "done"; at Phase 5, a light `ai-check --report-only` check on public-facing copy suffices. This is ON-DEMAND — pulled ONLY when content is actually being made, NOT a constitutional always-on concern (deliberately unlike Rule 35 SEO, which every app IS scaffolded with): it never loads in a non-content session and is never scaffolded into an app. It rides ON TOP of `copywriting`/`app-showcase`/`doc-coauthoring` (INHERIT-not-REPLACE) and is SKIPPED for non-prose (code/config/JSON/data) + rigid/legal register. This strengthens the V32.53 humanize/ai-check loadout cue above from a hint into a documented pass. MODEL HOOK, not a new phase hook — Phase Hooks count stays 18.
+
+**MODEL HOOK (V32.66 — Lean mockup verification via Haiku checker):** mockup/prototype screenshot
+verification is a SCRIPTED CHECKER pass first, human vision-reading second — not the reverse (Sentinel
+advisor trial, 2026-10-14: ~75% of a swarm's spend was helpers re-checking mockups by reading screenshots
+turn-by-turn). At **Planning Assistant Phase 2.8** (Claude Code PA session only — see `Planning_Assistant.md`
+Step 5b): before the human's Step 6 alignment check, dispatch `Agent(subagent_type: "checker")` (Haiku 5.5,
+read-only) against `docs/MOCKUP.jsx` + the Step 7a HTML archive for DOM overlap/truncation, contrast,
+touch-target size, cross-screen data consistency, and console errors — PASS/FAIL/NEEDS-JUDGMENT with
+evidence, never an edit. Claude.ai-chat PA sessions have no subagent tooling and skip this step (human
+eyeballs the inline artifact as today). At **Phase 3.3**, the same discipline governs the `/design-review`
+regression loop (designer-skills hook below + Parts 5-6): build → ONE `checker` scripted scan pass (the
+same DOM/contrast/touch-target/console checks, plus `lint-design.sh`/`design:fidelity` where applicable) →
+fix → ONE re-check; a third failing pass STOPS and reports to the PM/human instead of looping again. The PM
+then vision-samples only 2-3 screenshots for final design-quality judgment — the scripted pass clears
+mechanical defects first so the expensive human/Opus look is spent on judgment, not detection. Design
+judgment itself (does this look right, does the flow make sense) stays with the PM/human — the checker
+never decides design quality, only reports mechanical pass/fail. Full wording: `~/.claude/rules/
+plan-first-dispatch.md` §2b. MODEL HOOK, not a new phase hook — Phase Hooks count stays 18.
 
 ### PHASE 3 INTERACTION
 Zero. Phase 3 in Claude Code proceeds based on PRODUCT.md + inputs.yml regardless
@@ -1670,7 +1700,8 @@ sign-off (Step 8b — post-sign-off only). PA's human-verified baseline stays au
 DESIGN.md or MOCKUP.jsx from scratch. If DESIGN.md is absent (no PA Step 7), `/design-aesthetic` may be
 invoked once to establish a baseline, then logged to PRODUCT.md Section 10 per Scenario 33. **Phase 4
 Parts 5-6 no longer runs the full design-system pass — it runs a regression `/design-review` + re-captures
-the PRODUCTION baseline** (see Phase 4).
+the PRODUCTION baseline** (see Phase 4). **The `/design-review` passes in this loop run the lean
+checker-first verification (V32.66 hook above) before any human/Opus vision-read of the prototype.**
 
 Note (Phase 3.3 — design principles): When docs/DESIGN.md / ui-rules.md are silent on a pattern, component state, or a11y approach, **Read .ai_prompt/design-principles.md** — principles win for structural decisions; the design system wins for token values.
 Note (Phase 3.3 — motion): When the prototype adds motion/interaction and docs/DESIGN.md / ui-rules.md are silent on a motion/easing/duration/reduced-motion pattern, **Read .ai_prompt/motion.md** (ui-rules.md Rule 14). Motion (motion.dev) is the prescribed lib; every animation MUST carry a `useReducedMotion()` guard (ties R13 WCAG gate); animate `transform`/`opacity` only. Principles win timing decisions; the design system wins token values.
@@ -3855,6 +3886,16 @@ Before proceeding to Phase 6, verify ALL of these:
 □ lint-deploy.sh: exit 0 — run `bash scripts/lint-deploy.sh deploy/compose` before any staging/prod push; catches
   the shared Traefik/Komodo footguns (compose parse, certresolver case, tls=true label, 127.0.0.1 healthcheck,
   no build: in stage/prod, push.sh login guard, start.sh project-name, shellcheck). Fix all FAILs before Phase 6.
+□ run-stages.mjs: run `node scripts/run-stages.mjs --full` (deliverable #47, V32.65 — stage registry runner;
+  tallies pass/fail/skip across lint-deploy/validate-findings/design-fidelity/audit-app/readiness-smoke etc.
+  per `scripts/stages.json`; writes `{status,mode,treeHash,stages[]}` to `test-artifacts/stages/last.json`).
+  `status` must be `"pass"` (no BLOCKING stage failed) before proceeding. Pattern adapted from os-factory/har
+  (Apache-2.0).
+□ verify-record.sh write: once every gate above is green, run `bash scripts/verify-record.sh write`
+  (deliverable #46, V32.65 — binds a PASS to the exact git tree-hash; records to
+  `test-artifacts/validations/<hash>.json`). This is the record `design-stop-hook.sh` step 5's RECORD GATE
+  checks before accepting a done-claim (Rule 32) — a Phase 5 close with no matching record is a self-report,
+  not Verifiable-Done.
 □ design:check: exit 0 — run `npm run design:check` (Playwright toHaveScreenshot vs production baseline in
   tests/visual/fixtures/). A non-zero exit = visual drift detected = GATE FAIL. Two legal reconcile paths only:
   (1) fix the code so screenshots match the baseline; OR (2) update-design-first → recompile
@@ -3955,6 +3996,14 @@ a dev code container behind `main`, rebuild dev off the same `main`/sha (e.g. `b
 dev up -d --build`). Advisory `--report-only` — surfaces the drift, NEVER blocks Phase 6 close (same
 report-only posture as the `lint-design.sh --report-only` design gate; exit 2 in gate mode means dev is
 behind, not that the build failed). Mirrors `~/.claude/rules/deploy-discipline.md` "Dev leads every env".
+
+**🩺 READINESS SMOKE (V32.65 — deliverable #48, advisory):** after any staging/prod/demo ship, run
+`bash scripts/readiness-smoke.sh --report-only <url>` to confirm the shipped build is not just UP
+(liveness, already covered by `/api/health`) but READY — a real user can log in (Auth.js v5
+credentials flow), read their data (an authed tRPC/data route), and see a rendered page (an authed
+page route, not bounced to login). Same advisory `--report-only` posture as `dev-freshness-check.sh`
+(#37) — surfaces the drift/failure, never blocks Phase 6 close. Pattern adapted from os-factory/har
+(Apache-2.0).
 
 **🔗 KOMODO STACK REGISTRATION AUDIT (V32.42 — Rule 36 extension, advisory):** after the CI/CD
 pipeline is generated (or on any Phase 6 close), run

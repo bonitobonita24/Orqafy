@@ -131,6 +131,30 @@ fi
 
 ---
 
+## 2.1 Network hosts per tool (egress allowlist)
+
+A firewalled/egress-restricted runner or sandbox needs to know, per tool, which outbound hosts to
+allow. Covers only the tools already wired in §4/§5 — **generic public host names only**, never a
+concrete IP/server.
+
+| Tool | Tier | Outbound hosts | Offline option |
+|---|---|---|---|
+| Gitleaks | T1 | none | Runs fully local against the git history/diff — no network needed |
+| Trivy | T2 | DB pulls (vuln-db + java-db, OCI): `mirror.gcr.io` + `googlecode.l.googleusercontent.com`, fallback `ghcr.io` + `pkg-containers.githubusercontent.com`; Java jar lookups: Maven Central | Pre-fetch the DBs, then `--skip-db-update --skip-java-db-update --skip-check-update`; `--offline-scan` only stops the Maven lookups — the DBs still download without the skip flags |
+| OSV-Scanner | T2 | `api.osv.dev` (verify) | None documented — requires the API unless pre-downloaded offline DBs are configured |
+| Syft | T2 | none | Local image/directory scan only — no network needed |
+| BackstopJS | T2 | the target app's own URL only (`<app-url>`) | N/A — always needs the app reachable |
+| OWASP ZAP | T3 | the target app's own URL only (`<app-url>`) | N/A — always needs the app reachable |
+| k6 | T3 | the target app's own URL only (`<app-url>`) | N/A — always needs the app reachable |
+
+An absent/unreachable host for any row above is a **WARN-skip per §2's graceful degrade, never a
+silent pass** — the summary line must still distinguish that tool's coverage gap from a real FAIL.
+
+Hostnames above change upstream without notice — verify against each tool's own current docs
+before locking a firewall rule; cells marked "(verify)" are the ones to double-check first.
+Concrete hosts/IPs for OUR servers live in the Server-Setups repo
+(`Server-Setups/<Server>/server-info.md`), never in this file.
+
 ## 3. Already wired elsewhere — do NOT duplicate
 
 These tools are load-bearing gates the framework already runs; `audit-app.sh` never re-implements or

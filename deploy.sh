@@ -88,6 +88,14 @@
 #         • scripts/audit-app.sh             (T1/T2 gate runner — deliverable #36)
 #      V32.39 Dev-Freshness deliverable, Rule 39 (overwrite-with-backup + chmod +x):
 #         • scripts/dev-freshness-check.sh   (dev-leads-every-env detection backstop — deliverable #37)
+#      V32.65 HAR harvest — validation records + stage runner + readiness smoke (overwrite-with-backup
+#      + chmod +x; pattern adapted from os-factory/har, Apache-2.0):
+#         • scripts/verify-record.sh         (tree-hash-bound validation records; consumed by
+#                                            design-stop-hook.sh step 5 RECORD GATE — deliverable #46)
+#         • scripts/run-stages.mjs           (stage registry runner — deliverable #47)
+#         • scripts/stages.json              (stage registry data — deliverable #47, same number as
+#                                            run-stages.mjs — file-pair convention per #45)
+#         • scripts/readiness-smoke.sh       (post-deploy readiness-vs-liveness smoke — deliverable #48)
 # V32.32 (cicd.md on-demand reference) adds deliverable #32 — the CI/CD standard reference
 # (.ai_prompt/). Deliverable count 31 → 32.
 # V32.35 (microservices.md on-demand reference) adds deliverable #33 — the microservices
@@ -114,6 +122,13 @@
 # deliverables #40 and #41 — scripts/review-scope.mjs (deterministic files×rules pre-scope engine for
 # /code-review) + .ai_prompt/review-scope.md (on-demand authority reference); see GROUP 17 below.
 # Deliverable count 39 → 41.
+# V32.65 (HAR harvest: validation records + stage runner + readiness smoke) adds deliverables
+# #46-#48 — scripts/verify-record.sh (tree-hash-bound validation records, consumed by the
+# design-stop-hook.sh RECORD GATE), scripts/run-stages.mjs + scripts/stages.json (stage registry +
+# runner, one deliverable number for the file pair — same convention as #45), and
+# scripts/readiness-smoke.sh (post-deploy readiness-vs-liveness smoke). All clone the
+# lint-deploy.sh graceful-degrade / zero-dep-where-possible posture. See GROUP 20-22 below.
+# Deliverable count 45 → 48.
 #         NOTE: sd.config.mjs, design-validate.mjs, STATE.md evidence template, AND (V32.36)
 #         design-fidelity.config.json + docs/design-baseline/manifest.json are
 #         NOT deploy-copied — they are scaffolded by bootstrap.md Step 20 from templates.md
@@ -183,6 +198,10 @@
 #   │   ├── build-primer.sh            ← NEW V32.40 — Capability-Primer regenerator (→ scripts/, deliverable #38)
 #   │   ├── review-scope.mjs           ← NEW V32.51 — review pre-scope engine (→ scripts/, deliverable #40)
 #   │   ├── review-scope.md            ← NEW V32.51 — review pre-scope authority (→ .ai_prompt/, deliverable #41)
+#   │   ├── verify-record.sh           ← NEW V32.65 — tree-hash-bound validation records (→ scripts/, deliverable #46)
+#   │   ├── run-stages.mjs             ← NEW V32.65 — stage registry runner (→ scripts/, deliverable #47)
+#   │   ├── stages.json                ← NEW V32.65 — stage registry data (→ scripts/, deliverable #47)
+#   │   ├── readiness-smoke.sh         ← NEW V32.65 — post-deploy readiness-vs-liveness smoke (→ scripts/, deliverable #48)
 #   │   ├── Planning_Assistant.md
 #   │   ├── Framework_Feature_Index.md
 #   │   ├── AI_Tools_Reference.md
@@ -190,7 +209,7 @@
 #   │   ├── ChatGPT_Cross_Audit.md
 #   │   ├── Prompt_References.md
 #   │   └── Prompt_References.html     ← interactive HTML UI for prompt references
-#   └── deploy.sh             ← this script at project root (44-file total deliverable set)
+#   └── deploy.sh             ← this script at project root (48-file total deliverable set)
 #
 # DEPLOYED TARGET LOCATIONS (V32.7.2 additions):
 #   .claude/agents/spec-executor.md    ← overwrite-with-backup (framework-owned)
@@ -239,6 +258,11 @@
 # DEPLOYED TARGET LOCATIONS (V32.51 addition):
 #   scripts/review-scope.mjs           ← overwrite-with-backup (framework-owned), chmod +x (deliverable #40, V32.51)
 #   .ai_prompt/review-scope.md         ← overwrite-with-backup (framework-owned) (deliverable #41, V32.51)
+# DEPLOYED TARGET LOCATIONS (V32.65 addition):
+#   scripts/verify-record.sh           ← overwrite-with-backup (framework-owned), chmod +x (deliverable #46, V32.65)
+#   scripts/run-stages.mjs             ← overwrite-with-backup (framework-owned), chmod +x (deliverable #47, V32.65)
+#   scripts/stages.json                ← overwrite-with-backup (framework-owned) (deliverable #47, V32.65)
+#   scripts/readiness-smoke.sh         ← overwrite-with-backup (framework-owned), chmod +x (deliverable #48, V32.65)
 #
 # USAGE:
 #   cd your-project
@@ -499,6 +523,135 @@ append_line_if_missing() {
 }
 
 # ============================================================
+# Helper: MERGE .claude/settings.json (create-or-merge; deliverable #19, GROUP 5b)
+# ============================================================
+# Factored into its own function so the merge logic is unit-testable in isolation
+# (tests/deploy-settings-merge.test.js sources this file with DEPLOY_TEST_SOURCE=1 and
+# calls this directly) without running the rest of deploy.sh's file-copy groups.
+#
+# V32.67.3 FIX (owner decision 2026-10-19 — app sessions must honor bypassPermissions):
+#   1. The 5 framework-shipped `permissions.ask` entries (rm/chmod/npm/docker/kill) are
+#      RETIRED — Claude Code's own docs (code.claude.com/docs, via context7) say
+#      `permissions.ask` rules prompt "even in bypassPermissions mode", so these were
+#      silently defeating the owner's bypass choice. Strip exactly those 5 literal
+#      strings from the DEST `permissions.ask` array on every re-deploy (any OTHER
+#      app-added entry — e.g. a project's own "Bash(terraform *)" — is kept); drop the
+#      `ask` key entirely if it becomes empty, and drop `permissions` entirely if it
+#      becomes an empty object. The current source settings.json no longer ships a
+#      `permissions.ask` list at all, so nothing re-adds the retired entries.
+#   2. A Stop hook command of exactly `bash scripts/design-stop-hook.sh` (relative) fails
+#      with "No such file or directory" when the session's cwd is a subdirectory
+#      (observed live in Marine-Guardian-Sentinel). Replace it in place with the
+#      `$CLAUDE_PROJECT_DIR`-anchored absolute form. Any OTHER Stop hook command (an
+#      app's own custom hook) is left untouched — only an exact match is replaced, so
+#      nothing is duplicated and nothing unrelated is dropped.
+merge_claude_settings() {
+  local settings_src="$AI_PROMPT/settings.json"
+  local settings_dest="$PROJECT/.claude/settings.json"
+
+  if [ ! -f "$settings_src" ]; then
+    echo "  ⚠  Source not found: .ai_prompt/settings.json — SKIPPED"
+    return 0
+  fi
+
+  guard_never_touch "$settings_dest"
+
+  if [ ! -f "$settings_dest" ]; then
+    # No existing settings.json — create fresh
+    mkdir -p "$PROJECT/.claude"
+    cp "$settings_src" "$settings_dest"
+    echo "  ✅ settings.json  (created — framework settings written)"
+    return 0
+  fi
+
+  # Existing settings.json — merge our keys in, preserve all existing keys
+  if cmp -s "$settings_src" "$settings_dest"; then
+    echo "  ⏭  settings.json  (identical — no change)"
+    return 0
+  fi
+
+  # Guard: jq must be available for merge
+  if ! command -v jq &>/dev/null; then
+    echo "  ⚠  WARNING: jq not found — cannot auto-merge settings.json."
+    echo "              Please add the following keys to $settings_dest manually:"
+    echo "              $(cat "$settings_src")"
+    echo "              Continuing deploy without merging settings.json."
+    return 0
+  fi
+
+  # Backup the original
+  cp "$settings_dest" "${settings_dest}.${TIMESTAMP}.bak"
+  # Deep-merge: existing file (.[0]) wins for any conflicts; our keys (.[1]) fill gaps
+  # We want our new keys to inject without overwriting user's existing keys,
+  # so we merge as: existing * ours (existing takes precedence on key collision)
+  # To ensure our keys are ADDED (not overwritten by existing), reverse the merge:
+  # .[0]=ours (base), .[1]=existing (wins on conflict) — existing keys always preserved.
+  # V32.63 FIX: jq's `*` deep-merges OBJECTS but REPLACES arrays outright — so a plain
+  # `.[0] * .[1]` SILENTLY DROPS the framework's permissions.ask/allow/deny guard entries
+  # whenever the target app already has its own permissions.ask/allow/deny (dest wins
+  # wholesale, src entries vanish with no warning). Every other key keeps the existing
+  # deep-merge/dest-wins-on-scalar-collision semantics unchanged; only the three
+  # permissions array keys are special-cased to UNION + de-dupe both sides instead of
+  # one replacing the other. Neither side having `permissions` (or a given array key)
+  # still yields no `permissions` key / no empty array in the output.
+  # V32.67 FIX: `maxSkillDescriptionChars` was never a real Claude Code key (the real
+  # key is `skillListingMaxDescChars`) and `skillListingBudgetFraction` pinned every app
+  # seat at 1% context regardless of the owner's user-level setting (project settings
+  # override user settings). Both are stripped from the EXISTING dest during merge so a
+  # re-deploy migrates already-deployed apps off the stale keys, even though the current
+  # source no longer carries them.
+  # V32.67.3 FIX: see the two migrations in the header comment above — stripped from DEST
+  # ($d) before the deep-merge, so they apply even though the current source no longer
+  # carries the retired keys/command to merge against.
+  local settings_tmp
+  settings_tmp=$(mktemp)
+  jq -s \
+    --argjson retired_ask '["Bash(rm *)","Bash(chmod *)","Bash(npm *)","Bash(docker *)","Bash(kill *)"]' \
+    --arg old_stop_cmd 'bash scripts/design-stop-hook.sh' \
+    --arg new_stop_cmd 'bash "$CLAUDE_PROJECT_DIR/scripts/design-stop-hook.sh"' \
+    '
+    .[0] as $s | (.[1] | del(.maxSkillDescriptionChars, .skillListingBudgetFraction)) as $d0 |
+    (
+      $d0
+      | (if (.permissions.ask // null) != null then
+           .permissions.ask |= [ .[] as $x | select( ($retired_ask | index($x)) == null ) | $x ]
+         else . end)
+      | (if (.permissions.ask // null) == [] then
+           .permissions |= with_entries(select(.key != "ask"))
+         else . end)
+      | (if (.hooks.Stop // null) != null then
+           .hooks.Stop |= [ .[] | .hooks |= [ .[] | if .command == $old_stop_cmd then (.command = $new_stop_cmd) else . end ] ]
+         else . end)
+    ) as $d |
+    ($s * $d) as $merged0 |
+    (
+      $merged0
+      | if .permissions == null then .
+        else
+          .permissions.ask   = (if ($s.permissions.ask   == null and $d.permissions.ask   == null) then null else (($s.permissions.ask   // []) + ($d.permissions.ask   // [])) | unique end)
+          | .permissions.allow = (if ($s.permissions.allow == null and $d.permissions.allow == null) then null else (($s.permissions.allow // []) + ($d.permissions.allow // [])) | unique end)
+          | .permissions.deny  = (if ($s.permissions.deny  == null and $d.permissions.deny  == null) then null else (($s.permissions.deny  // []) + ($d.permissions.deny  // [])) | unique end)
+          | .permissions |= with_entries(select(.value != null))
+        end
+    ) as $merged |
+    (if (($merged.permissions // {}) == {}) then ($merged | del(.permissions)) else $merged end)
+    ' "$settings_src" "$settings_dest" > "$settings_tmp"
+  mv "$settings_tmp" "$settings_dest"
+  echo "  🔄 settings.json  (merged — other keys deep-merged with existing values preserved"
+  echo "                     on collision; permissions.ask/allow/deny UNIONED + de-duped from"
+  echo "                     both files; the 5 retired framework ask entries + the old relative"
+  echo "                     Stop-hook command are migrated out of dest first; backup saved as"
+  echo "                     .${TIMESTAMP}.bak)"
+}
+
+# Test harness sources this file to reach merge_claude_settings() above; stop before the
+# main deploy flow runs (same pattern as sync-to-project.sh's SYNC_TEST_SOURCE guard).
+if [ "${DEPLOY_TEST_SOURCE:-0}" = "1" ]; then
+  # shellcheck disable=SC2317  # reached only when this file is SOURCED by the test harness
+  return 0 2>/dev/null || true
+fi
+
+# ============================================================
 # GROUP 1 — OVERWRITE: Compact CLAUDE.md (project root)
 # ============================================================
 echo "─── Group 1: Compact CLAUDE.md (OVERWRITE) ───"
@@ -610,6 +763,9 @@ GITIGNORE_ENTRIES=(
   "#  OUT of it per Scenario 49.)"
   "starter/admincn/"
   ".ai_prompt/starter/admincn/"
+  "# ─── V32.65 HAR harvest — validation records + stage-runner output (local artifacts, never committed) ───"
+  "test-artifacts/validations/"
+  "test-artifacts/stages/"
 )
 
 for entry in "${GITIGNORE_ENTRIES[@]}"; do
@@ -636,69 +792,9 @@ echo "─── Group 5: .claude/ targets — spec-executor + settings.json (V32
 mkdir -p "$PROJECT/.claude/agents"
 overwrite_with_backup "$AI_PROMPT/spec-executor.md" "$PROJECT/.claude/agents/spec-executor.md"
 
-# --- 5b: settings.json → .claude/settings.json (create-or-merge) ---
-SETTINGS_SRC="$AI_PROMPT/settings.json"
-SETTINGS_DEST="$PROJECT/.claude/settings.json"
-
-if [ ! -f "$SETTINGS_SRC" ]; then
-  echo "  ⚠  Source not found: .ai_prompt/settings.json — SKIPPED"
-else
-  guard_never_touch "$SETTINGS_DEST"
-
-  if [ ! -f "$SETTINGS_DEST" ]; then
-    # No existing settings.json — create fresh
-    mkdir -p "$PROJECT/.claude"
-    cp "$SETTINGS_SRC" "$SETTINGS_DEST"
-    echo "  ✅ settings.json  (created — framework settings written)"
-  else
-    # Existing settings.json — merge our 2 keys in, preserve all existing keys
-    if cmp -s "$SETTINGS_SRC" "$SETTINGS_DEST"; then
-      echo "  ⏭  settings.json  (identical — no change)"
-    else
-      # Guard: jq must be available for merge
-      if ! command -v jq &>/dev/null; then
-        echo "  ⚠  WARNING: jq not found — cannot auto-merge settings.json."
-        echo "              Please add the following 2 keys to $SETTINGS_DEST manually:"
-        echo "              $(cat "$SETTINGS_SRC")"
-        echo "              Continuing deploy without merging settings.json."
-      else
-        # Backup the original
-        cp "$SETTINGS_DEST" "${SETTINGS_DEST}.${TIMESTAMP}.bak"
-        # Deep-merge: existing file (.[0]) wins for any conflicts; our keys (.[1]) fill gaps
-        # We want our new keys to inject without overwriting user's existing keys,
-        # so we merge as: existing * ours (existing takes precedence on key collision)
-        # To ensure our keys are ADDED (not overwritten by existing), reverse the merge:
-        # .[0]=ours (base), .[1]=existing (wins on conflict) — existing keys always preserved.
-        # V32.63 FIX: jq's `*` deep-merges OBJECTS but REPLACES arrays outright — so a plain
-        # `.[0] * .[1]` SILENTLY DROPS the framework's permissions.ask/allow/deny guard entries
-        # whenever the target app already has its own permissions.ask/allow/deny (dest wins
-        # wholesale, src entries vanish with no warning). Every other key keeps the existing
-        # deep-merge/dest-wins-on-scalar-collision semantics unchanged; only the three
-        # permissions array keys are special-cased to UNION + de-dupe both sides instead of
-        # one replacing the other. Neither side having `permissions` (or a given array key)
-        # still yields no `permissions` key / no empty array in the output.
-        SETTINGS_TMP=$(mktemp)
-        jq -s '
-          .[0] as $s | .[1] as $d |
-          ($s * $d) as $merged |
-          (if $merged.permissions == null then $merged
-           else
-             $merged
-             | .permissions.ask   = (if ($s.permissions.ask   == null and $d.permissions.ask   == null) then null else (($s.permissions.ask   // []) + ($d.permissions.ask   // [])) | unique end)
-             | .permissions.allow = (if ($s.permissions.allow == null and $d.permissions.allow == null) then null else (($s.permissions.allow // []) + ($d.permissions.allow // [])) | unique end)
-             | .permissions.deny  = (if ($s.permissions.deny  == null and $d.permissions.deny  == null) then null else (($s.permissions.deny  // []) + ($d.permissions.deny  // [])) | unique end)
-             | .permissions |= with_entries(select(.value != null))
-           end)
-        ' "$SETTINGS_SRC" "$SETTINGS_DEST" > "$SETTINGS_TMP"
-        mv "$SETTINGS_TMP" "$SETTINGS_DEST"
-        echo "  🔄 settings.json  (merged — other keys deep-merged with existing values preserved"
-        echo "                     on collision; permissions.ask/allow/deny UNIONED + de-duped"
-        echo "                     from both files (neither side's entries are dropped);"
-        echo "                     backup saved as .${TIMESTAMP}.bak)"
-      fi
-    fi
-  fi
-fi
+# --- 5b: settings.json → .claude/settings.json (create-or-merge; logic in
+#     merge_claude_settings(), defined above GROUP 1 — kept testable in isolation) ---
+merge_claude_settings
 echo ""
 
 # ============================================================
@@ -959,6 +1055,50 @@ fi
 overwrite_with_backup "$AI_PROMPT/report-schema.json" "$PROJECT/scripts/report-schema.json"
 echo ""
 
+# ============================================================
+# GROUP 20 — scripts/ target: verify-record.sh tree-hash-bound validation records (V32.65,
+# deliverable #46). Pattern adapted from os-factory/har (Apache-2.0). Consumed by
+# design-stop-hook.sh step 5 RECORD GATE (`verify-record.sh check --worktree`, bypass token
+# VERIFY-OK) and the opt-in lefthook pre-commit record-gate template in templates.md.
+# Overwrite-with-backup (framework-owned) + chmod +x.
+# ============================================================
+echo "─── Group 20: scripts/verify-record.sh — tree-hash-bound validation records (V32.65) ───"
+# scripts/ already created by Group 6 — no mkdir needed here.
+overwrite_with_backup "$AI_PROMPT/verify-record.sh" "$PROJECT/scripts/verify-record.sh"
+if [ -f "$PROJECT/scripts/verify-record.sh" ]; then
+  chmod +x "$PROJECT/scripts/verify-record.sh"
+fi
+echo ""
+
+# ============================================================
+# GROUP 21 — scripts/ target: run-stages.mjs stage registry + runner, scripts/stages.json
+# registry data (V32.65, deliverable #47 — one number for the file pair, same convention as
+# #45). Pattern adapted from os-factory/har (Apache-2.0). Zero runtime deps (node:* stdlib
+# only). Its JSON output is what verify-record.sh's `write` subcommand gates a validation
+# record on. Overwrite-with-backup (framework-owned); the .mjs gets chmod +x.
+# ============================================================
+echo "─── Group 21: scripts/run-stages.mjs + scripts/stages.json — stage runner (V32.65) ───"
+overwrite_with_backup "$AI_PROMPT/run-stages.mjs" "$PROJECT/scripts/run-stages.mjs"
+if [ -f "$PROJECT/scripts/run-stages.mjs" ]; then
+  chmod +x "$PROJECT/scripts/run-stages.mjs"
+fi
+overwrite_with_backup "$AI_PROMPT/stages.json" "$PROJECT/scripts/stages.json"
+echo ""
+
+# ============================================================
+# GROUP 22 — scripts/ target: readiness-smoke.sh post-deploy readiness-vs-liveness smoke
+# (V32.65, deliverable #48). Pattern adapted from os-factory/har (Apache-2.0). Probes a real
+# login + authed data/page route beyond the existing /api/health liveness check; graceful-degrade
+# (missing tool/URL/cred = SKIP, never a crash), same posture as dev-freshness-check.sh.
+# Overwrite-with-backup (framework-owned) + chmod +x.
+# ============================================================
+echo "─── Group 22: scripts/readiness-smoke.sh — readiness-vs-liveness smoke (V32.65) ───"
+overwrite_with_backup "$AI_PROMPT/readiness-smoke.sh" "$PROJECT/scripts/readiness-smoke.sh"
+if [ -f "$PROJECT/scripts/readiness-smoke.sh" ]; then
+  chmod +x "$PROJECT/scripts/readiness-smoke.sh"
+fi
+echo ""
+
 # 7c: tests/visual/ scaffold — create directory + .gitkeep ONLY if the directory is absent.
 # Never overwrite existing snapshot files inside tests/visual/.
 if [ ! -d "$PROJECT/tests/visual" ]; then
@@ -1016,6 +1156,10 @@ echo "    scripts/review-scope.mjs                ← review pre-scope engine, c
 echo "    scripts/audit-scope.mjs                 ← full-audit pre-scope engine, chmod +x (V32.52, deliverable #42)"
 echo "    scripts/validate-findings.mjs           ← audit-finding contract validator, chmod +x (V32.60, deliverable #45)"
 echo "    scripts/report-schema.json              ← audit-finding output contract (V32.60, deliverable #45)"
+echo "    scripts/verify-record.sh                ← tree-hash-bound validation records, chmod +x (V32.65, deliverable #46)"
+echo "    scripts/run-stages.mjs                   ← stage registry runner, chmod +x (V32.65, deliverable #47)"
+echo "    scripts/stages.json                      ← stage registry data (V32.65, deliverable #47)"
+echo "    scripts/readiness-smoke.sh               ← readiness-vs-liveness smoke, chmod +x (V32.65, deliverable #48)"
 echo ""
 echo "  Merged additively (APPEND/MERGE bucket):"
 echo "    .gitignore                              ← V32 entries added, user entries preserved"
@@ -1074,6 +1218,10 @@ echo "    review-scope.mjs                          ← review pre-scope engine 
 echo "    audit-scope.mjs                           ← full-audit pre-scope engine (deploys to scripts/audit-scope.mjs, V32.52)"
 echo "    validate-findings.mjs                     ← audit-finding contract validator (deploys to scripts/validate-findings.mjs, V32.60)"
 echo "    report-schema.json                        ← audit-finding output contract (deploys to scripts/report-schema.json, V32.60)"
+echo "    verify-record.sh                          ← tree-hash-bound validation records (deploys to scripts/verify-record.sh, V32.65)"
+echo "    run-stages.mjs                            ← stage registry runner (deploys to scripts/run-stages.mjs, V32.65)"
+echo "    stages.json                               ← stage registry data (deploys to scripts/stages.json, V32.65)"
+echo "    readiness-smoke.sh                        ← readiness-vs-liveness smoke (deploys to scripts/readiness-smoke.sh, V32.65)"
 echo "    (Note: sd.config.mjs, design-validate.mjs, STATE.md.template, design-fidelity.config.json,"
 echo "     docs/design-baseline/manifest.json are scaffolded by bootstrap.md Step 20 from"
 echo "     templates.md — not deployed by this script)"

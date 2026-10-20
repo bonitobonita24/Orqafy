@@ -67,6 +67,29 @@ self-hosted runners; never make a private repo public for free minutes. Full det
 local fallback"; reference impl: Marine-Guardian `scripts/release-local.sh` +
 `deploy/komodo/komodo-exec.sh` + `docs/runbooks/local-cicd.md`.
 
+## 1.1 Network hosts per step (egress allowlist)
+
+A firewalled/egress-restricted CI runner or sandbox needs to know, per step, which outbound hosts
+to allow. Table below maps the steps §1/§10 actually describe to their documented outbound hosts —
+**generic public host names only**, never a concrete IP/server.
+
+| Step | Outbound hosts needed | Notes |
+|---|---|---|
+| Checkout / git clone | `github.com`, `codeload.github.com` | Standard GitHub checkout (verify) |
+| GitHub Actions runtime (artifacts, cache, Actions API) | `api.github.com`, `objects.githubusercontent.com`, `*.actions.githubusercontent.com` | GitHub-hosted runner infra (verify) |
+| `pnpm install` (dependency fetch) | `registry.npmjs.org` | npm registry (verify) |
+| Prisma `generate` (engine binary download) | `binaries.prisma.sh` | Prisma engine CDN (verify) |
+| `pnpm audit` (advisory DB query) | `registry.npmjs.org` | Same registry host as install (verify) |
+| Docker build — base-image pulls | `registry-1.docker.io`, `auth.docker.io`, `production.cloudflare.docker.com` | Docker Hub pull path (verify) |
+| Image push (`docker-publish.yml`) | `ghcr.io` or the app's own registry — `<your-registry>` | Placeholder; confirm the app's actual registry host |
+| Komodo deploy exec (§10 `komodo-exec.sh`) | `<komodo-api-host>` | Placeholder — per-server, never hardcoded here |
+| `release-local.sh` fallback (§1 dual-path) | Same hosts as the step it replaces, minus the Actions-runtime row | No GitHub Actions runtime involved in the fallback path |
+
+Hostnames above change upstream without notice — verify against each tool's own current docs
+before locking a firewall rule; cells marked "(verify)" are the ones to double-check first.
+Concrete hosts/IPs for OUR servers live in the Server-Setups repo
+(`Server-Setups/<Server>/server-info.md`), never in this file.
+
 ## 2. Image-tag promotion — re-tag forward, never rebuild between tiers
 
 `dev-latest → staging-latest → latest`, with `demo-latest` a registry retag from a chosen source tag

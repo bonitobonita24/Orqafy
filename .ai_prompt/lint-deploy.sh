@@ -43,6 +43,11 @@ SKIP="${BLU}SKIP${RST}"
 FAILS=0
 WARNS=0
 TARGET_DIR="${1:-.}"
+# A missing target = no deploy surface (client-only app, Scenario 52): nothing to lint.
+if [[ ! -d "$TARGET_DIR" ]]; then
+  printf "  [%b] %s not found — no deploy surface to lint\n" "$SKIP" "$TARGET_DIR"
+  exit 0
+fi
 TARGET_DIR="$(realpath "$TARGET_DIR")"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

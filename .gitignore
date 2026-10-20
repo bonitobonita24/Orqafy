@@ -112,3 +112,7 @@ _tempfiles/
 #  OUT of it per Scenario 49.)
 starter/admincn/
 .ai_prompt/starter/admincn/
+
+# ─── V32.65 HAR harvest — validation records + stage-runner output (local artifacts, never committed) ───
+test-artifacts/validations/
+test-artifacts/stages/

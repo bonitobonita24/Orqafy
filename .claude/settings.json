@@ -1,6 +1,5 @@
 {
-  "skillListingBudgetFraction": 0.01,
-  "maxSkillDescriptionChars": 1024,
+  "skillListingMaxDescChars": 1024,
   "env": {
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80"
   },
@@ -10,7 +9,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/design-stop-hook.sh",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/design-stop-hook.sh\"",
             "timeout": 30
           }
         ]

@@ -39,11 +39,33 @@
 //     PASS/FAIL and exits accordingly. Run this in CI without Playwright
 //     installed.
 //
+//   node scripts/design-fidelity.mjs --tells
+//   node scripts/design-fidelity.mjs --tells=all
+//     Render-based "design tells" (ADVISORY — ALWAYS, in every mode: tells
+//     never change the exit code). Renders each manifest screen's appRoute
+//     (same loadPlaywright/resolveUrl/config/viewport plumbing as the layout
+//     gate) and inspects computed styles of visible elements for
+//     machine-generated-UI tells. `--tells` alone checks only the two
+//     default, always-safe tells: pure #000 text color, and box-shadow using
+//     opaque black (rgb(0,0,0) or alpha 1). `--tells=all` (or a
+//     `tells: ["radius-monotony", ...]` array in design-fidelity.config.json)
+//     additionally opts in to 4 token-aware tells that would otherwise false-
+//     positive on correct shadcn output: radius-monotony, near-duplicate
+//     greys, single shadow stack, flat padding — each skips/narrows when the
+//     uniformity traces back to a declared CSS custom property (a single
+//     `--radius` var, a declared neutral scale, a shared button-shadow
+//     token). No Playwright / no browser / server unreachable → one WARN
+//     line, skipped, exit code unchanged. Combinable with --report-only
+//     (which still only governs the layout-diff gate's exit code).
+//     Tell heuristics adapted from plugin87/ux-ui-agent-skills
+//     scripts/slop_tells.mjs (MIT).
+//
 //   node scripts/design-fidelity.mjs --help
 //
 // Exit codes:
 //   0 — clean / advisory / no baseline yet (nothing to compare) / self-test PASS
 //   1 — gate mode found a real violation (or --self-test found a regression)
+//   (--tells findings NEVER affect the exit code, in any mode)
 //
 // Reads (project-relative, best-effort — never fails because a source is
 // missing, unless the operation genuinely cannot proceed without it):
@@ -198,6 +220,199 @@ export function resolveExitCode(mode, hasViolations) {
 }
 
 // =============================================================================
+// TELL CLASSIFIERS — pure logic, testable without a browser (--tells).
+// Tell heuristics adapted from plugin87/ux-ui-agent-skills scripts/slop_tells.mjs
+// (MIT). Operate on plain computed-style STRINGS/records extracted by
+// extractTellData() — never on the DOM directly — so they're unit-testable
+// with synthetic fixtures the same way classifyDiff() is above. Findings are
+// ALWAYS advisory: nothing in this section ever influences resolveExitCode().
+// =============================================================================
+
+const OPT_IN_TELL_IDS = ['radius-monotony', 'near-duplicate-greys', 'single-shadow-stack', 'flat-padding'];
+
+function parseRgba(str) {
+  const m = (str || '').match(
+    /rgba?\(\s*(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)(?:[,\s/]+(-?\d+\.?\d*))?/i,
+  );
+  if (!m) return null;
+  const r = Number(m[1]);
+  const g = Number(m[2]);
+  const b = Number(m[3]);
+  const a = m[4] === undefined ? 1 : Number(m[4]);
+  return { r, g, b, a };
+}
+
+/**
+ * DEFAULT tell 1 — pure #000 text. A single computed `color` string.
+ * False-positive caveat: a tinted near-black (e.g. #0a0a0a) is NOT flagged —
+ * only an exact (0,0,0) triple trips it. That is deliberate: shadcn/most
+ * design systems use a tinted foreground token, never literal black.
+ * @param {string} color computed `color` e.g. "rgb(0, 0, 0)"
+ */
+export function isPureBlackText(color) {
+  const c = parseRgba(color);
+  return !!c && c.r === 0 && c.g === 0 && c.b === 0;
+}
+
+/**
+ * DEFAULT tell 2 — box-shadow using opaque black: rgb(0,0,0) with no alpha
+ * channel (defaults to 1) OR an explicit alpha of exactly 1. A soft, low-
+ * alpha black shadow (rgba(0,0,0,.1) — the normal elevation-token shape) is
+ * NOT flagged; only a fully-opaque black shadow is, since that reads as a
+ * harsh pasted-in default rather than a tuned token.
+ * @param {string} boxShadow computed `box-shadow`, possibly multi-layer
+ */
+export function isOpaqueBlackShadow(boxShadow) {
+  if (!boxShadow || boxShadow === 'none') return false;
+  const layers = boxShadow.match(/rgba?\([^)]*\)/gi) || [];
+  return layers.some((layer) => {
+    const c = parseRgba(layer);
+    return !!c && c.r === 0 && c.g === 0 && c.b === 0 && c.a >= 1;
+  });
+}
+
+/**
+ * Tally `isPureBlackText` across every direct-text element's computed color.
+ * @param {string[]} colors
+ * @returns {{id:'black-text', count:number, sample:string}|null}
+ */
+export function classifyBlackText(colors) {
+  const hits = (colors || []).filter(isPureBlackText);
+  return hits.length ? { id: 'black-text', count: hits.length, sample: hits[0] } : null;
+}
+
+/**
+ * Tally `isOpaqueBlackShadow` across every element's computed box-shadow.
+ * @param {string[]} shadows
+ * @returns {{id:'opaque-black-shadow', count:number, sample:string}|null}
+ */
+export function classifyOpaqueBlackShadow(shadows) {
+  const hits = (shadows || []).filter(isOpaqueBlackShadow);
+  return hits.length ? { id: 'opaque-black-shadow', count: hits.length, sample: hits[0] } : null;
+}
+
+/**
+ * OPT-IN tell — single border-radius value shared by every rounded box.
+ * TOKEN-AWARE caveat: a page whose `:root` defines `--radius` (the shadcn/ui
+ * convention — one radius var drives card/button/input alike) is CORRECT
+ * output, not slop — so this classifier is suppressed entirely when
+ * `hasRadiusToken` is true. Only flags when there's enough sample size
+ * (≥10 rounded boxes) to mean something.
+ * @param {Record<string,number>} radii map of rounded-px → occurrence count
+ * @param {{hasRadiusToken?:boolean}} [opts]
+ * @returns {{id:'radius-monotony', count:number, sample:string}|null}
+ */
+export function classifyRadiusMonotony(radii, opts = {}) {
+  if (opts.hasRadiusToken) return null;
+  const entries = Object.entries(radii || {});
+  const vals = entries.map(([px]) => Number(px));
+  const total = entries.reduce((sum, [, n]) => sum + n, 0);
+  if (total >= 10 && vals.length === 1) {
+    return { id: 'radius-monotony', count: total, sample: `${vals[0]}px` };
+  }
+  return null;
+}
+
+/**
+ * OPT-IN tell — two near-identical neutral greys (Manhattan distance ≤9 in
+ * rgb) that read as accidental theme inconsistency rather than an
+ * intentional scale. TOKEN-AWARE caveat: a candidate whose `fromVar` is true
+ * traces back to a declared `:root` custom-property color (a deliberate
+ * token, e.g. a declared `--gray-50`/`--gray-100` neutral scale) — the
+ * heuristic only compares candidates where NEITHER side of the pair is both
+ * from declared tokens, so a correct shadcn neutral scale is not flagged.
+ * @param {Array<{rgb:[number,number,number], fromVar:boolean}>} neutrals
+ * @returns {{id:'near-duplicate-greys', a:number[], b:number[]}|null}
+ */
+export function classifyNearDuplicateGreys(neutrals) {
+  const list = neutrals || [];
+  for (let i = 0; i < list.length; i += 1) {
+    for (let j = i + 1; j < list.length; j += 1) {
+      if (list[i].fromVar && list[j].fromVar) continue; // both are declared tokens — intentional
+      const [r1, g1, b1] = list[i].rgb;
+      const [r2, g2, b2] = list[j].rgb;
+      const d = Math.abs(r1 - r2) + Math.abs(g1 - g2) + Math.abs(b1 - b2);
+      if (d > 0 && d <= 9) {
+        return { id: 'near-duplicate-greys', a: list[i].rgb, b: list[j].rgb };
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * OPT-IN tell — every shadowed element on the page shares exactly ONE
+ * distinct box-shadow value, with no resting/hover/overlay elevation
+ * hierarchy. TOKEN-AWARE caveat: a single shared button/card shadow IS
+ * correct shadcn output when the page genuinely has only one elevation
+ * level — this classifier can't tell "one component type" from "flat
+ * elevation design", so callers should read it as a prompt to look, not a
+ * guaranteed defect (documented false-positive risk).
+ * @param {string[]} shadows computed box-shadow values (any element, 'none' filtered)
+ * @returns {{id:'single-shadow-stack', sample:string}|null}
+ */
+export function classifySingleShadowStack(shadows) {
+  const distinct = new Set((shadows || []).filter((s) => s && s !== 'none'));
+  if (distinct.size === 1) {
+    return { id: 'single-shadow-stack', sample: [...distinct][0] };
+  }
+  return null;
+}
+
+/**
+ * OPT-IN tell — every padded box on the page shares one padding-top value,
+ * i.e. no spatial hierarchy (outer container padding should normally exceed
+ * inner element padding). TOKEN-AWARE caveat: this is a coarse heuristic —
+ * a small/simple screen can legitimately have one padding step; only flags
+ * at ≥10 sampled padded boxes so it needs real repetition to fire.
+ * @param {Record<string,number>} pads map of padding-px → occurrence count
+ * @returns {{id:'flat-padding', count:number, sample:string}|null}
+ */
+export function classifyFlatPadding(pads) {
+  const entries = Object.entries(pads || {});
+  const vals = entries.map(([px]) => Number(px));
+  const total = entries.reduce((sum, [, n]) => sum + n, 0);
+  if (total >= 10 && vals.length === 1) {
+    return { id: 'flat-padding', count: total, sample: `${vals[0]}px` };
+  }
+  return null;
+}
+
+/**
+ * Run the enabled tell classifiers over one screen's extracted render data
+ * and return the findings list. Always advisory — the caller never feeds
+ * this into an exit-code decision.
+ * @param {object} data as returned by extractTellData()
+ * @param {{all?:boolean, enabledOptIn?:string[]}} [opts]
+ */
+export function computeTellFindings(data, opts = {}) {
+  const findings = [];
+  const black = classifyBlackText(data.colors);
+  if (black) findings.push(black);
+  const shadow = classifyOpaqueBlackShadow(data.shadows);
+  if (shadow) findings.push(shadow);
+
+  const optIn = opts.all ? OPT_IN_TELL_IDS : (opts.enabledOptIn || []).filter((id) => OPT_IN_TELL_IDS.includes(id));
+  if (optIn.includes('radius-monotony')) {
+    const f = classifyRadiusMonotony(data.radii, { hasRadiusToken: data.hasRadiusToken });
+    if (f) findings.push(f);
+  }
+  if (optIn.includes('near-duplicate-greys')) {
+    const f = classifyNearDuplicateGreys(data.neutrals);
+    if (f) findings.push(f);
+  }
+  if (optIn.includes('single-shadow-stack')) {
+    const f = classifySingleShadowStack(data.shadows);
+    if (f) findings.push(f);
+  }
+  if (optIn.includes('flat-padding')) {
+    const f = classifyFlatPadding(data.pads);
+    if (f) findings.push(f);
+  }
+  return findings;
+}
+
+// =============================================================================
 // SELF-TEST — proves the diff logic WITHOUT a live browser (SCOPE §6)
 // =============================================================================
 
@@ -260,6 +475,52 @@ function selfTest() {
   const hasExtra = r5.violations.some((v) => v.fdl === 'footer' && v.type === 'EXTRA');
   const hasReorder = r5.violations.some((v) => v.type === 'REORDERED');
   record('MISSING/EXTRA/REORDERED all detected', hasMissing && hasExtra && hasReorder);
+
+  // --- Test 6: pure #000 text IS flagged -------------------------------------
+  record('pure #000 text → flagged', isPureBlackText('rgb(0, 0, 0)') === true);
+
+  // --- Test 7: near-black #0a0a0a is NOT flagged -----------------------------
+  record('near-black #0a0a0a → not flagged', isPureBlackText('rgb(10, 10, 10)') === false);
+
+  // --- Test 8: opaque-black box-shadow IS flagged ----------------------------
+  record(
+    'opaque-black shadow → flagged',
+    isOpaqueBlackShadow('0px 4px 8px rgb(0, 0, 0)') === true &&
+      isOpaqueBlackShadow('0px 4px 8px rgba(0, 0, 0, 1)') === true,
+  );
+
+  // --- Test 9: low-alpha rgba(0,0,0,.1) is NOT flagged -----------------------
+  record('rgba(0,0,0,.1) shadow → not flagged', isOpaqueBlackShadow('0px 1px 3px rgba(0, 0, 0, 0.1)') === false);
+
+  // --- Test 10: radius-monotony suppressed when --radius token is present ---
+  const monotoneRadii = { 6: 14 };
+  record(
+    'radius-monotony suppressed when --radius present',
+    classifyRadiusMonotony(monotoneRadii, { hasRadiusToken: true }) === null &&
+      classifyRadiusMonotony(monotoneRadii, { hasRadiusToken: false })?.id === 'radius-monotony',
+  );
+
+  // --- Test 11 (bonus): computeTellFindings respects default-vs-all gating --
+  const tellData = {
+    colors: ['rgb(0, 0, 0)', 'rgb(51, 51, 51)'],
+    shadows: ['0px 1px 2px rgba(0, 0, 0, 0.1)', '0px 1px 2px rgba(0, 0, 0, 0.1)'],
+    radii: { 8: 12 },
+    pads: { 16: 12 },
+    neutrals: [{ rgb: [200, 200, 200], fromVar: false }, { rgb: [202, 201, 199], fromVar: false }],
+    hasRadiusToken: false,
+  };
+  const defaultOnly = computeTellFindings(tellData, { enabledOptIn: [] });
+  const withAll = computeTellFindings(tellData, { all: true });
+  record(
+    'computeTellFindings: --tells default finds only black-text (shadow is low-alpha)',
+    defaultOnly.length === 1 && defaultOnly[0].id === 'black-text',
+  );
+  record(
+    'computeTellFindings: --tells=all adds radius-monotony/single-shadow-stack/flat-padding/near-dup-greys',
+    ['radius-monotony', 'single-shadow-stack', 'flat-padding', 'near-duplicate-greys'].every((id) =>
+      withAll.some((f) => f.id === id),
+    ),
+  );
 
   // --- Report ---------------------------------------------------------------
   console.log(`\n${CYN}=== design-fidelity.mjs self-test ===${RST}`);
@@ -371,6 +632,122 @@ async function extractSignature(playwright, route, config) {
   }
 }
 
+/**
+ * Render one screen's appRoute and extract the raw computed-style records
+ * `computeTellFindings()` classifies. Best-effort — any navigation/render
+ * failure (no server, unreachable host, bad route) propagates to the caller,
+ * which reports it as a single WARN line and skips that screen; it never
+ * crashes the run and never touches the exit code (--tells is advisory only).
+ * @param {object} playwright the imported 'playwright' module
+ * @param {string} route manifest entry's appRoute
+ * @param {object} config { baseUrl, viewport }
+ */
+async function extractTellData(playwright, route, config) {
+  const browser = await playwright.chromium.launch();
+  try {
+    const page = await browser.newPage({ viewport: config.viewport });
+    await page.goto(resolveUrl(route, config), { waitUntil: 'networkidle' });
+    await page.addStyleTag({ content: '*{transition:none!important;animation:none!important}' });
+    await page.waitForTimeout(100);
+    return await page.evaluate(() => {
+      const isVisible = (el) => {
+        const r = el.getBoundingClientRect();
+        const s = getComputedStyle(el);
+        return r.width > 1 && r.height > 1 && s.visibility !== 'hidden' && Number(s.opacity) !== 0;
+      };
+      const isBox = (el) => {
+        const r = el.getBoundingClientRect();
+        return r.width > 40 && r.height > 20;
+      };
+
+      // Declared :root custom-property TOKEN colors (hex/rgb literals only —
+      // a property whose value is itself `var(...)` is skipped; it isn't the
+      // literal declaration). Used to make radius + grey-scale tells
+      // token-aware: a single --radius var, or a declared neutral scale, is
+      // correct shadcn/design-system output, not slop.
+      const tokenColors = new Set();
+      let hasRadiusToken = false;
+      for (const sheet of document.styleSheets) {
+        let rules;
+        try {
+          rules = sheet.cssRules;
+        } catch {
+          continue; // cross-origin stylesheet — can't introspect, skip
+        }
+        for (const rule of rules) {
+          if (!rule.cssText || !/:root/.test(rule.selectorText || '')) continue;
+          const decls = rule.cssText.match(/--[\w-]+\s*:\s*[^;]+/g) || [];
+          for (const d of decls) {
+            const sep = d.indexOf(':');
+            const name = d.slice(0, sep).trim();
+            const raw = d.slice(sep + 1).trim();
+            if (name === '--radius') hasRadiusToken = true;
+            if (/var\(/.test(raw)) continue;
+            const hex = raw.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+            const rgbm = raw.match(/^rgba?\(([^)]+)\)$/i);
+            let rgb = null;
+            if (hex) {
+              let h = hex[1];
+              if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+              const n = parseInt(h, 16);
+              rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+            } else if (rgbm) {
+              const parts = rgbm[1].split(/[,\s/]+/).map(Number).filter((n) => !Number.isNaN(n));
+              if (parts.length >= 3) rgb = parts.slice(0, 3);
+            }
+            if (rgb) tokenColors.add(rgb.join(','));
+          }
+        }
+      }
+      if (!hasRadiusToken) {
+        hasRadiusToken = getComputedStyle(document.documentElement).getPropertyValue('--radius').trim() !== '';
+      }
+
+      const colors = [];
+      const shadows = [];
+      const radii = {};
+      const pads = {};
+      const neutrals = [];
+
+      for (const el of document.querySelectorAll('body *')) {
+        if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE' || !isVisible(el)) continue;
+        const s = getComputedStyle(el);
+
+        const directText = Array.from(el.childNodes).some(
+          (n) => n.nodeType === 3 && n.textContent.trim().length > 1,
+        );
+        if (directText) colors.push(s.color);
+
+        const bs = s.boxShadow;
+        if (bs && bs !== 'none') shadows.push(bs);
+
+        if (isBox(el)) {
+          const rad = Math.round(parseFloat(s.borderTopLeftRadius) || 0);
+          if (rad > 0.5) radii[rad] = (radii[rad] || 0) + 1;
+          const p = Math.round(parseFloat(s.paddingTop) || 0);
+          if (p > 0) pads[p] = (pads[p] || 0) + 1;
+        }
+
+        const bg = s.backgroundColor || '';
+        const m = bg.match(
+          /rgba?\(\s*(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)(?:[,\s/]+(-?\d+\.?\d*))?/i,
+        );
+        if (m) {
+          const rgb = [Number(m[1]), Number(m[2]), Number(m[3])];
+          const a = m[4] === undefined ? 1 : Number(m[4]);
+          if (a > 0.9 && Math.max(...rgb) - Math.min(...rgb) < 16) {
+            neutrals.push({ rgb, fromVar: tokenColors.has(rgb.join(',')) });
+          }
+        }
+      }
+
+      return { colors, shadows, radii, pads, neutrals, hasRadiusToken };
+    });
+  } finally {
+    await browser.close();
+  }
+}
+
 // =============================================================================
 // CLI
 // =============================================================================
@@ -384,17 +761,39 @@ Usage:
   node scripts/design-fidelity.mjs --report-only        Advisory diff, always exit 0
   node scripts/design-fidelity.mjs --file <relpath>     Target a different manifest.json (path-hardened)
   node scripts/design-fidelity.mjs --self-test          Pure-logic regression, no browser needed
+  node scripts/design-fidelity.mjs --tells              ADVISORY render tells: pure-#000 text, opaque-black shadow
+  node scripts/design-fidelity.mjs --tells=all           + token-aware opt-ins: radius-monotony, near-dup greys,
+                                                          single shadow stack, flat padding (never gates; combinable
+                                                          with --report-only, which still only governs the layout gate)
   node scripts/design-fidelity.mjs --help               This message
 
 Exit codes:
   0  clean / advisory / no baseline yet / self-test PASS
   1  gate mode found a real violation / self-test found a regression
+  (--tells findings never change the exit code, in any mode)
 `;
 
 function parseArgs(argv) {
-  const args = { mode: 'gate', updateBaseline: false, selfTest: false, help: false, manifestRel: DEFAULT_MANIFEST_REL };
+  const args = {
+    mode: 'gate',
+    updateBaseline: false,
+    selfTest: false,
+    help: false,
+    manifestRel: DEFAULT_MANIFEST_REL,
+    tells: false,
+    tellsAll: false,
+  };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
+    if (a === '--tells') {
+      args.tells = true;
+      continue;
+    }
+    if (a.startsWith('--tells=')) {
+      args.tells = true;
+      args.tellsAll = a.slice('--tells='.length) === 'all';
+      continue;
+    }
     switch (a) {
       case '--update-baseline':
         args.updateBaseline = true;
@@ -475,6 +874,18 @@ async function main() {
 
   let anyBaselineMissing = false;
   const allViolations = [];
+  let totalTellFindings = 0;
+  const optInTellIds = args.tellsAll
+    ? OPT_IN_TELL_IDS
+    : Array.isArray(config.tells)
+      ? config.tells.filter((id) => OPT_IN_TELL_IDS.includes(id))
+      : [];
+
+  if (args.tells) {
+    console.log(
+      `Tells    : ${args.tellsAll ? 'all (default + opt-in)' : 'default' + (optInTellIds.length ? ` + config opt-in [${optInTellIds.join(', ')}]` : '')} — ADVISORY, never gates\n`,
+    );
+  }
 
   for (const [screen, entry] of Object.entries(manifest)) {
     if (args.updateBaseline) {
@@ -492,6 +903,27 @@ async function main() {
         console.log(`  [${RED}ERROR${RST}] ${screen} — ${e.message}`);
       }
       continue;
+    }
+
+    // --tells is independent of the layout-baseline gate below — it renders
+    // the SAME entry.appRoute but never affects the exit code, and runs even
+    // when no baseline has been captured yet for this screen.
+    if (args.tells && entry.appRoute) {
+      try {
+        const tellData = await extractTellData(playwright, entry.appRoute, config);
+        const findings = computeTellFindings(tellData, { all: args.tellsAll, enabledOptIn: optInTellIds });
+        if (!findings.length) {
+          console.log(`  [${CYN}TELLS${RST}] ${screen} — no measurable design tells`);
+        } else {
+          for (const f of findings) {
+            const sample = f.sample ?? (f.a && f.b ? `rgb(${f.a.join(',')}) vs rgb(${f.b.join(',')})` : '');
+            console.log(`  TELL ${f.id} ${f.count ?? 1} e.g. ${sample}`);
+          }
+          totalTellFindings += findings.length;
+        }
+      } catch (e) {
+        console.log(`  [${YLW}WARN${RST}] ${screen} — tells render failed (${e.message}) — skipped, advisory only`);
+      }
     }
 
     // Gate / report-only mode: diff build vs baseline.
@@ -521,6 +953,12 @@ async function main() {
     } catch (e) {
       console.log(`  [${RED}ERROR${RST}] ${screen} — ${e.message}`);
     }
+  }
+
+  if (args.tells) {
+    console.log(
+      `\n${CYN}${totalTellFindings} design tell(s) found${RST} across rendered screens — advisory, never gates the exit code.\n`,
+    );
   }
 
   if (args.updateBaseline) {

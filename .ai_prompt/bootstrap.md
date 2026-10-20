@@ -12,6 +12,12 @@
 This is the only phase where you paste the master prompt manually.
 After this, `CLAUDE.md` exists and loads automatically — you never paste the prompt again.
 
+> **Extension-App skip map (NEW V32.66 — Scenario 52):** if `docs/PRODUCT.md` §1 Identity declares
+> `app_type: extension`, this Bootstrap run SKIPS every DB/compose/PgBouncer/Valkey/MinIO scaffolding step
+> below (there is no owned server). Git init, governance docs, and the credentials pointer still run as
+> normal. No step numbering changes — bootstrap total stays 20. Full skip/swap matrix: `scenarios.md`
+> Scenario 52.
+
 **What you do — two actions only:**
 1. Open VS Code in a new empty folder
 2. Open Claude Code in project folder → paste the master prompt → type `Bootstrap`
@@ -159,18 +165,19 @@ Step 7 — .claude/settings.json
   The Stop hook is a command-type hook invoking `scripts/design-stop-hook.sh`; it blocks via a
   non-zero exit when a done-claim's evidence (`captured_output` in `docs/STATE.md`) is empty or
   absent. (The declarative `matcher`/`action`/`message` form is NOT valid Claude Code and is
-  silently ignored — use the command form below.)
+  silently ignored — use the command form below.) The command is `$CLAUDE_PROJECT_DIR`-anchored
+  (V32.67.3) — a bare relative `bash scripts/design-stop-hook.sh` fails with "No such file or
+  directory" whenever the session's cwd is a subdirectory.
   Final merged `.claude/settings.json` shape:
 
   ```json
   {
-    "skillListingBudgetFraction": 0.01,
-    "maxSkillDescriptionChars": 1024,
+    "skillListingMaxDescChars": 1024,
     "hooks": {
       "Stop": [
         {
           "hooks": [
-            { "type": "command", "command": "bash scripts/design-stop-hook.sh", "timeout": 30 }
+            { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/design-stop-hook.sh\"", "timeout": 30 }
           ]
         }
       ]
@@ -179,7 +186,15 @@ Step 7 — .claude/settings.json
   ```
 
   If `.claude/settings.json` already exists from a prior deliverable (#19), merge the `hooks` key
-  only — do not overwrite `skillListingBudgetFraction` or `maxSkillDescriptionChars`.
+  only — do not overwrite `skillListingMaxDescChars`. (V32.67: `skillListingBudgetFraction` was
+  removed from this deliverable — apps now inherit the user-level setting instead of being pinned
+  at 1% context — and `maxSkillDescriptionChars` was renamed to the real Claude Code key
+  `skillListingMaxDescChars`; a re-deploy strips the stale keys from an existing target.) V32.67.3
+  ALSO ships no `permissions.ask` block at all — the 5 framework rules shipped V32.62–V32.67
+  (`Bash(rm *)`, `Bash(chmod *)`, `Bash(npm *)`, `Bash(docker *)`, `Bash(kill *)`) are RETIRED
+  (owner decision 2026-10-19: these fire "even in bypassPermissions mode" per the Claude Code
+  permissions docs, defeating the owner's bypass choice); a re-deploy strips exactly those 5
+  strings from an existing target's `permissions.ask` (any other app-added entry is kept).
 
 Step 8 — Bootstrap files
   .gitignore initial content (CREDENTIALS.md MUST be here from day 1 — before any other step commits):
